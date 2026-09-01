@@ -307,6 +307,7 @@ export async function genererTour(
   let reponse = await appellerModele({
     apiKey: appSettings.openRouterApiKey,
     model: modelePourAppel,
+    moteurInference: appSettings.moteurInference,
     messages: construireMessages(ctxBase),
     temperature,
     maxTokens,
@@ -317,6 +318,7 @@ export async function genererTour(
   const llm = await validerReponseLLM({
     apiKey: appSettings.openRouterApiKey,
     model: modelePourAppel,
+    moteurInference: appSettings.moteurInference,
     reponse,
     faits: ctxBase.faits,
     meta: story.meta,
@@ -338,6 +340,7 @@ export async function genererTour(
     reponse = await reparerReponse({
       apiKey: appSettings.openRouterApiKey,
       model: modelePourAppel,
+      moteurInference: appSettings.moteurInference,
       reponse,
       rapport,
       partiel: strategie === 'regeneration_partielle',
@@ -350,6 +353,7 @@ export async function genererTour(
     reponse = await appellerModele({
       apiKey: appSettings.openRouterApiKey,
       model: modelePourAppel,
+      moteurInference: appSettings.moteurInference,
       messages: construireMessages({ ...ctxBase, noteCorrection }),
       temperature,
       maxTokens,

@@ -100,6 +100,7 @@ async function extraireCandidats({
     const sortie = await appellerModele({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
+      moteurInference: appSettings.moteurInference,
       temperature: 0.2,
       maxTokens: 600,
       messages: [

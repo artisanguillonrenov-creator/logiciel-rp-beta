@@ -253,9 +253,18 @@ export interface StoryState {
 // laissé à la seule discrétion du modèle) — voir contenuAdulte.ts.
 export type ProfilContenu = 'grand_public' | 'adulte';
 
+// Moteur d'inférence (demande explicite de faire tourner un modèle
+// téléchargé en local plutôt que de dépendre d'OpenRouter) : 'openrouter'
+// reste le mode par défaut, 'local' bascule sur expo-litert-lm — voir
+// src/engine/localInference.ts et src/storage/modeleLocalStore.ts.
+// Natif uniquement : jamais proposé/activable sur le build web.
+export type MoteurInference = 'openrouter' | 'local';
+
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
+  // undefined (ou 'openrouter') = comportement historique. Voir MoteurInference.
+  moteurInference?: MoteurInference;
   // Clé de secours pour les embeddings (recherche sémantique du lore) si
   // OpenRouter n'en sert pas pour ce compte. Optionnelle : voir
   // src/engine/embeddings.ts.

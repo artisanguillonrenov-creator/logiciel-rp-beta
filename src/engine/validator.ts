@@ -1,4 +1,4 @@
-import type { Fact, StoryMeta } from '../types';
+import type { Fact, MoteurInference, StoryMeta } from '../types';
 import { appellerModele } from './openrouter';
 
 // Tournures qui trahissent une décision prise à la place du joueur —
@@ -86,6 +86,7 @@ export interface ValidationLLMOptions {
   reponse: string;
   faits: Fact[];
   meta: StoryMeta;
+  moteurInference?: MoteurInference;
 }
 
 const NOMS_CHECKS: NomCheck[] = [
@@ -110,6 +111,7 @@ export async function validerReponseLLM({
   reponse,
   faits,
   meta,
+  moteurInference,
 }: ValidationLLMOptions): Promise<RapportValidation> {
   const faitsTexte = faits.length
     ? faits.map((f) => `- [${f.type}]${f.resolue ? ' (résolu)' : ''} ${f.texte}`).join('\n')
@@ -119,6 +121,7 @@ export async function validerReponseLLM({
     const sortie = await appellerModele({
       apiKey,
       model,
+      moteurInference,
       temperature: 0,
       maxTokens: 500,
       messages: [
@@ -229,6 +232,7 @@ export interface RepairOptions {
   reponse: string;
   rapport: RapportValidation;
   partiel: boolean;
+  moteurInference?: MoteurInference;
 }
 
 /**
@@ -238,7 +242,14 @@ export interface RepairOptions {
  * système — moins coûteux qu'une régénération complète pour un problème
  * localisé.
  */
-export async function reparerReponse({ apiKey, model, reponse, rapport, partiel }: RepairOptions): Promise<string> {
+export async function reparerReponse({
+  apiKey,
+  model,
+  reponse,
+  rapport,
+  partiel,
+  moteurInference,
+}: RepairOptions): Promise<string> {
   const points = rapport.checks
     .filter((c) => !c.ok)
     .map((c) => `- (${c.nom}, ${c.gravite}) ${c.raison}`)
@@ -251,6 +262,7 @@ export async function reparerReponse({ apiKey, model, reponse, rapport, partiel 
   const corrige = await appellerModele({
     apiKey,
     model,
+    moteurInference,
     temperature: 0.3,
     maxTokens: Math.max(300, Math.ceil(reponse.length / 3)),
     messages: [

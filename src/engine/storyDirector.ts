@@ -35,6 +35,7 @@ async function analyserDirecteur(
     const sortie = await appellerModele({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
+      moteurInference: appSettings.moteurInference,
       temperature: 0.3,
       maxTokens: 400,
       messages: [

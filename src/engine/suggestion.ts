@@ -20,6 +20,7 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
   const contenu = await appellerModele({
     apiKey: appSettings.openRouterApiKey,
     model: appSettings.model,
+    moteurInference: appSettings.moteurInference,
     temperature: 0.9,
     maxTokens: 150,
     messages: [

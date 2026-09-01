@@ -1,5 +1,5 @@
 {
-  "version": "1.10.0",
+  "version": "1.11.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Filet de sécurité pour la continuité : recherche sémantique de secours dans l'historique brut (au-delà du résumé/faits) quand un détail n'a pas été capté par l'extraction périodique de mémoire."
+  "notes": "Moteur d'inférence local (Android) : possibilité de faire tourner un modèle Gemma déjà téléchargé directement sur l'appareil, sans OpenRouter ni connexion réseau — à activer dans Réglages > Moteur d'inférence. Fonctionnalité native uniquement, sans effet sur la version web."
 }

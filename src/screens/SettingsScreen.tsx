@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { AppSettings, ProfilContenu } from '../types';
+import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
 import { verifierMiseAJour } from '../engine/updater';
+import {
+  importerModeleLocal,
+  modeleLocalTelecharge,
+  supprimerModeleLocal,
+  tailleModeleLocalOctets,
+} from '../storage/modeleLocalStore';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
@@ -44,6 +50,16 @@ export default function SettingsScreen({ navigation }: Props) {
   const [messageMaj, setMessageMaj] = useState('');
   const [urlMaj, setUrlMaj] = useState('');
 
+  // Moteur d'inférence local (demande explicite de faire tourner un modèle
+  // téléchargé sur l'appareil plutôt que de dépendre d'OpenRouter) — natif
+  // uniquement, jamais proposé sur le build web (expo-litert-lm n'existe
+  // pas côté web, voir src/engine/localInference.web.ts).
+  const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
+  const [modeleLocalPresent, setModeleLocalPresent] = useState(false);
+  const [tailleModeleLocal, setTailleModeleLocal] = useState<number | null>(null);
+  const [importEnCours, setImportEnCours] = useState(false);
+  const [erreurModeleLocal, setErreurModeleLocal] = useState('');
+
   useEffect(() => {
     getSettings().then((settings: AppSettings) => {
       setApiKey(settings.openRouterApiKey);
@@ -51,9 +67,41 @@ export default function SettingsScreen({ navigation }: Props) {
       setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
+      setMoteurInference(settings.moteurInference ?? 'openrouter');
       setChargement(false);
     });
+    rafraichirEtatModeleLocal();
   }, []);
+
+  function rafraichirEtatModeleLocal() {
+    if (Platform.OS === 'web') return;
+    setModeleLocalPresent(modeleLocalTelecharge());
+    setTailleModeleLocal(tailleModeleLocalOctets());
+  }
+
+  async function importerModele() {
+    setImportEnCours(true);
+    setErreurModeleLocal('');
+    try {
+      await importerModeleLocal();
+      rafraichirEtatModeleLocal();
+    } catch (e) {
+      setErreurModeleLocal(e instanceof Error ? e.message : "Import impossible.");
+    } finally {
+      setImportEnCours(false);
+    }
+  }
+
+  function supprimerModele() {
+    supprimerModeleLocal();
+    rafraichirEtatModeleLocal();
+  }
+
+  function formaterTailleOctets(octets: number): string {
+    const go = octets / (1024 * 1024 * 1024);
+    if (go >= 1) return `${go.toFixed(2)} Go`;
+    return `${(octets / (1024 * 1024)).toFixed(0)} Mo`;
+  }
 
   async function sauvegarderProfil(profil: ProfilContenu, code: string | undefined) {
     setProfilContenu(profil);
@@ -136,6 +184,7 @@ export default function SettingsScreen({ navigation }: Props) {
         embeddingsApiKey: embeddingsApiKey.trim() || undefined,
         profilContenu,
         codeDeverrouillage,
+        moteurInference,
       });
       setMessageStatut('Réglages enregistrés.');
     } catch {
@@ -205,6 +254,57 @@ export default function SettingsScreen({ navigation }: Props) {
         aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en
         secours pour cette fonction.
       </Text>
+
+      {Platform.OS !== 'web' && (
+        <>
+          <Text style={styles.label}>Moteur d'inférence</Text>
+          <View style={styles.rangeeMoteur}>
+            <Pressable
+              style={[styles.optionMoteur, moteurInference !== 'local' && styles.optionMoteurActive]}
+              onPress={() => setMoteurInference('openrouter')}
+            >
+              <Text style={styles.texteOptionMoteur}>OpenRouter</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
+              onPress={() => setMoteurInference('local')}
+            >
+              <Text style={styles.texteOptionMoteur}>Local (sur l'appareil)</Text>
+            </Pressable>
+          </View>
+
+          {moteurInference === 'local' ? (
+            <Panneau style={styles.champConteneur}>
+              <Text style={styles.aide}>
+                Le modèle tourne entièrement sur l'appareil, sans connexion réseau ni clé API. Sur du matériel
+                d'entrée de gamme, la génération peut être lente ou instable — c'est un compromis assumé, pas un
+                dysfonctionnement.
+              </Text>
+              <Text style={[styles.texteOptionProfil, { marginTop: espacement.sm }]}>
+                {modeleLocalPresent
+                  ? `Modèle importé (${formaterTailleOctets(tailleModeleLocal ?? 0)})`
+                  : 'Aucun modèle importé'}
+              </Text>
+              <Bouton
+                titre={importEnCours ? 'Import…' : 'Importer un modèle (.litertlm ou .task)'}
+                variante="secondaire"
+                onPress={importerModele}
+                desactive={importEnCours}
+                style={styles.boutonAction}
+              />
+              {modeleLocalPresent ? (
+                <Bouton
+                  titre="Supprimer le modèle local"
+                  variante="secondaire"
+                  onPress={supprimerModele}
+                  style={styles.boutonAction}
+                />
+              ) : null}
+              {erreurModeleLocal ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurModeleLocal}</Text> : null}
+            </Panneau>
+          ) : null}
+        </>
+      )}
 
       <Text style={styles.label}>Profil de contenu</Text>
       <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>
@@ -392,6 +492,28 @@ const styles = StyleSheet.create({
     color: couleurs.texteAtténué,
     fontFamily: polices.corps,
     fontSize: 13,
+  },
+  rangeeMoteur: {
+    flexDirection: 'row',
+    marginTop: espacement.xs,
+    gap: espacement.sm,
+  },
+  optionMoteur: {
+    flex: 1,
+    paddingVertical: espacement.sm,
+    paddingHorizontal: espacement.sm,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: couleurs.fondChampSaisie,
+    alignItems: 'center',
+  },
+  optionMoteurActive: {
+    borderColor: couleurs.accent,
+  },
+  texteOptionMoteur: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 14,
   },
   optionProfil: {
     marginTop: espacement.md,

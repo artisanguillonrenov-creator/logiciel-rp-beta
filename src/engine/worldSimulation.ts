@@ -60,6 +60,7 @@ async function extraireAppelsMonde(
     const { appelsOutils } = await appellerModeleAvecOutils({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
+      moteurInference: appSettings.moteurInference,
       temperature: 0.2,
       maxTokens: 500,
       outils: outilsPourComposant('monde'),

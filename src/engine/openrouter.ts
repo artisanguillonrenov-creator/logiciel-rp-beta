@@ -1,3 +1,6 @@
+import type { MoteurInference } from '../types';
+import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -9,13 +12,17 @@ export interface AppelModeleOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  // Bascule vers le modèle local (expo-litert-lm) au lieu d'OpenRouter —
+  // voir MoteurInference. apiKey/model sont ignorés dans ce cas.
+  moteurInference?: MoteurInference;
 }
 
 export class ErreurOpenRouter extends Error {}
 
 /**
- * Appelle l'API de complétion de chat d'OpenRouter. La clé API n'est jamais
- * codée en dur : elle vient toujours des réglages saisis par l'utilisateur.
+ * Appelle l'API de complétion de chat d'OpenRouter, ou le modèle local si
+ * moteurInference === 'local'. La clé API n'est jamais codée en dur : elle
+ * vient toujours des réglages saisis par l'utilisateur.
  */
 export async function appellerModele({
   apiKey,
@@ -23,7 +30,12 @@ export async function appellerModele({
   messages,
   temperature = 0.9,
   maxTokens = 700,
+  moteurInference,
 }: AppelModeleOptions): Promise<string> {
+  if (moteurInference === 'local') {
+    return genererTexteLocal(messages);
+  }
+
   if (!apiKey) {
     throw new ErreurOpenRouter("Aucune clé API OpenRouter renseignée. Configure-la dans Réglages.");
   }
@@ -101,6 +113,7 @@ export interface AppelModeleAvecOutilsOptions {
   outils: ToolDefinition[];
   temperature?: number;
   maxTokens?: number;
+  moteurInference?: MoteurInference;
 }
 
 function versSchemaOutil(outil: ToolDefinition) {
@@ -134,7 +147,12 @@ export async function appellerModeleAvecOutils({
   outils,
   temperature = 0.2,
   maxTokens = 600,
+  moteurInference,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
+  if (moteurInference === 'local') {
+    return appellerModeleLocalAvecOutilsJson(messages, outils);
+  }
+
   if (!apiKey) {
     throw new ErreurOpenRouter("Aucune clé API OpenRouter renseignée. Configure-la dans Réglages.");
   }
