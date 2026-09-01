@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { StoryMeta } from '../types';
 import { getStoriesIndex } from '../storage/storage';
-import { couleurs, espacement, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, rayon } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Demarrage'>;
 
@@ -71,6 +71,7 @@ const styles = StyleSheet.create({
   },
   titre: {
     color: couleurs.texte,
+    fontFamily: polices.titre,
     fontSize: 32,
     fontWeight: '700',
   },

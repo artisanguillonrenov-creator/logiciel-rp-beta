@@ -6,7 +6,7 @@ import StartScreen from '../screens/StartScreen';
 import CreateScreen from '../screens/CreateScreen';
 import ConversationScreen from '../screens/ConversationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import { couleurs } from '../theme/theme';
+import { couleurs, polices } from '../theme/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -25,7 +25,13 @@ const theme = {
 export default function RootNavigator() {
   return (
     <NavigationContainer theme={theme}>
-      <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: couleurs.fond }, headerTintColor: couleurs.texte }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: couleurs.fond },
+          headerTintColor: couleurs.texte,
+          headerTitleStyle: { fontFamily: polices.titre },
+        }}
+      >
         <Stack.Screen name="Demarrage" component={StartScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Création rapide' }} />
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Histoire' }} />

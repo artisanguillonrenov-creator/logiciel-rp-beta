@@ -1,16 +1,19 @@
-// Interface strictement fonctionnelle pour la bêta (brief section 2) :
-// pas d'identité visuelle travaillée, juste des valeurs cohérentes et lisibles.
+import { Platform } from 'react-native';
+
+// Identité visuelle bleu nuit / indigo (brief Phase 2) — remplace le thème
+// strictement fonctionnel de la bêta.
 export const couleurs = {
-  fond: '#111318',
-  fondCarte: '#1b1e26',
-  fondChampSaisie: '#20232c',
-  bordure: '#2c2f3a',
-  texte: '#f2f3f5',
-  texteAtténué: '#9aa0ac',
-  accent: '#4f7cff',
-  danger: '#ff5c5c',
-  bulleJoueur: '#2a3a63',
-  bulleNarrateur: '#1f222b',
+  fond: '#0b0e24',
+  fondCarte: '#161a3c',
+  fondChampSaisie: '#1c2148',
+  bordure: '#2e3468',
+  texte: '#f4f3fb',
+  texteAtténué: '#9b9fce',
+  accent: '#7c6ff0',
+  accentClair: '#a89bff',
+  danger: '#ff6b7a',
+  bulleJoueur: '#33306e',
+  bulleNarrateur: '#161a3c',
 };
 
 export const espacement = {
@@ -25,4 +28,14 @@ export const rayon = {
   sm: 6,
   md: 12,
   lg: 18,
+};
+
+// Typographie serif pour les titres (brief Phase 2), système par défaut
+// pour le reste — pas de police embarquée, pour rester léger.
+export const polices = {
+  titre: Platform.select({
+    ios: 'Georgia',
+    android: 'serif',
+    default: 'Georgia, "Times New Roman", serif',
+  }),
 };

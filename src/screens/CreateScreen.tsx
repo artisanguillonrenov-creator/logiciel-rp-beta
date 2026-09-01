@@ -14,7 +14,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { Creativite, Longueur } from '../types';
 import { creerNouvelleHistoire } from '../engine/story';
 import { saveStory } from '../storage/storage';
-import { couleurs, espacement, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, rayon } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;
 
@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
   },
   titre: {
     color: couleurs.texte,
+    fontFamily: polices.titre,
     fontSize: 24,
     fontWeight: '700',
     marginBottom: espacement.md,
