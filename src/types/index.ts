@@ -59,6 +59,9 @@ export interface Message {
   role: MessageRole;
   content: string;
   timestamp: number;
+  // Épinglé par le joueur pour retrouver facilement un bon moment (distinct
+  // d'un signalement de problème) — voir Ajouts_A_Integrer.md #2.
+  epingle?: boolean;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';

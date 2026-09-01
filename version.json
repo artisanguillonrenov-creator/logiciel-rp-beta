@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Tool calling : les mutations d'état du monde et des relations sociales passent par de vrais appels d'outils OpenRouter, avec permissions par composant et validation/réparation des arguments."
+  "notes": "Direction artistique complète (grimoire illuminé) sur l'écran Conversation, recherche dans l'historique, messages épinglés, résumé « la dernière fois », suggestion de réplique, commande « retiens que X »."
 }

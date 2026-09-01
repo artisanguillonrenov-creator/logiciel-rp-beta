@@ -22,6 +22,34 @@ export function doitMettreAJourMemoire(messages: Message[], dernierMessageIndexM
   return messages.length - dernierMessageIndexMaj >= NB_MESSAGES_AVANT_MAJ;
 }
 
+// Commande rapide "retiens que X" (Ajouts_A_Integrer.md #5) : le joueur
+// force un fait en mémoire canon lui-même, sans attendre le passage par
+// l'extraction/consolidation ci-dessous. Accepte "retiens que …" et
+// "/retiens …".
+const REGEX_COMMANDE_RETENIR = /^(?:\/retiens\s+|retiens\s+que\s+)(.+)$/i;
+
+export function detecterCommandeRetenir(texte: string): string | null {
+  const match = texte.match(REGEX_COMMANDE_RETENIR);
+  return match ? match[1].trim() : null;
+}
+
+export function verrouillerFait(memoire: MemoryState, texte: string, indexMessageActuel: number): MemoryState {
+  return {
+    ...memoire,
+    faits: [
+      ...memoire.faits,
+      {
+        id: idFait(),
+        type: 'autre',
+        texte,
+        resolue: false,
+        niveau: 'canon',
+        dernierAcces: indexMessageActuel,
+      },
+    ],
+  };
+}
+
 function idFait(): string {
   return `fait-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
