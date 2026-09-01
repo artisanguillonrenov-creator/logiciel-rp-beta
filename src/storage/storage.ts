@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { AppSettings, Persona, StoryMeta, StoryState } from '../types';
+import type { AppSettings, Persona, Plugin, StoryMeta, StoryState } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
 
 const KEYS = {
@@ -7,6 +7,7 @@ const KEYS = {
   storiesIndex: '@rp_beta/stories_index',
   story: (id: string) => `@rp_beta/story/${id}`,
   personas: '@rp_beta/personas',
+  plugins: '@rp_beta/plugins',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -152,4 +153,28 @@ export async function savePersona(persona: Persona): Promise<void> {
 export async function deletePersona(id: string): Promise<void> {
   const personas = await getPersonas();
   await AsyncStorage.setItem(KEYS.personas, JSON.stringify(personas.filter((p) => p.id !== id)));
+}
+
+// Packs de contenu / plugins "esprit" (brief Phase 2) : rejoignent le pool
+// de lore sélectionnable — voir convertirPluginsPourSelection dans
+// src/engine/plugins.ts.
+export async function getPlugins(): Promise<Plugin[]> {
+  const raw = await AsyncStorage.getItem(KEYS.plugins);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export async function installerPlugin(plugin: Plugin): Promise<void> {
+  const plugins = await getPlugins();
+  plugins.push(plugin);
+  await AsyncStorage.setItem(KEYS.plugins, JSON.stringify(plugins));
+}
+
+export async function supprimerPlugin(id: string): Promise<void> {
+  const plugins = await getPlugins();
+  await AsyncStorage.setItem(KEYS.plugins, JSON.stringify(plugins.filter((p) => p.id !== id)));
 }

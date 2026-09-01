@@ -17,6 +17,8 @@ import { obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
+import { convertirPluginsPourSelection } from './plugins';
+import { getPlugins } from '../storage/storage';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
@@ -100,8 +102,14 @@ export async function calculerSelectionLore(
   // Pipeline de lore émergent (brief Phase 2) : les entrées "permanent"
   // (PNJ récurrents, lieux, factions... validées par reconfirmation)
   // rejoignent le pool sélectionnable au même titre que le lorebook
-  // Elyndor statique.
-  const poolElyndor = [...LORE_ELYNDOR, ...convertirLoreEmergentPourSelection(story.loreEmergent)];
+  // Elyndor statique. Les packs de contenu installés (plugins "esprit",
+  // distribution brief Phase 2) font de même.
+  const plugins = await getPlugins();
+  const poolElyndor = [
+    ...LORE_ELYNDOR,
+    ...convertirLoreEmergentPourSelection(story.loreEmergent),
+    ...convertirPluginsPourSelection(plugins),
+  ];
 
   const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }] = await Promise.all([
     assurerEmbeddings(

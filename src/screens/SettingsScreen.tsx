@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -14,7 +15,9 @@ import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
+import { verifierMiseAJour } from '../engine/updater';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { VERSION_APP } from '../version';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 
@@ -40,6 +43,12 @@ export default function SettingsScreen({ navigation }: Props) {
   const [rechercheModele, setRechercheModele] = useState('');
   const [chargementModeles, setChargementModeles] = useState(false);
   const [erreurModeles, setErreurModeles] = useState('');
+
+  // Auto-updater "esprit" (brief Phase 2, distribution) : vérification à la
+  // demande, pas de mise à jour automatique en arrière-plan.
+  const [verificationMaj, setVerificationMaj] = useState(false);
+  const [messageMaj, setMessageMaj] = useState('');
+  const [urlMaj, setUrlMaj] = useState('');
 
   useEffect(() => {
     getSettings().then((settings: AppSettings) => {
@@ -90,6 +99,25 @@ export default function SettingsScreen({ navigation }: Props) {
     setCodeSaisi('');
     setErreurProfil('');
     setModalProfilOuvert(true);
+  }
+
+  async function verifierMaj() {
+    setVerificationMaj(true);
+    setMessageMaj('');
+    setUrlMaj('');
+    try {
+      const info = await verifierMiseAJour();
+      if (info.disponible) {
+        setMessageMaj(`Nouvelle version disponible : ${info.derniereVersion}${info.notes ? ` — ${info.notes}` : ''}`);
+        setUrlMaj(info.url);
+      } else {
+        setMessageMaj('Tu utilises déjà la dernière version.');
+      }
+    } catch (e) {
+      setMessageMaj(e instanceof Error ? e.message : 'Vérification impossible pour le moment.');
+    } finally {
+      setVerificationMaj(false);
+    }
   }
 
   function ouvrirSelecteurModeles() {
@@ -209,6 +237,25 @@ export default function SettingsScreen({ navigation }: Props) {
       <Pressable style={styles.boutonPrincipal} onPress={enregistrer} disabled={enregistrement}>
         <Text style={styles.texteBoutonPrincipal}>{enregistrement ? 'Enregistrement…' : 'Enregistrer'}</Text>
       </Pressable>
+
+      <Text style={styles.label}>Packs de contenu</Text>
+      <Pressable style={styles.boutonSecondaire} onPress={() => navigation.navigate('Plugins')}>
+        <Text style={styles.texteBoutonSecondaire}>Gérer les packs de contenu (plugins)</Text>
+      </Pressable>
+
+      <Text style={styles.label}>À propos</Text>
+      <Text style={styles.aide}>Version {VERSION_APP}</Text>
+      <Pressable style={styles.boutonSecondaire} onPress={verifierMaj} disabled={verificationMaj}>
+        <Text style={styles.texteBoutonSecondaire}>
+          {verificationMaj ? 'Vérification…' : 'Vérifier les mises à jour'}
+        </Text>
+      </Pressable>
+      {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
+      {urlMaj ? (
+        <Pressable style={styles.boutonSecondaire} onPress={() => Linking.openURL(urlMaj)}>
+          <Text style={styles.texteBoutonSecondaire}>Ouvrir la dernière version</Text>
+        </Pressable>
+      ) : null}
 
       <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
         <View style={styles.modalContainer}>

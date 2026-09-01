@@ -154,6 +154,27 @@ export interface AppSettings {
   // c'est un garde-fou logiciel, pas une protection réelle (voir brief
   // Phase 2, distribution "esprit sans vraie protection").
   codeDeverrouillage?: string;
+  // Distribution "esprit" (brief Phase 2) : accepté une fois par appareil à
+  // l'écran d'activation — pas une vraie clé de licence vérifiée côté
+  // serveur, juste la marche à suivre d'une activation.
+  betaAcceptee?: boolean;
+}
+
+// Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :
+// uniquement des données de lore (titre/contenu texte), jamais de code —
+// rien à exécuter, donc rien à isoler dans un bac à sable. Rejoint le pool
+// de sélection sémantique du lore Elyndor au même titre que le lore
+// émergent, avec la marque du pack dans le titre.
+export interface PluginEntree {
+  titre: string;
+  contenu: string;
+}
+
+export interface Plugin {
+  id: string;
+  nom: string;
+  entrees: PluginEntree[];
+  installeLe: number;
 }
 
 export interface LoreEntry {
