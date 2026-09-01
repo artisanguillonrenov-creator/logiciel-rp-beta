@@ -12,11 +12,24 @@ export interface StorySettings {
   romance: NiveauCurseur;
 }
 
+// Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
+// objectifs en prose. Collecté à l'étape "Histoire" du parcours de
+// création en 5 étapes, affiché ensuite dans la conversation. Pas
+// d'"image" ici — génération d'images explicitement hors périmètre pour
+// cette phase.
+export interface ContexteHistoire {
+  lieu: string;
+  ambiance: string;
+  dateChronique: string;
+  objectifs: string;
+}
+
 export interface StoryMeta {
   id: string;
   personnageNom: string;
   personnageDescription: string;
   pointDeDepart: string;
+  contexte: ContexteHistoire;
   createdAt: number;
   updatedAt: number;
 }
@@ -91,7 +104,7 @@ export interface EntreeLoreEmergent {
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 4;
+export const VERSION_SCHEMA_HISTOIRE = 5;
 
 export interface StoryState {
   version: number;

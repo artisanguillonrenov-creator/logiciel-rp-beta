@@ -33,7 +33,7 @@ export default function RootNavigator() {
         }}
       >
         <Stack.Screen name="Demarrage" component={StartScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Création rapide' }} />
+        <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Nouvelle histoire' }} />
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Histoire' }} />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
       </Stack.Navigator>

@@ -80,6 +80,19 @@ function migrerHistoire(data: any): StoryState {
       },
     };
   }
+  if (migree.version < 5) {
+    // v4 -> v5 : panneau Contexte de l'Histoire (lieu, ambiance, date,
+    // objectifs — brief Phase 2). Vide par défaut pour une histoire créée
+    // avant l'étape "Histoire" du nouveau parcours.
+    migree = {
+      ...migree,
+      version: 5,
+      meta: {
+        ...migree.meta,
+        contexte: migree.meta?.contexte ?? { lieu: '', ambiance: '', dateChronique: '', objectifs: '' },
+      },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

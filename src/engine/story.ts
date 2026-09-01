@@ -1,4 +1,4 @@
-import type { StoryState, StorySettings } from '../types';
+import type { ContexteHistoire, StoryState, StorySettings } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
 
 function genererId(): string {
@@ -9,6 +9,7 @@ export function creerNouvelleHistoire(params: {
   personnageNom: string;
   personnageDescription: string;
   pointDeDepart: string;
+  contexte: ContexteHistoire;
   settings: StorySettings;
 }): StoryState {
   const maintenant = Date.now();
@@ -19,6 +20,7 @@ export function creerNouvelleHistoire(params: {
       personnageNom: params.personnageNom,
       personnageDescription: params.personnageDescription,
       pointDeDepart: params.pointDeDepart,
+      contexte: params.contexte,
       createdAt: maintenant,
       updatedAt: maintenant,
     },
