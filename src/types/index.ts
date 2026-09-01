@@ -90,8 +90,3 @@ export interface LoreEntry {
   // sélection sémantique (absente pour les entrées toujours actives).
   score?: number;
 }
-
-export interface ValidationResult {
-  ok: boolean;
-  raisons: string[];
-}

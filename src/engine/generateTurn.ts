@@ -16,7 +16,14 @@ import { appellerModele } from './openrouter';
 import { obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
-import { fusionnerValidations, validerAgentiviteHeuristique, validerReponseLLM } from './validator';
+import {
+  appliquerPatchLocal,
+  determinerStrategie,
+  fusionnerRapports,
+  reparerReponse,
+  validerAgentiviteHeuristique,
+  validerReponseLLM,
+} from './validator';
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
@@ -168,14 +175,32 @@ export async function genererTour(
     faits: ctxBase.faits,
     meta: story.meta,
   });
-  const validation = fusionnerValidations(heuristique, llm);
+  const rapport = fusionnerRapports(heuristique, llm);
 
-  let aEteCorrige = false;
-  if (!validation.ok) {
-    aEteCorrige = true;
-    const noteCorrection = `La tentative précédente a été rejetée pour la ou les raisons suivantes : ${validation.raisons.join(
-      ' ',
-    )} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
+  // Suite de validation complète (brief Phase 2) : la stratégie de
+  // réparation dépend de la gravité constatée — patch local (déterministe,
+  // sans appel modèle) → repair ciblé → régénération partielle (même
+  // consigne, contexte complet) → régénération complète. Un seul passage de
+  // réparation par tour, quelle que soit la stratégie choisie (pas de
+  // boucle de correction sans fin).
+  const strategie = determinerStrategie(rapport);
+  let aEteCorrige = strategie !== 'aucune';
+
+  if (strategie === 'patch_local') {
+    reponse = appliquerPatchLocal(reponse, rapport);
+  } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
+    reponse = await reparerReponse({
+      apiKey: appSettings.openRouterApiKey,
+      model: appSettings.model,
+      reponse,
+      rapport,
+      partiel: strategie === 'regeneration_partielle',
+    });
+  } else if (strategie === 'regeneration_complete') {
+    const noteCorrection = `La tentative précédente a été rejetée pour la ou les raisons suivantes : ${rapport.checks
+      .filter((c) => !c.ok)
+      .map((c) => c.raison)
+      .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     reponse = await appellerModele({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
