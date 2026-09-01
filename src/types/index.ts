@@ -44,6 +44,9 @@ export interface StoryMeta {
   // Réglages. Optionnels, ignorés tant qu'absents.
   modeleOverride?: string;
   temperatureOverride?: number;
+  // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
+  // affiché à la place de personnageNom quand présent.
+  titre?: string;
 }
 
 // Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit

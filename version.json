@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Réglages concepteur (mode test) : débogage narratif, contrôles moteur (cache d'embeddings, mise à jour forcée), réglages de prompt avancés par histoire."
+  "notes": "Écran d'accueil restructuré en menu à 5 entrées (Nouveau, Continuer, Charger conversation, Paramètres, Quitter) façon menu de jeu, avec un écran dédié pour charger/renommer/supprimer une conversation."
 }

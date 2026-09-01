@@ -162,6 +162,22 @@ export async function deleteStory(id: string): Promise<void> {
   await saveStoriesIndex(index.filter((m) => m.id !== id));
 }
 
+// Renomme l'entrée "Charger Conversation" sans la faire remonter en tête
+// de liste : contrairement à saveStory, ne touche pas updatedAt (renommer
+// n'est pas "reprendre la partie").
+export async function renommerStory(id: string, titre: string): Promise<void> {
+  const story = await getStory(id);
+  if (!story) return;
+  const storyMaj: StoryState = { ...story, meta: { ...story.meta, titre: titre.trim() || undefined } };
+  await AsyncStorage.setItem(KEYS.story(id), JSON.stringify(storyMaj));
+  const index = await getStoriesIndex();
+  const pos = index.findIndex((m) => m.id === id);
+  if (pos >= 0) {
+    index[pos] = storyMaj.meta;
+    await saveStoriesIndex(index);
+  }
+}
+
 // Bibliothèque de personas (brief Phase 2) : réutiliser {{user}} d'une
 // histoire à l'autre sans ressaisir nom/description à chaque création.
 export async function getPersonas(): Promise<Persona[]> {

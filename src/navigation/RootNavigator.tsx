@@ -10,6 +10,7 @@ import ConversationScreen from '../screens/ConversationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PluginsScreen from '../screens/PluginsScreen';
 import DesignerSettingsScreen from '../screens/DesignerSettingsScreen';
+import LoadConversationScreen from '../screens/LoadConversationScreen';
 import { getSettings } from '../storage/storage';
 import { couleurs, polices } from '../theme/theme';
 
@@ -63,6 +64,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
         <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
+        <Stack.Screen name="ChargerConversation" component={LoadConversationScreen} options={{ title: 'Charger conversation' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
