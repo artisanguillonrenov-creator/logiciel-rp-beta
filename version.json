@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Engagements (promesses/dettes/contrats avec rappel automatique) et dynamiques sociales multi-axes avec propagation de faction."
+  "notes": "Tool calling : les mutations d'état du monde et des relations sociales passent par de vrais appels d'outils OpenRouter, avec permissions par composant et validation/réparation des arguments."
 }

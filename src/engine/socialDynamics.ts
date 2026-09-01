@@ -1,7 +1,7 @@
 import type { AppSettings, Engagement, Message, RelationPersonnage, SocialState, TypeEngagement } from '../types';
-import { appellerModele } from './openrouter';
+import { appellerModeleAvecOutils, type AppelOutil } from './openrouter';
+import { outilsPourComposant, validerEtReparerArguments } from './tools';
 
-const TYPES_ENGAGEMENT: TypeEngagement[] = ['promesse', 'dette', 'contrat'];
 const BORNE = 3;
 // Fraction de chaque ajustement répercutée sur les autres personnages de la
 // même faction (garde, guilde...) — une réputation qui se propage sans
@@ -34,39 +34,34 @@ interface AjustementRelation {
   hostilite: number;
 }
 
-interface SortieSocial {
-  nouveauxEngagements: { type: TypeEngagement; description: string; partie: string }[];
-  engagementsHonores: string[];
-  engagementsRompus: string[];
-  ajustementsRelations: AjustementRelation[];
-}
-
-async function extraireEtatSocial(
+/**
+ * Extraction par tool calling (brief Phase 2 : "switch to OpenRouter
+ * tool-calling for structured world-state mutations") : le modèle appelle
+ * directement les outils du composant "social" (voir tools.ts) au lieu de
+ * produire un JSON en prose — chaque appel est validé/réparé
+ * individuellement.
+ */
+async function extraireAppelsSocial(
   appSettings: AppSettings,
   transcript: string,
   social: SocialState,
-): Promise<SortieSocial | null> {
+): Promise<AppelOutil[]> {
   const engagementsOuverts = social.engagements
     .filter((e) => !e.honore && !e.rompu)
     .map((e) => `- (id: ${e.id}, ${e.type}) ${e.description} — envers ${e.partie}`)
     .join('\n') || 'Aucun.';
 
   try {
-    const sortie = await appellerModele({
+    const { appelsOutils } = await appellerModeleAvecOutils({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
       temperature: 0.2,
       maxTokens: 500,
+      outils: outilsPourComposant('social'),
       messages: [
         {
           role: 'system',
-          content: `Tu observes un extrait de jeu de rôle pour suivre les engagements pris et l'évolution des relations avec les personnages non-joueurs. Réponds UNIQUEMENT avec un JSON strict :
-{"nouveauxEngagements": [{"type": "promesse|dette|contrat", "description": "...", "partie": "nom du PNJ ou de la faction concerné"}], "engagementsHonores": ["id"], "engagementsRompus": ["id"], "ajustementsRelations": [{"nom": "...", "faction": "optionnel", "confiance": +1, "respect": 0, "peur": 0, "affection": 0, "hostilite": 0}]}
-
-Règles :
-- "nouveauxEngagements" : uniquement des promesses, dettes ou contrats explicitement pris par {{user}} envers quelqu'un dans le texte.
-- "engagementsHonores"/"engagementsRompus" : reprends l'id ci-dessous seulement si le texte règle explicitement cet engagement (tenu ou brisé).
-- "ajustementsRelations" : des DELTAS (pas la valeur finale, échelle -3 à 3) sur confiance/respect/peur/affection/hostilité, uniquement pour un personnage nommé dont l'attitude envers {{user}} évolue clairement dans le texte. 0 pour un axe qui ne bouge pas. N'invente pas de personnage.
+          content: `Tu observes un extrait de jeu de rôle pour suivre les engagements pris par {{user}} et l'évolution de ses relations avec les personnages non-joueurs. Appelle les outils appropriés pour chaque changement EXPLICITEMENT établi par le texte. N'invente pas de personnage ni d'engagement, n'appelle aucun outil si rien de notable n'est établi.
 
 Engagements en cours :
 ${engagementsOuverts}`,
@@ -74,42 +69,9 @@ ${engagementsOuverts}`,
         { role: 'user', content: transcript },
       ],
     });
-
-    const match = sortie.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    return {
-      nouveauxEngagements: Array.isArray(parsed.nouveauxEngagements)
-        ? parsed.nouveauxEngagements
-            .filter((e: any) => e && typeof e.description === 'string' && typeof e.partie === 'string')
-            .map((e: any) => ({
-              type: TYPES_ENGAGEMENT.includes(e.type) ? e.type : 'promesse',
-              description: String(e.description).trim(),
-              partie: String(e.partie).trim(),
-            }))
-        : [],
-      engagementsHonores: Array.isArray(parsed.engagementsHonores)
-        ? parsed.engagementsHonores.filter((id: unknown) => typeof id === 'string')
-        : [],
-      engagementsRompus: Array.isArray(parsed.engagementsRompus)
-        ? parsed.engagementsRompus.filter((id: unknown) => typeof id === 'string')
-        : [],
-      ajustementsRelations: Array.isArray(parsed.ajustementsRelations)
-        ? parsed.ajustementsRelations
-            .filter((a: any) => a && typeof a.nom === 'string' && a.nom.trim())
-            .map((a: any): AjustementRelation => ({
-              nom: String(a.nom).trim(),
-              faction: typeof a.faction === 'string' && a.faction.trim() ? a.faction.trim() : undefined,
-              confiance: Number(a.confiance) || 0,
-              respect: Number(a.respect) || 0,
-              peur: Number(a.peur) || 0,
-              affection: Number(a.affection) || 0,
-              hostilite: Number(a.hostilite) || 0,
-            }))
-        : [],
-    };
+    return appelsOutils;
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -168,48 +130,69 @@ export async function mettreAJourSocial({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const extrait = await extraireEtatSocial(appSettings, transcript, socialActuel);
-  if (!extrait) return socialActuel;
+  const appelsBruts = await extraireAppelsSocial(appSettings, transcript, socialActuel);
+  const outilsSocial = outilsPourComposant('social');
 
-  const engagements: Engagement[] = socialActuel.engagements.map((e) => ({
-    ...e,
-    honore: e.honore || extrait.engagementsHonores.includes(e.id),
-    rompu: e.rompu || extrait.engagementsRompus.includes(e.id),
-  }));
-  extrait.nouveauxEngagements.forEach((e) => {
-    // Même promesse déjà suivie (le modèle la remarque parfois de nouveau
-    // tant qu'elle reste ouverte) : pas de doublon dans les rappels.
-    const dejaSuivi = engagements.some(
-      (existant) =>
-        !existant.honore &&
-        !existant.rompu &&
-        normalise(existant.partie) === normalise(e.partie) &&
-        normalise(existant.description) === normalise(e.description),
-    );
-    if (dejaSuivi) return;
-    engagements.push({ id: idEngagement(), type: e.type, description: e.description, partie: e.partie, honore: false, rompu: false });
-  });
-
+  const engagements: Engagement[] = [...socialActuel.engagements];
   let relations = [...socialActuel.relations];
-  extrait.ajustementsRelations.forEach((delta) => {
-    const index = relations.findIndex((r) => normalise(r.nom) === normalise(delta.nom));
-    const cible = index >= 0 ? relations[index] : nouvelleRelation(delta.nom, delta.faction);
-    const cibleAjustee = appliquerAjustement(cible, delta, 1);
-    if (index >= 0) {
-      relations[index] = cibleAjustee;
-    } else {
-      relations.push(cibleAjustee);
-    }
 
-    const faction = cibleAjustee.faction;
-    if (faction) {
-      relations = relations.map((r) =>
-        r.id !== cibleAjustee.id && r.faction && normalise(r.faction) === normalise(faction)
-          ? appliquerAjustement(r, delta, FACTEUR_PROPAGATION)
-          : r,
+  for (const appelBrut of appelsBruts) {
+    const outil = outilsSocial.find((o) => o.nom === appelBrut.nom);
+    if (!outil) continue; // permissions différenciées par composant : un outil hors périmètre est ignoré.
+    const args = validerEtReparerArguments(outil, appelBrut.arguments);
+    if (!args) continue;
+
+    if (appelBrut.nom === 'ajouter_engagement') {
+      const type = args.type as TypeEngagement;
+      const description = args.description as string;
+      const partie = args.partie as string;
+      // Même promesse déjà suivie (le modèle la remarque parfois de nouveau
+      // tant qu'elle reste ouverte) : pas de doublon dans les rappels.
+      const dejaSuivi = engagements.some(
+        (existant) =>
+          !existant.honore &&
+          !existant.rompu &&
+          normalise(existant.partie) === normalise(partie) &&
+          normalise(existant.description) === normalise(description),
       );
+      if (!dejaSuivi) {
+        engagements.push({ id: idEngagement(), type, description, partie, honore: false, rompu: false });
+      }
+    } else if (appelBrut.nom === 'resoudre_engagement') {
+      const index = engagements.findIndex((e) => e.id === args.id);
+      if (index >= 0) {
+        const honore = args.honore as boolean;
+        engagements[index] = { ...engagements[index], honore: honore, rompu: !honore };
+      }
+    } else if (appelBrut.nom === 'ajuster_relation') {
+      const delta: AjustementRelation = {
+        nom: args.nom as string,
+        faction: typeof args.faction === 'string' ? args.faction : undefined,
+        confiance: (args.confiance as number) ?? 0,
+        respect: (args.respect as number) ?? 0,
+        peur: (args.peur as number) ?? 0,
+        affection: (args.affection as number) ?? 0,
+        hostilite: (args.hostilite as number) ?? 0,
+      };
+      const index = relations.findIndex((r) => normalise(r.nom) === normalise(delta.nom));
+      const cible = index >= 0 ? relations[index] : nouvelleRelation(delta.nom, delta.faction);
+      const cibleAjustee = appliquerAjustement(cible, delta, 1);
+      if (index >= 0) {
+        relations[index] = cibleAjustee;
+      } else {
+        relations.push(cibleAjustee);
+      }
+
+      const faction = cibleAjustee.faction;
+      if (faction) {
+        relations = relations.map((r) =>
+          r.id !== cibleAjustee.id && r.faction && normalise(r.faction) === normalise(faction)
+            ? appliquerAjustement(r, delta, FACTEUR_PROPAGATION)
+            : r,
+        );
+      }
     }
-  });
+  }
 
   return { engagements, relations };
 }

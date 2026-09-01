@@ -6,7 +6,8 @@ import type {
   NiveauActivite,
   ZoneMonde,
 } from '../types';
-import { appellerModele } from './openrouter';
+import { appellerModeleAvecOutils, type AppelOutil } from './openrouter';
+import { outilsPourComposant, validerEtReparerArguments } from './tools';
 
 // Mêmes paliers d'écart (en nombre de messages depuis le dernier accès)
 // pour les quatre niveaux d'activité d'une zone — au-delà du dernier
@@ -35,20 +36,19 @@ function normalise(texte: string): string {
   return texte.trim().toLowerCase();
 }
 
-interface SortieMonde {
-  sceneActuelle?: { nom: string; description: string };
-  nouvellesZones: { nom: string; description: string }[];
-  flagsPoses: Record<string, boolean>;
-  compteursAjustes: Record<string, number>;
-  nouveauxDeclencheurs: { nom: string; conditionFlag?: string; conditionCompteurNom?: string; conditionCompteurSeuil?: number; effet: string }[];
-  declencheursResolus: string[];
-}
-
-async function extraireEtatMonde(
+/**
+ * Extraction par tool calling (brief Phase 2 : "switch to OpenRouter
+ * tool-calling for structured world-state mutations") : plutôt que de
+ * demander un JSON en prose et de le parser au vol, le modèle appelle
+ * directement les outils du composant "monde" (voir tools.ts) — chaque
+ * appel est validé/réparé individuellement, un appel invalide ne fait pas
+ * échouer les autres.
+ */
+async function extraireAppelsMonde(
   appSettings: AppSettings,
   transcript: string,
   monde: MondeState,
-): Promise<SortieMonde | null> {
+): Promise<AppelOutil[]> {
   const declencheursEnAttente = monde.declencheurs
     .filter((d) => d.declenche && !d.resolu)
     .map((d) => `- (id: ${d.id}) ${d.effet}`)
@@ -57,69 +57,28 @@ async function extraireEtatMonde(
   const compteursConnus = Object.keys(monde.compteurs).length ? Object.keys(monde.compteurs).join(', ') : 'Aucun.';
 
   try {
-    const sortie = await appellerModele({
+    const { appelsOutils } = await appellerModeleAvecOutils({
       apiKey: appSettings.openRouterApiKey,
       model: appSettings.model,
       temperature: 0.2,
       maxTokens: 500,
+      outils: outilsPourComposant('monde'),
       messages: [
         {
           role: 'system',
-          content: `Tu observes un extrait de jeu de rôle pour tenir à jour l'état du monde (lieux, drapeaux, compteurs). Réponds UNIQUEMENT avec un JSON strict :
-{"sceneActuelle": {"nom": "lieu où la scène se déroule maintenant", "description": "état bref du lieu en une phrase"} ou null, "nouvellesZones": [{"nom": "...", "description": "..."}], "flagsPoses": {"nom_flag": true}, "compteursAjustes": {"nom_compteur": +1}, "nouveauxDeclencheurs": [{"nom": "...", "conditionFlag": "nom_flag" (optionnel), "conditionCompteurNom": "..." (optionnel), "conditionCompteurSeuil": 3 (optionnel avec conditionCompteurNom), "effet": "conséquence à narrer quand la condition se réalisera"}], "declencheursResolus": ["id"]}
-
-Règles :
-- "flagsPoses" : uniquement des états binaires établis explicitement par le texte (ex: "pont_effondre", "alliance_scellee"), snake_case court. N'invente pas de flag qui ne découle pas du texte.
-- "compteursAjustes" : des DELTAS (pas la valeur finale) pour des compteurs numériques narrativement significatifs (jours écoulés, tension d'une faction...), snake_case court.
-- "nouveauxDeclencheurs" : seulement si le texte plante explicitement une règle du type "si X arrive, alors Y" — une seule condition par déclencheur, parmi les flags ou compteurs connus ou tout juste posés.
-- "declencheursResolus" : reprends l'id d'un déclencheur ci-dessous seulement si sa conséquence vient d'être clairement racontée dans le texte.
-- Ignore tout ce qui n'est pas explicite. Vide/null si rien à signaler.
+          content: `Tu observes un extrait de jeu de rôle pour tenir à jour l'état du monde. Appelle les outils appropriés pour chaque changement d'état EXPLICITEMENT établi par le texte (lieu de la scène, drapeaux, compteurs, règles "si X alors Y" plantées, déclencheurs déjà activés dont la conséquence vient d'être racontée). N'invente rien, n'appelle aucun outil si rien de notable n'est établi.
 
 Flags déjà connus : ${flagsConnus}
 Compteurs déjà connus : ${compteursConnus}
-Conséquences déclenchées en attente d'être racontées :
+Conséquences déclenchées en attente d'être racontées (à résoudre via resoudre_declencheur si le texte les raconte) :
 ${declencheursEnAttente}`,
         },
         { role: 'user', content: transcript },
       ],
     });
-
-    const match = sortie.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    return {
-      sceneActuelle:
-        parsed.sceneActuelle && typeof parsed.sceneActuelle.nom === 'string' && parsed.sceneActuelle.nom.trim()
-          ? { nom: parsed.sceneActuelle.nom.trim(), description: String(parsed.sceneActuelle.description ?? '').trim() }
-          : undefined,
-      nouvellesZones: Array.isArray(parsed.nouvellesZones)
-        ? parsed.nouvellesZones
-            .filter((z: any) => z && typeof z.nom === 'string' && z.nom.trim())
-            .map((z: any) => ({ nom: String(z.nom).trim(), description: String(z.description ?? '').trim() }))
-        : [],
-      flagsPoses:
-        parsed.flagsPoses && typeof parsed.flagsPoses === 'object'
-          ? (Object.fromEntries(
-              Object.entries(parsed.flagsPoses).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean'),
-            ) as Record<string, boolean>)
-          : {},
-      compteursAjustes:
-        parsed.compteursAjustes && typeof parsed.compteursAjustes === 'object'
-          ? (Object.fromEntries(
-              Object.entries(parsed.compteursAjustes).filter(
-                (entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1]),
-              ),
-            ) as Record<string, number>)
-          : {},
-      nouveauxDeclencheurs: Array.isArray(parsed.nouveauxDeclencheurs)
-        ? parsed.nouveauxDeclencheurs.filter((d: any) => d && typeof d.nom === 'string' && typeof d.effet === 'string')
-        : [],
-      declencheursResolus: Array.isArray(parsed.declencheursResolus)
-        ? parsed.declencheursResolus.filter((id: unknown) => typeof id === 'string')
-        : [],
-    };
+    return appelsOutils;
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -172,62 +131,67 @@ export async function mettreAJourMonde({
     const transcript = nouveauxMessages
       .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
       .join('\n');
-    const extrait = await extraireEtatMonde(appSettings, transcript, mondeActuel);
+    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel);
+    const outilsMonde = outilsPourComposant('monde');
 
-    if (extrait) {
-      zones = [...zones];
-      const toucherZone = (nom: string, description: string) => {
-        const index = zones.findIndex((z) => normalise(z.nom) === normalise(nom));
-        if (index >= 0) {
-          zones[index] = {
-            ...zones[index],
-            description: description || zones[index].description,
-            dernierAcces: nbMessages,
-            niveau: 'active',
-          };
-        } else {
-          zones.push({ id: idZone(), nom, description, dernierAcces: nbMessages, niveau: 'active' });
-        }
-      };
-      if (extrait.sceneActuelle) toucherZone(extrait.sceneActuelle.nom, extrait.sceneActuelle.description);
-      extrait.nouvellesZones.forEach((z) => toucherZone(z.nom, z.description));
+    zones = [...zones];
+    declencheurs = [...declencheurs];
 
-      flags = { ...flags, ...extrait.flagsPoses };
+    const toucherZone = (nom: string, description: string) => {
+      const index = zones.findIndex((z) => normalise(z.nom) === normalise(nom));
+      if (index >= 0) {
+        zones[index] = {
+          ...zones[index],
+          description: description || zones[index].description,
+          dernierAcces: nbMessages,
+          niveau: 'active',
+        };
+      } else {
+        zones.push({ id: idZone(), nom, description, dernierAcces: nbMessages, niveau: 'active' });
+      }
+    };
 
-      compteurs = { ...compteurs };
-      Object.entries(extrait.compteursAjustes).forEach(([nom, delta]) => {
-        compteurs[nom] = (compteurs[nom] ?? 0) + delta;
-      });
+    for (const appelBrut of appelsBruts) {
+      const outil = outilsMonde.find((o) => o.nom === appelBrut.nom);
+      if (!outil) continue; // permissions différenciées par composant : un outil hors périmètre est ignoré.
+      const args = validerEtReparerArguments(outil, appelBrut.arguments);
+      if (!args) continue;
 
-      declencheurs = declencheurs.map((d) =>
-        extrait.declencheursResolus.includes(d.id) ? { ...d, resolu: true } : d,
-      );
-      extrait.nouveauxDeclencheurs.forEach((d) => {
+      if (appelBrut.nom === 'definir_zone') {
+        toucherZone(args.nom as string, args.description as string);
+      } else if (appelBrut.nom === 'poser_flag') {
+        flags = { ...flags, [args.nom as string]: args.valeur as boolean };
+      } else if (appelBrut.nom === 'ajuster_compteur') {
+        compteurs = { ...compteurs, [args.nom as string]: (compteurs[args.nom as string] ?? 0) + (args.delta as number) };
+      } else if (appelBrut.nom === 'resoudre_declencheur') {
+        declencheurs = declencheurs.map((d) => (d.id === args.id ? { ...d, resolu: true } : d));
+      } else if (appelBrut.nom === 'ajouter_declencheur') {
         const conditionCompteur =
-          d.conditionCompteurNom && typeof d.conditionCompteurSeuil === 'number'
-            ? { nom: d.conditionCompteurNom, seuil: d.conditionCompteurSeuil }
+          typeof args.conditionCompteurNom === 'string' && typeof args.conditionCompteurSeuil === 'number'
+            ? { nom: args.conditionCompteurNom, seuil: args.conditionCompteurSeuil }
             : undefined;
+        const conditionFlag = typeof args.conditionFlag === 'string' ? args.conditionFlag : undefined;
         // Même condition déjà suivie (le modèle repropose parfois une règle
         // déjà posée à un cycle précédent) : pas de doublon, la condition
         // structurée suffit à comparer sans nouvel appel d'embeddings.
         const dejaSuivi = declencheurs.some(
           (existant) =>
-            (d.conditionFlag && existant.conditionFlag === d.conditionFlag) ||
+            (conditionFlag && existant.conditionFlag === conditionFlag) ||
             (conditionCompteur &&
               existant.conditionCompteur?.nom === conditionCompteur.nom &&
               existant.conditionCompteur?.seuil === conditionCompteur.seuil),
         );
-        if (dejaSuivi) return;
+        if (dejaSuivi || (!conditionFlag && !conditionCompteur)) continue;
         declencheurs.push({
           id: idDeclencheur(),
-          nom: d.nom,
-          conditionFlag: d.conditionFlag,
+          nom: args.nom as string,
+          conditionFlag,
           conditionCompteur,
-          effet: d.effet,
+          effet: args.effet as string,
           declenche: false,
           resolu: false,
         });
-      });
+      }
     }
   }
 
