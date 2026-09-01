@@ -134,18 +134,63 @@ export interface ElyndorEntryChargee {
   constant: boolean;
 }
 
+// Les primary_keys des entrées ROYAUME/Géographie ciblent des expressions
+// figées ("royaume elfe noir", "empire elfique") plutôt que le nom de race
+// que le modèle emploie naturellement en narration ("elfe noire", "hauts-
+// elfes"...). Sans ça, un PNJ dont la race est mentionnée en cours de scène
+// ne déclenche ni la fiche de royaume correspondante ni la table
+// Géographie/Races — le modèle invente alors un territoire hors canon.
+// Formes singulier + pluriel car la correspondance est une sous-chaîne
+// stricte (pas de gestion du pluriel/accord).
+const DECLENCHEURS_SUPPLEMENTAIRES_ELYNDOR: Record<string, string[]> = {
+  '[MONDE] Géographie et Races': [
+    'humain', 'humains', 'haut-elfe', 'haut elfe', 'hauts-elfes', 'hauts elfes',
+    'elfe noir', 'elfe noire', 'elfes noirs', 'elfes noires',
+    'valkyrie', 'valkyries', 'amazone nordique', 'amazones nordiques',
+    'amazone sombre', 'amazones sombres', 'orque noble', 'orques nobles',
+    'orc', 'orcs', 'homme-bête', 'hommes-bêtes', 'tribu primale', 'tribus primales',
+    'sirène', 'sirènes', 'naga', 'nagas', 'nain', 'nains', 'géante', 'géantes',
+  ],
+  '[ROYAUME] Paris — Royaume Humain': ['humain', 'humains'],
+  '[ROYAUME] Tokyo — Empire des Hauts-Elfes': ['haut-elfe', 'haut elfe', 'hauts-elfes', 'hauts elfes'],
+  '[ROYAUME] Delhi — Royaume des Elfes Noirs': ['elfe noir', 'elfe noire', 'elfes noirs', 'elfes noires'],
+  '[ROYAUME] Oslo — Confédération des Valkyries': [
+    'valkyrie', 'valkyries', 'amazone nordique', 'amazones nordiques',
+  ],
+  '[ROYAUME] Lagos — Matriarcat des Amazones Sombres': ['amazone sombre', 'amazones sombres'],
+  '[ROYAUME] Johannesburg — Confédération des Orques Nobles': ['orque noble', 'orques nobles'],
+  '[ROYAUME] Mexico — Territoires Orcs': ['orc', 'orcs'],
+  '[ROYAUME] Bogotá — Tribus Primales': ['tribu primale', 'tribus primales'],
+  '[ROYAUME] Sydney — Royaume des Sirènes': ['sirène', 'sirènes'],
+  '[ROYAUME] Auckland — Royaume des Naga Marines': ['naga', 'nagas'],
+  '[ROYAUME] Zurich — Royaume des Nains': ['nain', 'nains'],
+  '[ROYAUME] Katmandou — Territoire des Géantes': ['géante', 'géantes'],
+};
+
 export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] {
-  return raw.entries.map((entry) => ({
-    id: `elyndor-${entry.id}`,
-    titre: `[${entry.category}] ${entry.title}`,
-    contenu: entry.content,
-    motsClesPrimaires: entry.primary_keys.map(normalise),
-    motsClesSecondaires: entry.secondary_keys.map(normalise),
-    motsClesNegatifs: entry.negative_keys.map(normalise),
-    priority: entry.priority,
-    constant: entry.constant,
-  }));
+  return raw.entries.map((entry) => {
+    const titre = `[${entry.category}] ${entry.title}`;
+    const extra = (DECLENCHEURS_SUPPLEMENTAIRES_ELYNDOR[titre] ?? []).map(normalise);
+    return {
+      id: `elyndor-${entry.id}`,
+      titre,
+      contenu: entry.content,
+      motsClesPrimaires: [...entry.primary_keys.map(normalise), ...extra],
+      motsClesSecondaires: entry.secondary_keys.map(normalise),
+      motsClesNegatifs: entry.negative_keys.map(normalise),
+      priority: entry.priority,
+      constant: entry.constant,
+    };
+  });
 }
+
+// Une entrée non couverte par "constant" mais dont l'absence casse la
+// cohérence du monde : la table race → territoire. Un PNJ improvisé se voit
+// attribuer une race à la volée par le modèle (voir [MÉTA] Esprit des
+// Personnages / Archétypes Universels) ; sans cette table toujours en
+// contexte, rien ne l'ancre à un territoire canon (ex. une "elfe noire"
+// inventée sans lien avec Delhi). Coût négligeable (~900 caractères).
+const LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE = ['[MONDE] Géographie et Races'];
 
 /**
  * Sélectionne les entrées du lore Elyndor pertinentes à la scène : même
@@ -154,7 +199,8 @@ export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] 
  * la structure du lorebook Elyndor :
  * - les entrées "constant" (règles fondatrices du monde : présentation,
  *   paramètres, registre, consentement...) sont toujours incluses, comme
- *   le socle des métamoteurs ;
+ *   le socle des métamoteurs, de même que la table Géographie et Races
+ *   (voir LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE) ;
  * - un mot-clé primaire compte double par rapport à un mot-clé secondaire ;
  * - une entrée dont un mot-clé négatif apparaît dans le texte est exclue ;
  * - à score égal, la priorité la plus basse (donc la plus importante) est
@@ -166,8 +212,12 @@ export function selectionnerLoreElyndor(
   maxSupplementaires = 4,
 ): LoreEntry[] {
   const texteNormalise = normalise(texte);
-  const toujoursActives = entries.filter((e) => e.constant);
-  const reste = entries.filter((e) => !e.constant);
+  const toujoursActives = entries.filter(
+    (e) => e.constant || LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre),
+  );
+  const reste = entries.filter(
+    (e) => !e.constant && !LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre),
+  );
 
   const correspondances = reste
     .map((entry) => {

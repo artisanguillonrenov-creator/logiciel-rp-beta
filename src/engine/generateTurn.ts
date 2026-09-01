@@ -29,11 +29,20 @@ export interface ResultatTour {
   debugLore: DebugLore;
 }
 
+// Texte scanné pour la sélection par mots-clés (métamoteurs + lore) — pas
+// ce qui est envoyé au modèle. Un fait établi tôt dans une longue
+// conversation (ex. la race d'un PNJ) doit continuer à déclencher les
+// bonnes entrées même après avoir quitté la fenêtre de messages récents
+// envoyée au modèle : on scanne donc tout l'historique, plus le résumé et
+// les faits clés de la mémoire, pas seulement les derniers messages bruts.
+// Simple recherche de sous-chaînes locale, sans coût ni appel réseau.
 function construireTexteContexte(story: StoryState, messageJoueur: string): string {
   return [
     story.meta.personnageDescription,
     story.meta.pointDeDepart,
-    ...story.messages.slice(-6).map((m) => m.content),
+    story.memoire.resume,
+    ...story.memoire.faits.map((f) => f.texte),
+    ...story.messages.map((m) => m.content),
     messageJoueur,
   ].join('\n');
 }
