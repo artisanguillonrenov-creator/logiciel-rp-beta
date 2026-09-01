@@ -19,6 +19,7 @@ import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
 import { convertirPluginsPourSelection } from './plugins';
 import { getPlugins } from '../storage/storage';
+import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
@@ -192,6 +193,13 @@ export async function genererTour(
     messageJoueur,
     instructionRegistreOverride:
       appSettings.profilContenu === 'grand_public' ? INSTRUCTION_REGISTRE_GRAND_PUBLIC : undefined,
+    // Story Director / Scene Director (brief Phase 2) : oriente la
+    // prochaine réponse vers l'arc en cours et relance la scène en cas de
+    // stagnation, sans jamais être visible du joueur.
+    directionNarrative: formaterDirection(
+      story.directeur,
+      detecterStagnation(story.directeur, story.messages.length),
+    ),
   };
 
   const temperature = temperaturePourCreativite(story.settings.creativite);
@@ -265,10 +273,11 @@ export async function genererTour(
   const messages = [...story.messages, messageUtilisateur, messageAssistant];
   let memoire = story.memoire;
   let loreEmergent = story.loreEmergent;
+  let directeur = story.directeur;
   if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
-    // Même curseur, même cadence que la mémoire pour les deux pipelines.
+    // Même curseur, même cadence pour les trois pipelines périodiques.
     const depuisIndex = memoire.dernierMessageIndexMaj;
-    [memoire, loreEmergent] = await Promise.all([
+    [memoire, loreEmergent, directeur] = await Promise.all([
       mettreAJourMemoire({
         appSettings,
         memoireActuelle: memoire,
@@ -281,11 +290,17 @@ export async function genererTour(
         messages,
         depuisIndex,
       }),
+      mettreAJourDirecteur({
+        appSettings,
+        directeurActuel: directeur,
+        messages,
+        depuisIndex,
+      }),
     ]);
   }
 
   return {
-    story: { ...story, messages, memoire, loreEmergent },
+    story: { ...story, messages, memoire, loreEmergent, directeur },
     aEteCorrige,
     debugLore,
   };
@@ -312,6 +327,10 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
     memoire: {
       ...story.memoire,
       dernierMessageIndexMaj: Math.min(story.memoire.dernierMessageIndexMaj, messages.length - 2),
+    },
+    directeur: {
+      ...story.directeur,
+      dernierBeatIndex: Math.min(story.directeur.dernierBeatIndex, messages.length - 2),
     },
   };
 

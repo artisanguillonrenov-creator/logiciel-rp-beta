@@ -95,6 +95,22 @@ function migrerHistoire(data: any): StoryState {
       },
     };
   }
+  if (migree.version < 6) {
+    // v5 -> v6 : Story Director / Scene Director (arc, tension, beats de
+    // foreshadowing en attente de payoff — brief Phase 2). Repart neutre
+    // pour une histoire déjà en cours, le curseur de stagnation s'aligne
+    // dès la première mise à jour du directeur.
+    migree = {
+      ...migree,
+      version: 6,
+      directeur: migree.directeur ?? {
+        arcActuel: '',
+        tension: 'calme',
+        dernierBeatIndex: migree.messages?.length ?? 0,
+        beats: [],
+      },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

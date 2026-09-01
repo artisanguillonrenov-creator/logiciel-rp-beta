@@ -32,6 +32,12 @@ export function creerNouvelleHistoire(params: {
     },
     loreEmergent: [],
     settings: params.settings,
+    directeur: {
+      arcActuel: '',
+      tension: 'calme',
+      dernierBeatIndex: 0,
+      beats: [],
+    },
   };
 }
 

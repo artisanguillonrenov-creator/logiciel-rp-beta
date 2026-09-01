@@ -66,6 +66,10 @@ export interface ContexteConstruction {
   // src/engine/contenuAdulte.ts. Injectée en dernier pour primer sur tout
   // ce qui précède.
   instructionRegistreOverride?: string;
+  // Story Director / Scene Director (brief Phase 2) : orientation d'arc,
+  // tension et rappel des éléments en suspens — voir formaterDirection dans
+  // src/engine/storyDirector.ts. Pré-formaté, bloc entier ou chaîne vide.
+  directionNarrative?: string;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction): string {
@@ -87,7 +91,7 @@ ${ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant."
 
 [FAITS CLÉS ÉTABLIS]
 ${formaterFaits(ctx.faits)}
-${metamoteursTexte}${loreTexte}
+${metamoteursTexte}${loreTexte}${ctx.directionNarrative ?? ''}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}

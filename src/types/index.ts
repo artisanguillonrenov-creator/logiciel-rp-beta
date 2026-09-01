@@ -119,10 +119,33 @@ export interface EntreeLoreEmergent {
   dernierAcces: number;
 }
 
+// Story Director / Scene Director (brief Phase 2, systèmes narratifs
+// avancés) : suit l'arc en cours, la tension dramatique et les éléments
+// plantés (foreshadowing) en attente de payoff, pour repérer la stagnation
+// et orienter la prochaine réponse plutôt que de laisser le modèle dériver
+// scène après scène sans direction.
+export type NiveauTension = 'calme' | 'montante' | 'climax' | 'retombee';
+
+export interface BeatNarratif {
+  id: string;
+  description: string;
+  planteAuMessage: number;
+  paye: boolean;
+}
+
+export interface DirecteurState {
+  arcActuel: string;
+  tension: NiveauTension;
+  // Index (dans StoryState.messages) du dernier développement narratif
+  // significatif repéré — sert de base à la détection de stagnation.
+  dernierBeatIndex: number;
+  beats: BeatNarratif[];
+}
+
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 5;
+export const VERSION_SCHEMA_HISTOIRE = 6;
 
 export interface StoryState {
   version: number;
@@ -131,6 +154,7 @@ export interface StoryState {
   memoire: MemoryState;
   loreEmergent: EntreeLoreEmergent[];
   settings: StorySettings;
+  directeur: DirecteurState;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
