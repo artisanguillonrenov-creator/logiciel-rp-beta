@@ -33,23 +33,6 @@ export function chargerLorebook(raw: RisuLorebook): LoreEntry[] {
   }));
 }
 
-/**
- * Sélectionne les entrées d'un lorebook dont au moins un mot-clé apparaît
- * dans le texte donné (message du joueur + contexte récent).
- * Utilisé pour le lore Elyndor (déclenchement simple par mention).
- */
-export function selectionnerParMotsCles(entries: LoreEntry[], texte: string, maxEntrees = 5): LoreEntry[] {
-  const texteNormalise = normalise(texte);
-  const correspondances = entries
-    .map((entry) => ({
-      entry,
-      score: entry.motsCles.filter((mot) => texteNormalise.includes(mot)).length,
-    }))
-    .filter((c) => c.score > 0)
-    .sort((a, b) => b.score - a.score);
-  return correspondances.slice(0, maxEntrees).map((c) => c.entry);
-}
-
 // Les `key` du fichier source sont des étiquettes de catégorie ("réussite,
 // échec, tentative, résolution, opposition"), pas le vocabulaire qu'un
 // joueur emploie réellement en jouant une scène ("j'attaque", "je pare").
@@ -117,4 +100,92 @@ export function selectionnerMetamoteurs(entries: LoreEntry[], texte: string, max
     .map((c) => c.entry);
 
   return [...socle, ...correspondances];
+}
+
+// --- Lore Elyndor -----------------------------------------------------
+// Structure dédiée (id, category, primary_keys, secondary_keys,
+// negative_keys, priority, constant), distincte du format RISU des
+// métamoteurs ci-dessus.
+
+interface ElyndorEntryBrute {
+  id: number;
+  category: string;
+  title: string;
+  primary_keys: string[];
+  secondary_keys: string[];
+  negative_keys: string[];
+  content: string;
+  priority: number;
+  constant: boolean;
+}
+
+interface ElyndorLorebook {
+  entries: ElyndorEntryBrute[];
+}
+
+export interface ElyndorEntryChargee {
+  id: string;
+  titre: string;
+  contenu: string;
+  motsClesPrimaires: string[];
+  motsClesSecondaires: string[];
+  motsClesNegatifs: string[];
+  priority: number;
+  constant: boolean;
+}
+
+export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] {
+  return raw.entries.map((entry) => ({
+    id: `elyndor-${entry.id}`,
+    titre: `[${entry.category}] ${entry.title}`,
+    contenu: entry.content,
+    motsClesPrimaires: entry.primary_keys.map(normalise),
+    motsClesSecondaires: entry.secondary_keys.map(normalise),
+    motsClesNegatifs: entry.negative_keys.map(normalise),
+    priority: entry.priority,
+    constant: entry.constant,
+  }));
+}
+
+/**
+ * Sélectionne les entrées du lore Elyndor pertinentes à la scène : même
+ * logique de déclenchement par mots-clés simples que le reste du moteur
+ * (le personnage, lieu ou objet mentionné déclenche l'entrée), adaptée à
+ * la structure du lorebook Elyndor :
+ * - les entrées "constant" (règles fondatrices du monde : présentation,
+ *   paramètres, registre, consentement...) sont toujours incluses, comme
+ *   le socle des métamoteurs ;
+ * - un mot-clé primaire compte double par rapport à un mot-clé secondaire ;
+ * - une entrée dont un mot-clé négatif apparaît dans le texte est exclue ;
+ * - à score égal, la priorité la plus basse (donc la plus importante) est
+ *   favorisée.
+ */
+export function selectionnerLoreElyndor(
+  entries: ElyndorEntryChargee[],
+  texte: string,
+  maxSupplementaires = 4,
+): LoreEntry[] {
+  const texteNormalise = normalise(texte);
+  const toujoursActives = entries.filter((e) => e.constant);
+  const reste = entries.filter((e) => !e.constant);
+
+  const correspondances = reste
+    .map((entry) => {
+      const negatif = entry.motsClesNegatifs.some((mot) => texteNormalise.includes(mot));
+      if (negatif) return { entry, score: -1 };
+      const scorePrimaire = entry.motsClesPrimaires.filter((mot) => texteNormalise.includes(mot)).length;
+      const scoreSecondaire = entry.motsClesSecondaires.filter((mot) => texteNormalise.includes(mot)).length;
+      return { entry, score: scorePrimaire * 2 + scoreSecondaire };
+    })
+    .filter((c) => c.score > 0)
+    .sort((a, b) => b.score - a.score || a.entry.priority - b.entry.priority)
+    .slice(0, maxSupplementaires)
+    .map((c) => c.entry);
+
+  return [...toujoursActives, ...correspondances].map((entry) => ({
+    id: entry.id,
+    titre: entry.titre,
+    motsCles: [...entry.motsClesPrimaires, ...entry.motsClesSecondaires],
+    contenu: entry.contenu,
+  }));
 }

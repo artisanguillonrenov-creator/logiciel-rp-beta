@@ -1,7 +1,7 @@
 import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, Message, StoryState } from '../types';
-import { chargerLorebook, chargerMetamoteurs, selectionnerMetamoteurs, selectionnerParMotsCles } from './loreLoader';
+import { chargerLoreElyndor, chargerMetamoteurs, selectionnerLoreElyndor, selectionnerMetamoteurs } from './loreLoader';
 import {
   construireMessages,
   maxTokensPourLongueur,
@@ -12,7 +12,7 @@ import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { fusionnerValidations, validerAgentiviteHeuristique, validerReponseLLM } from './validator';
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
-const LORE_ELYNDOR = chargerLorebook(elyndorRaw as any);
+const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 function genererId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -42,7 +42,7 @@ export async function genererTour(
   ].join('\n');
 
   const metamoteursSelectionnes = selectionnerMetamoteurs(METAMOTEURS, texteContexte);
-  const loreElyndor = selectionnerParMotsCles(LORE_ELYNDOR, texteContexte);
+  const loreElyndor = selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte);
 
   const ctxBase = {
     meta: story.meta,

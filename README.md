@@ -22,14 +22,14 @@ Au premier lancement, aller dans **Réglages** et renseigner :
 - **7 règles immuables** (`src/engine/rules.ts`) : injectées à chaque tour, priment sur tout le reste.
 - **15 métamoteurs** (`src/data/metamoteurs.json`) : chargés puis **sélectionnés par pertinence de scène** à chaque tour (`src/engine/loreLoader.ts`) — un socle de 4 métamoteurs transverses (Production, Continuité, Agentivité, Registre) toujours actif, complété par les métamoteurs dont le vocabulaire correspond au message du joueur et au contexte récent (combat, négociation, scène intime, etc.). Jamais les 15 systématiquement.
 - **Mémoire persistante simplifiée** (`src/engine/memory.ts`) : résumé glissant + liste de faits clés (personnages, lieux, promesses), régénérés ensemble tous les 8 messages via un appel modèle dédié, consultés à chaque tour.
-- **Lore Elyndor** (`src/data/elyndorLore.json`) : fichier au même format RISU que les métamoteurs, actuellement **vide** — le brief indique que ce lorebook n'est pas encore prêt. Dès qu'il l'est, il suffit de remplacer ce fichier (même format `{"type":"risu","ver":1,"data":[...]}`) : la récupération par mots-clés simples est déjà branchée dans `generateTurn.ts`.
+- **Lore Elyndor** (`src/data/elyndorLore.json`) : 102 entrées (monde, royaumes, races, systèmes, PNJ récurrents...), structurées en `primary_keys` / `secondary_keys` / `negative_keys` / `category` / `priority` / `constant`. Sélection par mots-clés (`src/engine/loreLoader.ts` : `chargerLoreElyndor` / `selectionnerLoreElyndor`) — les entrées `constant: true` (règles fondatrices du monde) sont toujours actives, les autres sont sélectionnées par correspondance de mots-clés (primaire compte double), avec exclusion par mot-clé négatif et priorité comme critère de départage.
 - **Validation de sortie minimale** (`src/engine/validator.ts`) : un contrôle heuristique local (tournures qui décident à la place du joueur) + un contrôle par le modèle (continuité, canon, contradiction) sur chaque réponse. En cas de violation, une seule nouvelle tentative est effectuée (pas de réparation sophistiquée, conforme au brief section 5).
 
 ## Structure
 
 ```
 src/
-  data/            metamoteurs.json (fourni), elyndorLore.json (placeholder)
+  data/            metamoteurs.json (15 métamoteurs), elyndorLore.json (lore Elyndor, 102 entrées)
   engine/          rules, sélection de lore, mémoire, prompt, appel OpenRouter, validation, orchestration
   screens/         Démarrage, Création rapide, Conversation, Réglages
   navigation/      pile de navigation (4 écrans du brief)
