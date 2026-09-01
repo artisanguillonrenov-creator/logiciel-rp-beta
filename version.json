@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "World Simulation + State Machine : zones actives/proches/lointaines/dormantes, flags, compteurs et déclencheurs déterministes."
+  "notes": "Engagements (promesses/dettes/contrats avec rappel automatique) et dynamiques sociales multi-axes avec propagation de faction."
 }

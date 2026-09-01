@@ -21,6 +21,7 @@ import { convertirPluginsPourSelection } from './plugins';
 import { getPlugins } from '../storage/storage';
 import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
+import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
@@ -204,6 +205,9 @@ export async function genererTour(
     // World Simulation + State Machine (brief Phase 2) : zones actives,
     // état établi et conséquences de déclencheurs en attente.
     etatMonde: formaterMonde(story.monde),
+    // Engagements + dynamiques sociales (brief Phase 2) : promesses/dettes/
+    // contrats non résolus et relations notables avec les PNJ.
+    engagementsEtRelations: formaterEngagementsEtRelations(story.social),
   };
 
   const temperature = temperaturePourCreativite(story.settings.creativite);
@@ -279,10 +283,11 @@ export async function genererTour(
   let loreEmergent = story.loreEmergent;
   let directeur = story.directeur;
   let monde = story.monde;
+  let social = story.social;
   if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
-    // Même curseur, même cadence pour les quatre pipelines périodiques.
+    // Même curseur, même cadence pour les cinq pipelines périodiques.
     const depuisIndex = memoire.dernierMessageIndexMaj;
-    [memoire, loreEmergent, directeur, monde] = await Promise.all([
+    [memoire, loreEmergent, directeur, monde, social] = await Promise.all([
       mettreAJourMemoire({
         appSettings,
         memoireActuelle: memoire,
@@ -307,11 +312,17 @@ export async function genererTour(
         messages,
         depuisIndex,
       }),
+      mettreAJourSocial({
+        appSettings,
+        socialActuel: social,
+        messages,
+        depuisIndex,
+      }),
     ]);
   }
 
   return {
-    story: { ...story, messages, memoire, loreEmergent, directeur, monde },
+    story: { ...story, messages, memoire, loreEmergent, directeur, monde, social },
     aEteCorrige,
     debugLore,
   };

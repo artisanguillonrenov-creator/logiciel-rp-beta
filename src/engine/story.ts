@@ -39,6 +39,7 @@ export function creerNouvelleHistoire(params: {
       beats: [],
     },
     monde: { zones: [], flags: {}, compteurs: {}, declencheurs: [] },
+    social: { engagements: [], relations: [] },
   };
 }
 

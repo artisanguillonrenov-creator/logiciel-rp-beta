@@ -74,6 +74,10 @@ export interface ContexteConstruction {
   // état établi (flags) et conséquences de déclencheurs à faire apparaître —
   // voir formaterMonde dans src/engine/worldSimulation.ts.
   etatMonde?: string;
+  // Engagements + dynamiques sociales (brief Phase 2) : promesses/dettes/
+  // contrats en attente et relations notables avec les PNJ — voir
+  // formaterEngagementsEtRelations dans src/engine/socialDynamics.ts.
+  engagementsEtRelations?: string;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction): string {
@@ -95,7 +99,7 @@ ${ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant."
 
 [FAITS CLÉS ÉTABLIS]
 ${formaterFaits(ctx.faits)}
-${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.directionNarrative ?? ''}
+${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.engagementsEtRelations ?? ''}${ctx.directionNarrative ?? ''}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}

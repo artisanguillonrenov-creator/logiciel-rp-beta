@@ -121,6 +121,15 @@ function migrerHistoire(data: any): StoryState {
       monde: migree.monde ?? { zones: [], flags: {}, compteurs: {}, declencheurs: [] },
     };
   }
+  if (migree.version < 8) {
+    // v7 -> v8 : engagements (promesses/dettes/contrats) et relations
+    // sociales multi-axes — brief Phase 2. Vide par défaut.
+    migree = {
+      ...migree,
+      version: 8,
+      social: migree.social ?? { engagements: [], relations: [] },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

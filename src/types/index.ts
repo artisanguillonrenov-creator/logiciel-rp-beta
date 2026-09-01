@@ -182,10 +182,46 @@ export interface MondeState {
   declencheurs: DeclencheurMonde[];
 }
 
+// Engagements + dynamiques sociales (brief Phase 2, systèmes narratifs
+// avancés) : les promesses/dettes/contrats pris envers un PNJ ne doivent
+// pas être oubliés faute d'avoir été rappelés au joueur (auto-reminder), et
+// les relations évoluent sur plusieurs axes plutôt qu'un simple "ami/
+// ennemi" — avec une propagation limitée au sein d'une même faction.
+export type TypeEngagement = 'promesse' | 'dette' | 'contrat';
+
+export interface Engagement {
+  id: string;
+  type: TypeEngagement;
+  description: string;
+  partie: string;
+  honore: boolean;
+  rompu: boolean;
+}
+
+// Échelle -3..3 sur chaque axe ; 0 = neutre/inconnu.
+export interface RelationPersonnage {
+  id: string;
+  nom: string;
+  // Regroupe les personnages dont la réputation évolue ensemble (garde
+  // d'une même ville, membres d'une même guilde...) — sert de base à la
+  // propagation limitée des ajustements de relation.
+  faction?: string;
+  confiance: number;
+  respect: number;
+  peur: number;
+  affection: number;
+  hostilite: number;
+}
+
+export interface SocialState {
+  engagements: Engagement[];
+  relations: RelationPersonnage[];
+}
+
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 7;
+export const VERSION_SCHEMA_HISTOIRE = 8;
 
 export interface StoryState {
   version: number;
@@ -196,6 +232,7 @@ export interface StoryState {
   settings: StorySettings;
   directeur: DirecteurState;
   monde: MondeState;
+  social: SocialState;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
