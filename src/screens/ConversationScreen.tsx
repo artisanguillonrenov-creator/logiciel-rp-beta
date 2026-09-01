@@ -45,6 +45,17 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story?.meta.personnageNom]);
 
+  // TODO(debug): recalcule le panneau de debug pour le dernier message
+  // joueur dès qu'une histoire est ouverte, pas seulement après un envoi —
+  // sinon rouvrir une conversation existante n'affiche jamais rien.
+  useEffect(() => {
+    if (!story) return;
+    const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
+    if (dernierMessageJoueur) {
+      setDebugLore(calculerDebugLore(story, dernierMessageJoueur.content));
+    }
+  }, [story]);
+
   const clefManquante = appSettings && !appSettings.openRouterApiKey;
 
   const envoyer = useCallback(async () => {
