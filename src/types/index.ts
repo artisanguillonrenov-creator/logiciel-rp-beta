@@ -49,13 +49,19 @@ export interface StoryState {
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
+  // Clé de secours pour les embeddings (recherche sémantique du lore) si
+  // OpenRouter n'en sert pas pour ce compte. Optionnelle : voir
+  // src/engine/embeddings.ts.
+  embeddingsApiKey?: string;
 }
 
 export interface LoreEntry {
   id: string;
   titre: string;
-  motsCles: string[];
   contenu: string;
+  // Similarité cosinus avec la requête, quand l'entrée vient de la
+  // sélection sémantique (absente pour les entrées toujours actives).
+  score?: number;
 }
 
 export interface ValidationResult {

@@ -1,13 +1,20 @@
 import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, Message, StoryState } from '../types';
-import { chargerLoreElyndor, chargerMetamoteurs, selectionnerLoreElyndor, selectionnerMetamoteurs } from './loreLoader';
+import {
+  chargerLoreElyndor,
+  chargerMetamoteurs,
+  selectionnerLoreElyndorSemantique,
+  selectionnerMetamoteursSemantique,
+} from './loreLoader';
 import {
   construireMessages,
   maxTokensPourLongueur,
   temperaturePourCreativite,
 } from './promptBuilder';
 import { appellerModele } from './openrouter';
+import { obtenirEmbeddings } from './embeddings';
+import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { fusionnerValidations, validerAgentiviteHeuristique, validerReponseLLM } from './validator';
 
@@ -29,55 +36,104 @@ export interface ResultatTour {
   debugLore: DebugLore;
 }
 
-// Texte scanné pour la sélection par mots-clés (métamoteurs + lore) — pas
-// ce qui est envoyé au modèle. Un fait établi tôt dans une longue
-// conversation (ex. la race d'un PNJ) doit continuer à déclencher les
-// bonnes entrées même après avoir quitté la fenêtre de messages récents
-// envoyée au modèle : on scanne donc tout l'historique, plus le résumé et
-// les faits clés de la mémoire, pas seulement les derniers messages bruts.
-// Simple recherche de sous-chaînes locale, sans coût ni appel réseau.
-function construireTexteContexte(story: StoryState, messageJoueur: string): string {
+function formaterDebug(titre: string, score?: number): string {
+  return score === undefined ? titre : `${titre} (${score.toFixed(2)})`;
+}
+
+// Texte embeddé pour la sélection sémantique — volontairement compact
+// (contrairement à l'ancien scan par mots-clés qui devait couvrir tout
+// l'historique pour ne rien manquer, un embedding capture le sens même
+// d'une formulation différente : le résumé et les faits clés suffisent à
+// porter ce qui a été établi plus tôt, pas besoin d'y rejouer tous les
+// messages bruts).
+function construireTexteRequete(story: StoryState, messageJoueur: string): string {
   return [
     story.meta.personnageDescription,
     story.meta.pointDeDepart,
     story.memoire.resume,
     ...story.memoire.faits.map((f) => f.texte),
-    ...story.messages.map((m) => m.content),
+    ...story.messages.slice(-4).map((m) => m.content),
     messageJoueur,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+interface SelectionLore {
+  metamoteursSelectionnes: ReturnType<typeof selectionnerMetamoteursSemantique>;
+  loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
+  debugLore: DebugLore;
+}
+
+/**
+ * Calcule la sélection de métamoteurs et de lore Elyndor pertinents à la
+ * scène par similarité sémantique (brief Phase 2 — remplace la
+ * correspondance de mots-clés). Les embeddings du lore sont mis en cache
+ * localement (voir embeddingsStore) : après le premier tour, seul le texte
+ * de la requête du tour en cours nécessite un appel réseau.
+ */
+export async function calculerSelectionLore(
+  story: StoryState,
+  messageJoueur: string,
+  appSettings: AppSettings,
+): Promise<SelectionLore> {
+  const texteRequete = construireTexteRequete(story, messageJoueur);
+
+  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }] = await Promise.all([
+    assurerEmbeddings(
+      METAMOTEURS.map((e) => ({ id: e.id, contenu: e.contenu })),
+      appSettings,
+    ),
+    assurerEmbeddings(
+      LORE_ELYNDOR.map((e) => ({ id: e.id, contenu: e.contenu })),
+      appSettings,
+    ),
+    obtenirEmbeddings([texteRequete], appSettings),
+  ]);
+
+  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
+  const loreElyndor = selectionnerLoreElyndorSemantique(
+    LORE_ELYNDOR,
+    texteRequete,
+    vecteurRequete,
+    vecteursElyndor,
+  );
+
+  return {
+    metamoteursSelectionnes,
+    loreElyndor,
+    debugLore: {
+      metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
+      loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+    },
+  };
 }
 
 // TODO(debug): à retirer après la bêta.
 // Calcule la sélection de lore indépendamment de l'appel API, pour que
 // l'écran puisse l'afficher même si la génération échoue ensuite.
-export function calculerDebugLore(story: StoryState, messageJoueur: string): DebugLore {
-  const texteContexte = construireTexteContexte(story, messageJoueur);
-  return {
-    metamoteurs: selectionnerMetamoteurs(METAMOTEURS, texteContexte).map((e) => e.titre),
-    loreElyndor: selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte).map((e) => e.titre),
-  };
+export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
+  const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return debugLore;
 }
 
 /**
- * Flux de génération d'un tour (brief section 5) :
- * message joueur → sélection des métamoteurs pertinents → construction du
- * contexte → appel API → vérification basique → une nouvelle tentative si
- * violation → affichage. Puis mise à jour périodique de la mémoire.
+ * Flux de génération d'un tour (brief section 5, sélection mise à jour
+ * Phase 2) : message joueur → sélection sémantique des métamoteurs et du
+ * lore pertinents → construction du contexte → appel API → vérification
+ * basique → une nouvelle tentative si violation → affichage. Puis mise à
+ * jour périodique de la mémoire.
  */
 export async function genererTour(
   story: StoryState,
   appSettings: AppSettings,
   messageJoueur: string,
 ): Promise<ResultatTour> {
-  const texteContexte = construireTexteContexte(story, messageJoueur);
-
-  const metamoteursSelectionnes = selectionnerMetamoteurs(METAMOTEURS, texteContexte);
-  const loreElyndor = selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte);
-
-  const debugLore: DebugLore = {
-    metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
-    loreElyndor: loreElyndor.map((e) => e.titre),
-  };
+  const { metamoteursSelectionnes, loreElyndor, debugLore } = await calculerSelectionLore(
+    story,
+    messageJoueur,
+    appSettings,
+  );
 
   const ctxBase = {
     meta: story.meta,

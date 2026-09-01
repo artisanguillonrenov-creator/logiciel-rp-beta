@@ -21,6 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 export default function SettingsScreen({ navigation }: Props) {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [embeddingsApiKey, setEmbeddingsApiKey] = useState('');
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
   const [messageStatut, setMessageStatut] = useState('');
@@ -35,6 +36,7 @@ export default function SettingsScreen({ navigation }: Props) {
     getSettings().then((settings: AppSettings) => {
       setApiKey(settings.openRouterApiKey);
       setModel(settings.model);
+      setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
       setChargement(false);
     });
   }, []);
@@ -55,7 +57,11 @@ export default function SettingsScreen({ navigation }: Props) {
     setEnregistrement(true);
     setMessageStatut('');
     try {
-      await saveSettings({ openRouterApiKey: apiKey.trim(), model: model.trim() });
+      await saveSettings({
+        openRouterApiKey: apiKey.trim(),
+        model: model.trim(),
+        embeddingsApiKey: embeddingsApiKey.trim() || undefined,
+      });
       setMessageStatut('Réglages enregistrés.');
     } catch {
       setMessageStatut("Erreur lors de l'enregistrement.");
@@ -111,6 +117,23 @@ export default function SettingsScreen({ navigation }: Props) {
       <Pressable style={styles.boutonSecondaire} onPress={ouvrirSelecteurModeles}>
         <Text style={styles.texteBoutonSecondaire}>Choisir parmi les modèles OpenRouter</Text>
       </Pressable>
+
+      <Text style={styles.label}>Clé API embeddings (secours, optionnelle)</Text>
+      <TextInput
+        style={styles.champ}
+        value={embeddingsApiKey}
+        onChangeText={setEmbeddingsApiKey}
+        placeholder="sk-…"
+        placeholderTextColor={couleurs.texteAtténué}
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <Text style={styles.aide}>
+        La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès
+        aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en
+        secours pour cette fonction.
+      </Text>
 
       {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
 

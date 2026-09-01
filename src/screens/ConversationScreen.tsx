@@ -17,9 +17,15 @@ import type { AppSettings, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
 import { calculerDebugLore, genererTour, regenererDernierTour, type DebugLore } from '../engine/generateTurn';
 import { ErreurOpenRouter } from '../engine/openrouter';
+import { ErreurEmbeddings } from '../engine/embeddings';
 import { couleurs, espacement, rayon } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
+
+function messageErreur(e: unknown, messageParDefaut: string): string {
+  if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings) return e.message;
+  return messageParDefaut;
+}
 
 export default function ConversationScreen({ route, navigation }: Props) {
   const { storyId } = route.params;
@@ -49,12 +55,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // joueur dès qu'une histoire est ouverte, pas seulement après un envoi —
   // sinon rouvrir une conversation existante n'affiche jamais rien.
   useEffect(() => {
-    if (!story) return;
+    if (!story || !appSettings) return;
     const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
     if (dernierMessageJoueur) {
-      setDebugLore(calculerDebugLore(story, dernierMessageJoueur.content));
+      calculerDebugLore(story, dernierMessageJoueur.content, appSettings)
+        .then(setDebugLore)
+        .catch(() => {});
     }
-  }, [story]);
+  }, [story, appSettings]);
 
   const clefManquante = appSettings && !appSettings.openRouterApiKey;
 
@@ -70,9 +78,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(true);
     setErreur('');
     setSaisie('');
-    // TODO(debug): calculée avant l'appel API pour rester visible même si
-    // la génération échoue ensuite.
-    setDebugLore(calculerDebugLore(story, texte));
+    // TODO(debug): calculée en parallèle de l'appel API pour rester visible
+    // même si la génération échoue ensuite (non bloquant : meilleur effort).
+    calculerDebugLore(story, texte, appSettings).then(setDebugLore).catch(() => {});
     try {
       const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte);
       setStory(storyMaj);
@@ -81,7 +89,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e) {
       setSaisie(texte);
-      setErreur(e instanceof ErreurOpenRouter ? e.message : 'Une erreur est survenue. Réessaie.');
+      setErreur(messageErreur(e, 'Une erreur est survenue. Réessaie.'));
     } finally {
       setEnCours(false);
     }
@@ -97,7 +105,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setDebugLore(debugMaj);
       await saveStory(storyMaj);
     } catch (e) {
-      setErreur(e instanceof ErreurOpenRouter ? e.message : 'Impossible de régénérer cette réponse.');
+      setErreur(messageErreur(e, 'Impossible de régénérer cette réponse.'));
     } finally {
       setEnCours(false);
     }
