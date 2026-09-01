@@ -43,43 +43,55 @@ export async function appellerModele({
     throw new ErreurOpenRouter('Aucun modèle sélectionné. Choisis-en un dans Réglages.');
   }
 
-  let response: Response;
-  try {
-    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'X-Title': 'Logiciel RP Beta',
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-      }),
-    });
-  } catch (e) {
-    throw new ErreurOpenRouter("Impossible de contacter OpenRouter. Vérifie ta connexion.");
-  }
+  // Certains modèles renvoient de temps en temps une complétion vide côté
+  // fournisseur (aléa d'inférence, pas une vraie panne) : quelques
+  // nouvelles tentatives avant d'abandonner évitent de faire perdre le
+  // message du joueur pour un raté ponctuel plutôt qu'une vraie erreur.
+  const TENTATIVES_MAX = 3;
 
-  if (!response.ok) {
-    let detail = '';
+  for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
+    let response: Response;
     try {
-      const body = await response.json();
-      detail = body?.error?.message ?? JSON.stringify(body);
-    } catch {
-      detail = await response.text();
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'X-Title': 'Logiciel RP Beta',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+        }),
+      });
+    } catch (e) {
+      throw new ErreurOpenRouter("Impossible de contacter OpenRouter. Vérifie ta connexion.");
     }
-    throw new ErreurOpenRouter(`Erreur OpenRouter (${response.status}) : ${detail}`);
+
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const body = await response.json();
+        detail = body?.error?.message ?? JSON.stringify(body);
+      } catch {
+        detail = await response.text();
+      }
+      throw new ErreurOpenRouter(`Erreur OpenRouter (${response.status}) : ${detail}`);
+    }
+
+    const data = await response.json();
+    const contenu = data?.choices?.[0]?.message?.content;
+    if (typeof contenu === 'string' && contenu.trim()) {
+      return contenu.trim();
+    }
+    if (tentative === TENTATIVES_MAX) {
+      throw new ErreurOpenRouter('Réponse vide reçue du modèle.');
+    }
   }
 
-  const data = await response.json();
-  const contenu = data?.choices?.[0]?.message?.content;
-  if (typeof contenu !== 'string' || !contenu.trim()) {
-    throw new ErreurOpenRouter('Réponse vide reçue du modèle.');
-  }
-  return contenu.trim();
+  throw new ErreurOpenRouter('Réponse vide reçue du modèle.');
 }
 
 // Tool calling (brief Phase 2) : définition d'un outil au format function

@@ -1,5 +1,5 @@
 {
-  "version": "1.11.0",
+  "version": "1.11.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Moteur d'inférence local (Android) : possibilité de faire tourner un modèle Gemma déjà téléchargé directement sur l'appareil, sans OpenRouter ni connexion réseau — à activer dans Réglages > Moteur d'inférence. Fonctionnalité native uniquement, sans effet sur la version web."
+  "notes": "Correction : le message pouvait ne pas s'envoyer avec une erreur \"réponse vide reçue du modèle\" quand OpenRouter renvoyait occasionnellement une complétion vide. Nouvelles tentatives automatiques avant d'abandonner."
 }
