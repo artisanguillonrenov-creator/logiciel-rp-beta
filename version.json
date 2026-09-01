@@ -1,5 +1,5 @@
 {
-  "version": "1.8.0",
+  "version": "1.9.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Écran d'accueil restructuré en menu à 5 entrées (Nouveau, Continuer, Charger conversation, Paramètres, Quitter) façon menu de jeu, avec un écran dédié pour charger/renommer/supprimer une conversation."
+  "notes": "Bouton de suppression visible sur chaque message (joueur et narrateur) : supprimer ce seul message, ou ce message et tous les suivants."
 }

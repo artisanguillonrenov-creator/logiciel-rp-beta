@@ -75,6 +75,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // Suggestion de réplique pour le joueur (Ajouts_A_Integrer.md #4).
   const [suggestionEnCours, setSuggestionEnCours] = useState(false);
 
+  // Suppression de message(s) : bouton visible sur chaque message, choix
+  // entre supprimer ce seul message ou lui et tout ce qui suit.
+  const [messageASupprimer, setMessageASupprimer] = useState<string | null>(null);
+
   // Réglages concepteur (Ajouts_A_Integrer.md #6, mode test) : état brut,
   // mise à jour forcée, prompt système, overrides modèle/température —
   // uniquement visible quand appSettings.modeConcepteur est actif.
@@ -242,6 +246,40 @@ export default function ConversationScreen({ route, navigation }: Props) {
     [story],
   );
 
+  // Suppression de message(s) : les index qui gouvernent la cadence des
+  // pipelines périodiques (mémoire, directeur) sont bornés à la nouvelle
+  // longueur, comme pour la régénération (regenererDernierTour) — sinon un
+  // curseur resté au-delà de la fin des messages bloquerait silencieusement
+  // toute future mise à jour.
+  function tronquerCurseurs(story: StoryState, nouvelleLongueur: number): Pick<StoryState, 'memoire' | 'directeur'> {
+    return {
+      memoire: { ...story.memoire, dernierMessageIndexMaj: Math.min(story.memoire.dernierMessageIndexMaj, nouvelleLongueur) },
+      directeur: { ...story.directeur, dernierBeatIndex: Math.min(story.directeur.dernierBeatIndex, nouvelleLongueur) },
+    };
+  }
+
+  async function supprimerMessageSeul(id: string) {
+    if (!story) return;
+    const index = story.messages.findIndex((m) => m.id === id);
+    if (index < 0) return;
+    const messages = [...story.messages.slice(0, index), ...story.messages.slice(index + 1)];
+    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setMessageASupprimer(null);
+  }
+
+  async function supprimerMessagesASuivant(id: string) {
+    if (!story) return;
+    const index = story.messages.findIndex((m) => m.id === id);
+    if (index < 0) return;
+    const messages = story.messages.slice(0, index);
+    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setMessageASupprimer(null);
+  }
+
   function allerAuMessage(id: string) {
     if (!story) return;
     const index = story.messages.findIndex((m) => m.id === id);
@@ -399,12 +437,17 @@ export default function ConversationScreen({ route, navigation }: Props) {
               setTimeout(() => listeRef.current?.scrollToIndex({ index: info.index, animated: true }), 100);
             }}
             renderItem={({ item }) => (
-              <Pressable onLongPress={() => togglerEpingle(item.id)} delayLongPress={400}>
-                <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
-                  {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
-                  <Text style={styles.texteBulle}>{item.content}</Text>
-                </View>
-              </Pressable>
+              <View style={[styles.groupeMessage, item.role === 'user' ? styles.groupeMessageJoueur : styles.groupeMessageNarrateur]}>
+                <Pressable onLongPress={() => togglerEpingle(item.id)} delayLongPress={400}>
+                  <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
+                    {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
+                    <Text style={styles.texteBulle}>{item.content}</Text>
+                  </View>
+                </Pressable>
+                <Pressable onPress={() => setMessageASupprimer(item.id)} hitSlop={8} style={styles.boutonSupprimerMessage}>
+                  <Text style={styles.texteSupprimerMessage}>🗑</Text>
+                </Pressable>
+              </View>
             )}
           />
         )}
@@ -538,6 +581,29 @@ export default function ConversationScreen({ route, navigation }: Props) {
         </View>
       </Modal>
 
+      <Modal visible={!!messageASupprimer} animationType="fade" transparent onRequestClose={() => setMessageASupprimer(null)}>
+        <View style={styles.superpositionSuppression}>
+          <Panneau style={styles.panneauSuppression}>
+            <Text style={styles.titreModal}>Supprimer</Text>
+            <Bouton
+              titre="Supprimer ce message"
+              variante="secondaire"
+              onPress={() => messageASupprimer && supprimerMessageSeul(messageASupprimer)}
+              texteStyle={{ color: couleurs.danger }}
+              style={{ marginTop: espacement.sm }}
+            />
+            <Bouton
+              titre="Supprimer ce message et les suivants"
+              variante="secondaire"
+              onPress={() => messageASupprimer && supprimerMessagesASuivant(messageASupprimer)}
+              texteStyle={{ color: couleurs.danger }}
+              style={{ marginTop: espacement.sm }}
+            />
+            <Bouton titre="Annuler" variante="secondaire" onPress={() => setMessageASupprimer(null)} style={{ marginTop: espacement.sm }} />
+          </Panneau>
+        </View>
+      </Modal>
+
       <Modal visible={modalConcepteurOuvert} animationType="slide" onRequestClose={() => setModalConcepteurOuvert(false)}>
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
           <Text style={styles.titreModal}>Concepteur — {story.meta.personnageNom}</Text>
@@ -635,8 +701,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: espacement.sm,
   },
-  bulle: {
+  groupeMessage: {
     maxWidth: '85%',
+  },
+  groupeMessageJoueur: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  groupeMessageNarrateur: {
+    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  bulle: {
     borderWidth: 1,
     borderColor: 'transparent',
     paddingHorizontal: espacement.sm,
@@ -644,12 +720,10 @@ const styles = StyleSheet.create({
   },
   bulleJoueur: {
     backgroundColor: couleurs.bulleJoueur,
-    alignSelf: 'flex-end',
     borderColor: 'rgba(90, 172, 255, 0.35)',
   },
   bulleNarrateur: {
     backgroundColor: couleurs.bulleNarrateur,
-    alignSelf: 'flex-start',
     borderColor: couleurs.bordure,
   },
   texteBulle: {
@@ -663,6 +737,25 @@ const styles = StyleSheet.create({
     top: -8,
     right: -6,
     fontSize: 13,
+  },
+  boutonSupprimerMessage: {
+    paddingHorizontal: espacement.xs,
+    paddingVertical: 2,
+    marginTop: 2,
+  },
+  texteSupprimerMessage: {
+    color: couleurs.texteAtténué,
+    fontSize: 13,
+    opacity: 0.7,
+  },
+  superpositionSuppression: {
+    flex: 1,
+    backgroundColor: 'rgba(6, 8, 18, 0.75)',
+    justifyContent: 'center',
+    padding: espacement.lg,
+  },
+  panneauSuppression: {
+    alignSelf: 'stretch',
   },
   erreur: {
     color: couleurs.danger,
