@@ -1,10 +1,12 @@
+import { Platform } from 'react-native';
 import { VERSION_APP } from '../version';
 
-// Fichier publié à la racine du dépôt (branche par défaut), séparé du build
-// déployé sur gh-pages pour rester consultable sans dépendre du succès du
-// déploiement lui-même.
+// Fichier publié à la racine du dépôt (pas de branche "main" dans ce
+// projet : tout le développement se fait sur claude/new-session-glwy6e),
+// séparé du build déployé sur gh-pages pour rester consultable sans
+// dépendre du succès du déploiement lui-même.
 const URL_VERSION =
-  'https://raw.githubusercontent.com/artisanguillonrenov-creator/logiciel-rp-beta/main/version.json';
+  'https://raw.githubusercontent.com/artisanguillonrenov-creator/logiciel-rp-beta/claude/new-session-glwy6e/version.json';
 
 export interface InfoMiseAJour {
   versionActuelle: string;
@@ -42,11 +44,15 @@ export async function verifierMiseAJour(): Promise<InfoMiseAJour> {
   if (typeof data.version !== 'string' || typeof data.url !== 'string') {
     throw new Error('Réponse de mise à jour invalide.');
   }
+  // Sur Android, le lien web n'a aucun sens (rien à installer) : on pointe
+  // vers l'APK quand un lien dédié est publié, sinon on retombe sur le
+  // lien web par défaut plutôt que de ne rien afficher.
+  const urlCiblee = Platform.OS === 'android' && typeof data.urlAndroid === 'string' ? data.urlAndroid : data.url;
   return {
     versionActuelle: VERSION_APP,
     derniereVersion: data.version,
     disponible: estPlusRecente(data.version, VERSION_APP),
-    url: data.url,
+    url: urlCiblee,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
   };
 }
