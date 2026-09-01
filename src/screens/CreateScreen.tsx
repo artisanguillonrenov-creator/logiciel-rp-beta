@@ -50,7 +50,10 @@ export default function CreateScreen({ navigation }: Props) {
         personnageNom: nom.trim(),
         personnageDescription: description.trim(),
         pointDeDepart: pointDeDepart.trim(),
-        settings: { creativite, longueur },
+        // violence/romance : réglages par défaut pour l'instant — de vrais
+        // curseurs arrivent avec le parcours de création en 5 étapes
+        // (brief Phase 2, étape "Préférences").
+        settings: { creativite, longueur, violence: 'modere', romance: 'modere' },
       });
       await saveStory(histoire);
       navigation.replace('Conversation', { storyId: histoire.meta.id });

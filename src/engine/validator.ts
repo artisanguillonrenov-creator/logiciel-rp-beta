@@ -31,7 +31,8 @@ export type NomCheck =
   | 'etat_du_monde' // World State — objets, blessures, lieux, statuts en cours
   | 'engagement' // Commitment — promesses/contrats actifs non ignorés
   | 'contrat_joueur' // Player Contract — agentivité, l'IA ne décide jamais pour le joueur
-  | 'repetition_contradiction'; // Repetition/Contradiction — le texte ne se contredit pas lui-même, pas de boucle
+  | 'repetition_contradiction' // Repetition/Contradiction — le texte ne se contredit pas lui-même, pas de boucle
+  | 'profil_contenu'; // Contrôle d'âge — dépassement du plafond GRAND_PUBLIC (contenuAdulte.ts)
 
 export type Gravite = 'mineur' | 'modere' | 'grave';
 

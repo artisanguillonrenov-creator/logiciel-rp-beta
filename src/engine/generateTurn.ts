@@ -18,6 +18,12 @@ import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
 import {
+  ENTREES_ADULTE_UNIQUEMENT,
+  INSTRUCTION_REGISTRE_GRAND_PUBLIC,
+  plafonnerCurseurs,
+  validerProfilContenuHeuristique,
+} from './contenuAdulte';
+import {
   appliquerPatchLocal,
   determinerStrategie,
   fusionnerRapports,
@@ -25,6 +31,8 @@ import {
   validerAgentiviteHeuristique,
   validerReponseLLM,
 } from './validator';
+
+const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
@@ -104,13 +112,21 @@ export async function calculerSelectionLore(
     obtenirEmbeddings([texteRequete], appSettings),
   ]);
 
-  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
-  const loreElyndor = selectionnerLoreElyndorSemantique(
+  let metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
+  let loreElyndor = selectionnerLoreElyndorSemantique(
     poolElyndor,
     texteRequete,
     vecteurRequete,
     vecteursElyndor,
   );
+
+  // Contrôle d'âge (brief Phase 2) : retire le registre explicite et les
+  // entrées Elyndor réservées à l'adulte du contexte envoyé au modèle —
+  // le plafonnement est imposé ici, pas seulement suggéré par une consigne.
+  if (appSettings.profilContenu === 'grand_public') {
+    metamoteursSelectionnes = metamoteursSelectionnes.filter((e) => e.titre !== METAMOTEUR_REGISTRE);
+    loreElyndor = loreElyndor.filter((e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre));
+  }
 
   return {
     metamoteursSelectionnes,
@@ -150,7 +166,10 @@ export async function genererTour(
 
   const ctxBase = {
     meta: story.meta,
-    settings: story.settings,
+    // Contrôle d'âge : violence/romance plafonnés côté logiciel quand le
+    // profil est GRAND_PUBLIC, quel que soit le réglage choisi pour
+    // l'histoire — voir src/engine/contenuAdulte.ts.
+    settings: plafonnerCurseurs(story.settings, appSettings.profilContenu),
     resume: story.memoire.resume,
     // Les faits archivés (L5, non reconfirmés depuis longtemps) restent
     // stockés mais ne sont plus injectés systématiquement — voir
@@ -160,6 +179,8 @@ export async function genererTour(
     loreElyndor,
     messagesRecents: story.messages,
     messageJoueur,
+    instructionRegistreOverride:
+      appSettings.profilContenu === 'grand_public' ? INSTRUCTION_REGISTRE_GRAND_PUBLIC : undefined,
   };
 
   const temperature = temperaturePourCreativite(story.settings.creativite);
@@ -174,6 +195,7 @@ export async function genererTour(
   });
 
   const heuristique = validerAgentiviteHeuristique(reponse);
+  const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const llm = await validerReponseLLM({
     apiKey: appSettings.openRouterApiKey,
     model: appSettings.model,
@@ -181,7 +203,7 @@ export async function genererTour(
     faits: ctxBase.faits,
     meta: story.meta,
   });
-  const rapport = fusionnerRapports(heuristique, llm);
+  const rapport = fusionnerRapports(heuristique, profilContenuCheck, llm);
 
   // Suite de validation complète (brief Phase 2) : la stratégie de
   // réparation dépend de la gravité constatée — patch local (déterministe,

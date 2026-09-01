@@ -65,6 +65,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
   }, [story, appSettings]);
 
   const clefManquante = appSettings && !appSettings.openRouterApiKey;
+  const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
   const envoyer = useCallback(async () => {
     const texte = saisie.trim();
@@ -72,6 +73,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
     if (!appSettings.openRouterApiKey) {
       setErreur('Configure ta clé API OpenRouter dans Réglages avant de commencer.');
+      return;
+    }
+    if (!appSettings.profilContenu) {
+      setErreur('Déclare un profil de contenu (Grand public / Adulte) dans Réglages avant de commencer.');
       return;
     }
 
@@ -131,6 +136,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
         {clefManquante && (
           <Pressable style={styles.bandeauAlerte} onPress={() => navigation.navigate('Reglages')}>
             <Text style={styles.texteBandeau}>Aucune clé API configurée — appuie ici pour aller dans Réglages.</Text>
+          </Pressable>
+        )}
+        {profilNonDeclare && (
+          <Pressable style={styles.bandeauAlerte} onPress={() => navigation.navigate('Reglages')}>
+            <Text style={styles.texteBandeau}>Profil de contenu non déclaré — appuie ici pour aller dans Réglages.</Text>
           </Pressable>
         )}
 

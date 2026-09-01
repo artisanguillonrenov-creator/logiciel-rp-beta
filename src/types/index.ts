@@ -1,9 +1,15 @@
 export type Creativite = 'faible' | 'moyenne' | 'elevee';
 export type Longueur = 'courte' | 'moyenne' | 'longue';
+export type NiveauCurseur = 'faible' | 'modere' | 'eleve';
 
 export interface StorySettings {
   creativite: Creativite;
   longueur: Longueur;
+  // Curseurs de contenu (brief Phase 2, contrôle d'âge). Plafonnés par le
+  // profil de contenu de l'appareil quand celui-ci est GRAND_PUBLIC — voir
+  // AppSettings.profilContenu et src/engine/contenuAdulte.ts.
+  violence: NiveauCurseur;
+  romance: NiveauCurseur;
 }
 
 export interface StoryMeta {
@@ -85,7 +91,7 @@ export interface EntreeLoreEmergent {
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 3;
+export const VERSION_SCHEMA_HISTOIRE = 4;
 
 export interface StoryState {
   version: number;
@@ -96,6 +102,13 @@ export interface StoryState {
   settings: StorySettings;
 }
 
+// Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
+// ("à l'achat" — ici au premier lancement, esprit sans vraie protection
+// anti-piratage). GRAND_PUBLIC plafonne violence/romance et retire les
+// contenus explicites du prompt ET du lore, imposé par le validateur (pas
+// laissé à la seule discrétion du modèle) — voir contenuAdulte.ts.
+export type ProfilContenu = 'grand_public' | 'adulte';
+
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
@@ -103,6 +116,13 @@ export interface AppSettings {
   // OpenRouter n'en sert pas pour ce compte. Optionnelle : voir
   // src/engine/embeddings.ts.
   embeddingsApiKey?: string;
+  // undefined tant que non déclaré (déclaration requise avant de jouer).
+  profilContenu?: ProfilContenu;
+  // Fixé par l'utilisateur au premier passage en ADULTE ; requis pour
+  // repasser de GRAND_PUBLIC à ADULTE ensuite. Stocké en clair en local :
+  // c'est un garde-fou logiciel, pas une protection réelle (voir brief
+  // Phase 2, distribution "esprit sans vraie protection").
+  codeDeverrouillage?: string;
 }
 
 export interface LoreEntry {

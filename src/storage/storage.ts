@@ -68,6 +68,18 @@ function migrerHistoire(data: any): StoryState {
     // factions, objets, événements marquants créés en cours de partie).
     migree = { ...migree, version: 3, loreEmergent: migree.loreEmergent ?? [] };
   }
+  if (migree.version < 4) {
+    // v3 -> v4 : curseurs violence/romance (contrôle d'âge, brief Phase 2).
+    migree = {
+      ...migree,
+      version: 4,
+      settings: {
+        ...migree.settings,
+        violence: migree.settings?.violence ?? 'modere',
+        romance: migree.settings?.romance ?? 'modere',
+      },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

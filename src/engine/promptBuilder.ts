@@ -38,6 +38,11 @@ export interface ContexteConstruction {
   messagesRecents: Message[];
   messageJoueur: string;
   noteCorrection?: string;
+  // Contrôle d'âge (brief Phase 2) : remplace les instructions de registre
+  // explicite quand le profil de l'appareil est GRAND_PUBLIC — voir
+  // src/engine/contenuAdulte.ts. Injectée en dernier pour primer sur tout
+  // ce qui précède.
+  instructionRegistreOverride?: string;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction): string {
@@ -62,7 +67,8 @@ ${metamoteursTexte}${loreTexte}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}
-${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}`;
+${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}
+${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction): ChatMessage[] {
