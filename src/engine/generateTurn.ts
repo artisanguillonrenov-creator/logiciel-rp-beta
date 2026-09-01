@@ -18,9 +18,35 @@ function genererId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export interface DebugLore {
+  metamoteurs: string[];
+  loreElyndor: string[];
+}
+
 export interface ResultatTour {
   story: StoryState;
   aEteCorrige: boolean;
+  debugLore: DebugLore;
+}
+
+function construireTexteContexte(story: StoryState, messageJoueur: string): string {
+  return [
+    story.meta.personnageDescription,
+    story.meta.pointDeDepart,
+    ...story.messages.slice(-6).map((m) => m.content),
+    messageJoueur,
+  ].join('\n');
+}
+
+// TODO(debug): à retirer après la bêta.
+// Calcule la sélection de lore indépendamment de l'appel API, pour que
+// l'écran puisse l'afficher même si la génération échoue ensuite.
+export function calculerDebugLore(story: StoryState, messageJoueur: string): DebugLore {
+  const texteContexte = construireTexteContexte(story, messageJoueur);
+  return {
+    metamoteurs: selectionnerMetamoteurs(METAMOTEURS, texteContexte).map((e) => e.titre),
+    loreElyndor: selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte).map((e) => e.titre),
+  };
 }
 
 /**
@@ -34,24 +60,15 @@ export async function genererTour(
   appSettings: AppSettings,
   messageJoueur: string,
 ): Promise<ResultatTour> {
-  const texteContexte = [
-    story.meta.personnageDescription,
-    story.meta.pointDeDepart,
-    ...story.messages.slice(-6).map((m) => m.content),
-    messageJoueur,
-  ].join('\n');
+  const texteContexte = construireTexteContexte(story, messageJoueur);
 
   const metamoteursSelectionnes = selectionnerMetamoteurs(METAMOTEURS, texteContexte);
   const loreElyndor = selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte);
 
-  // TODO(debug): log temporaire, à retirer après la bêta.
-  console.log(
-    '[DEBUG lore]',
-    JSON.stringify({
-      metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
-      loreElyndor: loreElyndor.map((e) => e.titre),
-    }),
-  );
+  const debugLore: DebugLore = {
+    metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
+    loreElyndor: loreElyndor.map((e) => e.titre),
+  };
 
   const ctxBase = {
     meta: story.meta,
@@ -128,6 +145,7 @@ export async function genererTour(
   return {
     story: { ...story, messages, memoire },
     aEteCorrige,
+    debugLore,
   };
 }
 

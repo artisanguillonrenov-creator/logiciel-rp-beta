@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,7 +15,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
-import { genererTour, regenererDernierTour } from '../engine/generateTurn';
+import { calculerDebugLore, genererTour, regenererDernierTour, type DebugLore } from '../engine/generateTurn';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { couleurs, espacement, rayon } from '../theme/theme';
 
@@ -27,6 +28,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [saisie, setSaisie] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [debugLore, setDebugLore] = useState<DebugLore | null>(null);
+  const [debugOuvert, setDebugOuvert] = useState(false);
   const listeRef = useRef<FlatList<Message>>(null);
 
   useEffect(() => {
@@ -56,9 +59,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(true);
     setErreur('');
     setSaisie('');
+    // TODO(debug): calculée avant l'appel API pour rester visible même si
+    // la génération échoue ensuite.
+    setDebugLore(calculerDebugLore(story, texte));
     try {
-      const { story: storyMaj } = await genererTour(story, appSettings, texte);
+      const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte);
       setStory(storyMaj);
+      setDebugLore(debugMaj);
       await saveStory(storyMaj);
       setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e) {
@@ -74,8 +81,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(true);
     setErreur('');
     try {
-      const { story: storyMaj } = await regenererDernierTour(story, appSettings);
+      const { story: storyMaj, debugLore: debugMaj } = await regenererDernierTour(story, appSettings);
       setStory(storyMaj);
+      setDebugLore(debugMaj);
       await saveStory(storyMaj);
     } catch (e) {
       setErreur(e instanceof ErreurOpenRouter ? e.message : 'Impossible de régénérer cette réponse.');
@@ -130,6 +138,31 @@ export default function ConversationScreen({ route, navigation }: Props) {
               </View>
             )}
           />
+        )}
+
+        {debugLore && (
+          <Pressable style={styles.boutonDebug} onPress={() => setDebugOuvert((v) => !v)}>
+            <Text style={styles.texteBoutonDebug}>
+              {debugOuvert ? '▾' : '▸'} Debug lore ({debugLore.metamoteurs.length} métamoteurs,{' '}
+              {debugLore.loreElyndor.length} entrées Elyndor)
+            </Text>
+          </Pressable>
+        )}
+        {debugOuvert && debugLore && (
+          <ScrollView style={styles.panneauDebug}>
+            <Text style={styles.titreDebug}>Métamoteurs sélectionnés</Text>
+            {debugLore.metamoteurs.map((titre) => (
+              <Text key={titre} style={styles.ligneDebug}>
+                • {titre}
+              </Text>
+            ))}
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Lore Elyndor sélectionné</Text>
+            {debugLore.loreElyndor.map((titre) => (
+              <Text key={titre} style={styles.ligneDebug}>
+                • {titre}
+              </Text>
+            ))}
+          </ScrollView>
         )}
 
         {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
@@ -211,6 +244,34 @@ const styles = StyleSheet.create({
     color: couleurs.danger,
     paddingHorizontal: espacement.md,
     paddingBottom: espacement.xs,
+  },
+  boutonDebug: {
+    paddingHorizontal: espacement.md,
+    paddingVertical: espacement.xs,
+    backgroundColor: couleurs.fondCarte,
+    borderTopWidth: 1,
+    borderTopColor: couleurs.bordure,
+  },
+  texteBoutonDebug: {
+    color: couleurs.texteAtténué,
+    fontSize: 12,
+  },
+  panneauDebug: {
+    maxHeight: 180,
+    backgroundColor: couleurs.fondCarte,
+    paddingHorizontal: espacement.md,
+    paddingBottom: espacement.sm,
+  },
+  titreDebug: {
+    color: couleurs.accent,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: espacement.xs,
+  },
+  ligneDebug: {
+    color: couleurs.texteAtténué,
+    fontSize: 12,
+    lineHeight: 18,
   },
   bandeauAlerte: {
     backgroundColor: '#3a2a1f',
