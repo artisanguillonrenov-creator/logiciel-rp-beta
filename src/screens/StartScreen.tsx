@@ -49,7 +49,10 @@ export default function StartScreen({ navigation }: Props) {
                 style={styles.carteHistoire}
                 onPress={() => navigation.navigate('Conversation', { storyId: item.id })}
               >
-                <Text style={styles.nomPersonnage}>{item.personnageNom}</Text>
+                <Text style={styles.nomPersonnage}>
+                  {item.brancheDeId ? '🌿 ' : ''}
+                  {item.personnageNom}
+                </Text>
                 <Text style={styles.descriptionPersonnage} numberOfLines={2}>
                   {item.pointDeDepart}
                 </Text>

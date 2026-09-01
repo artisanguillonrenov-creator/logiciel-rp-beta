@@ -17,6 +17,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
 import { calculerDebugLore, genererTour, regenererDernierTour, type DebugLore } from '../engine/generateTurn';
+import { creerBranche } from '../engine/story';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { couleurs, espacement, rayon } from '../theme/theme';
@@ -54,11 +55,27 @@ export default function ConversationScreen({ route, navigation }: Props) {
     });
   }, [storyId]);
 
+  // Branches de conversation (brief Phase 2) : bouton d'en-tête pour créer
+  // une copie indépendante de l'histoire à partir de son état courant.
+  const creerBrancheIci = useCallback(async () => {
+    if (!story) return;
+    const branche = creerBranche(story);
+    await saveStory(branche);
+    navigation.navigate('Conversation', { storyId: branche.meta.id });
+  }, [story, navigation]);
+
   useEffect(() => {
     if (story) {
-      navigation.setOptions({ title: story.meta.personnageNom });
+      navigation.setOptions({
+        title: story.meta.personnageNom,
+        headerRight: () => (
+          <Pressable onPress={creerBrancheIci} hitSlop={8} style={{ paddingHorizontal: espacement.xs }}>
+            <Text style={{ color: couleurs.accentClair, fontSize: 13 }}>Brancher</Text>
+          </Pressable>
+        ),
+      });
     }
-  }, [story?.meta.personnageNom]);
+  }, [story?.meta.personnageNom, creerBrancheIci]);
 
   // TODO(debug): recalcule le panneau de debug pour le dernier message
   // joueur dès qu'une histoire est ouverte, pas seulement après un envoi —
@@ -187,6 +204,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
             {story.meta.contexte.ambiance ? ` — ${story.meta.contexte.ambiance}` : ''}
           </Text>
         </Pressable>
+        {story.meta.brancheDeId && (
+          <View style={styles.bandeauBranche}>
+            <Text style={styles.texteBandeauBranche}>
+              🌿 Branche créée au message {story.meta.pointDeBranchement ?? '?'}
+            </Text>
+          </View>
+        )}
 
         {story.messages.length === 0 ? (
           <View style={styles.centreVide}>
@@ -402,6 +426,17 @@ const styles = StyleSheet.create({
   texteBandeauContexte: {
     color: couleurs.accentClair,
     fontSize: 12,
+  },
+  bandeauBranche: {
+    paddingHorizontal: espacement.md,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+  },
+  texteBandeauBranche: {
+    color: couleurs.texteAtténué,
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   modalContainer: {
     flex: 1,

@@ -34,3 +34,22 @@ export function creerNouvelleHistoire(params: {
     settings: params.settings,
   };
 }
+
+// Branches de conversation (brief Phase 2) : copie indépendante d'une
+// histoire à partir de son état courant, pour explorer une autre suite sans
+// toucher à l'originale. Copie profonde par sérialisation — évite tout
+// partage de référence (messages, faits, lore émergent) avec le parent.
+export function creerBranche(story: StoryState, nomBranche?: string): StoryState {
+  const clone: StoryState = JSON.parse(JSON.stringify(story));
+  const maintenant = Date.now();
+  clone.meta = {
+    ...clone.meta,
+    id: genererId(),
+    personnageNom: nomBranche ? `${clone.meta.personnageNom} — ${nomBranche}` : clone.meta.personnageNom,
+    brancheDeId: story.meta.id,
+    pointDeBranchement: story.messages.length,
+    createdAt: maintenant,
+    updatedAt: maintenant,
+  };
+  return clone;
+}

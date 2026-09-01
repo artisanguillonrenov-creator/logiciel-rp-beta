@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { AppSettings, StoryMeta, StoryState } from '../types';
+import type { AppSettings, Persona, StoryMeta, StoryState } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
 
 const KEYS = {
   settings: '@rp_beta/settings',
   storiesIndex: '@rp_beta/stories_index',
   story: (id: string) => `@rp_beta/story/${id}`,
+  personas: '@rp_beta/personas',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -123,4 +124,32 @@ export async function deleteStory(id: string): Promise<void> {
   await AsyncStorage.removeItem(KEYS.story(id));
   const index = await getStoriesIndex();
   await saveStoriesIndex(index.filter((m) => m.id !== id));
+}
+
+// Bibliothèque de personas (brief Phase 2) : réutiliser {{user}} d'une
+// histoire à l'autre sans ressaisir nom/description à chaque création.
+export async function getPersonas(): Promise<Persona[]> {
+  const raw = await AsyncStorage.getItem(KEYS.personas);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export async function savePersona(persona: Persona): Promise<void> {
+  const personas = await getPersonas();
+  const existingPos = personas.findIndex((p) => p.id === persona.id);
+  if (existingPos >= 0) {
+    personas[existingPos] = persona;
+  } else {
+    personas.push(persona);
+  }
+  await AsyncStorage.setItem(KEYS.personas, JSON.stringify(personas));
+}
+
+export async function deletePersona(id: string): Promise<void> {
+  const personas = await getPersonas();
+  await AsyncStorage.setItem(KEYS.personas, JSON.stringify(personas.filter((p) => p.id !== id)));
 }

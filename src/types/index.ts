@@ -32,6 +32,24 @@ export interface StoryMeta {
   contexte: ContexteHistoire;
   createdAt: number;
   updatedAt: number;
+  // Branches de conversation (brief Phase 2) : une histoire "branche" est une
+  // copie indépendante créée depuis un point donné d'une histoire parente —
+  // pour explorer une autre suite sans perdre l'originale. Champs optionnels
+  // volontairement : les sauvegardes existantes restent valides sans
+  // transformation, pas de bump de VERSION_SCHEMA_HISTOIRE nécessaire.
+  brancheDeId?: string;
+  pointDeBranchement?: number;
+}
+
+// Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit
+// {{user}} indépendamment d'une histoire donnée — prénom/description
+// prêts à préremplir l'étape "Personnage" de la création plutôt que de
+// ressaisir à chaque nouvelle histoire.
+export interface Persona {
+  id: string;
+  nom: string;
+  description: string;
+  createdAt: number;
 }
 
 export type MessageRole = 'user' | 'assistant';

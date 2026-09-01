@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,10 +13,14 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { Creativite, Longueur, NiveauCurseur } from '../types';
+import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
 import { creerNouvelleHistoire } from '../engine/story';
-import { saveStory } from '../storage/storage';
+import { getPersonas, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
+
+function genererIdPersona(): string {
+  return `persona-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;
 
@@ -77,6 +83,35 @@ export default function CreateScreen({ navigation }: Props) {
   // Étape 2 — Personnage
   const [nom, setNom] = useState('');
   const [description, setDescription] = useState('');
+
+  // Bibliothèque de personas (brief Phase 2) : réutiliser {{user}} d'une
+  // histoire à l'autre sans ressaisir nom/description à chaque fois.
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [modalPersonasOuvert, setModalPersonasOuvert] = useState(false);
+  const [messagePersona, setMessagePersona] = useState('');
+
+  useEffect(() => {
+    getPersonas().then(setPersonas);
+  }, []);
+
+  function choisirPersona(persona: Persona) {
+    setNom(persona.nom);
+    setDescription(persona.description);
+    setModalPersonasOuvert(false);
+  }
+
+  async function enregistrerPersonaDansBibliotheque() {
+    if (!nom.trim() || !description.trim()) return;
+    const persona: Persona = {
+      id: genererIdPersona(),
+      nom: nom.trim(),
+      description: description.trim(),
+      createdAt: Date.now(),
+    };
+    await savePersona(persona);
+    setPersonas((prev) => [...prev, persona]);
+    setMessagePersona('Personnage enregistré dans la bibliothèque.');
+  }
 
   // Étape 3 — Point de départ
   const [pointDeDepart, setPointDeDepart] = useState('');
@@ -191,11 +226,19 @@ export default function CreateScreen({ navigation }: Props) {
         {etape === 1 && (
           <>
             <Text style={styles.titre}>Personnage</Text>
+            {personas.length > 0 && (
+              <Pressable style={styles.boutonSecondaire} onPress={() => setModalPersonasOuvert(true)}>
+                <Text style={styles.texteBoutonSecondaire}>Choisir depuis la bibliothèque</Text>
+              </Pressable>
+            )}
             <Text style={styles.label}>Nom du personnage</Text>
             <TextInput
               style={styles.champ}
               value={nom}
-              onChangeText={setNom}
+              onChangeText={(v) => {
+                setNom(v);
+                setMessagePersona('');
+              }}
               placeholder="Ex : Aelis Corvenn"
               placeholderTextColor={couleurs.texteAtténué}
             />
@@ -203,11 +246,22 @@ export default function CreateScreen({ navigation }: Props) {
             <TextInput
               style={[styles.champ, styles.champMultiligne]}
               value={description}
-              onChangeText={setDescription}
+              onChangeText={(v) => {
+                setDescription(v);
+                setMessagePersona('');
+              }}
               placeholder="Qui est ce personnage, en quelques phrases ?"
               placeholderTextColor={couleurs.texteAtténué}
               multiline
             />
+            <Pressable
+              style={[styles.boutonSecondaire, (!nom.trim() || !description.trim()) && styles.boutonDesactive]}
+              onPress={enregistrerPersonaDansBibliotheque}
+              disabled={!nom.trim() || !description.trim()}
+            >
+              <Text style={styles.texteBoutonSecondaire}>Enregistrer dans la bibliothèque</Text>
+            </Pressable>
+            {messagePersona ? <Text style={styles.aide}>{messagePersona}</Text> : null}
           </>
         )}
 
@@ -296,6 +350,27 @@ export default function CreateScreen({ navigation }: Props) {
           )}
         </View>
       </ScrollView>
+
+      <Modal visible={modalPersonasOuvert} animationType="slide" onRequestClose={() => setModalPersonasOuvert(false)}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.titre}>Bibliothèque de personnages</Text>
+          <FlatList
+            data={personas}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <Pressable style={styles.lignePersona} onPress={() => choisirPersona(item)}>
+                <Text style={styles.nomPersona}>{item.nom}</Text>
+                <Text style={styles.descriptionPersona} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              </Pressable>
+            )}
+          />
+          <Pressable style={styles.boutonSecondaire} onPress={() => setModalPersonasOuvert(false)}>
+            <Text style={styles.texteBoutonSecondaire}>Fermer</Text>
+          </Pressable>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -438,5 +513,26 @@ const styles = StyleSheet.create({
   texteBoutonSecondaire: {
     color: couleurs.texte,
     fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: couleurs.fond,
+    padding: espacement.lg,
+    paddingTop: espacement.xl,
+  },
+  lignePersona: {
+    paddingVertical: espacement.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+  },
+  nomPersona: {
+    color: couleurs.texte,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  descriptionPersona: {
+    color: couleurs.texteAtténué,
+    fontSize: 12,
+    marginTop: 2,
   },
 });
