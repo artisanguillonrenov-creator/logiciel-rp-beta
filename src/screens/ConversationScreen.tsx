@@ -456,7 +456,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Pressable style={styles.boutonDebug} onPress={() => setDebugOuvert((v) => !v)}>
             <Text style={styles.texteBoutonDebug}>
               {debugOuvert ? '▾' : '▸'} Debug lore ({debugLore.metamoteurs.length} métamoteurs,{' '}
-              {debugLore.loreElyndor.length} entrées Elyndor)
+              {debugLore.loreElyndor.length} entrées Elyndor, {debugLore.souvenirs.length} souvenirs)
             </Text>
           </Pressable>
         )}
@@ -474,6 +474,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 • {titre}
               </Text>
             ))}
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>
+              Souvenirs retrouvés (recherche de secours dans l'historique)
+            </Text>
+            {debugLore.souvenirs.length === 0 ? (
+              <Text style={styles.ligneDebug}>Aucun — rien d'assez pertinent hors des échanges récents.</Text>
+            ) : (
+              debugLore.souvenirs.map((extrait) => (
+                <Text key={extrait} style={styles.ligneDebug}>
+                  • {extrait}
+                </Text>
+              ))
+            )}
           </ScrollView>
         )}
 

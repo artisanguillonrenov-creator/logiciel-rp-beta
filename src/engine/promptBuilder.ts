@@ -2,7 +2,12 @@ import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
 
-const NB_MESSAGES_RECENTS = 10;
+// Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
+// aussi de frontière pour la recherche sémantique de secours dans
+// l'historique (src/engine/searchHistorique.ts) — ne chercher que dans ce
+// qui est hors de cette fenêtre, pour ne pas dupliquer ce que le modèle
+// voit déjà brut.
+export const NB_MESSAGES_RECENTS = 10;
 
 function formaterFaits(faits: Fact[]): string {
   if (faits.length === 0) return 'Aucun fait clé enregistré pour l’instant.';
@@ -78,6 +83,11 @@ export interface ContexteConstruction {
   // contrats en attente et relations notables avec les PNJ — voir
   // formaterEngagementsEtRelations dans src/engine/socialDynamics.ts.
   engagementsEtRelations?: string;
+  // Filet de sécurité pour la continuité : messages bruts plus anciens que
+  // la fenêtre récente, retrouvés par recherche sémantique quand un détail
+  // pertinent n'a pas été capté comme fait par le pipeline de mémoire —
+  // voir formaterSouvenirs dans src/engine/searchHistorique.ts.
+  souvenirs?: string;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction): string {
@@ -99,7 +109,7 @@ ${ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant."
 
 [FAITS CLÉS ÉTABLIS]
 ${formaterFaits(ctx.faits)}
-${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.engagementsEtRelations ?? ''}${ctx.directionNarrative ?? ''}
+${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.engagementsEtRelations ?? ''}${ctx.souvenirs ?? ''}${ctx.directionNarrative ?? ''}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}

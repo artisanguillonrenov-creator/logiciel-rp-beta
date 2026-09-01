@@ -12,6 +12,7 @@ import {
   construireSystemPrompt,
   maxTokensPourLongueur,
   temperaturePourCreativite,
+  NB_MESSAGES_RECENTS,
   type ContexteConstruction,
 } from './promptBuilder';
 import { appellerModele } from './openrouter';
@@ -24,6 +25,13 @@ import { getPlugins } from '../storage/storage';
 import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
+import {
+  embedderMessagesAnciens,
+  formaterSouvenirs,
+  formaterSouvenirsDebug,
+  selectionnerSouvenirs,
+  type Souvenir,
+} from './searchHistorique';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
@@ -51,6 +59,7 @@ function genererId(): string {
 export interface DebugLore {
   metamoteurs: string[];
   loreElyndor: string[];
+  souvenirs: string[];
 }
 
 export interface ResultatTour {
@@ -88,6 +97,7 @@ function construireTexteRequete(story: StoryState, messageJoueur: string): strin
 interface SelectionLore {
   metamoteursSelectionnes: ReturnType<typeof selectionnerMetamoteursSemantique>;
   loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
+  souvenirs: Souvenir[];
   debugLore: DebugLore;
 }
 
@@ -116,7 +126,13 @@ export async function calculerSelectionLore(
     ...convertirPluginsPourSelection(plugins),
   ];
 
-  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }] = await Promise.all([
+  // Filet de sécurité pour la continuité (brief : compenser les manques du
+  // pipeline de mémoire) : messages plus anciens que la fenêtre récente déjà
+  // envoyée brute, candidats à la recherche sémantique de secours — voir
+  // src/engine/searchHistorique.ts.
+  const messagesAnciens = story.messages.slice(0, Math.max(0, story.messages.length - NB_MESSAGES_RECENTS));
+
+  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
     assurerEmbeddings(
       METAMOTEURS.map((e) => ({ id: e.id, contenu: e.contenu })),
       appSettings,
@@ -126,6 +142,7 @@ export async function calculerSelectionLore(
       appSettings,
     ),
     obtenirEmbeddings([texteRequete], appSettings),
+    embedderMessagesAnciens(messagesAnciens, appSettings),
   ]);
 
   let metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
@@ -135,6 +152,7 @@ export async function calculerSelectionLore(
     vecteurRequete,
     vecteursElyndor,
   );
+  const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
   // Contrôle d'âge (brief Phase 2) : retire le registre explicite et les
   // entrées Elyndor réservées à l'adulte du contexte envoyé au modèle —
@@ -147,9 +165,11 @@ export async function calculerSelectionLore(
   return {
     metamoteursSelectionnes,
     loreElyndor,
+    souvenirs,
     debugLore: {
       metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
       loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+      souvenirs: formaterSouvenirsDebug(souvenirs),
     },
   };
 }
@@ -169,7 +189,7 @@ function construireCtxBase(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
-  selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor'>,
+  selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
 ): ContexteConstruction {
   return {
     meta: story.meta,
@@ -201,6 +221,9 @@ function construireCtxBase(
     // Engagements + dynamiques sociales (brief Phase 2) : promesses/dettes/
     // contrats non résolus et relations notables avec les PNJ.
     engagementsEtRelations: formaterEngagementsEtRelations(story.social),
+    // Filet de sécurité pour la continuité : messages anciens retrouvés par
+    // recherche sémantique — voir src/engine/searchHistorique.ts.
+    souvenirs: formaterSouvenirs(selection.souvenirs, story.meta.personnageNom),
   };
 }
 
@@ -214,8 +237,8 @@ export async function construirePromptDebug(
   messageJoueur: string,
   appSettings: AppSettings,
 ): Promise<string> {
-  const { metamoteursSelectionnes, loreElyndor } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor }));
+  const { metamoteursSelectionnes, loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
 }
 
 // Les cinq pipelines périodiques (mémoire, lore émergent, directeur, monde,
@@ -266,13 +289,13 @@ export async function genererTour(
   appSettings: AppSettings,
   messageJoueur: string,
 ): Promise<ResultatTour> {
-  const { metamoteursSelectionnes, loreElyndor, debugLore } = await calculerSelectionLore(
+  const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     story,
     messageJoueur,
     appSettings,
   );
 
-  const ctxBase = construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor });
+  const ctxBase = construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
 
   // Réglages de prompt avancés (réglages concepteur) : override par
   // histoire du modèle/de la température, sinon les valeurs globales
