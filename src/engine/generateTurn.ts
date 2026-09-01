@@ -20,6 +20,7 @@ import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './e
 import { convertirPluginsPourSelection } from './plugins';
 import { getPlugins } from '../storage/storage';
 import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
+import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
@@ -200,6 +201,9 @@ export async function genererTour(
       story.directeur,
       detecterStagnation(story.directeur, story.messages.length),
     ),
+    // World Simulation + State Machine (brief Phase 2) : zones actives,
+    // état établi et conséquences de déclencheurs en attente.
+    etatMonde: formaterMonde(story.monde),
   };
 
   const temperature = temperaturePourCreativite(story.settings.creativite);
@@ -274,10 +278,11 @@ export async function genererTour(
   let memoire = story.memoire;
   let loreEmergent = story.loreEmergent;
   let directeur = story.directeur;
+  let monde = story.monde;
   if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
-    // Même curseur, même cadence pour les trois pipelines périodiques.
+    // Même curseur, même cadence pour les quatre pipelines périodiques.
     const depuisIndex = memoire.dernierMessageIndexMaj;
-    [memoire, loreEmergent, directeur] = await Promise.all([
+    [memoire, loreEmergent, directeur, monde] = await Promise.all([
       mettreAJourMemoire({
         appSettings,
         memoireActuelle: memoire,
@@ -296,11 +301,17 @@ export async function genererTour(
         messages,
         depuisIndex,
       }),
+      mettreAJourMonde({
+        appSettings,
+        mondeActuel: monde,
+        messages,
+        depuisIndex,
+      }),
     ]);
   }
 
   return {
-    story: { ...story, messages, memoire, loreEmergent, directeur },
+    story: { ...story, messages, memoire, loreEmergent, directeur, monde },
     aEteCorrige,
     debugLore,
   };

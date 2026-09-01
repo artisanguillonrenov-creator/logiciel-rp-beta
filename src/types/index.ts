@@ -142,10 +142,50 @@ export interface DirecteurState {
   beats: BeatNarratif[];
 }
 
+// World Simulation + State Machine (brief Phase 2, systèmes narratifs
+// avancés) : le monde continue d'exister hors champ. Une zone perd en
+// "activité" au fil des messages sans y être fait référence — jusqu'à
+// dormante, jamais supprimée. Les déclencheurs sont évalués localement,
+// de façon déterministe, contre les flags/compteurs — une vraie machine à
+// états, pas une appréciation narrative du modèle.
+export type NiveauActivite = 'active' | 'proche' | 'lointaine' | 'dormante';
+
+export interface ZoneMonde {
+  id: string;
+  nom: string;
+  niveau: NiveauActivite;
+  description: string;
+  // Index (dans StoryState.messages) du dernier message où la scène s'est
+  // déroulée dans cette zone — base du calcul de niveau d'activité.
+  dernierAcces: number;
+}
+
+export interface DeclencheurMonde {
+  id: string;
+  nom: string;
+  // Une seule des deux conditions est définie ; absentes = jamais évalué
+  // (déclencheur créé mais sans condition exploitable, ignoré).
+  conditionFlag?: string;
+  conditionCompteur?: { nom: string; seuil: number };
+  effet: string;
+  declenche: boolean;
+  // Passé à true une fois la conséquence effectivement tissée dans une
+  // réponse narrée (cf. mettreAJourMonde) — évite de la rappeler
+  // indéfiniment une fois traitée.
+  resolu: boolean;
+}
+
+export interface MondeState {
+  zones: ZoneMonde[];
+  flags: Record<string, boolean>;
+  compteurs: Record<string, number>;
+  declencheurs: DeclencheurMonde[];
+}
+
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 6;
+export const VERSION_SCHEMA_HISTOIRE = 7;
 
 export interface StoryState {
   version: number;
@@ -155,6 +195,7 @@ export interface StoryState {
   loreEmergent: EntreeLoreEmergent[];
   settings: StorySettings;
   directeur: DirecteurState;
+  monde: MondeState;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil

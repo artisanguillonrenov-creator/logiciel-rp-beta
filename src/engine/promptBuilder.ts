@@ -70,6 +70,10 @@ export interface ContexteConstruction {
   // tension et rappel des éléments en suspens — voir formaterDirection dans
   // src/engine/storyDirector.ts. Pré-formaté, bloc entier ou chaîne vide.
   directionNarrative?: string;
+  // World Simulation + State Machine (brief Phase 2) : zones actives/proches,
+  // état établi (flags) et conséquences de déclencheurs à faire apparaître —
+  // voir formaterMonde dans src/engine/worldSimulation.ts.
+  etatMonde?: string;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction): string {
@@ -91,7 +95,7 @@ ${ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant."
 
 [FAITS CLÉS ÉTABLIS]
 ${formaterFaits(ctx.faits)}
-${metamoteursTexte}${loreTexte}${ctx.directionNarrative ?? ''}
+${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.directionNarrative ?? ''}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}

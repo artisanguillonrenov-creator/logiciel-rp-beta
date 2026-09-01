@@ -38,6 +38,7 @@ export function creerNouvelleHistoire(params: {
       dernierBeatIndex: 0,
       beats: [],
     },
+    monde: { zones: [], flags: {}, compteurs: {}, declencheurs: [] },
   };
 }
 

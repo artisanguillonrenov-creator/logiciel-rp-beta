@@ -111,6 +111,16 @@ function migrerHistoire(data: any): StoryState {
       },
     };
   }
+  if (migree.version < 7) {
+    // v6 -> v7 : World Simulation + State Machine (zones, flags, compteurs,
+    // déclencheurs — brief Phase 2). Monde vide par défaut, se peuple au
+    // fil des mises à jour périodiques suivantes.
+    migree = {
+      ...migree,
+      version: 7,
+      monde: migree.monde ?? { zones: [], flags: {}, compteurs: {}, declencheurs: [] },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 
