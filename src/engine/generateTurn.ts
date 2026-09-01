@@ -9,8 +9,10 @@ import {
 } from './loreLoader';
 import {
   construireMessages,
+  construireSystemPrompt,
   maxTokensPourLongueur,
   temperaturePourCreativite,
+  type ContexteConstruction,
 } from './promptBuilder';
 import { appellerModele } from './openrouter';
 import { obtenirEmbeddings } from './embeddings';
@@ -160,25 +162,16 @@ export async function calculerDebugLore(story: StoryState, messageJoueur: string
   return debugLore;
 }
 
-/**
- * Flux de génération d'un tour (brief section 5, sélection mise à jour
- * Phase 2) : message joueur → sélection sémantique des métamoteurs et du
- * lore pertinents → construction du contexte → appel API → vérification
- * basique → une nouvelle tentative si violation → affichage. Puis mise à
- * jour périodique de la mémoire.
- */
-export async function genererTour(
+// Assemble le contexte envoyé au prompt builder — factorisé pour être
+// partagé entre genererTour (l'appel réel) et construirePromptDebug
+// (réglages concepteur : affiche le prompt système sans appeler le modèle).
+function construireCtxBase(
   story: StoryState,
-  appSettings: AppSettings,
   messageJoueur: string,
-): Promise<ResultatTour> {
-  const { metamoteursSelectionnes, loreElyndor, debugLore } = await calculerSelectionLore(
-    story,
-    messageJoueur,
-    appSettings,
-  );
-
-  const ctxBase = {
+  appSettings: AppSettings,
+  selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor'>,
+): ContexteConstruction {
+  return {
     meta: story.meta,
     // Contrôle d'âge : violence/romance plafonnés côté logiciel quand le
     // profil est GRAND_PUBLIC, quel que soit le réglage choisi pour
@@ -189,8 +182,8 @@ export async function genererTour(
     // stockés mais ne sont plus injectés systématiquement — voir
     // src/engine/memory.ts.
     faits: story.memoire.faits.filter((f) => f.niveau !== 'archive'),
-    metamoteursSelectionnes,
-    loreElyndor,
+    metamoteursSelectionnes: selection.metamoteursSelectionnes,
+    loreElyndor: selection.loreElyndor,
     messagesRecents: story.messages,
     messageJoueur,
     instructionRegistreOverride:
@@ -209,13 +202,88 @@ export async function genererTour(
     // contrats non résolus et relations notables avec les PNJ.
     engagementsEtRelations: formaterEngagementsEtRelations(story.social),
   };
+}
 
-  const temperature = temperaturePourCreativite(story.settings.creativite);
+/**
+ * Réglages concepteur (Ajouts_A_Integrer.md #6) : construit le prompt
+ * système exact qui serait envoyé au modèle pour ce message, sans appeler
+ * l'API — pour l'inspecter tel quel plutôt que de le deviner.
+ */
+export async function construirePromptDebug(
+  story: StoryState,
+  messageJoueur: string,
+  appSettings: AppSettings,
+): Promise<string> {
+  const { metamoteursSelectionnes, loreElyndor } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor }));
+}
+
+// Les cinq pipelines périodiques (mémoire, lore émergent, directeur, monde,
+// social) tournent toujours ensemble, à la même cadence — factorisé pour
+// être appelable soit depuis genererTour (quand le seuil de messages est
+// atteint), soit à la demande depuis les réglages concepteur
+// (forcerMiseAJourEtat, sans attendre ce seuil).
+async function executerMisesAJourPeriodiques(
+  appSettings: AppSettings,
+  story: StoryState,
+  messages: Message[],
+): Promise<Pick<StoryState, 'memoire' | 'loreEmergent' | 'directeur' | 'monde' | 'social'>> {
+  const depuisIndex = story.memoire.dernierMessageIndexMaj;
+  const [memoire, loreEmergent, directeur, monde, social] = await Promise.all([
+    mettreAJourMemoire({
+      appSettings,
+      memoireActuelle: story.memoire,
+      messages,
+      personnageNom: story.meta.personnageNom,
+    }),
+    mettreAJourLoreEmergent({ appSettings, existants: story.loreEmergent, messages, depuisIndex }),
+    mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages, depuisIndex }),
+    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages, depuisIndex }),
+    mettreAJourSocial({ appSettings, socialActuel: story.social, messages, depuisIndex }),
+  ]);
+  return { memoire, loreEmergent, directeur, monde, social };
+}
+
+/**
+ * Réglages concepteur (Ajouts_A_Integrer.md #6) : force les cinq pipelines
+ * périodiques à tourner immédiatement, sans attendre le seuil de 8 messages
+ * — pour observer l'effet d'un tour sans en jouer sept de plus.
+ */
+export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSettings): Promise<StoryState> {
+  const maj = await executerMisesAJourPeriodiques(appSettings, story, story.messages);
+  return { ...story, ...maj };
+}
+
+/**
+ * Flux de génération d'un tour (brief section 5, sélection mise à jour
+ * Phase 2) : message joueur → sélection sémantique des métamoteurs et du
+ * lore pertinents → construction du contexte → appel API → vérification
+ * basique → une nouvelle tentative si violation → affichage. Puis mise à
+ * jour périodique de la mémoire.
+ */
+export async function genererTour(
+  story: StoryState,
+  appSettings: AppSettings,
+  messageJoueur: string,
+): Promise<ResultatTour> {
+  const { metamoteursSelectionnes, loreElyndor, debugLore } = await calculerSelectionLore(
+    story,
+    messageJoueur,
+    appSettings,
+  );
+
+  const ctxBase = construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor });
+
+  // Réglages de prompt avancés (réglages concepteur) : override par
+  // histoire du modèle/de la température, sinon les valeurs globales
+  // habituelles.
+  const modelePourAppel = story.meta.modeleOverride?.trim() || appSettings.model;
+  const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
 
   let reponse = await appellerModele({
     apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
+    model: modelePourAppel,
     messages: construireMessages(ctxBase),
     temperature,
     maxTokens,
@@ -225,7 +293,7 @@ export async function genererTour(
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const llm = await validerReponseLLM({
     apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
+    model: modelePourAppel,
     reponse,
     faits: ctxBase.faits,
     meta: story.meta,
@@ -246,7 +314,7 @@ export async function genererTour(
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
     reponse = await reparerReponse({
       apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
+      model: modelePourAppel,
       reponse,
       rapport,
       partiel: strategie === 'regeneration_partielle',
@@ -258,7 +326,7 @@ export async function genererTour(
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     reponse = await appellerModele({
       apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
+      model: modelePourAppel,
       messages: construireMessages({ ...ctxBase, noteCorrection }),
       temperature,
       maxTokens,
@@ -279,50 +347,19 @@ export async function genererTour(
   };
 
   const messages = [...story.messages, messageUtilisateur, messageAssistant];
-  let memoire = story.memoire;
-  let loreEmergent = story.loreEmergent;
-  let directeur = story.directeur;
-  let monde = story.monde;
-  let social = story.social;
-  if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
-    // Même curseur, même cadence pour les cinq pipelines périodiques.
-    const depuisIndex = memoire.dernierMessageIndexMaj;
-    [memoire, loreEmergent, directeur, monde, social] = await Promise.all([
-      mettreAJourMemoire({
-        appSettings,
-        memoireActuelle: memoire,
-        messages,
-        personnageNom: story.meta.personnageNom,
-      }),
-      mettreAJourLoreEmergent({
-        appSettings,
-        existants: loreEmergent,
-        messages,
-        depuisIndex,
-      }),
-      mettreAJourDirecteur({
-        appSettings,
-        directeurActuel: directeur,
-        messages,
-        depuisIndex,
-      }),
-      mettreAJourMonde({
-        appSettings,
-        mondeActuel: monde,
-        messages,
-        depuisIndex,
-      }),
-      mettreAJourSocial({
-        appSettings,
-        socialActuel: social,
-        messages,
-        depuisIndex,
-      }),
-    ]);
+  let etatPeriodique: Pick<StoryState, 'memoire' | 'loreEmergent' | 'directeur' | 'monde' | 'social'> = {
+    memoire: story.memoire,
+    loreEmergent: story.loreEmergent,
+    directeur: story.directeur,
+    monde: story.monde,
+    social: story.social,
+  };
+  if (doitMettreAJourMemoire(messages, story.memoire.dernierMessageIndexMaj)) {
+    etatPeriodique = await executerMisesAJourPeriodiques(appSettings, story, messages);
   }
 
   return {
-    story: { ...story, messages, memoire, loreEmergent, directeur, monde, social },
+    story: { ...story, messages, ...etatPeriodique },
     aEteCorrige,
     debugLore,
   };

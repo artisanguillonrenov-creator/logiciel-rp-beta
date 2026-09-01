@@ -9,6 +9,7 @@ import CreateScreen from '../screens/CreateScreen';
 import ConversationScreen from '../screens/ConversationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PluginsScreen from '../screens/PluginsScreen';
+import DesignerSettingsScreen from '../screens/DesignerSettingsScreen';
 import { getSettings } from '../storage/storage';
 import { couleurs, polices } from '../theme/theme';
 
@@ -61,6 +62,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Histoire' }} />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
+        <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -46,6 +46,14 @@ export interface EntreeAEmbeder {
   contenu: string;
 }
 
+// Réglages concepteur (mode test) : vider le cache force un recalcul complet
+// des embeddings au prochain tour — utile après un changement de contenu
+// massif (pack de contenu, lore) qu'on veut voir pris en compte tout de
+// suite plutôt que d'attendre l'invalidation entrée par entrée.
+export async function viderCacheEmbeddings(): Promise<void> {
+  await AsyncStorage.removeItem(CLEF_CACHE);
+}
+
 /**
  * Renvoie l'embedding de chaque entrée demandée, en réutilisant le cache
  * local (AsyncStorage) quand le contenu n'a pas changé. Ne calcule via

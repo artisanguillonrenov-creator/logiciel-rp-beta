@@ -39,6 +39,11 @@ export interface StoryMeta {
   // transformation, pas de bump de VERSION_SCHEMA_HISTOIRE nécessaire.
   brancheDeId?: string;
   pointDeBranchement?: number;
+  // Réglages de prompt avancés (réglages concepteur, mode test) : override
+  // par histoire des paramètres normalement fixés globalement dans
+  // Réglages. Optionnels, ignorés tant qu'absents.
+  modeleOverride?: string;
+  temperatureOverride?: number;
 }
 
 // Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit
@@ -263,6 +268,11 @@ export interface AppSettings {
   // l'écran d'activation — pas une vraie clé de licence vérifiée côté
   // serveur, juste la marche à suivre d'une activation.
   betaAcceptee?: boolean;
+  // Réglages concepteur (Ajouts_A_Integrer.md #6) : accès direct pendant la
+  // phase de test, sans code ni protection — un mécanisme de déverrouillage
+  // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
+  // de cette phase.
+  modeConcepteur?: boolean;
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :

@@ -239,6 +239,12 @@ export default function SettingsScreen({ navigation }: Props) {
         <Bouton titre="Ouvrir la dernière version" variante="secondaire" onPress={() => Linking.openURL(urlMaj)} style={styles.boutonAction} />
       ) : null}
 
+      <Text style={styles.label}>Concepteur</Text>
+      <Bouton titre="Réglages concepteur" variante="secondaire" onPress={() => navigation.navigate('ReglagesConcepteur')} style={styles.boutonAction} />
+      <Text style={styles.aide}>
+        Débogage narratif, contrôles moteur et réglages de prompt avancés — utile pendant la phase de test.
+      </Text>
+
       <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
         <View style={styles.modalContainer}>
           <Text style={styles.titre}>Modèles OpenRouter</Text>

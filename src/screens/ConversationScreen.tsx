@@ -15,7 +15,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
-import { calculerDebugLore, genererTour, regenererDernierTour, type DebugLore } from '../engine/generateTurn';
+import {
+  calculerDebugLore,
+  construirePromptDebug,
+  forcerMiseAJourEtat,
+  genererTour,
+  regenererDernierTour,
+  type DebugLore,
+} from '../engine/generateTurn';
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
@@ -68,6 +75,17 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // Suggestion de réplique pour le joueur (Ajouts_A_Integrer.md #4).
   const [suggestionEnCours, setSuggestionEnCours] = useState(false);
 
+  // Réglages concepteur (Ajouts_A_Integrer.md #6, mode test) : état brut,
+  // mise à jour forcée, prompt système, overrides modèle/température —
+  // uniquement visible quand appSettings.modeConcepteur est actif.
+  const [modalConcepteurOuvert, setModalConcepteurOuvert] = useState(false);
+  const [modeleOverrideEdit, setModeleOverrideEdit] = useState('');
+  const [temperatureOverrideEdit, setTemperatureOverrideEdit] = useState('');
+  const [promptSysteme, setPromptSysteme] = useState('');
+  const [chargementPrompt, setChargementPrompt] = useState(false);
+  const [majForceeEnCours, setMajForceeEnCours] = useState(false);
+  const [messageConcepteur, setMessageConcepteur] = useState('');
+
   useEffect(() => {
     Promise.all([getStory(storyId), getSettings()]).then(([s, settings]) => {
       setStory(s);
@@ -87,6 +105,15 @@ export default function ConversationScreen({ route, navigation }: Props) {
     navigation.navigate('Conversation', { storyId: branche.meta.id });
   }, [story, navigation]);
 
+  function ouvrirConcepteur() {
+    if (!story) return;
+    setModeleOverrideEdit(story.meta.modeleOverride ?? '');
+    setTemperatureOverrideEdit(story.meta.temperatureOverride !== undefined ? String(story.meta.temperatureOverride) : '');
+    setPromptSysteme('');
+    setMessageConcepteur('');
+    setModalConcepteurOuvert(true);
+  }
+
   useEffect(() => {
     if (story) {
       navigation.setOptions({
@@ -96,6 +123,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Pressable onPress={() => setModalRechercheOuvert(true)} hitSlop={8}>
               <Text style={styles.iconeEntete}>🔍</Text>
             </Pressable>
+            {appSettings?.modeConcepteur && (
+              <Pressable onPress={ouvrirConcepteur} hitSlop={8}>
+                <Text style={styles.iconeEntete}>🛠</Text>
+              </Pressable>
+            )}
             <Pressable onPress={creerBrancheIci} hitSlop={8}>
               <Text style={styles.iconeEntete}>🌿</Text>
             </Pressable>
@@ -103,7 +135,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         ),
       });
     }
-  }, [story?.meta.personnageNom, creerBrancheIci]);
+  }, [story?.meta.personnageNom, creerBrancheIci, appSettings?.modeConcepteur]);
 
   // TODO(debug): recalcule le panneau de debug pour le dernier message
   // joueur dès qu'une histoire est ouverte, pas seulement après un envoi —
@@ -246,6 +278,54 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setStory(storyMaj);
     await saveStory(storyMaj);
     setModalContexteOuvert(false);
+  }
+
+  async function enregistrerOverridesConcepteur() {
+    if (!story) return;
+    const temperature = temperatureOverrideEdit.trim() ? Number(temperatureOverrideEdit.trim()) : undefined;
+    const storyMaj: StoryState = {
+      ...story,
+      meta: {
+        ...story.meta,
+        modeleOverride: modeleOverrideEdit.trim() || undefined,
+        temperatureOverride: temperature !== undefined && !Number.isNaN(temperature) ? temperature : undefined,
+      },
+    };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setMessageConcepteur('Réglages de prompt enregistrés pour cette histoire.');
+    setTimeout(() => setMessageConcepteur(''), 3000);
+  }
+
+  async function voirPromptSysteme() {
+    if (!story || !appSettings) return;
+    setChargementPrompt(true);
+    setPromptSysteme('');
+    try {
+      const derniereEntree = [...story.messages].reverse().find((m) => m.role === 'user')?.content ?? saisie;
+      const prompt = await construirePromptDebug(story, derniereEntree || story.meta.pointDeDepart, appSettings);
+      setPromptSysteme(prompt);
+    } catch (e) {
+      setPromptSysteme(messageErreur(e, 'Impossible de construire le prompt pour le moment.'));
+    } finally {
+      setChargementPrompt(false);
+    }
+  }
+
+  async function forcerMiseAJourMaintenant() {
+    if (!story || !appSettings || majForceeEnCours) return;
+    setMajForceeEnCours(true);
+    setMessageConcepteur('');
+    try {
+      const storyMaj = await forcerMiseAJourEtat(story, appSettings);
+      setStory(storyMaj);
+      await saveStory(storyMaj);
+      setMessageConcepteur('Mémoire, directeur, monde et social mis à jour.');
+    } catch (e) {
+      setMessageConcepteur(messageErreur(e, 'Mise à jour impossible pour le moment.'));
+    } finally {
+      setMajForceeEnCours(false);
+    }
   }
 
   if (!story || !appSettings) {
@@ -457,6 +537,68 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalRechercheOuvert(false)} style={{ marginTop: espacement.md }} />
         </View>
       </Modal>
+
+      <Modal visible={modalConcepteurOuvert} animationType="slide" onRequestClose={() => setModalConcepteurOuvert(false)}>
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
+          <Text style={styles.titreModal}>Concepteur — {story.meta.personnageNom}</Text>
+
+          <Text style={styles.labelConcepteur}>Contrôles moteur</Text>
+          <Bouton
+            titre={majForceeEnCours ? 'Mise à jour…' : 'Forcer la mise à jour maintenant'}
+            variante="secondaire"
+            onPress={forcerMiseAJourMaintenant}
+            desactive={majForceeEnCours}
+            style={{ marginTop: espacement.sm }}
+          />
+          <Bouton
+            titre={chargementPrompt ? 'Construction…' : 'Voir le prompt système'}
+            variante="secondaire"
+            onPress={voirPromptSysteme}
+            desactive={chargementPrompt}
+            style={{ marginTop: espacement.sm }}
+          />
+          {messageConcepteur ? <Text style={styles.statut}>{messageConcepteur}</Text> : null}
+          {promptSysteme ? (
+            <Panneau style={{ marginTop: espacement.sm }}>
+              <Text style={styles.textePromptSysteme}>{promptSysteme}</Text>
+            </Panneau>
+          ) : null}
+
+          <Text style={styles.labelConcepteur}>Réglages de prompt avancés (cette histoire)</Text>
+          <Champ
+            label="Modèle (override, optionnel)"
+            value={modeleOverrideEdit}
+            onChangeText={setModeleOverrideEdit}
+            placeholder={appSettings.model}
+            autoCapitalize="none"
+            autoCorrect={false}
+            conteneurStyle={styles.champConteneur}
+          />
+          <Champ
+            label="Température (override, optionnel)"
+            value={temperatureOverrideEdit}
+            onChangeText={setTemperatureOverrideEdit}
+            placeholder="0.0 à 2.0"
+            keyboardType="numeric"
+            conteneurStyle={styles.champConteneur}
+          />
+          <Bouton titre="Enregistrer ces réglages" onPress={enregistrerOverridesConcepteur} style={{ marginTop: espacement.sm }} />
+
+          <Text style={styles.labelConcepteur}>État brut du moteur</Text>
+          <Panneau style={{ marginTop: espacement.sm }}>
+            <Text style={styles.sousTitreEtat}>Mémoire</Text>
+            <Text style={styles.texteEtatBrut}>{JSON.stringify(story.memoire, null, 2)}</Text>
+            <Text style={styles.sousTitreEtat}>Directeur narratif</Text>
+            <Text style={styles.texteEtatBrut}>{JSON.stringify(story.directeur, null, 2)}</Text>
+            <Text style={styles.sousTitreEtat}>Monde</Text>
+            <Text style={styles.texteEtatBrut}>{JSON.stringify(story.monde, null, 2)}</Text>
+            <Text style={styles.sousTitreEtat}>Social</Text>
+            <Text style={styles.texteEtatBrut}>{JSON.stringify(story.social, null, 2)}</Text>
+          </Panneau>
+
+          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalConcepteurOuvert(false)} style={{ marginTop: espacement.lg }} />
+        </ScrollView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -619,6 +761,32 @@ const styles = StyleSheet.create({
   },
   champConteneur: {
     marginTop: espacement.md,
+  },
+  labelConcepteur: {
+    ...stylePetitesCapitales,
+    color: couleurs.accentClair,
+    fontSize: 12,
+    marginTop: espacement.lg,
+    marginBottom: espacement.xs,
+  },
+  textePromptSysteme: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sousTitreEtat: {
+    ...stylePetitesCapitales,
+    color: couleurs.dore,
+    fontSize: 11,
+    marginTop: espacement.sm,
+    marginBottom: 2,
+  },
+  texteEtatBrut: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    lineHeight: 16,
   },
   aideRecherche: {
     color: couleurs.texteAtténué,

@@ -5,4 +5,5 @@ export type RootStackParamList = {
   Conversation: { storyId: string };
   Reglages: undefined;
   Plugins: undefined;
+  ReglagesConcepteur: undefined;
 };
