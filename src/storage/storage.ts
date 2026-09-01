@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings, StoryMeta, StoryState } from '../types';
+import { VERSION_SCHEMA_HISTOIRE } from '../types';
 
 const KEYS = {
   settings: '@rp_beta/settings',
@@ -40,11 +41,36 @@ async function saveStoriesIndex(index: StoryMeta[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.storiesIndex, JSON.stringify(index));
 }
 
+// Compatibilité de sauvegarde d'une version à l'autre (esprit de
+// l'auto-updater du brief Phase 2) : une histoire sauvegardée par une
+// version antérieure de l'app est mise à niveau au chargement plutôt que
+// de casser ou de perdre les données du joueur.
+function migrerHistoire(data: any): StoryState {
+  let migree = data;
+  if (!migree.version || migree.version < 2) {
+    // v1 -> v2 : les faits de mémoire gagnent niveau/dernierAcces (mémoire
+    // L0-L5). Un fait déjà là est considéré "canon" (actif) par défaut.
+    migree = {
+      ...migree,
+      version: 2,
+      memoire: {
+        ...migree.memoire,
+        faits: (migree.memoire?.faits ?? []).map((f: any) => ({
+          ...f,
+          niveau: f.niveau ?? 'canon',
+          dernierAcces: f.dernierAcces ?? migree.memoire?.dernierMessageIndexMaj ?? 0,
+        })),
+      },
+    };
+  }
+  return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
+}
+
 export async function getStory(id: string): Promise<StoryState | null> {
   const raw = await AsyncStorage.getItem(KEYS.story(id));
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    return migrerHistoire(JSON.parse(raw));
   } catch {
     return null;
   }

@@ -139,7 +139,10 @@ export async function genererTour(
     meta: story.meta,
     settings: story.settings,
     resume: story.memoire.resume,
-    faits: story.memoire.faits,
+    // Les faits archivés (L5, non reconfirmés depuis longtemps) restent
+    // stockés mais ne sont plus injectés systématiquement — voir
+    // src/engine/memory.ts.
+    faits: story.memoire.faits.filter((f) => f.niveau !== 'archive'),
     metamoteursSelectionnes,
     loreElyndor,
     messagesRecents: story.messages,
@@ -162,7 +165,7 @@ export async function genererTour(
     apiKey: appSettings.openRouterApiKey,
     model: appSettings.model,
     reponse,
-    faits: story.memoire.faits,
+    faits: ctxBase.faits,
     meta: story.meta,
   });
   const validation = fusionnerValidations(heuristique, llm);
@@ -199,8 +202,7 @@ export async function genererTour(
   let memoire = story.memoire;
   if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
     memoire = await mettreAJourMemoire({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
+      appSettings,
       memoireActuelle: memoire,
       messages,
       personnageNom: story.meta.personnageNom,
