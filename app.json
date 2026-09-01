@@ -2,6 +2,7 @@
   "expo": {
     "name": "logiciel-rp-beta",
     "slug": "logiciel-rp-beta",
+    "owner": "williamguillon",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,6 +25,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fea55d59-f59b-43ff-8d72-d3ecb83b3181"
+      }
+    }
   }
 }
