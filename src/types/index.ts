@@ -60,16 +60,39 @@ export interface MemoryState {
   dernierMessageIndexMaj: number;
 }
 
+// Pipeline de lore émergent (brief Phase 2) : contrairement aux faits de
+// mémoire (ce qui s'est passé), une entrée de lore émergent est une
+// nouvelle donnée durable du MONDE créée en cours de partie — un PNJ
+// récurrent, un lieu, une faction, un objet ou un événement marquant.
+// Distincte du lorebook Elyndor statique, mais rejoint le même pool de
+// sélection sémantique une fois "permanent".
+export type CategorieLoreEmergent = 'pnj' | 'objet' | 'lieu' | 'faction' | 'evenement';
+
+export interface EntreeLoreEmergent {
+  id: string;
+  categorie: CategorieLoreEmergent;
+  titre: string;
+  contenu: string;
+  // "provisoire" : vu une fois, pas encore confirmé comme durable — n'est
+  // pas injecté dans le contexte. "permanent" : reconfirmé au moins une
+  // fois (voir src/engine/emergentLore.ts) — validé avant tout ajout
+  // permanent au lorebook, comme demandé par le brief.
+  statut: 'provisoire' | 'permanent';
+  premiereMention: number;
+  dernierAcces: number;
+}
+
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 2;
+export const VERSION_SCHEMA_HISTOIRE = 3;
 
 export interface StoryState {
   version: number;
   meta: StoryMeta;
   messages: Message[];
   memoire: MemoryState;
+  loreEmergent: EntreeLoreEmergent[];
   settings: StorySettings;
 }
 

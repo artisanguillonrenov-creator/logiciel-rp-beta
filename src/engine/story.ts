@@ -28,6 +28,7 @@ export function creerNouvelleHistoire(params: {
       faits: [],
       dernierMessageIndexMaj: 0,
     },
+    loreEmergent: [],
     settings: params.settings,
   };
 }

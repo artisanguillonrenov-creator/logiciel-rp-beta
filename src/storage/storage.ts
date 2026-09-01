@@ -63,6 +63,11 @@ function migrerHistoire(data: any): StoryState {
       },
     };
   }
+  if (migree.version < 3) {
+    // v2 -> v3 : ajout du pool de lore émergent (PNJ récurrents, lieux,
+    // factions, objets, événements marquants créés en cours de partie).
+    migree = { ...migree, version: 3, loreEmergent: migree.loreEmergent ?? [] };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

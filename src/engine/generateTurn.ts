@@ -16,6 +16,7 @@ import { appellerModele } from './openrouter';
 import { obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
+import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
 import {
   appliquerPatchLocal,
   determinerStrategie,
@@ -85,6 +86,11 @@ export async function calculerSelectionLore(
   appSettings: AppSettings,
 ): Promise<SelectionLore> {
   const texteRequete = construireTexteRequete(story, messageJoueur);
+  // Pipeline de lore émergent (brief Phase 2) : les entrées "permanent"
+  // (PNJ récurrents, lieux, factions... validées par reconfirmation)
+  // rejoignent le pool sélectionnable au même titre que le lorebook
+  // Elyndor statique.
+  const poolElyndor = [...LORE_ELYNDOR, ...convertirLoreEmergentPourSelection(story.loreEmergent)];
 
   const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }] = await Promise.all([
     assurerEmbeddings(
@@ -92,7 +98,7 @@ export async function calculerSelectionLore(
       appSettings,
     ),
     assurerEmbeddings(
-      LORE_ELYNDOR.map((e) => ({ id: e.id, contenu: e.contenu })),
+      poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
       appSettings,
     ),
     obtenirEmbeddings([texteRequete], appSettings),
@@ -100,7 +106,7 @@ export async function calculerSelectionLore(
 
   const metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
   const loreElyndor = selectionnerLoreElyndorSemantique(
-    LORE_ELYNDOR,
+    poolElyndor,
     texteRequete,
     vecteurRequete,
     vecteursElyndor,
@@ -225,17 +231,28 @@ export async function genererTour(
 
   const messages = [...story.messages, messageUtilisateur, messageAssistant];
   let memoire = story.memoire;
+  let loreEmergent = story.loreEmergent;
   if (doitMettreAJourMemoire(messages, memoire.dernierMessageIndexMaj)) {
-    memoire = await mettreAJourMemoire({
-      appSettings,
-      memoireActuelle: memoire,
-      messages,
-      personnageNom: story.meta.personnageNom,
-    });
+    // Même curseur, même cadence que la mémoire pour les deux pipelines.
+    const depuisIndex = memoire.dernierMessageIndexMaj;
+    [memoire, loreEmergent] = await Promise.all([
+      mettreAJourMemoire({
+        appSettings,
+        memoireActuelle: memoire,
+        messages,
+        personnageNom: story.meta.personnageNom,
+      }),
+      mettreAJourLoreEmergent({
+        appSettings,
+        existants: loreEmergent,
+        messages,
+        depuisIndex,
+      }),
+    ]);
   }
 
   return {
-    story: { ...story, messages, memoire },
+    story: { ...story, messages, memoire, loreEmergent },
     aEteCorrige,
     debugLore,
   };
