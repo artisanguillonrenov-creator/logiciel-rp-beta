@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,7 +15,12 @@ import type { RootStackParamList } from '../navigation/types';
 import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, saveStory, savePersona } from '../storage/storage';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import Bouton from '../components/Bouton';
+import Champ from '../components/Champ';
+import IndicateurEtapes from '../components/IndicateurEtapes';
+import Panneau from '../components/Panneau';
+import Separateur from '../components/Separateur';
 
 function genererIdPersona(): string {
   return `persona-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -174,51 +178,36 @@ export default function CreateScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.etapeIndicateur}>
-          Étape {etape + 1}/{ETAPES.length} — {ETAPES[etape]}
-        </Text>
-        <View style={styles.barreProgression}>
-          {ETAPES.map((_, i) => (
-            <View key={i} style={[styles.segmentProgression, i <= etape && styles.segmentProgressionActif]} />
-          ))}
-        </View>
+        <Text style={styles.etapeIndicateur}>{ETAPES[etape]}</Text>
+        <IndicateurEtapes total={ETAPES.length} actif={etape} />
+        <Separateur style={{ marginBottom: espacement.lg }} />
 
         {etape === 0 && (
           <>
             <Text style={styles.titre}>Histoire</Text>
-            <Text style={styles.label}>Lieu de départ</Text>
-            <TextInput
-              style={styles.champ}
-              value={lieu}
-              onChangeText={setLieu}
-              placeholder="Ex : Paris, royaume humain"
-              placeholderTextColor={couleurs.texteAtténué}
-            />
-            <Text style={styles.label}>Ambiance</Text>
-            <TextInput
-              style={[styles.champ, styles.champMultiligne]}
+            <Champ label="Lieu de départ" value={lieu} onChangeText={setLieu} placeholder="Ex : Paris, royaume humain" conteneurStyle={styles.champConteneur} />
+            <Champ
+              label="Ambiance"
               value={ambiance}
               onChangeText={setAmbiance}
               placeholder="Le ton, l'atmosphère recherchée pour cette histoire"
-              placeholderTextColor={couleurs.texteAtténué}
-              multiline
+              multiligne
+              conteneurStyle={styles.champConteneur}
             />
-            <Text style={styles.label}>Date / période (optionnel)</Text>
-            <TextInput
-              style={styles.champ}
+            <Champ
+              label="Date / période (optionnel)"
               value={dateChronique}
               onChangeText={setDateChronique}
               placeholder="Ex : début de saison des pluies"
-              placeholderTextColor={couleurs.texteAtténué}
+              conteneurStyle={styles.champConteneur}
             />
-            <Text style={styles.label}>Objectifs (optionnel)</Text>
-            <TextInput
-              style={[styles.champ, styles.champMultiligne]}
+            <Champ
+              label="Objectifs (optionnel)"
               value={objectifs}
               onChangeText={setObjectifs}
               placeholder="Ce que le personnage cherche à accomplir, en quelques phrases"
-              placeholderTextColor={couleurs.texteAtténué}
-              multiline
+              multiligne
+              conteneurStyle={styles.champConteneur}
             />
           </>
         )}
@@ -227,40 +216,41 @@ export default function CreateScreen({ navigation }: Props) {
           <>
             <Text style={styles.titre}>Personnage</Text>
             {personas.length > 0 && (
-              <Pressable style={styles.boutonSecondaire} onPress={() => setModalPersonasOuvert(true)}>
-                <Text style={styles.texteBoutonSecondaire}>Choisir depuis la bibliothèque</Text>
-              </Pressable>
+              <Bouton
+                titre="Choisir depuis la bibliothèque"
+                variante="secondaire"
+                onPress={() => setModalPersonasOuvert(true)}
+                style={styles.boutonAction}
+              />
             )}
-            <Text style={styles.label}>Nom du personnage</Text>
-            <TextInput
-              style={styles.champ}
+            <Champ
+              label="Nom du personnage"
               value={nom}
               onChangeText={(v) => {
                 setNom(v);
                 setMessagePersona('');
               }}
               placeholder="Ex : Aelis Corvenn"
-              placeholderTextColor={couleurs.texteAtténué}
+              conteneurStyle={styles.champConteneur}
             />
-            <Text style={styles.label}>Courte description</Text>
-            <TextInput
-              style={[styles.champ, styles.champMultiligne]}
+            <Champ
+              label="Courte description"
               value={description}
               onChangeText={(v) => {
                 setDescription(v);
                 setMessagePersona('');
               }}
               placeholder="Qui est ce personnage, en quelques phrases ?"
-              placeholderTextColor={couleurs.texteAtténué}
-              multiline
+              multiligne
+              conteneurStyle={styles.champConteneur}
             />
-            <Pressable
-              style={[styles.boutonSecondaire, (!nom.trim() || !description.trim()) && styles.boutonDesactive]}
+            <Bouton
+              titre="Enregistrer dans la bibliothèque"
+              variante="secondaire"
               onPress={enregistrerPersonaDansBibliotheque}
-              disabled={!nom.trim() || !description.trim()}
-            >
-              <Text style={styles.texteBoutonSecondaire}>Enregistrer dans la bibliothèque</Text>
-            </Pressable>
+              desactive={!nom.trim() || !description.trim()}
+              style={styles.boutonAction}
+            />
             {messagePersona ? <Text style={styles.aide}>{messagePersona}</Text> : null}
           </>
         )}
@@ -268,13 +258,12 @@ export default function CreateScreen({ navigation }: Props) {
         {etape === 2 && (
           <>
             <Text style={styles.titre}>Point de départ</Text>
-            <Text style={styles.label}>En une phrase</Text>
-            <TextInput
-              style={styles.champ}
+            <Champ
+              label="En une phrase"
               value={pointDeDepart}
               onChangeText={setPointDeDepart}
               placeholder="Ex : Elle arrive aux portes d'Elyndor à la nuit tombée."
-              placeholderTextColor={couleurs.texteAtténué}
+              conteneurStyle={styles.champConteneur}
             />
           </>
         )}
@@ -300,22 +289,22 @@ export default function CreateScreen({ navigation }: Props) {
         {etape === 4 && (
           <>
             <Text style={styles.titre}>Récapitulatif</Text>
-            <View style={styles.recapBloc}>
+            <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Histoire</Text>
               <Text style={styles.recapTexte}>{lieu} — {ambiance}</Text>
               {dateChronique ? <Text style={styles.recapTexte}>{dateChronique}</Text> : null}
               {objectifs ? <Text style={styles.recapTexte}>{objectifs}</Text> : null}
-            </View>
-            <View style={styles.recapBloc}>
+            </Panneau>
+            <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Personnage</Text>
               <Text style={styles.recapTexte}>{nom}</Text>
               <Text style={styles.recapTexte}>{description}</Text>
-            </View>
-            <View style={styles.recapBloc}>
+            </Panneau>
+            <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Point de départ</Text>
               <Text style={styles.recapTexte}>{pointDeDepart}</Text>
-            </View>
-            <View style={styles.recapBloc}>
+            </Panneau>
+            <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Préférences</Text>
               <Text style={styles.recapTexte}>
                 Créativité {OPTIONS_CREATIVITE.find((o) => o.valeur === creativite)?.label} · Longueur{' '}
@@ -323,30 +312,24 @@ export default function CreateScreen({ navigation }: Props) {
                 {OPTIONS_CURSEUR.find((o) => o.valeur === violence)?.label} · Romance{' '}
                 {OPTIONS_CURSEUR.find((o) => o.valeur === romance)?.label}
               </Text>
-            </View>
+            </Panneau>
           </>
         )}
 
         {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
 
+        <Separateur style={{ marginTop: espacement.lg, marginBottom: espacement.sm }} />
         <View style={styles.rangeeNavigation}>
-          {etape > 0 && (
-            <Pressable style={styles.boutonSecondaire} onPress={precedent}>
-              <Text style={styles.texteBoutonSecondaire}>Précédent</Text>
-            </Pressable>
-          )}
+          {etape > 0 && <Bouton titre="Précédent" variante="secondaire" onPress={precedent} style={{ flex: 1 }} />}
           {etape < ETAPES.length - 1 ? (
-            <Pressable
-              style={[styles.boutonPrincipal, !etapeValide && styles.boutonDesactive]}
-              onPress={suivant}
-              disabled={!etapeValide}
-            >
-              <Text style={styles.texteBoutonPrincipal}>Suivant</Text>
-            </Pressable>
+            <Bouton titre="Suivant" onPress={suivant} desactive={!etapeValide} style={{ flex: 1 }} />
           ) : (
-            <Pressable style={styles.boutonPrincipal} onPress={valider} disabled={enregistrement}>
-              <Text style={styles.texteBoutonPrincipal}>{enregistrement ? 'Création…' : "Commencer l'histoire"}</Text>
-            </Pressable>
+            <Bouton
+              titre={enregistrement ? 'Création…' : "Commencer l'histoire"}
+              onPress={valider}
+              desactive={enregistrement}
+              style={{ flex: 1 }}
+            />
           )}
         </View>
       </ScrollView>
@@ -366,9 +349,7 @@ export default function CreateScreen({ navigation }: Props) {
               </Pressable>
             )}
           />
-          <Pressable style={styles.boutonSecondaire} onPress={() => setModalPersonasOuvert(false)}>
-            <Text style={styles.texteBoutonSecondaire}>Fermer</Text>
-          </Pressable>
+          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalPersonasOuvert(false)} style={{ marginTop: espacement.md }} />
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -379,54 +360,29 @@ const styles = StyleSheet.create({
   container: {
     padding: espacement.lg,
     paddingTop: espacement.xl,
-    gap: espacement.xs,
   },
   etapeIndicateur: {
-    color: couleurs.texteAtténué,
+    ...stylePetitesCapitales,
+    color: couleurs.accentClair,
     fontSize: 12,
-    textTransform: 'uppercase',
-    marginBottom: espacement.xs,
-  },
-  barreProgression: {
-    flexDirection: 'row',
-    gap: espacement.xs,
-    marginBottom: espacement.lg,
-  },
-  segmentProgression: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: couleurs.bordure,
-  },
-  segmentProgressionActif: {
-    backgroundColor: couleurs.accent,
+    textAlign: 'center',
+    marginBottom: espacement.md,
   },
   titre: {
-    color: couleurs.texte,
+    color: couleurs.dore,
     fontFamily: polices.titre,
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
     marginBottom: espacement.md,
   },
   label: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 13,
+    fontSize: 12,
     marginTop: espacement.md,
     marginBottom: espacement.xs,
   },
-  champ: {
-    backgroundColor: couleurs.fondChampSaisie,
-    borderRadius: rayon.sm,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    color: couleurs.texte,
-    paddingHorizontal: espacement.sm,
-    paddingVertical: espacement.sm,
-    fontSize: 15,
-  },
-  champMultiligne: {
-    minHeight: 80,
-    textAlignVertical: 'top',
+  champConteneur: {
+    marginTop: espacement.md,
   },
   rangeeOptions: {
     flexDirection: 'row',
@@ -435,84 +391,55 @@ const styles = StyleSheet.create({
   option: {
     flex: 1,
     paddingVertical: espacement.sm,
-    borderRadius: rayon.sm,
     borderWidth: 1,
     borderColor: couleurs.bordure,
     alignItems: 'center',
   },
   optionActive: {
-    backgroundColor: couleurs.accent,
     borderColor: couleurs.accent,
+    backgroundColor: 'rgba(90, 172, 255, 0.10)',
   },
   texteOption: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 13,
+    fontSize: 12,
   },
   texteOptionActive: {
-    color: '#fff',
-    fontWeight: '600',
+    color: couleurs.accentClair,
   },
   aide: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    marginTop: espacement.md,
+  },
+  boutonAction: {
     marginTop: espacement.md,
   },
   recapBloc: {
-    backgroundColor: couleurs.fondCarte,
-    borderRadius: rayon.md,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    padding: espacement.md,
     marginBottom: espacement.sm,
   },
   recapLabel: {
+    ...stylePetitesCapitales,
     color: couleurs.accentClair,
     fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
     marginBottom: espacement.xs,
   },
   recapTexte: {
     color: couleurs.texte,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: polices.corps,
+    fontSize: 16,
+    lineHeight: 22,
   },
   erreur: {
     color: couleurs.danger,
+    fontFamily: polices.corps,
     marginTop: espacement.md,
   },
   rangeeNavigation: {
     flexDirection: 'row',
     gap: espacement.sm,
-    marginTop: espacement.lg,
     marginBottom: espacement.xl,
-  },
-  boutonPrincipal: {
-    flex: 1,
-    backgroundColor: couleurs.accent,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
-  },
-  boutonDesactive: {
-    opacity: 0.5,
-  },
-  texteBoutonPrincipal: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  boutonSecondaire: {
-    flex: 1,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-  },
-  texteBoutonSecondaire: {
-    color: couleurs.texte,
-    fontSize: 16,
   },
   modalContainer: {
     flex: 1,
@@ -527,12 +454,13 @@ const styles = StyleSheet.create({
   },
   nomPersona: {
     color: couleurs.texte,
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: polices.titre,
+    fontSize: 17,
   },
   descriptionPersona: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginTop: 2,
   },
 });

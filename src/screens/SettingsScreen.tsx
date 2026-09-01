@@ -1,23 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Linking,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
 import { verifierMiseAJour } from '../engine/updater';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { VERSION_APP } from '../version';
+import Bouton from '../components/Bouton';
+import Champ from '../components/Champ';
+import Panneau from '../components/Panneau';
+import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 
@@ -166,49 +160,45 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
       <Text style={styles.titre}>Réglages</Text>
+      <Separateur />
 
-      <Text style={styles.label}>Clé API OpenRouter</Text>
-      <TextInput
-        style={styles.champ}
+      <Champ
+        label="Clé API OpenRouter"
         value={apiKey}
         onChangeText={setApiKey}
         placeholder="sk-or-v1-…"
-        placeholderTextColor={couleurs.texteAtténué}
         secureTextEntry
         autoCapitalize="none"
         autoCorrect={false}
+        conteneurStyle={styles.champConteneur}
       />
       <Text style={styles.aide}>
         Ta clé reste uniquement sur cet appareil (stockage local). Elle n'est jamais codée en dur ni transmise ailleurs
         qu'à OpenRouter.
       </Text>
 
-      <Text style={styles.label}>Modèle</Text>
-      <TextInput
-        style={styles.champ}
+      <Champ
+        label="Modèle"
         value={model}
         onChangeText={setModel}
         placeholder="ex : anthropic/claude-sonnet-4.5"
-        placeholderTextColor={couleurs.texteAtténué}
         autoCapitalize="none"
         autoCorrect={false}
+        conteneurStyle={styles.champConteneur}
       />
-      <Pressable style={styles.boutonSecondaire} onPress={ouvrirSelecteurModeles}>
-        <Text style={styles.texteBoutonSecondaire}>Choisir parmi les modèles OpenRouter</Text>
-      </Pressable>
+      <Bouton titre="Choisir parmi les modèles OpenRouter" variante="secondaire" onPress={ouvrirSelecteurModeles} style={styles.boutonAction} />
 
-      <Text style={styles.label}>Clé API embeddings (secours, optionnelle)</Text>
-      <TextInput
-        style={styles.champ}
+      <Champ
+        label="Clé API embeddings (secours, optionnelle)"
         value={embeddingsApiKey}
         onChangeText={setEmbeddingsApiKey}
         placeholder="sk-…"
-        placeholderTextColor={couleurs.texteAtténué}
         secureTextEntry
         autoCapitalize="none"
         autoCorrect={false}
+        conteneurStyle={styles.champConteneur}
       />
       <Text style={styles.aide}>
         La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès
@@ -217,8 +207,8 @@ export default function SettingsScreen({ navigation }: Props) {
       </Text>
 
       <Text style={styles.label}>Profil de contenu</Text>
-      <Pressable style={styles.champ} onPress={ouvrirModalProfil}>
-        <Text style={{ color: couleurs.texte, fontSize: 15 }}>
+      <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>
+        <Text style={styles.texteChampFactice}>
           {profilContenu === 'adulte'
             ? 'Adulte'
             : profilContenu === 'grand_public'
@@ -234,39 +224,25 @@ export default function SettingsScreen({ navigation }: Props) {
 
       {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
 
-      <Pressable style={styles.boutonPrincipal} onPress={enregistrer} disabled={enregistrement}>
-        <Text style={styles.texteBoutonPrincipal}>{enregistrement ? 'Enregistrement…' : 'Enregistrer'}</Text>
-      </Pressable>
+      <Bouton titre={enregistrement ? 'Enregistrement…' : 'Enregistrer'} onPress={enregistrer} desactive={enregistrement} style={styles.boutonPrincipal} />
+
+      <Separateur />
 
       <Text style={styles.label}>Packs de contenu</Text>
-      <Pressable style={styles.boutonSecondaire} onPress={() => navigation.navigate('Plugins')}>
-        <Text style={styles.texteBoutonSecondaire}>Gérer les packs de contenu (plugins)</Text>
-      </Pressable>
+      <Bouton titre="Gérer les packs de contenu (plugins)" variante="secondaire" onPress={() => navigation.navigate('Plugins')} style={styles.boutonAction} />
 
       <Text style={styles.label}>À propos</Text>
       <Text style={styles.aide}>Version {VERSION_APP}</Text>
-      <Pressable style={styles.boutonSecondaire} onPress={verifierMaj} disabled={verificationMaj}>
-        <Text style={styles.texteBoutonSecondaire}>
-          {verificationMaj ? 'Vérification…' : 'Vérifier les mises à jour'}
-        </Text>
-      </Pressable>
+      <Bouton titre={verificationMaj ? 'Vérification…' : 'Vérifier les mises à jour'} variante="secondaire" onPress={verifierMaj} desactive={verificationMaj} style={styles.boutonAction} />
       {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
       {urlMaj ? (
-        <Pressable style={styles.boutonSecondaire} onPress={() => Linking.openURL(urlMaj)}>
-          <Text style={styles.texteBoutonSecondaire}>Ouvrir la dernière version</Text>
-        </Pressable>
+        <Bouton titre="Ouvrir la dernière version" variante="secondaire" onPress={() => Linking.openURL(urlMaj)} style={styles.boutonAction} />
       ) : null}
 
       <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
         <View style={styles.modalContainer}>
           <Text style={styles.titre}>Modèles OpenRouter</Text>
-          <TextInput
-            style={styles.champ}
-            value={rechercheModele}
-            onChangeText={setRechercheModele}
-            placeholder="Rechercher…"
-            placeholderTextColor={couleurs.texteAtténué}
-          />
+          <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder="Rechercher…" conteneurStyle={styles.champConteneur} />
           {chargementModeles ? (
             <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
           ) : erreurModeles ? (
@@ -290,9 +266,7 @@ export default function SettingsScreen({ navigation }: Props) {
               )}
             />
           )}
-          <Pressable style={styles.boutonSecondaire} onPress={() => setModalOuvert(false)}>
-            <Text style={styles.texteBoutonSecondaire}>Fermer</Text>
-          </Pressable>
+          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
         </View>
       </Modal>
 
@@ -300,47 +274,43 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={styles.modalContainer}>
           <Text style={styles.titre}>Profil de contenu</Text>
 
-          <Pressable
-            style={[styles.optionProfil, profilContenu === 'grand_public' && styles.optionProfilActive]}
-            onPress={choisirGrandPublic}
-          >
-            <Text style={styles.texteOptionProfil}>Grand public</Text>
-            <Text style={styles.aide}>Contenu explicite retiré et bloqué par le contrôleur de sortie.</Text>
+          <Pressable onPress={choisirGrandPublic}>
+            <Panneau style={[styles.optionProfil, profilContenu === 'grand_public' && styles.optionProfilActive]}>
+              <Text style={styles.texteOptionProfil}>Grand public</Text>
+              <Text style={styles.aide}>Contenu explicite retiré et bloqué par le contrôleur de sortie.</Text>
+            </Panneau>
           </Pressable>
 
-          <Pressable
-            style={[styles.optionProfil, profilContenu === 'adulte' && styles.optionProfilActive]}
-            onPress={() => {}}
-          >
+          <Panneau style={[styles.optionProfil, profilContenu === 'adulte' && styles.optionProfilActive]}>
             <Text style={styles.texteOptionProfil}>Adulte</Text>
             <Text style={styles.aide}>
               {codeDeverrouillage
                 ? 'Entre ton code pour activer.'
                 : 'Choisis un code (4 caractères minimum) — il te sera redemandé pour repasser en Adulte plus tard.'}
             </Text>
-            <TextInput
-              style={styles.champ}
+            <Champ
               value={codeSaisi}
               onChangeText={setCodeSaisi}
               placeholder="Code"
-              placeholderTextColor={couleurs.texteAtténué}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
+              conteneurStyle={styles.champConteneur}
             />
-            <Pressable style={styles.boutonSecondaire} onPress={choisirAdulte}>
-              <Text style={styles.texteBoutonSecondaire}>{codeDeverrouillage ? 'Déverrouiller' : 'Définir ce code et activer'}</Text>
-            </Pressable>
-          </Pressable>
+            <Bouton
+              titre={codeDeverrouillage ? 'Déverrouiller' : 'Définir ce code et activer'}
+              variante="secondaire"
+              onPress={choisirAdulte}
+              style={styles.boutonAction}
+            />
+          </Panneau>
 
           {erreurProfil ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurProfil}</Text> : null}
 
-          <Pressable style={styles.boutonSecondaire} onPress={() => setModalProfilOuvert(false)}>
-            <Text style={styles.texteBoutonSecondaire}>Fermer</Text>
-          </Pressable>
+          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalProfilOuvert(false)} style={styles.boutonAction} />
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -352,60 +322,49 @@ const styles = StyleSheet.create({
     paddingTop: espacement.xl,
   },
   titre: {
-    color: couleurs.texte,
-    fontFamily: polices.titre,
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: espacement.md,
+    color: couleurs.dore,
+    fontFamily: polices.display,
+    fontSize: 26,
+    letterSpacing: 1,
   },
   label: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 13,
+    fontSize: 12,
     marginTop: espacement.md,
     marginBottom: espacement.xs,
   },
-  champ: {
+  champConteneur: {
+    marginTop: espacement.md,
+  },
+  champFactice: {
     backgroundColor: couleurs.fondChampSaisie,
-    borderRadius: rayon.sm,
     borderWidth: 1,
     borderColor: couleurs.bordure,
-    color: couleurs.texte,
     paddingHorizontal: espacement.sm,
     paddingVertical: espacement.sm,
-    fontSize: 15,
+  },
+  texteChampFactice: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 16,
   },
   aide: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginTop: espacement.xs,
   },
   statut: {
     color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
     marginTop: espacement.md,
   },
   boutonPrincipal: {
-    backgroundColor: couleurs.accent,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
     marginTop: espacement.lg,
   },
-  texteBoutonPrincipal: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  boutonSecondaire: {
-    borderRadius: rayon.md,
-    paddingVertical: espacement.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
+  boutonAction: {
     marginTop: espacement.sm,
-  },
-  texteBoutonSecondaire: {
-    color: couleurs.texte,
-    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
@@ -420,17 +379,15 @@ const styles = StyleSheet.create({
   },
   nomModele: {
     color: couleurs.texte,
-    fontSize: 15,
+    fontFamily: polices.corps,
+    fontSize: 16,
   },
   idModele: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 13,
   },
   optionProfil: {
-    borderRadius: rayon.md,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    padding: espacement.md,
     marginTop: espacement.md,
   },
   optionProfilActive: {
@@ -438,8 +395,8 @@ const styles = StyleSheet.create({
   },
   texteOptionProfil: {
     color: couleurs.texte,
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: polices.titre,
+    fontSize: 18,
     marginBottom: espacement.xs,
   },
 });

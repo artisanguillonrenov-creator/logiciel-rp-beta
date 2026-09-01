@@ -5,7 +5,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { StoryMeta } from '../types';
 import { getStoriesIndex } from '../storage/storage';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import Bouton from '../components/Bouton';
+import Panneau from '../components/Panneau';
+import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Demarrage'>;
 
@@ -26,16 +29,19 @@ export default function StartScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titre}>Bêta RP</Text>
-      <Text style={styles.sousTitre}>Le logiciel porte les règles et la mémoire. Le modèle ne fournit que le langage.</Text>
+      <View style={styles.entete}>
+        <Text style={styles.titre}>ELYNDOR</Text>
+        <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
+        <Separateur style={styles.separateur} />
+      </View>
 
-      <Pressable style={styles.boutonPrincipal} onPress={() => navigation.navigate('Creation')}>
-        <Text style={styles.texteBoutonPrincipal}>Nouvelle histoire</Text>
-      </Pressable>
-
-      <Pressable style={styles.boutonSecondaire} onPress={() => navigation.navigate('Reglages')}>
-        <Text style={styles.texteBoutonSecondaire}>Réglages</Text>
-      </Pressable>
+      <Bouton titre="Nouvelle histoire" onPress={() => navigation.navigate('Creation')} style={styles.bouton} />
+      <Bouton
+        titre="Réglages"
+        variante="secondaire"
+        onPress={() => navigation.navigate('Reglages')}
+        style={[styles.bouton, { marginBottom: espacement.lg }]}
+      />
 
       {histoires.length > 0 && (
         <>
@@ -45,17 +51,16 @@ export default function StartScreen({ navigation }: Props) {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ gap: espacement.sm }}
             renderItem={({ item }) => (
-              <Pressable
-                style={styles.carteHistoire}
-                onPress={() => navigation.navigate('Conversation', { storyId: item.id })}
-              >
-                <Text style={styles.nomPersonnage}>
-                  {item.brancheDeId ? '🌿 ' : ''}
-                  {item.personnageNom}
-                </Text>
-                <Text style={styles.descriptionPersonnage} numberOfLines={2}>
-                  {item.pointDeDepart}
-                </Text>
+              <Pressable onPress={() => navigation.navigate('Conversation', { storyId: item.id })}>
+                <Panneau>
+                  <Text style={styles.nomPersonnage}>
+                    {item.brancheDeId ? '🌿 ' : ''}
+                    {item.personnageNom}
+                  </Text>
+                  <Text style={styles.descriptionPersonnage} numberOfLines={2}>
+                    {item.pointDeDepart}
+                  </Text>
+                </Panneau>
               </Pressable>
             )}
           />
@@ -72,63 +77,44 @@ const styles = StyleSheet.create({
     padding: espacement.lg,
     paddingTop: espacement.xl * 2,
   },
+  entete: {
+    alignItems: 'center',
+    marginBottom: espacement.xl,
+  },
   titre: {
-    color: couleurs.texte,
-    fontFamily: polices.titre,
-    fontSize: 32,
-    fontWeight: '700',
+    color: couleurs.dore,
+    fontFamily: polices.display,
+    fontSize: 40,
+    letterSpacing: 3,
   },
   sousTitre: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 14,
+    fontSize: 12,
     marginTop: espacement.xs,
-    marginBottom: espacement.lg,
   },
-  boutonPrincipal: {
-    backgroundColor: couleurs.accent,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
+  separateur: {
+    width: 160,
+    marginTop: espacement.md,
+  },
+  bouton: {
     marginBottom: espacement.sm,
-  },
-  texteBoutonPrincipal: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  boutonSecondaire: {
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    marginBottom: espacement.lg,
-  },
-  texteBoutonSecondaire: {
-    color: couleurs.texte,
-    fontSize: 16,
   },
   sectionTitre: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 13,
-    textTransform: 'uppercase',
+    fontSize: 12,
     marginBottom: espacement.sm,
-  },
-  carteHistoire: {
-    backgroundColor: couleurs.fondCarte,
-    borderRadius: rayon.md,
-    padding: espacement.md,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
   },
   nomPersonnage: {
     color: couleurs.texte,
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: polices.titre,
+    fontSize: 18,
   },
   descriptionPersonnage: {
     color: couleurs.texteAtténué,
-    fontSize: 13,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginTop: 2,
   },
 });

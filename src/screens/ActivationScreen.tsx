@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getSettings, saveSettings } from '../storage/storage';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { VERSION_APP } from '../version';
+import Bouton from '../components/Bouton';
+import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Activation'>;
 
@@ -25,8 +27,10 @@ export default function ActivationScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.titre}>Bêta RP</Text>
+      <Text style={styles.titre}>ELYNDOR</Text>
+      <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
       <Text style={styles.version}>Version {VERSION_APP}</Text>
+      <Separateur style={styles.separateur} />
 
       <Text style={styles.paragraphe}>
         Cette application est une bêta gratuite. Elle utilise ta propre clé API OpenRouter (configurée dans
@@ -41,9 +45,7 @@ export default function ActivationScreen({ navigation }: Props) {
         Tes histoires, réglages et personnages restent stockés uniquement sur cet appareil.
       </Text>
 
-      <Pressable style={styles.bouton} onPress={accepter} disabled={enregistrement}>
-        <Text style={styles.texteBouton}>{enregistrement ? '…' : "J'ai compris, commencer"}</Text>
-      </Pressable>
+      <Bouton titre="J'ai compris, commencer" onPress={accepter} desactive={enregistrement} style={styles.bouton} />
     </ScrollView>
   );
 }
@@ -57,35 +59,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titre: {
-    color: couleurs.texte,
-    fontFamily: polices.titre,
-    fontSize: 32,
-    fontWeight: '700',
+    color: couleurs.dore,
+    fontFamily: polices.display,
+    fontSize: 36,
+    letterSpacing: 3,
     textAlign: 'center',
+  },
+  sousTitre: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteAtténué,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: espacement.xs,
   },
   version: {
     color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
     fontSize: 13,
     textAlign: 'center',
     marginTop: espacement.xs,
+  },
+  separateur: {
+    width: 160,
+    alignSelf: 'center',
+    marginTop: espacement.md,
     marginBottom: espacement.lg,
   },
   paragraphe: {
     color: couleurs.texte,
-    fontSize: 14,
-    lineHeight: 21,
+    fontFamily: polices.corps,
+    fontSize: 16,
+    lineHeight: 23,
     marginBottom: espacement.md,
   },
   bouton: {
-    backgroundColor: couleurs.accent,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
     marginTop: espacement.lg,
-  },
-  texteBouton: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

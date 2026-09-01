@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { Plugin } from '../types';
 import { getPlugins, installerPlugin, supprimerPlugin } from '../storage/storage';
 import { analyserPackJson } from '../engine/plugins';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import Bouton from '../components/Bouton';
+import Champ from '../components/Champ';
+import Panneau from '../components/Panneau';
+import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Plugins'>;
 
@@ -56,53 +61,42 @@ export default function PluginsScreen({}: Props) {
       ListHeaderComponent={
         <>
           <Text style={styles.titre}>Packs de contenu</Text>
+          <Separateur />
           <Text style={styles.aide}>
             Ajoute des entrées de lore supplémentaires (PNJ, lieux, objets…) sans mise à jour de l'application.
             Colle un JSON au format {'[{ "titre": "…", "contenu": "…" }]'}. Aucun code n'est exécuté — un pack
             n'est que du texte rejoint au reste du lore.
           </Text>
 
-          <Text style={styles.label}>Nom du pack</Text>
-          <TextInput
-            style={styles.champ}
-            value={nom}
-            onChangeText={setNom}
-            placeholder="Ex : Extension Port-Cendres"
-            placeholderTextColor={couleurs.texteAtténué}
-          />
-          <Text style={styles.label}>Contenu JSON</Text>
-          <TextInput
-            style={[styles.champ, styles.champMultiligne]}
+          <Champ label="Nom du pack" value={nom} onChangeText={setNom} placeholder="Ex : Extension Port-Cendres" conteneurStyle={styles.champConteneur} />
+          <Champ
+            label="Contenu JSON"
             value={texteJson}
             onChangeText={setTexteJson}
             placeholder={EXEMPLE_JSON}
-            placeholderTextColor={couleurs.texteAtténué}
-            multiline
+            multiligne
             autoCapitalize="none"
             autoCorrect={false}
+            conteneurStyle={styles.champConteneur}
           />
           {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
           {message ? <Text style={styles.statut}>{message}</Text> : null}
-          <Pressable style={styles.bouton} onPress={ajouter}>
-            <Text style={styles.texteBouton}>Installer le pack</Text>
-          </Pressable>
+          <Bouton titre="Installer le pack" onPress={ajouter} style={styles.boutonInstaller} />
 
           <Text style={[styles.label, { marginTop: espacement.lg }]}>Packs installés</Text>
           {plugins.length === 0 && <Text style={styles.aide}>Aucun pack installé pour l'instant.</Text>}
         </>
       }
       renderItem={({ item }) => (
-        <View style={styles.cartePlugin}>
+        <Panneau style={styles.cartePlugin}>
           <View style={{ flex: 1 }}>
             <Text style={styles.nomPlugin}>{item.nom}</Text>
             <Text style={styles.descriptionPlugin}>
               {item.entrees.length} entrée{item.entrees.length > 1 ? 's' : ''}
             </Text>
           </View>
-          <Pressable style={styles.boutonRetirer} onPress={() => retirer(item.id)}>
-            <Text style={styles.texteBoutonRetirer}>Retirer</Text>
-          </Pressable>
-        </View>
+          <Bouton titre="Retirer" variante="secondaire" onPress={() => retirer(item.id)} texteStyle={{ color: couleurs.danger }} />
+        </Panneau>
       )}
     />
   );
@@ -114,88 +108,55 @@ const styles = StyleSheet.create({
     backgroundColor: couleurs.fond,
   },
   titre: {
-    color: couleurs.texte,
-    fontFamily: polices.titre,
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: espacement.sm,
+    color: couleurs.dore,
+    fontFamily: polices.display,
+    fontSize: 24,
+    letterSpacing: 1,
   },
   aide: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginBottom: espacement.md,
   },
   label: {
+    ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 13,
-    marginTop: espacement.sm,
+    fontSize: 12,
     marginBottom: espacement.xs,
   },
-  champ: {
-    backgroundColor: couleurs.fondChampSaisie,
-    borderRadius: rayon.sm,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    color: couleurs.texte,
-    paddingHorizontal: espacement.sm,
-    paddingVertical: espacement.sm,
-    fontSize: 15,
-  },
-  champMultiligne: {
-    minHeight: 120,
-    textAlignVertical: 'top',
+  champConteneur: {
+    marginBottom: espacement.sm,
   },
   erreur: {
     color: couleurs.danger,
-    fontSize: 13,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginTop: espacement.sm,
   },
   statut: {
     color: couleurs.accentClair,
-    fontSize: 13,
+    fontFamily: polices.corps,
+    fontSize: 14,
     marginTop: espacement.sm,
   },
-  bouton: {
-    backgroundColor: couleurs.accent,
-    borderRadius: rayon.md,
-    paddingVertical: espacement.md,
-    alignItems: 'center',
+  boutonInstaller: {
     marginTop: espacement.md,
-  },
-  texteBouton: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
   },
   cartePlugin: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: couleurs.fondCarte,
-    borderRadius: rayon.md,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    padding: espacement.md,
     marginBottom: espacement.sm,
   },
   nomPlugin: {
     color: couleurs.texte,
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: polices.titre,
+    fontSize: 17,
   },
   descriptionPlugin: {
     color: couleurs.texteAtténué,
-    fontSize: 12,
+    fontFamily: polices.corps,
+    fontSize: 13,
     marginTop: 2,
-  },
-  boutonRetirer: {
-    borderRadius: rayon.sm,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    paddingHorizontal: espacement.sm,
-    paddingVertical: espacement.xs,
-  },
-  texteBoutonRetirer: {
-    color: couleurs.danger,
-    fontSize: 12,
   },
 });

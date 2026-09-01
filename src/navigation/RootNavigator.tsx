@@ -50,8 +50,9 @@ export default function RootNavigator() {
         initialRouteName={betaAcceptee ? 'Demarrage' : 'Activation'}
         screenOptions={{
           headerStyle: { backgroundColor: couleurs.fond },
-          headerTintColor: couleurs.texte,
-          headerTitleStyle: { fontFamily: polices.titre },
+          headerTintColor: couleurs.accentClair,
+          headerTitleStyle: { fontFamily: polices.titre, color: couleurs.dore, fontSize: 20 },
+          headerShadowVisible: false,
         }}
       >
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
