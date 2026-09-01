@@ -66,6 +66,9 @@ function construireTexteRequete(story: StoryState, messageJoueur: string): strin
   return [
     story.meta.personnageDescription,
     story.meta.pointDeDepart,
+    story.meta.contexte.lieu,
+    story.meta.contexte.ambiance,
+    story.meta.contexte.objectifs,
     story.memoire.resume,
     ...story.memoire.faits.map((f) => f.texte),
     ...story.messages.slice(-4).map((m) => m.content),

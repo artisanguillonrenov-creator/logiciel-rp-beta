@@ -28,6 +28,29 @@ function instructionLongueur(longueur: StorySettings['longueur']): string {
   }
 }
 
+function libelleCurseur(niveau: StorySettings['violence']): string {
+  switch (niveau) {
+    case 'faible':
+      return 'suggérée plutôt que montrée, jamais le centre de la scène';
+    case 'eleve':
+      return 'pleinement montrée, sans retenue quand la scène l’appelle';
+    default:
+      return 'présente et décrite quand la scène l’appelle, sans excès systématique';
+  }
+}
+
+function formaterContexte(meta: StoryMeta): string {
+  const { lieu, ambiance, dateChronique, objectifs } = meta.contexte;
+  const lignes = [
+    lieu && `Lieu : ${lieu}`,
+    ambiance && `Ambiance : ${ambiance}`,
+    dateChronique && `Période : ${dateChronique}`,
+    objectifs && `Objectifs du personnage : ${objectifs}`,
+  ].filter(Boolean);
+  if (lignes.length === 0) return '';
+  return `\n\n[CONTEXTE DE L'HISTOIRE]\n${lignes.join('\n')}`;
+}
+
 export interface ContexteConstruction {
   meta: StoryMeta;
   settings: StorySettings;
@@ -57,6 +80,7 @@ ${REGLES_IMMUABLES}
 Nom : ${ctx.meta.personnageNom}
 Description : ${ctx.meta.personnageDescription}
 Point de départ de l'histoire : ${ctx.meta.pointDeDepart}
+${formaterContexte(ctx.meta)}
 
 [RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]
 ${ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant."}
@@ -67,6 +91,8 @@ ${metamoteursTexte}${loreTexte}
 
 [STYLE]
 ${instructionLongueur(ctx.settings.longueur)}
+Violence : ${libelleCurseur(ctx.settings.violence)}.
+Romance : ${libelleCurseur(ctx.settings.romance)}.
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}
 ${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 }

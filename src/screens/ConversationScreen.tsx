@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -37,6 +38,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [debugLore, setDebugLore] = useState<DebugLore | null>(null);
   const [debugOuvert, setDebugOuvert] = useState(false);
   const listeRef = useRef<FlatList<Message>>(null);
+
+  // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
+  // objectifs en prose, consultable et modifiable en cours de partie.
+  const [modalContexteOuvert, setModalContexteOuvert] = useState(false);
+  const [lieuEdit, setLieuEdit] = useState('');
+  const [ambianceEdit, setAmbianceEdit] = useState('');
+  const [dateEdit, setDateEdit] = useState('');
+  const [objectifsEdit, setObjectifsEdit] = useState('');
 
   useEffect(() => {
     Promise.all([getStory(storyId), getSettings()]).then(([s, settings]) => {
@@ -116,6 +125,34 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings, enCours]);
 
+  function ouvrirContexte() {
+    if (!story) return;
+    setLieuEdit(story.meta.contexte.lieu);
+    setAmbianceEdit(story.meta.contexte.ambiance);
+    setDateEdit(story.meta.contexte.dateChronique);
+    setObjectifsEdit(story.meta.contexte.objectifs);
+    setModalContexteOuvert(true);
+  }
+
+  async function enregistrerContexte() {
+    if (!story) return;
+    const storyMaj: StoryState = {
+      ...story,
+      meta: {
+        ...story.meta,
+        contexte: {
+          lieu: lieuEdit.trim(),
+          ambiance: ambianceEdit.trim(),
+          dateChronique: dateEdit.trim(),
+          objectifs: objectifsEdit.trim(),
+        },
+      },
+    };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setModalContexteOuvert(false);
+  }
+
   if (!story || !appSettings) {
     return (
       <View style={[styles.container, { justifyContent: 'center' }]}>
@@ -143,6 +180,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Text style={styles.texteBandeau}>Profil de contenu non déclaré — appuie ici pour aller dans Réglages.</Text>
           </Pressable>
         )}
+
+        <Pressable style={styles.bandeauContexte} onPress={ouvrirContexte}>
+          <Text style={styles.texteBandeauContexte} numberOfLines={1}>
+            📍 {story.meta.contexte.lieu || 'Contexte de l’histoire'}
+            {story.meta.contexte.ambiance ? ` — ${story.meta.contexte.ambiance}` : ''}
+          </Text>
+        </Pressable>
 
         {story.messages.length === 0 ? (
           <View style={styles.centreVide}>
@@ -222,6 +266,53 @@ export default function ConversationScreen({ route, navigation }: Props) {
           </View>
         </View>
       </View>
+
+      <Modal visible={modalContexteOuvert} animationType="slide" onRequestClose={() => setModalContexteOuvert(false)}>
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
+          <Text style={styles.titreModal}>Contexte de l'histoire</Text>
+
+          <Text style={styles.labelModal}>Lieu</Text>
+          <TextInput
+            style={styles.champModal}
+            value={lieuEdit}
+            onChangeText={setLieuEdit}
+            placeholderTextColor={couleurs.texteAtténué}
+          />
+
+          <Text style={styles.labelModal}>Ambiance</Text>
+          <TextInput
+            style={[styles.champModal, styles.champModalMultiligne]}
+            value={ambianceEdit}
+            onChangeText={setAmbianceEdit}
+            multiline
+            placeholderTextColor={couleurs.texteAtténué}
+          />
+
+          <Text style={styles.labelModal}>Date / période</Text>
+          <TextInput
+            style={styles.champModal}
+            value={dateEdit}
+            onChangeText={setDateEdit}
+            placeholderTextColor={couleurs.texteAtténué}
+          />
+
+          <Text style={styles.labelModal}>Objectifs</Text>
+          <TextInput
+            style={[styles.champModal, styles.champModalMultiligne]}
+            value={objectifsEdit}
+            onChangeText={setObjectifsEdit}
+            multiline
+            placeholderTextColor={couleurs.texteAtténué}
+          />
+
+          <Pressable style={styles.boutonEnvoyer} onPress={enregistrerContexte}>
+            <Text style={styles.texteEnvoyer}>Enregistrer</Text>
+          </Pressable>
+          <Pressable style={styles.boutonRegenerer} onPress={() => setModalContexteOuvert(false)}>
+            <Text style={styles.texteBoutonRegenerer}>Fermer sans enregistrer</Text>
+          </Pressable>
+        </ScrollView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -301,6 +392,48 @@ const styles = StyleSheet.create({
     color: couleurs.texteAtténué,
     fontSize: 12,
     lineHeight: 18,
+  },
+  bandeauContexte: {
+    paddingHorizontal: espacement.md,
+    paddingVertical: espacement.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+  },
+  texteBandeauContexte: {
+    color: couleurs.accentClair,
+    fontSize: 12,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: couleurs.fond,
+    padding: espacement.lg,
+    paddingTop: espacement.xl,
+  },
+  titreModal: {
+    color: couleurs.texte,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: espacement.md,
+  },
+  labelModal: {
+    color: couleurs.texteAtténué,
+    fontSize: 13,
+    marginTop: espacement.md,
+    marginBottom: espacement.xs,
+  },
+  champModal: {
+    backgroundColor: couleurs.fondChampSaisie,
+    borderRadius: rayon.sm,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    color: couleurs.texte,
+    paddingHorizontal: espacement.sm,
+    paddingVertical: espacement.sm,
+    fontSize: 15,
+  },
+  champModalMultiligne: {
+    minHeight: 70,
+    textAlignVertical: 'top',
   },
   bandeauAlerte: {
     backgroundColor: '#3a2a1f',
