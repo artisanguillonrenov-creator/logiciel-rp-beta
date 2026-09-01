@@ -44,6 +44,15 @@ export async function genererTour(
   const metamoteursSelectionnes = selectionnerMetamoteurs(METAMOTEURS, texteContexte);
   const loreElyndor = selectionnerLoreElyndor(LORE_ELYNDOR, texteContexte);
 
+  // TODO(debug): log temporaire, à retirer après la bêta.
+  console.log(
+    '[DEBUG lore]',
+    JSON.stringify({
+      metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
+      loreElyndor: loreElyndor.map((e) => e.titre),
+    }),
+  );
+
   const ctxBase = {
     meta: story.meta,
     settings: story.settings,
