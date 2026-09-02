@@ -192,8 +192,8 @@ export default function CreateScreen({ navigation }: Props) {
   const mondeActif = MONDES.find((m) => m.id === mondeSelectionne);
 
   const etapeValide = [
-    lieu.trim().length > 0,
-    nom.trim().length > 0 && description.trim().length > 0,
+    true,
+    nom.trim().length > 0 && description.trim().length > 0 && lieu.trim().length > 0,
     pointDeDepart.trim().length > 0,
     true,
     true,
@@ -282,10 +282,6 @@ export default function CreateScreen({ navigation }: Props) {
                 </Panneau>
               )}
             </View>
-
-            <Separateur style={{ marginVertical: espacement.lg }} />
-
-            <Champ label="Lieu de départ" value={lieu} onChangeText={setLieu} placeholder="Ex : Paris, royaume humain" conteneurStyle={styles.champConteneur} />
           </>
         )}
 
@@ -335,6 +331,13 @@ export default function CreateScreen({ navigation }: Props) {
               onChangeText={setApparence}
               placeholder="Silhouette, visage, tenue, signes distinctifs…"
               multiligne
+              conteneurStyle={styles.champConteneur}
+            />
+            <Champ
+              label="Lieu de départ"
+              value={lieu}
+              onChangeText={setLieu}
+              placeholder="Ex : Paris, royaume humain"
               conteneurStyle={styles.champConteneur}
             />
             <Champ
