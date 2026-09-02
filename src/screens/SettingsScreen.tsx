@@ -255,8 +255,7 @@ export default function SettingsScreen({ navigation }: Props) {
         secours pour cette fonction.
       </Text>
 
-      {/* Moteur local temporairement désactivé (voir src/engine/localInference.ts) — masqué pour ne pas proposer une option qui échouerait systématiquement. */}
-      {false && Platform.OS !== 'web' && (
+      {Platform.OS !== 'web' && (
         <>
           <Text style={styles.label}>Moteur d'inférence</Text>
           <View style={styles.rangeeMoteur}>
