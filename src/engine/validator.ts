@@ -264,7 +264,7 @@ export async function reparerReponse({
     model,
     moteurInference,
     temperature: 0.3,
-    maxTokens: Math.max(300, Math.ceil(reponse.length / 3)),
+    maxTokens: Math.max(500, Math.ceil(reponse.length / 3)),
     messages: [
       {
         role: 'system',

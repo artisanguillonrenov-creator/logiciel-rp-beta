@@ -334,30 +334,44 @@ export async function genererTour(
   const strategie = determinerStrategie(rapport);
   let aEteCorrige = strategie !== 'aucune';
 
+  // La réparation est un raffinement, pas une condition pour que le joueur
+  // reçoive une réponse : si l'appel de correction lui-même échoue (réseau,
+  // réponse vide...), on garde la réponse initiale non corrigée plutôt que
+  // de faire échouer tout le tour pour un souci secondaire — même logique
+  // que validerReponseLLM, qui n'interrompt jamais la génération sur un
+  // échec du vérificateur.
   if (strategie === 'patch_local') {
     reponse = appliquerPatchLocal(reponse, rapport);
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
-    reponse = await reparerReponse({
-      apiKey: appSettings.openRouterApiKey,
-      model: modelePourAppel,
-      moteurInference: appSettings.moteurInference,
-      reponse,
-      rapport,
-      partiel: strategie === 'regeneration_partielle',
-    });
+    try {
+      reponse = await reparerReponse({
+        apiKey: appSettings.openRouterApiKey,
+        model: modelePourAppel,
+        moteurInference: appSettings.moteurInference,
+        reponse,
+        rapport,
+        partiel: strategie === 'regeneration_partielle',
+      });
+    } catch {
+      aEteCorrige = false;
+    }
   } else if (strategie === 'regeneration_complete') {
     const noteCorrection = `La tentative précédente a été rejetée pour la ou les raisons suivantes : ${rapport.checks
       .filter((c) => !c.ok)
       .map((c) => c.raison)
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
-    reponse = await appellerModele({
-      apiKey: appSettings.openRouterApiKey,
-      model: modelePourAppel,
-      moteurInference: appSettings.moteurInference,
-      messages: construireMessages({ ...ctxBase, noteCorrection }),
-      temperature,
-      maxTokens,
-    });
+    try {
+      reponse = await appellerModele({
+        apiKey: appSettings.openRouterApiKey,
+        model: modelePourAppel,
+        moteurInference: appSettings.moteurInference,
+        messages: construireMessages({ ...ctxBase, noteCorrection }),
+        temperature,
+        maxTokens,
+      });
+    } catch {
+      aEteCorrige = false;
+    }
   }
 
   const messageUtilisateur: Message = {

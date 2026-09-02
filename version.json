@@ -1,5 +1,5 @@
 {
-  "version": "1.11.1",
+  "version": "1.11.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "notes": "Correction : le message pouvait ne pas s'envoyer avec une erreur \"réponse vide reçue du modèle\" quand OpenRouter renvoyait occasionnellement une complétion vide. Nouvelles tentatives automatiques avant d'abandonner."
+  "notes": "Correction plus ciblée du message qui ne s'envoyait pas (\"réponse vide reçue du modèle\") : l'appel de correction automatique (déclenché dès qu'un souci de continuité est détecté, souvent au 2e message) pouvait faire échouer tout le tour s'il échouait lui-même. Il ne bloque plus la réponse : en cas d'échec, la réponse initiale non corrigée est gardée plutôt que de tout perdre."
 }
