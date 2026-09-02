@@ -1,5 +1,6 @@
 {
   "version": "1.11.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
+  "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/84117dae-0ad2-4095-8846-d8974dc5605f",
   "notes": "Correction plus ciblée du message qui ne s'envoyait pas (\"réponse vide reçue du modèle\") : l'appel de correction automatique (déclenché dès qu'un souci de continuité est détecté, souvent au 2e message) pouvait faire échouer tout le tour s'il échouait lui-même. Il ne bloque plus la réponse : en cas d'échec, la réponse initiale non corrigée est gardée plutôt que de tout perdre."
 }
