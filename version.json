@@ -1,7 +1,7 @@
 {
   "version": "1.11.3",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
-  "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/26bc0d4d-ddf1-4355-ba4d-fcfa6ce7c62d",
-  "versionAndroid": "1.11.2",
+  "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/88993f8f-482c-45db-bd6e-12ce77a6f9a2",
+  "versionAndroid": "1.11.3",
   "notes": "Correction de l'import du modèle local : le sélecteur de fichiers Android renvoie parfois un identifiant interne au lieu du vrai nom du fichier, ce qui faisait rejeter à tort un fichier .litertlm valide."
 }
