@@ -23,6 +23,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "experiments": {
+      "baseUrl": "/logiciel-rp-beta"
+    },
     "plugins": [
       "expo-font",
       "./plugins/withLitertKotlinSkipVersionCheck.js"
