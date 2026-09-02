@@ -14,6 +14,17 @@ import type { AppelOutil, ChatMessage, ToolDefinition } from './openrouter';
 // casse le build web existant.
 export class ErreurMoteurLocal extends Error {}
 
+// Le pont natif (Kotlin) peut lever ses propres exceptions (mémoire
+// insuffisante, échec d'initialisation du GPU, format de modèle invalide,
+// etc.) qui arrivent en JS comme des erreurs génériques, pas des
+// ErreurMoteurLocal — sans ce filet, leur message se perdait et l'écran de
+// conversation retombait sur un texte générique ne disant rien de la
+// cause réelle.
+function convertirErreurNative(e: unknown, contexte: string): ErreurMoteurLocal {
+  const detail = e instanceof Error ? e.message : String(e);
+  return new ErreurMoteurLocal(`${contexte} : ${detail}`);
+}
+
 // L'API d'expo-litert-lm fixe température/topK/maxTokens au CHARGEMENT du
 // modèle, pas par appel (contrairement à OpenRouter où chaque pipeline
 // module sa température) — limitation de la lib, pas un choix : on charge
@@ -56,12 +67,16 @@ async function assurerModeleCharge(): Promise<void> {
       }
       modeleCharge = null;
     }
-    await loadLiteRtModel(chemin, {
-      maxTokens: MAX_TOKENS_LOCAL,
-      topK: TOP_K_LOCAL,
-      temperature: TEMPERATURE_LOCAL,
-      preferredBackend: 'gpu',
-    });
+    try {
+      await loadLiteRtModel(chemin, {
+        maxTokens: MAX_TOKENS_LOCAL,
+        topK: TOP_K_LOCAL,
+        temperature: TEMPERATURE_LOCAL,
+        preferredBackend: 'gpu',
+      });
+    } catch (e) {
+      throw convertirErreurNative(e, 'Échec du chargement du modèle local');
+    }
     modeleCharge = chemin;
   })();
 
@@ -108,7 +123,12 @@ export async function genererTexteLocal(messages: ChatMessage[]): Promise<string
   }
   await assurerModeleCharge();
 
-  const reponse = await generateLiteRtResponse(formaterPromptGemma(messages));
+  let reponse: string;
+  try {
+    reponse = await generateLiteRtResponse(formaterPromptGemma(messages));
+  } catch (e) {
+    throw convertirErreurNative(e, 'Échec de la génération locale');
+  }
   const nettoyee = reponse.replace(/<end_of_turn>\s*$/i, '').trim();
   if (!nettoyee) {
     throw new ErreurMoteurLocal('Réponse vide reçue du modèle local.');
