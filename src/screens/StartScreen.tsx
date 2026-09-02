@@ -7,6 +7,7 @@ import type { StoryMeta } from '../types';
 import { getStoriesIndex } from '../storage/storage';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
 import Separateur from '../components/Separateur';
+import FondAtmospherique from '../components/FondAtmospherique';
 import { VERSION_APP } from '../version';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Demarrage'>;
@@ -70,7 +71,7 @@ export default function StartScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <FondAtmospherique style={styles.container}>
       <View style={styles.entete}>
         <Text style={styles.titre}>ELYNDOR</Text>
         <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
@@ -91,14 +92,12 @@ export default function StartScreen({ navigation }: Props) {
       </View>
 
       <Text style={styles.version}>Version {VERSION_APP}</Text>
-    </View>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl * 2,
   },
