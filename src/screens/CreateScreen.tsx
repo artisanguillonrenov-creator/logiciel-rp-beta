@@ -62,6 +62,12 @@ const OPTIONS_CURSEUR: { valeur: NiveauCurseur; label: string }[] = [
   { valeur: 'eleve', label: 'Élevé' },
 ];
 
+const OPTIONS_SEXE: { valeur: string; label: string }[] = [
+  { valeur: 'Homme', label: 'Homme' },
+  { valeur: 'Femme', label: 'Femme' },
+  { valeur: 'Autre', label: 'Autre' },
+];
+
 function RangeeOptions<T extends string>({
   options,
   valeur,
@@ -97,6 +103,10 @@ export default function CreateScreen({ navigation }: Props) {
 
   // Étape 2 — Personnage
   const [nom, setNom] = useState('');
+  const [sexe, setSexe] = useState('');
+  const [raceOrigine, setRaceOrigine] = useState('');
+  const [age, setAge] = useState('');
+  const [apparence, setApparence] = useState('');
   const [description, setDescription] = useState('');
 
   // Bibliothèque de personas (brief Phase 2) : réutiliser {{user}} d'une
@@ -112,6 +122,10 @@ export default function CreateScreen({ navigation }: Props) {
   function choisirPersona(persona: Persona) {
     setNom(persona.nom);
     setDescription(persona.description);
+    setSexe(persona.sexe ?? '');
+    setRaceOrigine(persona.raceOrigine ?? '');
+    setAge(persona.age ?? '');
+    setApparence(persona.apparence ?? '');
     setModalPersonasOuvert(false);
   }
 
@@ -121,11 +135,30 @@ export default function CreateScreen({ navigation }: Props) {
       id: genererIdPersona(),
       nom: nom.trim(),
       description: description.trim(),
+      sexe: sexe || undefined,
+      raceOrigine: raceOrigine.trim() || undefined,
+      age: age.trim() || undefined,
+      apparence: apparence.trim() || undefined,
       createdAt: Date.now(),
     };
     await savePersona(persona);
     setPersonas((prev) => [...prev, persona]);
     setMessagePersona('Personnage enregistré dans la bibliothèque.');
+  }
+
+  // Compose la description finale envoyée au moteur : les champs structurés
+  // (sexe, race/origine, âge, apparence) en tête, suivis de la description
+  // libre — personnageDescription reste un simple texte côté moteur (prompt,
+  // validateur, suggestions…), donc pas besoin d'y toucher pour ce nouveau
+  // niveau de détail.
+  function composerDescriptionPersonnage(): string {
+    const lignes: string[] = [];
+    if (sexe) lignes.push(`Sexe : ${sexe}`);
+    if (raceOrigine.trim()) lignes.push(`Race / origine : ${raceOrigine.trim()}`);
+    if (age.trim()) lignes.push(`Âge : ${age.trim()}`);
+    if (apparence.trim()) lignes.push(`Apparence : ${apparence.trim()}`);
+    if (description.trim()) lignes.push(description.trim());
+    return lignes.join('\n');
   }
 
   // Étape 3 — Point de départ
@@ -164,7 +197,7 @@ export default function CreateScreen({ navigation }: Props) {
     try {
       const histoire = creerNouvelleHistoire({
         personnageNom: nom.trim(),
-        personnageDescription: description.trim(),
+        personnageDescription: composerDescriptionPersonnage(),
         pointDeDepart: pointDeDepart.trim(),
         contexte: {
           lieu: lieu.trim(),
@@ -245,14 +278,41 @@ export default function CreateScreen({ navigation }: Props) {
               placeholder="Ex : Aelis Corvenn"
               conteneurStyle={styles.champConteneur}
             />
+
+            <Text style={styles.label}>Sexe</Text>
+            <RangeeOptions options={OPTIONS_SEXE} valeur={sexe} onChange={setSexe} />
+
             <Champ
-              label="Courte description"
+              label="Race / origine"
+              value={raceOrigine}
+              onChangeText={setRaceOrigine}
+              placeholder="Ex : Humain, Elfe des bois, Née en exil…"
+              conteneurStyle={styles.champConteneur}
+            />
+            <Champ
+              label="Âge"
+              value={age}
+              onChangeText={setAge}
+              placeholder="Ex : 29"
+              keyboardType="number-pad"
+              conteneurStyle={styles.champConteneur}
+            />
+            <Champ
+              label="Apparence"
+              value={apparence}
+              onChangeText={setApparence}
+              placeholder="Silhouette, visage, tenue, signes distinctifs…"
+              multiligne
+              conteneurStyle={styles.champConteneur}
+            />
+            <Champ
+              label="Description"
               value={description}
               onChangeText={(v) => {
                 setDescription(v);
                 setMessagePersona('');
               }}
-              placeholder="Qui est ce personnage, en quelques phrases ?"
+              placeholder="Personnalité, passé, ce qui le pousse à avancer…"
               multiligne
               conteneurStyle={styles.champConteneur}
             />
@@ -310,6 +370,12 @@ export default function CreateScreen({ navigation }: Props) {
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Personnage</Text>
               <Text style={styles.recapTexte}>{nom}</Text>
+              {(sexe || raceOrigine || age) ? (
+                <Text style={styles.recapTexte}>
+                  {[sexe, raceOrigine.trim(), age.trim() ? `${age.trim()} ans` : ''].filter(Boolean).join(' · ')}
+                </Text>
+              ) : null}
+              {apparence.trim() ? <Text style={styles.recapTexte}>{apparence.trim()}</Text> : null}
               <Text style={styles.recapTexte}>{description}</Text>
             </Panneau>
             <Panneau style={styles.recapBloc}>
@@ -355,6 +421,11 @@ export default function CreateScreen({ navigation }: Props) {
             renderItem={({ item }) => (
               <Pressable style={styles.lignePersona} onPress={() => choisirPersona(item)}>
                 <Text style={styles.nomPersona}>{item.nom}</Text>
+                {(item.sexe || item.raceOrigine || item.age) ? (
+                  <Text style={styles.descriptionPersona}>
+                    {[item.sexe, item.raceOrigine, item.age ? `${item.age} ans` : ''].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
                 <Text style={styles.descriptionPersona} numberOfLines={2}>
                   {item.description}
                 </Text>

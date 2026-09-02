@@ -58,6 +58,12 @@ export interface Persona {
   nom: string;
   description: string;
   createdAt: number;
+  // Détails optionnels (brief Phase 2, écran de création enrichi) — absents
+  // sur les personas déjà sauvegardés avant cet ajout, donc tous facultatifs.
+  sexe?: string;
+  raceOrigine?: string;
+  age?: string;
+  apparence?: string;
 }
 
 export type MessageRole = 'user' | 'assistant';
