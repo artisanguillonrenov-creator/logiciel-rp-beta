@@ -1,0 +1,38 @@
+name: Déployer la version web (GitHub Pages)
+
+on:
+  push:
+    branches: [claude/new-session-glwy6e]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx expo export -p web
+
+      - name: Publier sur gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add gh-pages-deploy origin/gh-pages
+          rm -rf gh-pages-deploy/*
+          cp -r dist/. gh-pages-deploy/
+          touch gh-pages-deploy/.nojekyll
+          cd gh-pages-deploy
+          git add -A
+          git diff --cached --quiet && echo "Rien à publier" && exit 0
+          git commit -m "Déploie automatiquement depuis ${{ github.sha }}"
+          git push origin HEAD:gh-pages
