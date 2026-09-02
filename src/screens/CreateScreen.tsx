@@ -15,6 +15,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
 import { MONDES } from '../data/mondes';
+import { RACES_ELYNDOR } from '../data/races';
+import { LIEUX_DEPART } from '../data/lieuxDepart';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
@@ -106,6 +108,77 @@ function CarteMonde({ monde, selectionne, onPress }: { monde: (typeof MONDES)[nu
         <Text style={styles.genreMonde}>{monde.genre}</Text>
       </View>
     </Pressable>
+  );
+}
+
+interface OptionSelection {
+  id: string;
+  nom: string;
+  sousTitre?: string;
+  description?: string;
+}
+
+// Champ "curseur" : un bouton qui ouvre une liste de choix en plein écran,
+// avec un encadré de présentation de l'élément retenu juste en dessous —
+// même mécanique pour la Race/origine (races d'Elyndor) et le Lieu de
+// départ (factions/institutions), donc factorisée ici plutôt que dupliquée.
+function ChampSelection({
+  label,
+  placeholder,
+  options,
+  valeur,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  options: OptionSelection[];
+  valeur: string;
+  onChange: (nom: string) => void;
+}) {
+  const [ouvert, setOuvert] = useState(false);
+  const actif = options.find((o) => o.nom === valeur);
+
+  return (
+    <View style={styles.champConteneur}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable style={styles.selecteur} onPress={() => setOuvert(true)}>
+        <Text style={[styles.texteSelecteur, !valeur && styles.texteSelecteurPlaceholder]} numberOfLines={1}>
+          {valeur || placeholder}
+        </Text>
+        <Text style={styles.chevronSelecteur}>▾</Text>
+      </Pressable>
+
+      {actif && (actif.sousTitre || actif.description) && (
+        <Panneau style={styles.presentationSelection}>
+          <Text style={styles.nomSelection}>{actif.nom}</Text>
+          {actif.sousTitre ? <Text style={styles.sousTitreSelection}>{actif.sousTitre}</Text> : null}
+          {actif.description ? <Text style={styles.descriptionSelection}>{actif.description}</Text> : null}
+        </Panneau>
+      )}
+
+      <Modal visible={ouvert} animationType="slide" onRequestClose={() => setOuvert(false)}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.titre}>{label}</Text>
+          <FlatList
+            data={options}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.ligneOptionListe}
+                onPress={() => {
+                  onChange(item.nom);
+                  setOuvert(false);
+                }}
+              >
+                <Text style={styles.nomOptionListe}>{item.nom}</Text>
+                {item.sousTitre ? <Text style={styles.sousTitreOptionListe}>{item.sousTitre}</Text> : null}
+              </Pressable>
+            )}
+          />
+          <Bouton titre="Fermer" variante="secondaire" onPress={() => setOuvert(false)} style={{ marginTop: espacement.md }} />
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -310,12 +383,12 @@ export default function CreateScreen({ navigation }: Props) {
             <Text style={styles.label}>Sexe</Text>
             <RangeeOptions options={OPTIONS_SEXE} valeur={sexe} onChange={setSexe} />
 
-            <Champ
+            <ChampSelection
               label="Race / origine"
-              value={raceOrigine}
-              onChangeText={setRaceOrigine}
-              placeholder="Ex : Humain, Elfe des bois, Née en exil…"
-              conteneurStyle={styles.champConteneur}
+              placeholder="Choisir une race"
+              options={RACES_ELYNDOR}
+              valeur={raceOrigine}
+              onChange={setRaceOrigine}
             />
             <Champ
               label="Âge"
@@ -333,12 +406,12 @@ export default function CreateScreen({ navigation }: Props) {
               multiligne
               conteneurStyle={styles.champConteneur}
             />
-            <Champ
+            <ChampSelection
               label="Lieu de départ"
-              value={lieu}
-              onChangeText={setLieu}
-              placeholder="Ex : Paris, royaume humain"
-              conteneurStyle={styles.champConteneur}
+              placeholder="Choisir un lieu de départ"
+              options={LIEUX_DEPART}
+              valeur={lieu}
+              onChange={setLieu}
             />
             <Champ
               label="Description"
@@ -656,6 +729,66 @@ const styles = StyleSheet.create({
     color: couleurs.texteAtténué,
     fontFamily: polices.corps,
     fontSize: 14,
+    marginTop: 2,
+  },
+  selecteur: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: couleurs.fondChampSaisie,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    paddingHorizontal: espacement.sm,
+    paddingVertical: espacement.sm,
+  },
+  texteSelecteur: {
+    flex: 1,
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 16,
+  },
+  texteSelecteurPlaceholder: {
+    color: couleurs.texteAtténué,
+  },
+  chevronSelecteur: {
+    color: couleurs.texteAtténué,
+    marginLeft: espacement.sm,
+  },
+  presentationSelection: {
+    marginTop: espacement.sm,
+  },
+  nomSelection: {
+    color: couleurs.dore,
+    fontFamily: polices.titre,
+    fontSize: 17,
+  },
+  sousTitreSelection: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  descriptionSelection: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: espacement.xs,
+  },
+  ligneOptionListe: {
+    paddingVertical: espacement.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+  },
+  nomOptionListe: {
+    color: couleurs.texte,
+    fontFamily: polices.titre,
+    fontSize: 17,
+  },
+  sousTitreOptionListe: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
     marginTop: 2,
   },
 });
