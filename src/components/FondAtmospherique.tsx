@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { Animated, Image, ImageSourcePropType, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { couleurs } from '../theme/theme';
 import SceneChateau from './SceneChateau';
@@ -10,6 +10,9 @@ interface FondAtmospheriqueProps {
   // Certains écrans (formulaires denses) préfèrent un ciel plus discret pour
   // ne pas distraire de la lecture — voir CreateScreen.
   densiteEtoiles?: 'normale' | 'discrete';
+  // Illustration peinte (fournie par le porteur de projet) à utiliser comme
+  // fond plutôt que la scène dessinée en SVG — voir assets/scenes.
+  imageFond?: ImageSourcePropType;
 }
 
 interface Etoile {
@@ -99,13 +102,20 @@ function FiorituresAngles() {
  * direction artistique d'origine sans dépendre d'illustrations externes
  * (droits/génération d'images remis à plus tard, voir la conversation).
  */
-export default function FondAtmospherique({ children, style, densiteEtoiles = 'normale' }: FondAtmospheriqueProps) {
+export default function FondAtmospherique({ children, style, densiteEtoiles = 'normale', imageFond }: FondAtmospheriqueProps) {
   const etoiles = useMemo(() => genererEtoiles(densiteEtoiles === 'discrete' ? 22 : 45, 7), [densiteEtoiles]);
 
   return (
     <View style={[styles.container, style]}>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <SceneChateau />
+        {imageFond ? (
+          <>
+            <Image source={imageFond} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <View style={styles.scrimImage} />
+          </>
+        ) : (
+          <SceneChateau />
+        )}
         {etoiles.map((e, i) => (
           <Etoile key={i} etoile={e} />
         ))}
@@ -146,6 +156,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: couleurs.fond,
+  },
+  scrimImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(5, 7, 18, 0.42)',
   },
   vignetteBord: {
     position: 'absolute',

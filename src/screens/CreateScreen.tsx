@@ -18,9 +18,20 @@ import { getPersonas, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
+import FondAtmospherique from '../components/FondAtmospherique';
 import IndicateurEtapes from '../components/IndicateurEtapes';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
+
+// Une illustration par étape (brief Phase 2) — la dernière (Récapitulatif)
+// reprend celle de l'accueil pour boucler le parcours visuellement.
+const IMAGES_ETAPES = [
+  require('../../assets/scenes/creation-histoire.png'),
+  require('../../assets/scenes/creation-personnage.png'),
+  require('../../assets/scenes/creation-point-depart.png'),
+  require('../../assets/scenes/creation-preferences.png'),
+  require('../../assets/scenes/accueil.png'),
+];
 
 function genererIdPersona(): string {
   return `persona-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -173,8 +184,9 @@ export default function CreateScreen({ navigation }: Props) {
   }
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGES_ETAPES[etape]}>
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: couleurs.fond }}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container}>
@@ -353,6 +365,7 @@ export default function CreateScreen({ navigation }: Props) {
         </View>
       </Modal>
     </KeyboardAvoidingView>
+    </FondAtmospherique>
   );
 }
 

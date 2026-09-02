@@ -10,6 +10,8 @@ import Separateur from '../components/Separateur';
 import FondAtmospherique from '../components/FondAtmospherique';
 import { VERSION_APP } from '../version';
 
+const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Demarrage'>;
 
 // Élément de menu principal ("NOUVEAU") : mis en avant par un encadré à
@@ -71,7 +73,7 @@ export default function StartScreen({ navigation }: Props) {
   }
 
   return (
-    <FondAtmospherique style={styles.container}>
+    <FondAtmospherique style={styles.container} imageFond={IMAGE_ACCUEIL}>
       <View style={styles.entete}>
         <Text style={styles.titre}>ELYNDOR</Text>
         <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
