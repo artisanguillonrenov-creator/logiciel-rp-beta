@@ -30,7 +30,15 @@ function convertirErreurNative(e: unknown, contexte: string): ErreurMoteurLocal 
 // module sa température) — limitation de la lib, pas un choix : on charge
 // une fois avec des valeurs raisonnables pour de la narration et on vit
 // avec la perte de réglage fin par appel en mode local.
-const MAX_TOKENS_LOCAL = 1024;
+//
+// maxTokens est un plafond combiné prefill + decode (défaut de la lib :
+// 2048), pas juste la longueur de la réponse générée : le prompt système
+// (règles, personnage, style) plus la fenêtre de messages récents dépasse
+// à lui seul ce défaut dès le premier message d'une scène un peu développée
+// (observé : 2481 tokens rien qu'en prefill), d'où l'erreur native "Input
+// token ids are too long". 4096 laisse de la marge sans doubler encore le
+// coût mémoire d'un modèle déjà volumineux sur un appareil à 4 Go de RAM.
+const MAX_TOKENS_LOCAL = 4096;
 const TOP_K_LOCAL = 40;
 const TEMPERATURE_LOCAL = 0.8;
 
