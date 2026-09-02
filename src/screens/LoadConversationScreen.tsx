@@ -8,9 +8,12 @@ import { deleteStory, getStoriesIndex, renommerStory } from '../storage/storage'
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChargerConversation'>;
+
+const IMAGE_CHARGER = require('../../assets/scenes/creation-histoire.png');
 
 function nomAffiche(meta: StoryMeta): string {
   return meta.titre?.trim() || meta.personnageNom;
@@ -58,6 +61,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
   }
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CHARGER}>
     <View style={styles.container}>
       <Text style={styles.titre}>Charger conversation</Text>
       <FlatList
@@ -118,13 +122,13 @@ export default function LoadConversationScreen({ navigation }: Props) {
         )}
       />
     </View>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl,
   },

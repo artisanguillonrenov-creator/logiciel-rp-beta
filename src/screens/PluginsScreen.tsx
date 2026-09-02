@@ -9,10 +9,13 @@ import { analyserPackJson } from '../engine/plugins';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Plugins'>;
+
+const IMAGE_PLUGINS = require('../../assets/scenes/creation-personnage.png');
 
 const EXEMPLE_JSON = `[
   { "titre": "Titre de l'entrée", "contenu": "Texte de lore…" }
@@ -53,6 +56,7 @@ export default function PluginsScreen({}: Props) {
   }
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_PLUGINS}>
     <FlatList
       style={styles.container}
       contentContainerStyle={{ padding: espacement.lg, paddingBottom: espacement.xl }}
@@ -99,13 +103,13 @@ export default function PluginsScreen({}: Props) {
         </Panneau>
       )}
     />
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: couleurs.fond,
   },
   titre: {
     color: couleurs.dore,

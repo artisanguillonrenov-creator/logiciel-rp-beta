@@ -33,7 +33,10 @@ import { ErreurMoteurLocal } from '../engine/localInference';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
+
+const IMAGE_CONVERSATION = require('../../assets/scenes/creation-point-depart.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 
@@ -371,7 +374,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
   if (!story || !appSettings) {
     return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
+      <View style={[styles.container, { justifyContent: 'center', backgroundColor: couleurs.fond }]}>
         <ActivityIndicator color={couleurs.accent} />
       </View>
     );
@@ -385,8 +388,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
       : [];
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CONVERSATION}>
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: couleurs.fond }}
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
@@ -681,13 +685,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
         </ScrollView>
       </Modal>
     </KeyboardAvoidingView>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: couleurs.fond,
   },
   rangeeEntete: {
     flexDirection: 'row',

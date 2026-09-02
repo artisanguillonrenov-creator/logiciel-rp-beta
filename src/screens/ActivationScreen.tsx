@@ -6,9 +6,12 @@ import { getSettings, saveSettings } from '../storage/storage';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Activation'>;
+
+const IMAGE_ACTIVATION = require('../../assets/scenes/accueil.png');
 
 // Écran d'activation (distribution "esprit", brief Phase 2) : accepter les
 // conditions de la bêta une fois par appareil avant d'entrer dans l'app.
@@ -26,6 +29,7 @@ export default function ActivationScreen({ navigation }: Props) {
   }
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} imageFond={IMAGE_ACTIVATION}>
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.titre}>ELYNDOR</Text>
       <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
@@ -47,13 +51,13 @@ export default function ActivationScreen({ navigation }: Props) {
 
       <Bouton titre="J'ai compris, commencer" onPress={accepter} desactive={enregistrement} style={styles.bouton} />
     </ScrollView>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl * 2,
     justifyContent: 'center',

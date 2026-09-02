@@ -16,10 +16,13 @@ import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/t
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
+
+const IMAGE_REGLAGES = require('../../assets/scenes/creation-preferences.png');
 
 export default function SettingsScreen({ navigation }: Props) {
   const [apiKey, setApiKey] = useState('');
@@ -202,13 +205,14 @@ export default function SettingsScreen({ navigation }: Props) {
 
   if (chargement) {
     return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
+      <View style={[styles.container, { justifyContent: 'center', backgroundColor: couleurs.fond }]}>
         <ActivityIndicator color={couleurs.accent} />
       </View>
     );
   }
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_REGLAGES}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
       <Text style={styles.titre}>Réglages</Text>
       <Separateur />
@@ -417,13 +421,13 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
       </Modal>
     </ScrollView>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl,
   },

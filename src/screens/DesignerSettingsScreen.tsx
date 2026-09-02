@@ -6,10 +6,13 @@ import { getSettings, saveSettings } from '../storage/storage';
 import { viderCacheEmbeddings } from '../storage/embeddingsStore';
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from '../components/Bouton';
+import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur'>;
+
+const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 
 // Réglages concepteur (Ajouts_A_Integrer.md #6) : accès direct pendant la
 // phase de test actuelle, sans code ni protection — inutile tant que le
@@ -44,6 +47,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
   if (chargement) return null;
 
   return (
+    <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CONCEPTEUR}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
       <Text style={styles.titre}>Réglages concepteur</Text>
       <Separateur />
@@ -82,13 +86,13 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
 
       <Bouton titre="Retour" variante="secondaire" onPress={() => navigation.goBack()} style={{ marginTop: espacement.lg }} />
     </ScrollView>
+    </FondAtmospherique>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl,
   },
