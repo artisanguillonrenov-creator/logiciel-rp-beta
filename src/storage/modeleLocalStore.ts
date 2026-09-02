@@ -39,8 +39,6 @@ export function espaceDisponibleOctets(): number {
   return Paths.availableDiskSpace;
 }
 
-export class ErreurImportModele extends Error {}
-
 /**
  * Ouvre le sélecteur de fichiers système pour importer un modèle déjà
  * téléchargé par l'utilisateur. Remplace tout modèle local précédent.
@@ -50,12 +48,15 @@ export async function importerModeleLocal(): Promise<void> {
   if (resultat.canceled) return;
 
   const source = resultat.result;
-  const extension = EXTENSIONS_SUPPORTEES.find((ext) => source.name.toLowerCase().endsWith(ext));
-  if (!extension) {
-    throw new ErreurImportModele(
-      `Fichier non reconnu (${source.name}) : le modèle doit être un fichier .litertlm ou .task.`,
-    );
-  }
+  // Pour certains fournisseurs (ex. le fournisseur "Téléchargements"
+  // d'Android), le sélecteur système renvoie un identifiant opaque en guise
+  // de nom (ex. "msf:6722") plutôt que le vrai nom du fichier — on ne peut
+  // alors pas déterminer l'extension. Dans ce cas on ne rejette pas le
+  // fichier : on part sur .litertlm par défaut (le format le plus courant
+  // des modèles Gemma pour LiteRT-LM), plutôt que de bloquer un import
+  // valide sur un nom qu'on n'a simplement pas réussi à lire.
+  const extensionDetectee = EXTENSIONS_SUPPORTEES.find((ext) => source.name.toLowerCase().endsWith(ext));
+  const extension = extensionDetectee ?? '.litertlm';
 
   fichierModeleExistant()?.delete();
   const destination = new File(Paths.document, `${NOM_BASE}${extension}`);

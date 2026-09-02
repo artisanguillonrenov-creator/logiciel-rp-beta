@@ -1,7 +1,7 @@
 {
-  "version": "1.11.2",
+  "version": "1.11.3",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/26bc0d4d-ddf1-4355-ba4d-fcfa6ce7c62d",
   "versionAndroid": "1.11.2",
-  "notes": "Moteur d'inférence local (Android) disponible : importe un modèle Gemma déjà téléchargé (.litertlm ou .task) depuis Réglages > Moteur d'inférence pour jouer entièrement hors-ligne, sans OpenRouter. Inclut aussi la correction du message qui pouvait ne pas s'envoyer (\"réponse vide reçue du modèle\") au 2e message."
+  "notes": "Correction de l'import du modèle local : le sélecteur de fichiers Android renvoie parfois un identifiant interne au lieu du vrai nom du fichier, ce qui faisait rejeter à tort un fichier .litertlm valide."
 }
