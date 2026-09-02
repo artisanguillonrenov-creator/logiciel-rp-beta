@@ -29,6 +29,7 @@ import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
+import { ErreurMoteurLocal } from '../engine/localInference';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
@@ -41,7 +42,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
 
 function messageErreur(e: unknown, messageParDefaut: string): string {
-  if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings) return e.message;
+  if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal) return e.message;
   return messageParDefaut;
 }
 
