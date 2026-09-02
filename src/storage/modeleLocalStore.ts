@@ -24,7 +24,15 @@ export function modeleLocalTelecharge(): boolean {
 }
 
 export function cheminModeleLocal(): string | null {
-  return fichierModeleExistant()?.uri ?? null;
+  const fichier = fichierModeleExistant();
+  if (!fichier) return null;
+  // File.uri renvoie une URI préfixée "file://" (ex.
+  // "file:///data/user/0/.../modele-local.litertlm"), mais le chargeur
+  // natif expo-litert-lm (LiteRtLmJniException: Model file not found)
+  // attend un chemin brut du système de fichiers, sans ce préfixe — confirmé
+  // par l'exemple officiel de la bibliothèque et par le message d'erreur qui
+  // recopiait littéralement le préfixe dans le chemin recherché.
+  return fichier.uri.replace(/^file:\/\//, '');
 }
 
 export function tailleModeleLocalOctets(): number | null {
