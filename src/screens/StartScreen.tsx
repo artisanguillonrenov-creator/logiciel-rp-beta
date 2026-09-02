@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
   titre: {
     color: couleurs.dore,
     fontFamily: polices.display,
-    fontSize: 40,
-    letterSpacing: 3,
+    fontSize: 60,
+    letterSpacing: 4,
   },
   sousTitre: {
     ...stylePetitesCapitales,
