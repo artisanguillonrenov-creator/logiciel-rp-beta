@@ -44,14 +44,18 @@ export async function verifierMiseAJour(): Promise<InfoMiseAJour> {
   if (typeof data.version !== 'string' || typeof data.url !== 'string') {
     throw new Error('Réponse de mise à jour invalide.');
   }
-  // Sur Android, le lien web n'a aucun sens (rien à installer) : on pointe
-  // vers l'APK quand un lien dédié est publié, sinon on retombe sur le
-  // lien web par défaut plutôt que de ne rien afficher.
-  const urlCiblee = Platform.OS === 'android' && typeof data.urlAndroid === 'string' ? data.urlAndroid : data.url;
+  // Le web (déployé en continu sur gh-pages) et l'APK Android (recompilé à
+  // la main, moins souvent) n'avancent pas forcément au même rythme : on
+  // compare chaque plateforme à sa propre dernière version publiée plutôt
+  // que d'annoncer une mise à jour Android qui pointerait vers l'APK déjà
+  // installé.
+  const estAndroid = Platform.OS === 'android';
+  const urlCiblee = estAndroid && typeof data.urlAndroid === 'string' ? data.urlAndroid : data.url;
+  const derniereVersion = estAndroid && typeof data.versionAndroid === 'string' ? data.versionAndroid : data.version;
   return {
     versionActuelle: VERSION_APP,
-    derniereVersion: data.version,
-    disponible: estPlusRecente(data.version, VERSION_APP),
+    derniereVersion,
+    disponible: estPlusRecente(derniereVersion, VERSION_APP),
     url: urlCiblee,
     notes: typeof data.notes === 'string' ? data.notes : undefined,
   };
