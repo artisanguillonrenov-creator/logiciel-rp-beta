@@ -101,7 +101,8 @@ export default function StartScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     padding: espacement.lg,
-    paddingTop: espacement.xl * 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   entete: {
     alignItems: 'center',
