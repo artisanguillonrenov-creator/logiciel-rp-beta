@@ -132,6 +132,22 @@ export async function calculerSelectionLore(
   // src/engine/searchHistorique.ts.
   const messagesAnciens = story.messages.slice(0, Math.max(0, story.messages.length - NB_MESSAGES_RECENTS));
 
+  // La recherche sémantique (lore + historique) dépend d'un fournisseur
+  // d'embeddings réseau (OpenRouter ou la clé de secours) — elle n'a pas
+  // d'équivalent en mode local (expo-litert-lm ne fait que de la
+  // génération de texte). Sans aucune des deux clés — le cas du joueur en
+  // mode local, entièrement hors-ligne — on ne tente même pas l'appel : on
+  // continue sans lore ni historique retrouvés plutôt que de faire
+  // échouer tout le tour pour un enrichissement optionnel.
+  if (!appSettings.openRouterApiKey && !appSettings.embeddingsApiKey) {
+    return {
+      metamoteursSelectionnes: [],
+      loreElyndor: [],
+      souvenirs: [],
+      debugLore: { metamoteurs: [], loreElyndor: [], souvenirs: [] },
+    };
+  }
+
   const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
     assurerEmbeddings(
       METAMOTEURS.map((e) => ({ id: e.id, contenu: e.contenu })),

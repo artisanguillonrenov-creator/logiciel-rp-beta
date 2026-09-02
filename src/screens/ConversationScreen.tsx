@@ -154,7 +154,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && !appSettings.openRouterApiKey;
+  const clefManquante = appSettings && appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey;
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
   const envoyer = useCallback(async () => {
@@ -176,7 +176,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (!appSettings.openRouterApiKey) {
+    if (appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey) {
       setErreur('Configure ta clé API OpenRouter dans Réglages avant de commencer.');
       return;
     }
