@@ -25,14 +25,7 @@
     },
     "plugins": [
       "expo-font",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "kotlinVersion": "2.3.21"
-          }
-        }
-      ]
+      "./plugins/withLitertKotlinSkipVersionCheck.js"
     ],
     "extra": {
       "eas": {
