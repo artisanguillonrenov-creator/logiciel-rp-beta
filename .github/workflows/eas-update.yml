@@ -1,0 +1,28 @@
+name: Publish OTA Update (EAS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Description du correctif publié
+        required: false
+        default: Mise à jour
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npm install --global eas-cli
+
+      - name: Publish OTA update (channel preview)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas update --channel preview --message "${{ github.event.inputs.message }}" --non-interactive
