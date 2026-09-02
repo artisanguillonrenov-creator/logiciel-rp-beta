@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, Message, StoryState } from '../types';
@@ -45,6 +46,7 @@ function messageErreur(e: unknown, messageParDefaut: string): string {
 }
 
 export default function ConversationScreen({ route, navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { storyId } = route.params;
   const [story, setStory] = useState<StoryState | null>(null);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -492,7 +494,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
         {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
 
-        <View style={styles.zoneSaisie}>
+        <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
           <View style={styles.rangeeActionsRapides}>
             {dernierEstAssistant && (
               <Bouton titre="Régénérer" variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
