@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { couleurs } from '../theme/theme';
+import SceneChateau from './SceneChateau';
 
 interface FondAtmospheriqueProps {
   children: React.ReactNode;
@@ -104,6 +105,7 @@ export default function FondAtmospherique({ children, style, densiteEtoiles = 'n
   return (
     <View style={[styles.container, style]}>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <SceneChateau />
         {etoiles.map((e, i) => (
           <Etoile key={i} etoile={e} />
         ))}
