@@ -387,7 +387,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: couleurs.fond }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={90}
     >
       <View style={styles.container}>
