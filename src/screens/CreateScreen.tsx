@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,9 +14,10 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
+import { MONDES } from '../data/mondes';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, saveStory, savePersona } from '../storage/storage';
-import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
@@ -92,10 +94,27 @@ function RangeeOptions<T extends string>({
   );
 }
 
+// Carte sélectionnable d'un monde, dans la liste de gauche de l'étape
+// "Choisir l'histoire" — un seul monde pour l'instant (Elyndor) mais le
+// composant est prévu pour une liste qui grandira plus tard.
+function CarteMonde({ monde, selectionne, onPress }: { monde: (typeof MONDES)[number]; selectionne: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.carteMonde, selectionne && styles.carteMondeActive]}>
+      <Image source={monde.image} style={styles.imageCarteMonde} resizeMode="cover" />
+      <View style={styles.infoCarteMonde}>
+        <Text style={styles.nomMonde}>{monde.nom}</Text>
+        <Text style={styles.genreMonde}>{monde.genre}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function CreateScreen({ navigation }: Props) {
   const [etape, setEtape] = useState(0);
 
-  // Étape 1 — Histoire (panneau Contexte de l'Histoire, brief Phase 2)
+  // Étape 1 — Histoire (choix du monde + panneau Contexte de l'Histoire,
+  // brief Phase 2)
+  const [mondeSelectionne, setMondeSelectionne] = useState(MONDES[0]?.id ?? '');
   const [lieu, setLieu] = useState('');
   const [ambiance, setAmbiance] = useState('');
   const [dateChronique, setDateChronique] = useState('');
@@ -173,6 +192,8 @@ export default function CreateScreen({ navigation }: Props) {
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState('');
 
+  const mondeActif = MONDES.find((m) => m.id === mondeSelectionne);
+
   const etapeValide = [
     lieu.trim().length > 0 && ambiance.trim().length > 0,
     nom.trim().length > 0 && description.trim().length > 0,
@@ -229,7 +250,38 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 0 && (
           <>
-            <Text style={styles.titre}>Histoire</Text>
+            <Text style={styles.titre}>Choisir l'histoire</Text>
+
+            <Text style={styles.label}>Monde</Text>
+            <View style={styles.listeMondes}>
+              {MONDES.map((monde) => (
+                <CarteMonde
+                  key={monde.id}
+                  monde={monde}
+                  selectionne={monde.id === mondeSelectionne}
+                  onPress={() => setMondeSelectionne(monde.id)}
+                />
+              ))}
+            </View>
+
+            {mondeActif && (
+              <Panneau style={styles.presentationMonde}>
+                <Text style={styles.labelPresentation}>Présentation</Text>
+                <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md }} />
+                <Image source={mondeActif.image} style={styles.imagePresentationMonde} resizeMode="cover" />
+                <Text style={styles.descriptionMonde}>{mondeActif.description}</Text>
+                <View style={styles.rangeeTagsMonde}>
+                  {mondeActif.tags.map((tag) => (
+                    <View key={tag} style={styles.tagMonde}>
+                      <Text style={styles.texteTagMonde}>{tag.toUpperCase()}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Panneau>
+            )}
+
+            <Separateur style={{ marginVertical: espacement.lg }} />
+
             <Champ label="Lieu de départ" value={lieu} onChangeText={setLieu} placeholder="Ex : Paris, royaume humain" conteneurStyle={styles.champConteneur} />
             <Champ
               label="Ambiance"
@@ -467,6 +519,77 @@ const styles = StyleSheet.create({
   },
   champConteneur: {
     marginTop: espacement.md,
+  },
+  listeMondes: {
+    gap: espacement.sm,
+  },
+  carteMonde: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: 'rgba(10, 13, 26, 0.55)',
+    overflow: 'hidden',
+  },
+  carteMondeActive: {
+    borderColor: couleurs.accent,
+    ...ombresLueur,
+  },
+  imageCarteMonde: {
+    width: 96,
+    height: 76,
+  },
+  infoCarteMonde: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: espacement.sm,
+  },
+  nomMonde: {
+    color: couleurs.texte,
+    fontFamily: polices.titre,
+    fontSize: 18,
+  },
+  genreMonde: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  presentationMonde: {
+    marginTop: espacement.md,
+  },
+  labelPresentation: {
+    ...stylePetitesCapitales,
+    color: couleurs.dore,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  imagePresentationMonde: {
+    width: '100%',
+    height: 140,
+    marginBottom: espacement.sm,
+  },
+  descriptionMonde: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  rangeeTagsMonde: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacement.xs,
+    marginTop: espacement.sm,
+  },
+  tagMonde: {
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    paddingHorizontal: espacement.sm,
+    paddingVertical: 4,
+  },
+  texteTagMonde: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteAtténué,
+    fontSize: 10,
   },
   rangeeOptions: {
     flexDirection: 'row',
