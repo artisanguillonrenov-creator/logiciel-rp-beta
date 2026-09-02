@@ -116,9 +116,6 @@ export default function CreateScreen({ navigation }: Props) {
   // brief Phase 2)
   const [mondeSelectionne, setMondeSelectionne] = useState(MONDES[0]?.id ?? '');
   const [lieu, setLieu] = useState('');
-  const [ambiance, setAmbiance] = useState('');
-  const [dateChronique, setDateChronique] = useState('');
-  const [objectifs, setObjectifs] = useState('');
 
   // Étape 2 — Personnage
   const [nom, setNom] = useState('');
@@ -195,7 +192,7 @@ export default function CreateScreen({ navigation }: Props) {
   const mondeActif = MONDES.find((m) => m.id === mondeSelectionne);
 
   const etapeValide = [
-    lieu.trim().length > 0 && ambiance.trim().length > 0,
+    lieu.trim().length > 0,
     nom.trim().length > 0 && description.trim().length > 0,
     pointDeDepart.trim().length > 0,
     true,
@@ -222,9 +219,13 @@ export default function CreateScreen({ navigation }: Props) {
         pointDeDepart: pointDeDepart.trim(),
         contexte: {
           lieu: lieu.trim(),
-          ambiance: ambiance.trim(),
-          dateChronique: dateChronique.trim(),
-          objectifs: objectifs.trim(),
+          // Ambiance/date/objectifs ne sont plus saisis à la création — le
+          // monde choisi porte déjà son ton (genre, description, tags) ;
+          // ces champs restent éditables ensuite depuis le panneau Contexte
+          // de l'Histoire, en conversation.
+          ambiance: mondeActif?.genre ?? '',
+          dateChronique: '',
+          objectifs: '',
         },
         settings: { creativite, longueur, violence, romance },
       });
@@ -253,59 +254,38 @@ export default function CreateScreen({ navigation }: Props) {
             <Text style={styles.titre}>Choisir l'histoire</Text>
 
             <Text style={styles.label}>Monde</Text>
-            <View style={styles.listeMondes}>
-              {MONDES.map((monde) => (
-                <CarteMonde
-                  key={monde.id}
-                  monde={monde}
-                  selectionne={monde.id === mondeSelectionne}
-                  onPress={() => setMondeSelectionne(monde.id)}
-                />
-              ))}
-            </View>
+            <View style={styles.rangeeChoixMonde}>
+              <View style={styles.listeMondes}>
+                {MONDES.map((monde) => (
+                  <CarteMonde
+                    key={monde.id}
+                    monde={monde}
+                    selectionne={monde.id === mondeSelectionne}
+                    onPress={() => setMondeSelectionne(monde.id)}
+                  />
+                ))}
+              </View>
 
-            {mondeActif && (
-              <Panneau style={styles.presentationMonde}>
-                <Text style={styles.labelPresentation}>Présentation</Text>
-                <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md }} />
-                <Image source={mondeActif.image} style={styles.imagePresentationMonde} resizeMode="cover" />
-                <Text style={styles.descriptionMonde}>{mondeActif.description}</Text>
-                <View style={styles.rangeeTagsMonde}>
-                  {mondeActif.tags.map((tag) => (
-                    <View key={tag} style={styles.tagMonde}>
-                      <Text style={styles.texteTagMonde}>{tag.toUpperCase()}</Text>
-                    </View>
-                  ))}
-                </View>
-              </Panneau>
-            )}
+              {mondeActif && (
+                <Panneau style={styles.presentationMonde}>
+                  <Text style={styles.labelPresentation}>Présentation</Text>
+                  <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
+                  <Image source={mondeActif.image} style={styles.imagePresentationMonde} resizeMode="cover" />
+                  <Text style={styles.descriptionMonde}>{mondeActif.description}</Text>
+                  <View style={styles.rangeeTagsMonde}>
+                    {mondeActif.tags.map((tag) => (
+                      <View key={tag} style={styles.tagMonde}>
+                        <Text style={styles.texteTagMonde}>{tag.toUpperCase()}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Panneau>
+              )}
+            </View>
 
             <Separateur style={{ marginVertical: espacement.lg }} />
 
             <Champ label="Lieu de départ" value={lieu} onChangeText={setLieu} placeholder="Ex : Paris, royaume humain" conteneurStyle={styles.champConteneur} />
-            <Champ
-              label="Ambiance"
-              value={ambiance}
-              onChangeText={setAmbiance}
-              placeholder="Le ton, l'atmosphère recherchée pour cette histoire"
-              multiligne
-              conteneurStyle={styles.champConteneur}
-            />
-            <Champ
-              label="Date / période (optionnel)"
-              value={dateChronique}
-              onChangeText={setDateChronique}
-              placeholder="Ex : début de saison des pluies"
-              conteneurStyle={styles.champConteneur}
-            />
-            <Champ
-              label="Objectifs (optionnel)"
-              value={objectifs}
-              onChangeText={setObjectifs}
-              placeholder="Ce que le personnage cherche à accomplir, en quelques phrases"
-              multiligne
-              conteneurStyle={styles.champConteneur}
-            />
           </>
         )}
 
@@ -415,9 +395,7 @@ export default function CreateScreen({ navigation }: Props) {
             <Text style={styles.titre}>Récapitulatif</Text>
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Histoire</Text>
-              <Text style={styles.recapTexte}>{lieu} — {ambiance}</Text>
-              {dateChronique ? <Text style={styles.recapTexte}>{dateChronique}</Text> : null}
-              {objectifs ? <Text style={styles.recapTexte}>{objectifs}</Text> : null}
+              <Text style={styles.recapTexte}>{mondeActif?.nom} — {lieu}</Text>
             </Panneau>
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Personnage</Text>
@@ -520,7 +498,14 @@ const styles = StyleSheet.create({
   champConteneur: {
     marginTop: espacement.md,
   },
+  rangeeChoixMonde: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: espacement.md,
+  },
   listeMondes: {
+    flex: 1,
     gap: espacement.sm,
   },
   carteMonde: {
@@ -555,7 +540,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   presentationMonde: {
-    marginTop: espacement.md,
+    flex: 1.4,
   },
   labelPresentation: {
     ...stylePetitesCapitales,
