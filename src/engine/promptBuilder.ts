@@ -33,14 +33,79 @@ function instructionLongueur(longueur: StorySettings['longueur']): string {
   }
 }
 
-function libelleCurseur(niveau: StorySettings['violence']): string {
+function libelleViolence(niveau: StorySettings['violence']): string {
   switch (niveau) {
     case 'faible':
       return 'suggérée plutôt que montrée, jamais le centre de la scène';
     case 'eleve':
       return 'pleinement montrée, sans retenue quand la scène l’appelle';
+    case 'extreme':
+      return 'graphique et frontale, sans atténuation, quand la scène l’appelle';
     default:
       return 'présente et décrite quand la scène l’appelle, sans excès systématique';
+  }
+}
+
+function libelleRomance(niveau: StorySettings['romance']): string {
+  switch (niveau) {
+    case 'aucun':
+      return "absente — pas d'intrigue amoureuse ni de tension romantique";
+    case 'faible':
+      return 'en toile de fond seulement, jamais le sujet principal de la scène';
+    case 'eleve':
+      return 'pleinement développée quand la scène l’appelle';
+    default:
+      return 'présente et développée quand la scène l’appelle, sans excès systématique';
+  }
+}
+
+function libelleHumour(niveau: StorySettings['humour']): string {
+  switch (niveau) {
+    case 'aucun':
+      return "aucun — registre sérieux en permanence, pas de trait d'esprit";
+    case 'faible':
+      return "occasionnel, discret, jamais au détriment du sérieux de la scène";
+    case 'eleve':
+      return 'assumé, présent dans le ton et les répliques quand la scène le permet';
+    default:
+      return "présent avec mesure, sans forcer le trait";
+  }
+}
+
+function libelleLiberteJoueur(niveau: StorySettings['liberteJoueur']): string {
+  switch (niveau) {
+    case 'faible':
+      return "le narrateur guide fermement l'intrigue ; les initiatives du joueur sont intégrées mais l'arc prévu prime";
+    case 'moderee':
+      return "le narrateur propose une direction mais s'ajuste aux choix marquants du joueur";
+    case 'totale':
+      return "aucun scénario imposé : le joueur décide entièrement de la direction, le narrateur ne fait que réagir";
+    default:
+      return "le joueur a une large marge de manœuvre ; le narrateur s'adapte à ses choix sans les contraindre";
+  }
+}
+
+function libelleRythme(niveau: StorySettings['rythme']): string {
+  switch (niveau) {
+    case 'lent':
+      return "prends ton temps : détails, ambiance, scènes qui respirent avant que l'intrigue n'avance";
+    case 'rapide':
+      return "avance vite : va à l'essentiel, enchaîne les événements sans t'attarder sur les transitions";
+    default:
+      return "un rythme équilibré, ni précipité ni étiré";
+  }
+}
+
+function libelleTon(ton: StorySettings['ton']): string {
+  switch (ton) {
+    case 'heroique_epique':
+      return 'Héroïque et épique — aventures grandioses, enjeux qui dépassent le personnage, souffle inspirant.';
+    case 'mysterieux_intrigant':
+      return 'Mystérieux et intrigant — secrets, complots, révélations dosées, tension permanente.';
+    case 'leger_aventureux':
+      return "Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.";
+    default:
+      return 'Sombre et réaliste — ambiance immersive, dure et crédible.';
   }
 }
 
@@ -112,9 +177,13 @@ ${formaterFaits(ctx.faits)}
 ${metamoteursTexte}${loreTexte}${ctx.etatMonde ?? ''}${ctx.engagementsEtRelations ?? ''}${ctx.souvenirs ?? ''}${ctx.directionNarrative ?? ''}
 
 [STYLE]
+Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
-Violence : ${libelleCurseur(ctx.settings.violence)}.
-Romance : ${libelleCurseur(ctx.settings.romance)}.
+Rythme : ${libelleRythme(ctx.settings.rythme)}.
+Liberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.
+Violence : ${libelleViolence(ctx.settings.violence)}.
+Romance : ${libelleRomance(ctx.settings.romance)}.
+Humour : ${libelleHumour(ctx.settings.humour)}.
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}
 ${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 }

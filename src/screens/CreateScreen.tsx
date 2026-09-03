@@ -8,12 +8,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
+import type { Creativite, Longueur, LiberteJoueur, NiveauQuatre, NiveauViolence, Persona, RythmeHistoire, TonHistoire } from '../types';
 import { MONDES } from '../data/mondes';
 import { RACES_ELYNDOR } from '../data/races';
 import { LIEUX_DEPART } from '../data/lieuxDepart';
@@ -69,10 +70,51 @@ const OPTIONS_LONGUEUR: { valeur: Longueur; label: string }[] = [
   { valeur: 'longue', label: 'Longue' },
 ];
 
-const OPTIONS_CURSEUR: { valeur: NiveauCurseur; label: string }[] = [
+const OPTIONS_VIOLENCE: { valeur: NiveauViolence; label: string }[] = [
   { valeur: 'faible', label: 'Faible' },
   { valeur: 'modere', label: 'Modéré' },
   { valeur: 'eleve', label: 'Élevé' },
+  { valeur: 'extreme', label: 'Extrême' },
+];
+
+const OPTIONS_ROMANCE: { valeur: NiveauQuatre; label: string }[] = [
+  { valeur: 'aucun', label: 'Aucun' },
+  { valeur: 'faible', label: 'Faible' },
+  { valeur: 'modere', label: 'Modéré' },
+  { valeur: 'eleve', label: 'Élevé' },
+];
+
+const OPTIONS_HUMOUR: { valeur: NiveauQuatre; label: string }[] = OPTIONS_ROMANCE;
+
+const OPTIONS_LIBERTE: { valeur: LiberteJoueur; label: string }[] = [
+  { valeur: 'faible', label: 'Faible' },
+  { valeur: 'moderee', label: 'Modérée' },
+  { valeur: 'elevee', label: 'Élevée' },
+  { valeur: 'totale', label: 'Totale' },
+];
+
+const OPTIONS_RYTHME: { valeur: RythmeHistoire; label: string }[] = [
+  { valeur: 'lent', label: 'Lent' },
+  { valeur: 'normal', label: 'Normal' },
+  { valeur: 'rapide', label: 'Rapide' },
+];
+
+// Fonctionnalités montrées dans la maquette d'origine mais pas encore
+// construites (aucune génération d'image, d'audio, de streaming ou de
+// synthèse vocale dans le moteur actuel) — affichées désactivées plutôt que
+// masquées, pour ne rien faire croire de faux tout en montrant la direction.
+const OPTIONS_FONCTIONNALITES_A_VENIR = [
+  'Images de scène',
+  "Musique d'ambiance",
+  'Streaming des réponses',
+  'Voix / lecture',
+] as const;
+
+const OPTIONS_TON: { valeur: TonHistoire; label: string; description: string }[] = [
+  { valeur: 'sombre_realiste', label: 'Sombre et réaliste', description: 'Une ambiance immersive, dure et crédible.' },
+  { valeur: 'heroique_epique', label: 'Héroïque et épique', description: 'Des aventures grandioses et inspirantes.' },
+  { valeur: 'mysterieux_intrigant', label: 'Mystérieux et intrigant', description: "Secrets, complots et révélations au cœur de l'histoire." },
+  { valeur: 'leger_aventureux', label: 'Léger et aventureux', description: 'Une histoire plus détendue, axée sur l’exploration et la découverte.' },
 ];
 
 const OPTIONS_SEXE: { valeur: string; label: string }[] = [
@@ -326,10 +368,14 @@ export default function CreateScreen({ navigation }: Props) {
   }
 
   // Étape 4 — Préférences
+  const [ton, setTon] = useState<TonHistoire>('sombre_realiste');
   const [creativite, setCreativite] = useState<Creativite>('moyenne');
   const [longueur, setLongueur] = useState<Longueur>('moyenne');
-  const [violence, setViolence] = useState<NiveauCurseur>('modere');
-  const [romance, setRomance] = useState<NiveauCurseur>('modere');
+  const [violence, setViolence] = useState<NiveauViolence>('modere');
+  const [romance, setRomance] = useState<NiveauQuatre>('modere');
+  const [humour, setHumour] = useState<NiveauQuatre>('faible');
+  const [liberteJoueur, setLiberteJoueur] = useState<LiberteJoueur>('elevee');
+  const [rythme, setRythme] = useState<RythmeHistoire>('normal');
 
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -372,7 +418,7 @@ export default function CreateScreen({ navigation }: Props) {
           dateChronique: '',
           objectifs: '',
         },
-        settings: { creativite, longueur, violence, romance },
+        settings: { ton, creativite, longueur, violence, romance, humour, liberteJoueur, rythme },
       });
       await saveStory(histoire);
       navigation.replace('Conversation', { storyId: histoire.meta.id });
@@ -553,19 +599,43 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 3 && (
           <>
-            <Text style={styles.titre}>Préférences</Text>
+            <Text style={styles.titre}>Préférences narratives</Text>
+
+            <Text style={styles.label}>Ton général</Text>
+            <RangeeOptions options={OPTIONS_TON} valeur={ton} onChange={setTon} />
+            <Text style={styles.aideTon}>{OPTIONS_TON.find((o) => o.valeur === ton)?.description}</Text>
+
             <Text style={styles.label}>Créativité</Text>
             <RangeeOptions options={OPTIONS_CREATIVITE} valeur={creativite} onChange={setCreativite} />
             <Text style={styles.label}>Longueur de réponse</Text>
             <RangeeOptions options={OPTIONS_LONGUEUR} valeur={longueur} onChange={setLongueur} />
-            <Text style={styles.label}>Violence</Text>
-            <RangeeOptions options={OPTIONS_CURSEUR} valeur={violence} onChange={setViolence} />
-            <Text style={styles.label}>Romance</Text>
-            <RangeeOptions options={OPTIONS_CURSEUR} valeur={romance} onChange={setRomance} />
+            <Text style={styles.label}>Rythme de l'histoire</Text>
+            <RangeeOptions options={OPTIONS_RYTHME} valeur={rythme} onChange={setRythme} />
+            <Text style={styles.label}>Liberté du joueur</Text>
+            <RangeeOptions options={OPTIONS_LIBERTE} valeur={liberteJoueur} onChange={setLiberteJoueur} />
+            <Text style={styles.label}>Niveau de violence</Text>
+            <RangeeOptions options={OPTIONS_VIOLENCE} valeur={violence} onChange={setViolence} />
+            <Text style={styles.label}>Niveau de romance</Text>
+            <RangeeOptions options={OPTIONS_ROMANCE} valeur={romance} onChange={setRomance} />
+            <Text style={styles.label}>Humour</Text>
+            <RangeeOptions options={OPTIONS_HUMOUR} valeur={humour} onChange={setHumour} />
             <Text style={styles.aide}>
-              Ces curseurs sont plafonnés par le profil de contenu de l'appareil (Réglages) s'il est configuré en
-              Grand public.
+              Violence et romance sont plafonnées par le profil de contenu de l'appareil (Réglages) s'il est
+              configuré en Grand public.
             </Text>
+
+            <Separateur style={{ marginVertical: espacement.lg }} />
+
+            <Text style={styles.label}>À venir</Text>
+            {OPTIONS_FONCTIONNALITES_A_VENIR.map((f) => (
+              <View key={f} style={styles.rangeeFonctionnaliteAVenir}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.texteFonctionnaliteAVenir}>{f}</Text>
+                  <Text style={styles.aideFonctionnaliteAVenir}>Bientôt disponible</Text>
+                </View>
+                <Switch value={false} disabled trackColor={{ false: couleurs.bordure, true: couleurs.bordure }} />
+              </View>
+            ))}
           </>
         )}
 
@@ -594,10 +664,16 @@ export default function CreateScreen({ navigation }: Props) {
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Préférences</Text>
               <Text style={styles.recapTexte}>
-                Créativité {OPTIONS_CREATIVITE.find((o) => o.valeur === creativite)?.label} · Longueur{' '}
-                {OPTIONS_LONGUEUR.find((o) => o.valeur === longueur)?.label} · Violence{' '}
-                {OPTIONS_CURSEUR.find((o) => o.valeur === violence)?.label} · Romance{' '}
-                {OPTIONS_CURSEUR.find((o) => o.valeur === romance)?.label}
+                Ton {OPTIONS_TON.find((o) => o.valeur === ton)?.label} · Créativité{' '}
+                {OPTIONS_CREATIVITE.find((o) => o.valeur === creativite)?.label} · Longueur{' '}
+                {OPTIONS_LONGUEUR.find((o) => o.valeur === longueur)?.label} · Rythme{' '}
+                {OPTIONS_RYTHME.find((o) => o.valeur === rythme)?.label}
+              </Text>
+              <Text style={styles.recapTexte}>
+                Liberté du joueur {OPTIONS_LIBERTE.find((o) => o.valeur === liberteJoueur)?.label} · Violence{' '}
+                {OPTIONS_VIOLENCE.find((o) => o.valeur === violence)?.label} · Romance{' '}
+                {OPTIONS_ROMANCE.find((o) => o.valeur === romance)?.label} · Humour{' '}
+                {OPTIONS_HUMOUR.find((o) => o.valeur === humour)?.label}
               </Text>
             </Panneau>
           </>
@@ -793,6 +869,31 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 13,
     marginTop: espacement.md,
+  },
+  aideTon: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    marginTop: espacement.xs,
+  },
+  rangeeFonctionnaliteAVenir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: espacement.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+  },
+  texteFonctionnaliteAVenir: {
+    color: couleurs.texte,
+    fontFamily: polices.corpsMedium,
+    fontSize: 15,
+  },
+  aideFonctionnaliteAVenir: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    marginTop: 2,
   },
   boutonAction: {
     marginTop: espacement.md,

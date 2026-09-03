@@ -1,15 +1,26 @@
 export type Creativite = 'faible' | 'moyenne' | 'elevee';
 export type Longueur = 'courte' | 'moyenne' | 'longue';
-export type NiveauCurseur = 'faible' | 'modere' | 'eleve';
+// Violence a son échelle propre (jusqu'à "extrême"), distincte de Romance
+// et Humour (échelle à 4 crans partant d'"aucun") — voir Préférences
+// narratives, étape 4/5 de la création.
+export type NiveauViolence = 'faible' | 'modere' | 'eleve' | 'extreme';
+export type NiveauQuatre = 'aucun' | 'faible' | 'modere' | 'eleve';
+export type LiberteJoueur = 'faible' | 'moderee' | 'elevee' | 'totale';
+export type RythmeHistoire = 'lent' | 'normal' | 'rapide';
+export type TonHistoire = 'sombre_realiste' | 'heroique_epique' | 'mysterieux_intrigant' | 'leger_aventureux';
 
 export interface StorySettings {
   creativite: Creativite;
   longueur: Longueur;
+  ton: TonHistoire;
   // Curseurs de contenu (brief Phase 2, contrôle d'âge). Plafonnés par le
   // profil de contenu de l'appareil quand celui-ci est GRAND_PUBLIC — voir
   // AppSettings.profilContenu et src/engine/contenuAdulte.ts.
-  violence: NiveauCurseur;
-  romance: NiveauCurseur;
+  violence: NiveauViolence;
+  romance: NiveauQuatre;
+  humour: NiveauQuatre;
+  liberteJoueur: LiberteJoueur;
+  rythme: RythmeHistoire;
 }
 
 // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
@@ -238,7 +249,7 @@ export interface SocialState {
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 8;
+export const VERSION_SCHEMA_HISTOIRE = 9;
 
 export interface StoryState {
   version: number;

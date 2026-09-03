@@ -130,6 +130,22 @@ function migrerHistoire(data: any): StoryState {
       social: migree.social ?? { engagements: [], relations: [] },
     };
   }
+  if (migree.version < 9) {
+    // v8 -> v9 : Préférences narratives étendues (ton, humour, liberté du
+    // joueur, rythme) — écran Préférences enrichi. Valeurs neutres par
+    // défaut pour une histoire créée avant cet ajout.
+    migree = {
+      ...migree,
+      version: 9,
+      settings: {
+        ...migree.settings,
+        ton: migree.settings?.ton ?? 'sombre_realiste',
+        humour: migree.settings?.humour ?? 'faible',
+        liberteJoueur: migree.settings?.liberteJoueur ?? 'elevee',
+        rythme: migree.settings?.rythme ?? 'normal',
+      },
+    };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }
 

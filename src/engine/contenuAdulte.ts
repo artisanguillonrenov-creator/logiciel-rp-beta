@@ -1,4 +1,4 @@
-import type { ProfilContenu, StorySettings } from '../types';
+import type { NiveauQuatre, NiveauViolence, ProfilContenu, StorySettings } from '../types';
 import type { RapportValidation } from './validator';
 
 // Contrôle d'âge (brief Phase 2). Le monde d'Elyndor est explicite par
@@ -27,9 +27,23 @@ Cette histoire est configurée en profil GRAND PUBLIC. Cette consigne prime sur 
 - Violence suggérée plutôt que graphique : les combats et blessures se décrivent par leurs conséquences narratives, pas par le détail anatomique du traumatisme.
 - Pas de vocabulaire cru ou vulgaire dans la narration ou les dialogues.`;
 
+const ORDRE_VIOLENCE: NiveauViolence[] = ['faible', 'modere', 'eleve', 'extreme'];
+const ORDRE_QUATRE: NiveauQuatre[] = ['aucun', 'faible', 'modere', 'eleve'];
+
+// Plafonne réellement (ne relève jamais un choix déjà plus bas que le
+// maximum autorisé — un joueur qui a choisi "Aucun" pour la romance reste à
+// "Aucun" en GRAND_PUBLIC, on ne le remonte pas artificiellement à "Faible").
+function plafonner<T extends string>(valeur: T, ordre: T[], max: T): T {
+  return ordre.indexOf(valeur) > ordre.indexOf(max) ? max : valeur;
+}
+
 export function plafonnerCurseurs(settings: StorySettings, profil: ProfilContenu | undefined): StorySettings {
   if (profil !== 'grand_public') return settings;
-  return { ...settings, violence: 'faible', romance: 'faible' };
+  return {
+    ...settings,
+    violence: plafonner(settings.violence, ORDRE_VIOLENCE, 'faible'),
+    romance: plafonner(settings.romance, ORDRE_QUATRE, 'faible'),
+  };
 }
 
 /**
