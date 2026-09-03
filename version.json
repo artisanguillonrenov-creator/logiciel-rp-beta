@@ -1,7 +1,7 @@
 {
-  "version": "1.11.7",
+  "version": "1.12.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/cacf1eb1-c944-4945-83cc-7761b8b36755",
   "versionAndroid": "1.11.7",
-  "notes": "Build complet regroupant tous les correctifs du mode local (clé OpenRouter non requise, bouton Envoyer visible, vrais messages d'erreur natifs) — installé directement plutôt que via OTA pour écarter tout doute sur la livraison."
+  "notes": "Corrige les plantages sur les conversations longues (cache d'embeddings et sauvegarde d'histoire pleins), fiabilise \"Suggérer une réplique\" (ne se coupe plus). Nouveau récapitulatif de création, sélecteur de langue, contenu Grand public renforcé, champs de texte bornés et fond fixe, numéro de message et temps de génération affichés."
 }
