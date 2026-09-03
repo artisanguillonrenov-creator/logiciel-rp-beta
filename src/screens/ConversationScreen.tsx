@@ -56,6 +56,12 @@ function messageErreur(e: unknown, messageParDefaut: string): string {
   if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
     return e.message;
   }
+  // Repli générique historique — mais s'il s'agit bien d'une Error avec un
+  // message exploitable, on l'affiche plutôt que de le masquer : un message
+  // précis (même une trace technique) aide à diagnostiquer, un texte
+  // générique ne fait que cacher la vraie cause (voir échange support du
+  // 3 sept. : erreur générique persistante sans piste exploitable).
+  if (e instanceof Error && e.message) return e.message;
   return messageParDefaut;
 }
 
