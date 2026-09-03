@@ -45,6 +45,15 @@ const KEYS = {
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
+  // Grand public par défaut (fail-safe) : sans ce champ, tout le filtrage de
+  // contenu (validerEntreeUtilisateur, validerProfilContenuHeuristique,
+  // plafonnerCurseurs...) traite l'absence de choix comme équivalente à
+  // "adulte" (aucune restriction) — voir contenuAdulte.ts, tous ces contrôles
+  // testent `!== 'grand_public'`. Un appareil qui n'a jamais explicitement
+  // choisi son profil démarre donc désormais filtré, pas grand ouvert ; ça
+  // ne change rien pour un profil déjà sauvegardé explicitement (le spread
+  // dans getSettings ne touche que les installs neuves/non déclarées).
+  profilContenu: 'grand_public',
 };
 
 export async function getSettings(): Promise<AppSettings> {
