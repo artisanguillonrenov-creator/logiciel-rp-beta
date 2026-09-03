@@ -17,9 +17,12 @@ import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
 import { MONDES } from '../data/mondes';
 import { RACES_ELYNDOR } from '../data/races';
 import { LIEUX_DEPART } from '../data/lieuxDepart';
-import { SITUATIONS_DEPART } from '../data/situationsDepart';
+import { SITUATIONS_PAR_LIEU } from '../data/situationsDepart';
+import elyndorLoreRaw from '../data/elyndorLore.json';
+import { chargerLoreElyndor } from '../engine/loreLoader';
+import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { creerNouvelleHistoire } from '../engine/story';
-import { getPersonas, saveStory, savePersona } from '../storage/storage';
+import { getPersonas, getSettings, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
@@ -41,6 +44,11 @@ const IMAGES_ETAPES = [
 function genererIdPersona(): string {
   return `persona-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+// Lore Elyndor chargé une fois — sert à retrouver l'entrée dédiée au lieu de
+// départ choisi (même titre, voir src/data/lieuxDepart.ts) pour la fournir
+// au générateur de scénario par IA.
+const LORE_ELYNDOR = chargerLoreElyndor(elyndorLoreRaw as any);
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;
 
@@ -252,24 +260,69 @@ export default function CreateScreen({ navigation }: Props) {
   }
 
   // Étape 3 — Point de départ (le lieu de départ, choisi ici plutôt qu'à
-  // l'étape Personnage, sert aussi à composer le résumé de situation)
+  // l'étape Personnage, détermine aussi la liste des situations proposées)
   const [situationDepart, setSituationDepart] = useState('');
-  const [precisionDepart, setPrecisionDepart] = useState('');
+  const [scenario, setScenario] = useState('');
+  const [generationEnCours, setGenerationEnCours] = useState(false);
+  const [erreurGeneration, setErreurGeneration] = useState('');
 
   const lieuDepartActif = LIEUX_DEPART.find((l) => l.nom === lieu);
-  const situationActive = SITUATIONS_DEPART.find((s) => s.nom === situationDepart);
+  const situationsDisponibles = lieuDepartActif ? SITUATIONS_PAR_LIEU[lieuDepartActif.id] ?? [] : [];
+  const situationActive = situationsDisponibles.find((s) => s.nom === situationDepart);
+  const raceActive = RACES_ELYNDOR.find((r) => r.nom === raceOrigine);
 
-  // Compose la phrase de point de départ effectivement envoyée au moteur, à
-  // partir du lieu/situation choisis et de la précision libre — affichée
-  // aussi telle quelle dans le panneau "Résumé de la situation".
+  function choisirLieuDepart(nomLieu: string) {
+    setLieu(nomLieu);
+    setSituationDepart(''); // la liste de situations change avec le lieu
+  }
+
+  // Compose la phrase de point de départ effectivement envoyée au moteur : le
+  // scénario (tapé ou généré par IA) s'il existe, sinon un repli minimal à
+  // partir du lieu/situation choisis — affichée aussi dans le panneau
+  // "Résumé de la situation".
   function composerPointDeDepart(): string {
+    if (scenario.trim()) return scenario.trim();
     const lieuTexte = lieuDepartActif
       ? `à ${lieuDepartActif.nom}${lieuDepartActif.description ? ` (${lieuDepartActif.description.replace(/\.$/, '')})` : ''}`
       : '';
     const phrase = [`${nom.trim() || 'Le personnage'} arrive${lieuTexte ? ' ' + lieuTexte : ''}`, situationActive ? `pour ${situationActive.nom.toLowerCase()}` : '']
       .filter(Boolean)
       .join(', ');
-    return [`${phrase}.`, precisionDepart.trim()].filter(Boolean).join(' ');
+    return `${phrase}.`;
+  }
+
+  async function genererScenario() {
+    if (generationEnCours) return;
+    setGenerationEnCours(true);
+    setErreurGeneration('');
+    try {
+      const settings = await getSettings();
+      const extraitLore = lieuDepartActif
+        ? LORE_ELYNDOR.find((e) => e.titre.toLowerCase() === lieuDepartActif.nom.toLowerCase())?.contenu
+        : undefined;
+      const texte = await genererScenarioDepart({
+        appSettings: settings,
+        mondeNom: mondeActif?.nom,
+        mondeDescription: mondeActif?.description,
+        personnageNom: nom.trim(),
+        sexe: sexe || undefined,
+        raceNom: raceActive?.nom,
+        raceDescription: raceActive?.description,
+        age: age.trim() || undefined,
+        apparence: apparence.trim() || undefined,
+        description: description.trim() || undefined,
+        lieuNom: lieuDepartActif?.nom,
+        lieuDescription: lieuDepartActif?.description,
+        situationNom: situationActive?.nom,
+        situationDescription: situationActive?.description,
+        extraitLore,
+      });
+      setScenario(texte);
+    } catch (e) {
+      setErreurGeneration(e instanceof Error ? e.message : 'Échec de la génération.');
+    } finally {
+      setGenerationEnCours(false);
+    }
   }
 
   // Étape 4 — Préférences
@@ -456,30 +509,38 @@ export default function CreateScreen({ navigation }: Props) {
               placeholder="Choisir un lieu de départ"
               options={LIEUX_DEPART}
               valeur={lieu}
-              onChange={setLieu}
+              onChange={choisirLieuDepart}
             />
             <ChampSelection
               label="Situation de départ"
-              placeholder="Choisir une situation"
-              options={SITUATIONS_DEPART}
+              placeholder={lieuDepartActif ? 'Choisir une situation' : "Choisir d'abord un lieu de départ"}
+              options={situationsDisponibles}
               valeur={situationDepart}
               onChange={setSituationDepart}
             />
             <View style={styles.champConteneur}>
               <View style={styles.rangeeLabelCompteur}>
-                <Text style={[styles.label, { marginTop: 0 }]}>Précision personnelle (optionnel)</Text>
-                <Text style={styles.compteurCaracteres}>{precisionDepart.length}/250</Text>
+                <Text style={[styles.label, { marginTop: 0 }]}>Scénario</Text>
+                <Text style={styles.compteurCaracteres}>{scenario.length}/600</Text>
               </View>
               <Champ
-                value={precisionDepart}
-                onChangeText={(v) => setPrecisionDepart(v.slice(0, 250))}
-                placeholder="Un détail propre à cette histoire, en plus du lieu et de la situation…"
+                value={scenario}
+                onChangeText={(v) => setScenario(v.slice(0, 600))}
+                placeholder="Écris le scénario d'ouverture, ou génère-le avec l'IA à partir de ce que tu as déjà rempli…"
                 multiligne
-                maxLength={250}
+                maxLength={600}
               />
+              <Bouton
+                titre={generationEnCours ? 'Génération…' : "Générer avec l'IA"}
+                variante="secondaire"
+                onPress={genererScenario}
+                desactive={generationEnCours || !lieuDepartActif}
+                style={styles.boutonAction}
+              />
+              {erreurGeneration ? <Text style={styles.erreur}>{erreurGeneration}</Text> : null}
             </View>
 
-            {(lieuDepartActif || situationActive || precisionDepart.trim()) && (
+            {(lieuDepartActif || situationActive || scenario.trim()) && (
               <Panneau style={styles.presentationMonde}>
                 <Text style={styles.labelPresentation}>Résumé de la situation</Text>
                 <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
