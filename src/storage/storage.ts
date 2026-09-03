@@ -1,6 +1,37 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings, Persona, Plugin, StoryMeta, StoryState } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
+import { viderCacheEmbeddings } from './embeddingsStore';
+
+// Levée quand la sauvegarde d'une histoire échoue faute de place (quota de
+// stockage du navigateur dépassé) même après tentative de libération
+// d'espace — voir ecrireAvecRetraitSurQuota. Contrairement au cache
+// d'embeddings (pure optimisation, un échec d'écriture y est avalé sans
+// bruit), une histoire est une vraie donnée du joueur : l'appelant doit
+// savoir que la sauvegarde n'a pas eu lieu plutôt que de croire à tort que
+// tout est enregistré.
+export class ErreurStockage extends Error {}
+
+// Écrit dans AsyncStorage ; si le quota est dépassé, libère de la place en
+// vidant le cache d'embeddings (jamais de donnée du joueur, uniquement des
+// vecteurs recalculables — voir embeddingsStore.ts) puis retente une seule
+// fois avant d'abandonner. Cas réel observé le 3 sept. : une histoire assez
+// longue (53 messages, contenu explicite) faisait à elle seule dépasser le
+// quota, avec l'échec d'écriture jusqu'ici non rattrapé.
+async function ecrireAvecRetraitSurQuota(cle: string, valeur: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(cle, valeur);
+  } catch {
+    try {
+      await viderCacheEmbeddings();
+      await AsyncStorage.setItem(cle, valeur);
+    } catch {
+      throw new ErreurStockage(
+        "Le stockage de ton navigateur est plein : cette réponse s'affiche mais n'a pas pu être sauvegardée. Supprime ou exporte une ancienne histoire (menu des histoires) avant de continuer, sinon ce dernier échange sera perdu si tu quittes ou recharges la page.",
+      );
+    }
+  }
+}
 
 const KEYS = {
   settings: '@rp_beta/settings',
@@ -162,7 +193,7 @@ export async function getStory(id: string): Promise<StoryState | null> {
 
 export async function saveStory(story: StoryState): Promise<void> {
   story.meta.updatedAt = Date.now();
-  await AsyncStorage.setItem(KEYS.story(story.meta.id), JSON.stringify(story));
+  await ecrireAvecRetraitSurQuota(KEYS.story(story.meta.id), JSON.stringify(story));
   const index = await getStoriesIndex();
   const existingPos = index.findIndex((m) => m.id === story.meta.id);
   if (existingPos >= 0) {
@@ -186,7 +217,7 @@ export async function renommerStory(id: string, titre: string): Promise<void> {
   const story = await getStory(id);
   if (!story) return;
   const storyMaj: StoryState = { ...story, meta: { ...story.meta, titre: titre.trim() || undefined } };
-  await AsyncStorage.setItem(KEYS.story(id), JSON.stringify(storyMaj));
+  await ecrireAvecRetraitSurQuota(KEYS.story(id), JSON.stringify(storyMaj));
   const index = await getStoriesIndex();
   const pos = index.findIndex((m) => m.id === id);
   if (pos >= 0) {

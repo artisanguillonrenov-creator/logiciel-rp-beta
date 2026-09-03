@@ -251,8 +251,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
       const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte, reponseAId);
       setStory(storyMaj);
       setDebugLore(debugMaj);
-      await saveStory(storyMaj);
-      setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
+      try {
+        await saveStory(storyMaj);
+        setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
+      } catch (e) {
+        // La réponse est déjà générée et affichée ci-dessus (setStory) : ne
+        // pas remettre le texte envoyé dans le champ (contrairement au catch
+        // ci-dessous) ni le traiter comme un tour raté — sinon un nouvel
+        // envoi régénérerait une deuxième réponse pour le même message. Seule
+        // la sauvegarde a échoué (ex. quota de stockage dépassé) ; le joueur
+        // doit juste le savoir.
+        setErreur(messageErreur(e, "Cette réponse n'a pas pu être sauvegardée."));
+      }
     } catch (e) {
       setSaisie(texte);
       setErreur(messageErreur(e, 'Une erreur est survenue. Réessaie.'));
@@ -269,7 +279,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
       const { story: storyMaj, debugLore: debugMaj } = await regenererDernierTour(story, appSettings);
       setStory(storyMaj);
       setDebugLore(debugMaj);
-      await saveStory(storyMaj);
+      try {
+        await saveStory(storyMaj);
+      } catch (e) {
+        setErreur(messageErreur(e, "Cette réponse n'a pas pu être sauvegardée."));
+      }
     } catch (e) {
       setErreur(messageErreur(e, 'Impossible de régénérer cette réponse.'));
     } finally {
