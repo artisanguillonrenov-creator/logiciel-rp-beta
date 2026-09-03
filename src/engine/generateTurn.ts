@@ -6,6 +6,7 @@ import {
   chargerMetamoteurs,
   selectionnerLoreElyndorSemantique,
   selectionnerMetamoteursSemantique,
+  type OptionsSelectionLore,
 } from './loreLoader';
 import {
   construireMessages,
@@ -112,6 +113,7 @@ export async function calculerSelectionLore(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
+  optionsLoreElyndor?: OptionsSelectionLore,
 ): Promise<SelectionLore> {
   const texteRequete = construireTexteRequete(story, messageJoueur);
   // Pipeline de lore émergent (brief Phase 2) : les entrées "permanent"
@@ -167,6 +169,8 @@ export async function calculerSelectionLore(
     texteRequete,
     vecteurRequete,
     vecteursElyndor,
+    undefined,
+    optionsLoreElyndor,
   );
   const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
@@ -201,7 +205,7 @@ export async function calculerDebugLore(story: StoryState, messageJoueur: string
 // Assemble le contexte envoyé au prompt builder — factorisé pour être
 // partagé entre genererTour (l'appel réel) et construirePromptDebug
 // (réglages concepteur : affiche le prompt système sans appeler le modèle).
-function construireCtxBase(
+export function construireCtxBase(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
@@ -304,6 +308,9 @@ export async function genererTour(
   story: StoryState,
   appSettings: AppSettings,
   messageJoueur: string,
+  // Citation (chantier Actions sur les messages) : id du message auquel
+  // celui-ci répond — affichage uniquement, jamais transmis au moteur.
+  reponseAId?: string,
 ): Promise<ResultatTour> {
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     story,
@@ -395,6 +402,7 @@ export async function genererTour(
     role: 'user',
     content: messageJoueur,
     timestamp: Date.now(),
+    reponseAId,
   };
   const messageAssistant: Message = {
     id: genererId(),

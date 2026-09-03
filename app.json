@@ -28,7 +28,14 @@
     },
     "plugins": [
       "expo-font",
-      "./plugins/withLitertKotlinSkipVersionCheck.js"
+      "./plugins/withLitertKotlinSkipVersionCheck.js",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Permet de dicter tes messages à l'oral plutôt que de les taper.",
+          "speechRecognitionPermission": "Permet de dicter tes messages à l'oral plutôt que de les taper."
+        }
+      ]
     ],
     "extra": {
       "eas": {

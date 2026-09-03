@@ -22,6 +22,7 @@ import { SITUATIONS_PAR_LIEU } from '../data/situationsDepart';
 import elyndorLoreRaw from '../data/elyndorLore.json';
 import { chargerLoreElyndor } from '../engine/loreLoader';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
+import { genererMessageOuverture } from '../engine/openingGenerator';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, getSettings, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
@@ -420,6 +421,19 @@ export default function CreateScreen({ navigation }: Props) {
         },
         settings: { ton, creativite, longueur, violence, romance, humour, liberteJoueur, rythme },
       });
+      // Enrichissement automatique et invisible de l'ouverture (chantier 3) :
+      // génère la scène d'ouverture avant même que le joueur n'arrive sur
+      // l'écran de conversation, en piochant du lore lié au lieu de départ.
+      // Aucun réglage visible — si la génération échoue (hors-ligne, pas de
+      // clé...), on enregistre simplement l'histoire sans message d'ouverture
+      // plutôt que de bloquer la création.
+      try {
+        const settings = await getSettings();
+        const messageOuverture = await genererMessageOuverture(histoire, settings);
+        histoire.messages.push(messageOuverture);
+      } catch {
+        // dégradation silencieuse — le joueur démarre alors sur l'écran vide habituel
+      }
       await saveStory(histoire);
       navigation.replace('Conversation', { storyId: histoire.meta.id });
     } catch (e) {

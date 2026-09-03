@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { Animated, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -24,6 +25,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
   const [renommageId, setRenommageId] = useState<string | null>(null);
   const [renommageValeur, setRenommageValeur] = useState('');
   const [suppressionId, setSuppressionId] = useState<string | null>(null);
+  const swipeablesRef = useRef<Map<string, Swipeable>>(new Map());
 
   const recharger = useCallback(() => {
     getStoriesIndex().then((liste) => setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt)));
@@ -57,7 +59,17 @@ export default function LoadConversationScreen({ navigation }: Props) {
   async function confirmerSuppression(id: string) {
     await deleteStory(id);
     setSuppressionId(null);
+    swipeablesRef.current.delete(id);
     recharger();
+  }
+
+  // Balayage latéral pour supprimer — geste standard mobile, en plus du
+  // bouton Supprimer existant. Réutilise la même étape de confirmation
+  // inline plutôt que de supprimer immédiatement au relâchement.
+  function demanderSuppressionParSwipe(item: StoryMeta) {
+    swipeablesRef.current.get(item.id)?.close();
+    setRenommageId(null);
+    setSuppressionId(item.id);
   }
 
   return (
@@ -70,6 +82,21 @@ export default function LoadConversationScreen({ navigation }: Props) {
         contentContainerStyle={{ gap: espacement.sm, paddingBottom: espacement.xl }}
         ListEmptyComponent={<Text style={styles.aide}>Aucune conversation sauvegardée pour l'instant.</Text>}
         renderItem={({ item }) => (
+          <Swipeable
+            ref={(ref) => {
+              if (ref) swipeablesRef.current.set(item.id, ref);
+              else swipeablesRef.current.delete(item.id);
+            }}
+            renderRightActions={(_progress, dragX) => {
+              const opacite = dragX.interpolate({ inputRange: [-80, -20, 0], outputRange: [1, 0.3, 0], extrapolate: 'clamp' });
+              return (
+                <Pressable onPress={() => demanderSuppressionParSwipe(item)} style={styles.actionSwipeSupprimer}>
+                  <Animated.Text style={[styles.texteActionSwipe, { opacity: opacite }]}>Supprimer</Animated.Text>
+                </Pressable>
+              );
+            }}
+            overshootRight={false}
+          >
           <Panneau>
             {renommageId === item.id ? (
               <>
@@ -119,6 +146,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
               </>
             )}
           </Panneau>
+          </Swipeable>
         )}
       />
     </View>
@@ -168,5 +196,18 @@ const styles = StyleSheet.create({
   boutonAction: {
     flex: 1,
     paddingVertical: espacement.xs,
+  },
+  actionSwipeSupprimer: {
+    backgroundColor: couleurs.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 96,
+    marginLeft: espacement.sm,
+  },
+  texteActionSwipe: {
+    color: '#FFFFFF',
+    fontFamily: polices.corps,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

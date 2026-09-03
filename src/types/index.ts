@@ -87,6 +87,12 @@ export interface Message {
   // Épinglé par le joueur pour retrouver facilement un bon moment (distinct
   // d'un signalement de problème) — voir Ajouts_A_Integrer.md #2.
   epingle?: boolean;
+  // Réaction rapide (👍 ❤️ 😮) — plus légère que l'épinglage, un seul emoji
+  // à la fois, purement décorative (jamais lue par le moteur).
+  reaction?: string;
+  // Citation d'un message précédent (id) — affichage uniquement pour
+  // l'instant, jamais transmis au moteur dans le prompt.
+  reponseAId?: string;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';

@@ -143,12 +143,32 @@ const LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE = ['[MONDE] Géographie et Races'];
  * - les autres sont classées par similarité cosinus avec la requête et
  *   plafonnées.
  */
+function piocherAleatoirement<T>(items: T[], n: number): T[] {
+  const copie = [...items];
+  for (let i = copie.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copie[i], copie[j]] = [copie[j], copie[i]];
+  }
+  return copie.slice(0, n);
+}
+
+export interface OptionsSelectionLore {
+  // Ouverture d'histoire (chantier enrichissement automatique) : au lieu de
+  // toujours remonter les entrées les mieux notées, pioche au hasard parmi
+  // un bassin plus large des entrées pertinentes — pour que deux histoires
+  // avec le même monde/lieu de départ ne convoquent pas systématiquement
+  // les mêmes détails les plus évidents.
+  aleatoire?: boolean;
+  tailleBassinAleatoire?: number;
+}
+
 export function selectionnerLoreElyndorSemantique(
   entries: ElyndorEntryChargee[],
   texteRequete: string,
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
   maxSupplementaires = 4,
+  options?: OptionsSelectionLore,
 ): LoreEntry[] {
   const texteNormalise = normalise(texteRequete);
   const toujoursActives = entries.filter(
@@ -158,14 +178,17 @@ export function selectionnerLoreElyndorSemantique(
     (e) => !e.constant && !LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre),
   );
 
-  const classement = reste
+  const classementComplet = reste
     .filter((entry) => !entry.motsClesNegatifs.some((mot) => texteNormalise.includes(mot)))
     .map((entry) => ({
       entry,
       score: vecteursEntrees[entry.id] ? similariteCosinus(vecteurRequete, vecteursEntrees[entry.id]) : -1,
     }))
-    .sort((a, b) => b.score - a.score || a.entry.priority - b.entry.priority)
-    .slice(0, maxSupplementaires);
+    .sort((a, b) => b.score - a.score || a.entry.priority - b.entry.priority);
+
+  const classement = options?.aleatoire
+    ? piocherAleatoirement(classementComplet.slice(0, Math.max(options.tailleBassinAleatoire ?? 10, maxSupplementaires)), maxSupplementaires)
+    : classementComplet.slice(0, maxSupplementaires);
 
   return [
     ...toujoursActives.map((e) => ({ id: e.id, titre: e.titre, contenu: e.contenu })),

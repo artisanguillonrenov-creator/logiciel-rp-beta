@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Swipeable } from 'react-native-gesture-handler';
+import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, Message, StoryState } from '../types';
@@ -30,11 +32,15 @@ import { suggererRepliqueJoueur } from '../engine/suggestion';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
+import { exporterConversation, type FormatExport } from '../engine/conversationExport';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
+import MenuActionsMessage from '../components/MenuActionsMessage';
 import Panneau from '../components/Panneau';
+import TexteMessageFormate from '../components/TexteMessageFormate';
+import BoutonDictee from '../components/BoutonDictee';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/creation-point-depart.png');
 
@@ -85,6 +91,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // entre supprimer ce seul message ou lui et tout ce qui suit.
   const [messageASupprimer, setMessageASupprimer] = useState<string | null>(null);
 
+  // Menu contextuel d'actions sur un message (copier, répondre, réagir,
+  // épingler, éditer, supprimer) — déclenché par appui long, à la place
+  // d'icônes séparées visibles en permanence.
+  const [messageActionsPour, setMessageActionsPour] = useState<Message | null>(null);
+  const [messageEnReponseA, setMessageEnReponseA] = useState<Message | null>(null);
+  const [messageAEditer, setMessageAEditer] = useState<Message | null>(null);
+  const [texteEdition, setTexteEdition] = useState('');
+
+  // Téléchargement de la conversation (texte / PDF / EPUB).
+  const [modalExportOuvert, setModalExportOuvert] = useState(false);
+  const [exportEnCours, setExportEnCours] = useState<FormatExport | null>(null);
+
   // Réglages concepteur (Ajouts_A_Integrer.md #6, mode test) : état brut,
   // mise à jour forcée, prompt système, overrides modèle/température —
   // uniquement visible quand appSettings.modeConcepteur est actif.
@@ -132,6 +150,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <View style={styles.rangeeEntete}>
             <Pressable onPress={() => setModalRechercheOuvert(true)} hitSlop={8}>
               <Text style={styles.iconeEntete}>🔍</Text>
+            </Pressable>
+            <Pressable onPress={() => setModalExportOuvert(true)} hitSlop={8}>
+              <Text style={styles.iconeEntete}>⬇️</Text>
             </Pressable>
             {appSettings?.modeConcepteur && (
               <Pressable onPress={ouvrirConcepteur} hitSlop={8}>
@@ -194,11 +215,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(true);
     setErreur('');
     setSaisie('');
+    const reponseAId = messageEnReponseA?.id;
+    setMessageEnReponseA(null);
     // TODO(debug): calculée en parallèle de l'appel API pour rester visible
     // même si la génération échoue ensuite (non bloquant : meilleur effort).
     calculerDebugLore(story, texte, appSettings).then(setDebugLore).catch(() => {});
     try {
-      const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte);
+      const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte, reponseAId);
       setStory(storyMaj);
       setDebugLore(debugMaj);
       await saveStory(storyMaj);
@@ -209,7 +232,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     } finally {
       setEnCours(false);
     }
-  }, [saisie, story, appSettings, enCours]);
+  }, [saisie, story, appSettings, enCours, messageEnReponseA]);
 
   const regenerer = useCallback(async () => {
     if (!story || !appSettings || enCours) return;
@@ -251,6 +274,68 @@ export default function ConversationScreen({ route, navigation }: Props) {
     },
     [story],
   );
+
+  // Actions du menu contextuel (appui long sur un message).
+  async function copierMessage(m: Message) {
+    await Clipboard.setStringAsync(m.content);
+    setMessageActionsPour(null);
+    setMessageStatut('Copié.');
+    setTimeout(() => setMessageStatut(''), 2000);
+  }
+
+  function repondreAMessage(m: Message) {
+    setMessageEnReponseA(m);
+    setMessageActionsPour(null);
+  }
+
+  async function reagirAMessage(m: Message, emoji: string) {
+    if (!story) return;
+    const messages = story.messages.map((msg) =>
+      msg.id === m.id ? { ...msg, reaction: msg.reaction === emoji ? undefined : emoji } : msg,
+    );
+    const storyMaj = { ...story, messages };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setMessageActionsPour(null);
+  }
+
+  function epinglerDepuisMenu(m: Message) {
+    togglerEpingle(m.id);
+    setMessageActionsPour(null);
+  }
+
+  function editerDepuisMenu(m: Message) {
+    setMessageAEditer(m);
+    setTexteEdition(m.content);
+    setMessageActionsPour(null);
+  }
+
+  async function enregistrerEdition() {
+    if (!story || !messageAEditer) return;
+    const messages = story.messages.map((m) => (m.id === messageAEditer.id ? { ...m, content: texteEdition } : m));
+    const storyMaj = { ...story, messages };
+    setStory(storyMaj);
+    await saveStory(storyMaj);
+    setMessageAEditer(null);
+  }
+
+  function supprimerDepuisMenu(m: Message) {
+    setMessageActionsPour(null);
+    setMessageASupprimer(m.id);
+  }
+
+  async function lancerExport(format: FormatExport) {
+    if (!story || exportEnCours) return;
+    setExportEnCours(format);
+    try {
+      await exporterConversation(story, format);
+      setModalExportOuvert(false);
+    } catch (e) {
+      setErreur(messageErreur(e, "Impossible de générer l'export pour le moment."));
+    } finally {
+      setExportEnCours(null);
+    }
+  }
 
   // Suppression de message(s) : les index qui gouvernent la cadence des
   // pipelines périodiques (mémoire, directeur) sont bornés à la nouvelle
@@ -443,19 +528,27 @@ export default function ConversationScreen({ route, navigation }: Props) {
             onScrollToIndexFailed={(info) => {
               setTimeout(() => listeRef.current?.scrollToIndex({ index: info.index, animated: true }), 100);
             }}
-            renderItem={({ item }) => (
-              <View style={[styles.groupeMessage, item.role === 'user' ? styles.groupeMessageJoueur : styles.groupeMessageNarrateur]}>
-                <Pressable onLongPress={() => togglerEpingle(item.id)} delayLongPress={400}>
-                  <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
-                    {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
-                    <Text style={styles.texteBulle}>{item.content}</Text>
-                  </View>
-                </Pressable>
-                <Pressable onPress={() => setMessageASupprimer(item.id)} hitSlop={8} style={styles.boutonSupprimerMessage}>
-                  <Text style={styles.texteSupprimerMessage}>🗑</Text>
-                </Pressable>
-              </View>
-            )}
+            renderItem={({ item }) => {
+              const messageCite = item.reponseAId ? story.messages.find((m) => m.id === item.reponseAId) : undefined;
+              return (
+                <View style={[styles.groupeMessage, item.role === 'user' ? styles.groupeMessageJoueur : styles.groupeMessageNarrateur]}>
+                  {messageCite && (
+                    <View style={styles.citationPreview}>
+                      <Text style={styles.texteCitationPreview} numberOfLines={1}>
+                        {messageCite.role === 'user' ? story.meta.personnageNom : 'Narrateur'} : {messageCite.content}
+                      </Text>
+                    </View>
+                  )}
+                  <Pressable onLongPress={() => setMessageActionsPour(item)} delayLongPress={400}>
+                    <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
+                      {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
+                      <TexteMessageFormate texte={item.content} style={styles.texteBulle} />
+                    </View>
+                  </Pressable>
+                  {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
+                </View>
+              );
+            }}
           />
         )}
 
@@ -500,6 +593,17 @@ export default function ConversationScreen({ route, navigation }: Props) {
         {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
 
         <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
+          {messageEnReponseA && (
+            <View style={styles.bandeauReponseA}>
+              <Text style={styles.texteBandeauReponseA} numberOfLines={1}>
+                Réponse à {messageEnReponseA.role === 'user' ? story.meta.personnageNom : 'Narrateur'} :{' '}
+                {messageEnReponseA.content}
+              </Text>
+              <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8}>
+                <Text style={styles.boutonFermerReponseA}>✕</Text>
+              </Pressable>
+            </View>
+          )}
           <View style={styles.rangeeActionsRapides}>
             {dernierEstAssistant && (
               <Bouton titre="Régénérer" variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
@@ -522,6 +626,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
               editable={!enCours}
               conteneurStyle={{ flex: 1 }}
               style={styles.champSaisie}
+            />
+            <BoutonDictee
+              desactive={enCours}
+              onTexteReconnu={(texte) => setSaisie((v) => (v.trim() ? `${v.trim()} ${texte}` : texte))}
             />
             <Pressable
               style={[styles.boutonEnvoyer, (enCours || !saisie.trim()) && styles.boutonDesactive]}
@@ -621,6 +729,53 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Bouton titre="Annuler" variante="secondaire" onPress={() => setMessageASupprimer(null)} style={{ marginTop: espacement.sm }} />
           </Panneau>
         </View>
+      </Modal>
+
+      <MenuActionsMessage
+        message={messageActionsPour}
+        onFermer={() => setMessageActionsPour(null)}
+        onCopier={copierMessage}
+        onRepondre={repondreAMessage}
+        onReagir={reagirAMessage}
+        onEpingler={epinglerDepuisMenu}
+        onEditer={editerDepuisMenu}
+        onSupprimer={supprimerDepuisMenu}
+      />
+
+      <Modal visible={!!messageAEditer} animationType="slide" onRequestClose={() => setMessageAEditer(null)}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.titreModal}>Éditer le message</Text>
+          <Champ value={texteEdition} onChangeText={setTexteEdition} multiligne conteneurStyle={styles.champConteneur} style={{ minHeight: 160 }} />
+          <Bouton titre="Enregistrer" onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
+          <Bouton titre="Annuler" variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
+        </View>
+      </Modal>
+
+      <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
+        <Pressable style={styles.superpositionSuppression} onPress={() => setModalExportOuvert(false)}>
+          <Panneau style={styles.panneauSuppression}>
+            <Text style={styles.titreModal}>Télécharger la conversation</Text>
+            {(['texte', 'pdf', 'epub'] as FormatExport[]).map((format) => (
+              <Bouton
+                key={format}
+                titre={
+                  exportEnCours === format
+                    ? 'Génération…'
+                    : format === 'texte'
+                      ? 'Texte brut (.txt)'
+                      : format === 'pdf'
+                        ? 'PDF'
+                        : 'EPUB (liseuse)'
+                }
+                variante="secondaire"
+                desactive={!!exportEnCours}
+                onPress={() => lancerExport(format)}
+                style={{ marginTop: espacement.sm }}
+              />
+            ))}
+            <Bouton titre="Annuler" variante="secondaire" onPress={() => setModalExportOuvert(false)} style={{ marginTop: espacement.sm }} desactive={!!exportEnCours} />
+          </Panneau>
+        </Pressable>
       </Modal>
 
       <Modal visible={modalConcepteurOuvert} animationType="slide" onRequestClose={() => setModalConcepteurOuvert(false)}>
@@ -757,15 +912,22 @@ const styles = StyleSheet.create({
     right: -6,
     fontSize: 13,
   },
-  boutonSupprimerMessage: {
-    paddingHorizontal: espacement.xs,
-    paddingVertical: 2,
+  reactionIndicateur: {
+    fontSize: 15,
     marginTop: 2,
   },
-  texteSupprimerMessage: {
-    color: couleurs.texteAtténué,
-    fontSize: 13,
+  citationPreview: {
+    borderLeftWidth: 2,
+    borderLeftColor: couleurs.accent,
+    paddingLeft: espacement.xs,
+    marginBottom: 2,
     opacity: 0.7,
+  },
+  texteCitationPreview: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   superpositionSuppression: {
     flex: 1,
@@ -937,6 +1099,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: couleurs.bordure,
     padding: espacement.sm,
+  },
+  bandeauReponseA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: couleurs.fondCarte,
+    borderLeftWidth: 2,
+    borderLeftColor: couleurs.accent,
+    paddingHorizontal: espacement.sm,
+    paddingVertical: espacement.xs,
+    marginBottom: espacement.xs,
+  },
+  texteBandeauReponseA: {
+    flex: 1,
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  boutonFermerReponseA: {
+    color: couleurs.texteAtténué,
+    fontSize: 14,
+    paddingLeft: espacement.sm,
   },
   rangeeActionsRapides: {
     flexDirection: 'row',
