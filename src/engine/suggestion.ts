@@ -50,6 +50,14 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
     // hommes, et une place à mes côtés."), déjà plus longue que 200 tokens
     // en pratique malgré la consigne de brièveté.
     maxTokens: 400,
+    // Sur un modèle à raisonnement hybride (ex. DeepSeek V3.1+), le
+    // raisonnement interne consomme le même budget maxTokens que la réponse
+    // visible, de façon très variable d'un appel à l'autre — la coupure
+    // observée en usage réel (à des endroits différents, sans lien avec la
+    // valeur de maxTokens) correspondait à ce raisonnement invisible qui
+    // grignotait tout le budget avant même d'écrire la suggestion. Une
+    // suggestion d'une phrase n'a besoin d'aucun raisonnement caché.
+    raisonnement: false,
     messages: [
       {
         role: 'system',
