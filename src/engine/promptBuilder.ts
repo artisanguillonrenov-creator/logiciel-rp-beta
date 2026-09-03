@@ -33,7 +33,7 @@ function instructionLongueur(longueur: StorySettings['longueur']): string {
   }
 }
 
-function libelleViolence(niveau: StorySettings['violence']): string {
+export function libelleViolence(niveau: StorySettings['violence']): string {
   switch (niveau) {
     case 'faible':
       return 'suggérée plutôt que montrée, jamais le centre de la scène';
@@ -46,7 +46,7 @@ function libelleViolence(niveau: StorySettings['violence']): string {
   }
 }
 
-function libelleRomance(niveau: StorySettings['romance']): string {
+export function libelleRomance(niveau: StorySettings['romance']): string {
   switch (niveau) {
     case 'aucun':
       return "absente — pas d'intrigue amoureuse ni de tension romantique";
