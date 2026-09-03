@@ -65,6 +65,11 @@ function messageErreur(e: unknown, messageParDefaut: string): string {
   return messageParDefaut;
 }
 
+function formaterDureeGeneration(ms: number): string {
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
+}
+
 export default function ConversationScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useLangue();
@@ -558,7 +563,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
             onScrollToIndexFailed={(info) => {
               setTimeout(() => listeRef.current?.scrollToIndex({ index: info.index, animated: true }), 100);
             }}
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
               const messageCite = item.reponseAId ? story.messages.find((m) => m.id === item.reponseAId) : undefined;
               return (
                 <View style={[styles.groupeMessage, item.role === 'user' ? styles.groupeMessageJoueur : styles.groupeMessageNarrateur]}>
@@ -576,6 +581,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     </View>
                   </Pressable>
                   {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
+                  <Text style={styles.metaMessage}>
+                    {index + 1}/{story.messages.length}
+                    {item.role === 'assistant' && item.dureeGenerationMs ? ` · ${formaterDureeGeneration(item.dureeGenerationMs)}` : ''}
+                  </Text>
                 </View>
               );
             }}
@@ -947,6 +956,13 @@ const styles = StyleSheet.create({
   reactionIndicateur: {
     fontSize: 15,
     marginTop: 2,
+  },
+  metaMessage: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 10,
+    marginTop: 2,
+    opacity: 0.6,
   },
   citationPreview: {
     borderLeftWidth: 2,

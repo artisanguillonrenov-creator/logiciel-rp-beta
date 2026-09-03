@@ -32,6 +32,7 @@ const INSTRUCTION_OUVERTURE =
  * obtiennent ainsi des débuts différents.
  */
 export async function genererMessageOuverture(story: StoryState, appSettings: AppSettings): Promise<Message> {
+  const debutMs = Date.now();
   const texteRequete = construireTexteRequeteOuverture(story);
   const selection = await calculerSelectionLore(story, texteRequete, appSettings, {
     aleatoire: true,
@@ -68,5 +69,6 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     role: 'assistant',
     content: contenu.trim(),
     timestamp: Date.now(),
+    dureeGenerationMs: Date.now() - debutMs,
   };
 }

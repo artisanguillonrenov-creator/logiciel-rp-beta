@@ -313,6 +313,11 @@ export async function genererTour(
   // celui-ci répond — affichage uniquement, jamais transmis au moteur.
   reponseAId?: string,
 ): Promise<ResultatTour> {
+  // Temps total ressenti par le joueur entre l'envoi et l'affichage de la
+  // réponse (sélection de lore + appel modèle + validation + réparation
+  // éventuelle) — affiché sous le message, voir ConversationScreen.tsx.
+  const debutMs = Date.now();
+
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     story,
     messageJoueur,
@@ -423,6 +428,7 @@ export async function genererTour(
     role: 'assistant',
     content: reponse,
     timestamp: Date.now(),
+    dureeGenerationMs: Date.now() - debutMs,
   };
 
   const messages = [...story.messages, messageUtilisateur, messageAssistant];

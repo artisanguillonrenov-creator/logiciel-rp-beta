@@ -93,6 +93,10 @@ export interface Message {
   // Citation d'un message précédent (id) — affichage uniquement pour
   // l'instant, jamais transmis au moteur dans le prompt.
   reponseAId?: string;
+  // Temps pris par l'appel modèle pour produire ce message (ms) — messages
+  // "assistant" uniquement. Affichage/diagnostic seulement, jamais transmis
+  // au moteur. Absent sur les messages écrits avant l'ajout de cette mesure.
+  dureeGenerationMs?: number;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
