@@ -43,7 +43,13 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
     model: appSettings.model,
     moteurInference: appSettings.moteurInference,
     temperature: 0.8,
-    maxTokens: 200,
+    // Le format est déjà contraint par la consigne (1-2 phrases, un seul
+    // personnage) — cette marge sert seulement à ne jamais couper une
+    // réplique légitime qui inclut une énumération ou une action avant le
+    // dialogue (ex. "*Je m'appuie...* Je te propose... mon armurerie, mes
+    // hommes, et une place à mes côtés."), déjà plus longue que 200 tokens
+    // en pratique malgré la consigne de brièveté.
+    maxTokens: 400,
     messages: [
       {
         role: 'system',
