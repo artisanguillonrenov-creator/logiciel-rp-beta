@@ -37,8 +37,40 @@ async function chargerCache(): Promise<CacheEmbeddings> {
   }
 }
 
+// Le cache grossit d'une entrée par ancien message de chaque histoire
+// (recherche de "souvenirs", voir searchHistorique.ts, ids préfixés
+// "msg-") sans jamais être purgé — sur une longue conversation, ça finit
+// par dépasser le quota de stockage du navigateur (localStorage, ~5-10 Mo
+// par origine sur web, partagé avec les histoires elles-mêmes et le reste
+// des réglages). Le lore/les métamoteurs (autres ids), eux, restent
+// toujours en cache : ce pool est naturellement borné par la taille du
+// lorebook, pas par l'usage, et les réembeder à chaque histoire serait un
+// gâchis d'appels réseau. Seules les entrées "msg-" sont plafonnées, en
+// gardant les plus récemment ajoutées.
+const MAX_ENTREES_MESSAGES = 150;
+
+function plafonnerEntrees(entrees: Record<string, EntreeCache>): Record<string, EntreeCache> {
+  const clesMessages = Object.keys(entrees).filter((cle) => cle.startsWith('msg-'));
+  if (clesMessages.length <= MAX_ENTREES_MESSAGES) return entrees;
+  const aEvincer = new Set(clesMessages.slice(0, clesMessages.length - MAX_ENTREES_MESSAGES));
+  const plafonnees: Record<string, EntreeCache> = {};
+  for (const [cle, valeur] of Object.entries(entrees)) {
+    if (!aEvincer.has(cle)) plafonnees[cle] = valeur;
+  }
+  return plafonnees;
+}
+
 async function sauvegarderCache(cache: CacheEmbeddings): Promise<void> {
-  await AsyncStorage.setItem(CLEF_CACHE, JSON.stringify(cache));
+  const aEnregistrer: CacheEmbeddings = { ...cache, entrees: plafonnerEntrees(cache.entrees) };
+  try {
+    await AsyncStorage.setItem(CLEF_CACHE, JSON.stringify(aEnregistrer));
+  } catch {
+    // Le cache est une optimisation (évite de recalculer des embeddings déjà
+    // connus), pas une condition pour que le tour aboutisse — un échec
+    // d'écriture (quota dépassé, stockage indisponible...) ne doit jamais
+    // faire échouer la génération en cours. Les vecteurs déjà calculés
+    // restent utilisables pour ce tour, seule la mise en cache est perdue.
+  }
 }
 
 export interface EntreeAEmbeder {
