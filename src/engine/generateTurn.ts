@@ -35,6 +35,7 @@ import {
 } from './searchHistorique';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
+  ErreurProfilContenu,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
   plafonnerCurseurs,
   validerProfilContenuHeuristique,
@@ -395,6 +396,19 @@ export async function genererTour(
     } catch {
       aEteCorrige = false;
     }
+  }
+
+  // Verrou GRAND_PUBLIC (fail-closed) : contrairement aux autres contrôles
+  // ci-dessus (continuité, canon...) où garder la réponse non corrigée est
+  // un compromis acceptable pour ne pas casser le tour, un dépassement du
+  // profil de contenu ne doit JAMAIS être affiché tel quel si la tentative
+  // de correction n'a pas suffi. On revérifie la réponse finale, quel que
+  // soit le chemin emprunté ci-dessus, et on interrompt le tour plutôt que
+  // d'afficher un contenu hors-limites.
+  if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
+    throw new ErreurProfilContenu(
+      "Cette réponse ne respecte pas les limites du profil Grand public et n'a pas pu être corrigée automatiquement. Réessaie avec une formulation différente.",
+    );
   }
 
   const messageUtilisateur: Message = {

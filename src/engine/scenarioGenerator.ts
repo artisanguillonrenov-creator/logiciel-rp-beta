@@ -1,5 +1,6 @@
 import type { AppSettings } from '../types';
 import { appellerModele } from './openrouter';
+import { ErreurProfilContenu, INSTRUCTION_REGISTRE_GRAND_PUBLIC, validerProfilContenuHeuristique } from './contenuAdulte';
 
 export interface ParametresGenerationScenario {
   appSettings: AppSettings;
@@ -48,6 +49,9 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
     .filter(Boolean)
     .join('\n\n');
 
+  const instructionRegistre =
+    p.appSettings.profilContenu === 'grand_public' ? `\n\n${INSTRUCTION_REGISTRE_GRAND_PUBLIC}` : '';
+
   const contenu = await appellerModele({
     apiKey: p.appSettings.openRouterApiKey,
     model: p.appSettings.model,
@@ -58,11 +62,16 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
       {
         role: 'system',
         content:
-          "Tu écris le scénario d'ouverture d'une histoire de jeu de rôle, à partir des informations fournies (monde, personnage, lieu, situation, lore). 3 à 5 phrases, à la troisième personne, temps présent, qui plantent la scène juste avant que l'histoire ne commence — sans dialogue, sans résoudre la situation, juste le point de départ. Reste cohérent avec le lore fourni. Réponds uniquement avec le texte du scénario, sans titre ni préambule.",
+          "Tu écris le scénario d'ouverture d'une histoire de jeu de rôle, à partir des informations fournies (monde, personnage, lieu, situation, lore). 3 à 5 phrases, à la troisième personne, temps présent, qui plantent la scène juste avant que l'histoire ne commence — sans dialogue, sans résoudre la situation, juste le point de départ. Reste cohérent avec le lore fourni. Réponds uniquement avec le texte du scénario, sans titre ni préambule." +
+          instructionRegistre,
       },
       { role: 'user', content: contexte },
     ],
   });
 
-  return contenu.trim();
+  const texte = contenu.trim();
+  if (!validerProfilContenuHeuristique(texte, p.appSettings.profilContenu).ok) {
+    throw new ErreurProfilContenu('Scénario généré hors des limites du profil Grand public — réessaie.');
+  }
+  return texte;
 }

@@ -2,6 +2,7 @@ import type { AppSettings, Message, StoryState } from '../types';
 import { calculerSelectionLore, construireCtxBase } from './generateTurn';
 import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite } from './promptBuilder';
 import { appellerModele } from './openrouter';
+import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
 
 function genererId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -51,6 +52,16 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     temperature,
     maxTokens,
   });
+
+  // Même verrou fail-closed que genererTour (voir generateTurn.ts) : cette
+  // ouverture n'a pas de boucle de réparation (pas d'échange encore établi
+  // à corriger), donc un dépassement du profil GRAND_PUBLIC est traité
+  // comme un échec de génération pur et simple — CreateScreen.valider()
+  // dégrade déjà silencieusement vers l'écran vide habituel si cette
+  // fonction échoue, ce qui est le comportement voulu ici aussi.
+  if (!validerProfilContenuHeuristique(contenu, appSettings.profilContenu).ok) {
+    throw new ErreurProfilContenu("Scène d'ouverture générée hors des limites du profil Grand public.");
+  }
 
   return {
     id: genererId(),

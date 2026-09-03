@@ -32,6 +32,7 @@ import { suggererRepliqueJoueur } from '../engine/suggestion';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
+import { ErreurProfilContenu, validerEntreeUtilisateur } from '../engine/contenuAdulte';
 import { exporterConversation, type FormatExport } from '../engine/conversationExport';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
@@ -52,7 +53,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
 
 function messageErreur(e: unknown, messageParDefaut: string): string {
-  if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal) return e.message;
+  if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
+    return e.message;
+  }
   return messageParDefaut;
 }
 
@@ -77,6 +80,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [ambianceEdit, setAmbianceEdit] = useState('');
   const [dateEdit, setDateEdit] = useState('');
   const [objectifsEdit, setObjectifsEdit] = useState('');
+  const [erreurContexte, setErreurContexte] = useState('');
 
   // Recherche + épinglés (Ajouts_A_Integrer.md #1 et #2).
   const [modalRechercheOuvert, setModalRechercheOuvert] = useState(false);
@@ -211,6 +215,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
     if (!appSettings.profilContenu) {
       setErreur('Déclare un profil de contenu (Grand public / Adulte) dans Réglages avant de commencer.');
+      return;
+    }
+
+    // Filtre centralisé (audit sécurité) : un message tapé par le joueur
+    // n'était jusqu'ici jamais vérifié avant envoi — seule la réponse du
+    // narrateur l'était. Le texte reste dans le champ de saisie, à
+    // reformuler, plutôt que d'être effacé.
+    const controleEntree = validerEntreeUtilisateur(texte, appSettings.profilContenu);
+    if (!controleEntree.ok) {
+      setErreur(controleEntree.motif);
       return;
     }
 
@@ -389,11 +403,19 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setAmbianceEdit(story.meta.contexte.ambiance);
     setDateEdit(story.meta.contexte.dateChronique);
     setObjectifsEdit(story.meta.contexte.objectifs);
+    setErreurContexte('');
     setModalContexteOuvert(true);
   }
 
   async function enregistrerContexte() {
     if (!story) return;
+    const texteComplet = [lieuEdit, ambianceEdit, dateEdit, objectifsEdit].join('\n');
+    const controle = validerEntreeUtilisateur(texteComplet, appSettings?.profilContenu);
+    if (!controle.ok) {
+      setErreurContexte(controle.motif);
+      return;
+    }
+    setErreurContexte('');
     const storyMaj: StoryState = {
       ...story,
       meta: {
@@ -652,6 +674,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Champ label={t('Ambiance')} value={ambianceEdit} onChangeText={setAmbianceEdit} multiligne conteneurStyle={styles.champConteneur} />
           <Champ label={t('Date / période')} value={dateEdit} onChangeText={setDateEdit} conteneurStyle={styles.champConteneur} />
           <Champ label={t('Objectifs')} value={objectifsEdit} onChangeText={setObjectifsEdit} multiligne conteneurStyle={styles.champConteneur} />
+
+          {erreurContexte ? <Text style={styles.erreur}>{t(erreurContexte)}</Text> : null}
 
           <Bouton titre={t('Enregistrer')} onPress={enregistrerContexte} style={{ marginTop: espacement.lg }} />
           <Bouton titre={t('Fermer sans enregistrer')} variante="secondaire" onPress={() => setModalContexteOuvert(false)} style={{ marginTop: espacement.sm }} />

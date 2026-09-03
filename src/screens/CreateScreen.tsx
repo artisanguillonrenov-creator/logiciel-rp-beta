@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { Creativite, Longueur, LiberteJoueur, NiveauQuatre, NiveauViolence, Persona, RythmeHistoire, TonHistoire } from '../types';
+import type { Creativite, Longueur, LiberteJoueur, NiveauQuatre, NiveauViolence, Persona, ProfilContenu, RythmeHistoire, TonHistoire } from '../types';
 import { MONDES } from '../data/mondes';
 import { RACES_ELYNDOR } from '../data/races';
 import { LIEUX_DEPART } from '../data/lieuxDepart';
@@ -25,6 +25,7 @@ import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, getSettings, saveStory, savePersona } from '../storage/storage';
+import { validerEntreeUtilisateur, valeursAutoriseesRomance, valeursAutoriseesViolence } from '../engine/contenuAdulte';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
@@ -129,23 +130,42 @@ function RangeeOptions<T extends string>({
   options,
   valeur,
   onChange,
+  autorisees,
 }: {
   options: { valeur: T; label: string }[];
   valeur: T;
   onChange: (v: T) => void;
+  // Contrôle d'âge (audit sécurité) : quand fourni, les valeurs absentes de
+  // cet ensemble restent visibles mais désactivées — l'interface doit
+  // montrer honnêtement ce que le profil actuel autorise plutôt que
+  // proposer un choix que le moteur plafonnerait ensuite en silence (voir
+  // plafonnerCurseurs dans contenuAdulte.ts).
+  autorisees?: T[];
 }) {
   const { t } = useLangue();
   return (
     <View style={styles.rangeeOptions}>
-      {options.map((opt) => (
-        <Pressable
-          key={opt.valeur}
-          style={[styles.option, valeur === opt.valeur && styles.optionActive]}
-          onPress={() => onChange(opt.valeur)}
-        >
-          <Text style={[styles.texteOption, valeur === opt.valeur && styles.texteOptionActive]}>{t(opt.label)}</Text>
-        </Pressable>
-      ))}
+      {options.map((opt) => {
+        const bloque = !!autorisees && !autorisees.includes(opt.valeur);
+        return (
+          <Pressable
+            key={opt.valeur}
+            style={[styles.option, valeur === opt.valeur && !bloque && styles.optionActive, bloque && styles.optionBloquee]}
+            onPress={() => !bloque && onChange(opt.valeur)}
+            disabled={bloque}
+          >
+            <Text
+              style={[
+                styles.texteOption,
+                valeur === opt.valeur && !bloque && styles.texteOptionActive,
+                bloque && styles.texteOptionBloquee,
+              ]}
+            >
+              {t(opt.label)}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -257,6 +277,17 @@ export default function CreateScreen({ navigation }: Props) {
   const { t } = useLangue();
   const [etape, setEtape] = useState(0);
 
+  // Contrôle d'âge (audit sécurité) : les champs libres de ce parcours
+  // (personnage, scénario, contexte...) n'étaient filtrés par aucun profil
+  // — chargé une fois ici et revérifié à chaque transition d'étape plutôt
+  // qu'à la toute fin seulement, pour ne pas laisser le joueur avancer sur
+  // 4 étapes avant de découvrir le blocage.
+  const [profilContenu, setProfilContenu] = useState<ProfilContenu | undefined>(undefined);
+
+  useEffect(() => {
+    getSettings().then((s) => setProfilContenu(s.profilContenu));
+  }, []);
+
   // Étape 1 — Histoire (choix du monde + panneau Contexte de l'Histoire,
   // brief Phase 2)
   const [mondeSelectionne, setMondeSelectionne] = useState(MONDES[0]?.id ?? '');
@@ -292,6 +323,11 @@ export default function CreateScreen({ navigation }: Props) {
 
   async function enregistrerPersonaDansBibliotheque() {
     if (!nom.trim() || !description.trim()) return;
+    const controle = validerEntreeUtilisateur([nom, apparence, description].join('\n'), profilContenu);
+    if (!controle.ok) {
+      setMessagePersona(controle.motif);
+      return;
+    }
     const persona: Persona = {
       id: genererIdPersona(),
       nom: nom.trim(),
@@ -398,6 +434,24 @@ export default function CreateScreen({ navigation }: Props) {
   const [liberteJoueur, setLiberteJoueur] = useState<LiberteJoueur>('elevee');
   const [rythme, setRythme] = useState<RythmeHistoire>('normal');
 
+  // Contrôle d'âge (audit sécurité) : l'interface affichait jusqu'ici tous
+  // les niveaux de violence/romance quel que soit le profil, alors que le
+  // moteur les plafonnait déjà en silence à la génération — un choix
+  // "Extrême" restait affiché tel quel dans le récapitulatif tout en étant
+  // réellement traité comme "Faible". Les valeurs non permises sont donc
+  // maintenant désactivées à l'écran (plutôt que masquées, pour que le
+  // joueur comprenne pourquoi), et l'état est ramené dans les clous dès que
+  // le profil est connu.
+  const violenceAutorisee = valeursAutoriseesViolence(profilContenu);
+  const romanceAutorisee = valeursAutoriseesRomance(profilContenu);
+
+  useEffect(() => {
+    if (profilContenu !== 'grand_public') return;
+    setViolence((v) => (violenceAutorisee.includes(v) ? v : violenceAutorisee[violenceAutorisee.length - 1]));
+    setRomance((r) => (romanceAutorisee.includes(r) ? r : romanceAutorisee[romanceAutorisee.length - 1]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profilContenu]);
+
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState('');
 
@@ -411,17 +465,46 @@ export default function CreateScreen({ navigation }: Props) {
     true,
   ][etape];
 
+  // Contrôle d'âge (audit sécurité) : les champs libres de chaque étape
+  // n'étaient jusqu'ici filtrés par aucun profil — vérifiés ici avant de
+  // laisser le joueur avancer, avec le même filtre centralisé que la
+  // conversation (validerEntreeUtilisateur), pour ne pas avoir un contrôle
+  // différent (donc potentiellement moins complet) par écran.
+  function texteLibreEtape(e: number): string {
+    if (e === 1) return [nom, apparence, description].join('\n');
+    if (e === 2) return scenario;
+    return '';
+  }
+
   function suivant() {
     if (!etapeValide) return;
+    const controle = validerEntreeUtilisateur(texteLibreEtape(etape), profilContenu);
+    if (!controle.ok) {
+      setErreur(controle.motif);
+      return;
+    }
+    setErreur('');
     setEtape((e) => Math.min(e + 1, ETAPES.length - 1));
   }
 
   function precedent() {
+    setErreur('');
     setEtape((e) => Math.max(e - 1, 0));
   }
 
   async function valider() {
     if (enregistrement) return;
+    // Filet de sécurité final : revalide l'ensemble des champs libres,
+    // couvrant aussi le cas d'un persona chargé depuis la bibliothèque
+    // (donc jamais passé par le contrôle étape par étape).
+    const controleFinal = validerEntreeUtilisateur(
+      [nom, apparence, description, scenario].join('\n'),
+      profilContenu,
+    );
+    if (!controleFinal.ok) {
+      setErreur(controleFinal.motif);
+      return;
+    }
     setEnregistrement(true);
     setErreur('');
     try {
@@ -648,9 +731,14 @@ export default function CreateScreen({ navigation }: Props) {
             <Text style={styles.label}>{t('Liberté du joueur')}</Text>
             <RangeeOptions options={OPTIONS_LIBERTE} valeur={liberteJoueur} onChange={setLiberteJoueur} />
             <Text style={styles.label}>{t('Niveau de violence')}</Text>
-            <RangeeOptions options={OPTIONS_VIOLENCE} valeur={violence} onChange={setViolence} />
+            <RangeeOptions options={OPTIONS_VIOLENCE} valeur={violence} onChange={setViolence} autorisees={violenceAutorisee} />
             <Text style={styles.label}>{t('Niveau de romance')}</Text>
-            <RangeeOptions options={OPTIONS_ROMANCE} valeur={romance} onChange={setRomance} />
+            <RangeeOptions options={OPTIONS_ROMANCE} valeur={romance} onChange={setRomance} autorisees={romanceAutorisee} />
+            {profilContenu === 'grand_public' && (
+              <Text style={styles.aide}>
+                {t('Disponible avec le profil Adulte (Réglages).')}
+              </Text>
+            )}
             <Text style={styles.label}>{t('Humour')}</Text>
             <RangeeOptions options={OPTIONS_HUMOUR} valeur={humour} onChange={setHumour} />
             <Text style={styles.aide}>
@@ -938,6 +1026,12 @@ const styles = StyleSheet.create({
   },
   texteOptionActive: {
     color: couleurs.accentClair,
+  },
+  optionBloquee: {
+    opacity: 0.35,
+  },
+  texteOptionBloquee: {
+    color: couleurs.texteAtténué,
   },
   aide: {
     color: couleurs.texteAtténué,
