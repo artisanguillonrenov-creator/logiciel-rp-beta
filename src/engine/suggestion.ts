@@ -22,7 +22,12 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
     model: appSettings.model,
     moteurInference: appSettings.moteurInference,
     temperature: 0.9,
-    maxTokens: 150,
+    // 150 coupait la suggestion en plein milieu dès que le modèle rendait
+    // une ou deux phrases un peu descriptives (style narratif habituel de
+    // l'app) — la consigne "une à deux phrases" reste dans le prompt, cette
+    // marge sert juste à ne jamais tronquer une suggestion qui la dépasse
+    // légèrement.
+    maxTokens: 300,
     messages: [
       {
         role: 'system',
