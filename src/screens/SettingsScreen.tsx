@@ -19,12 +19,14 @@ import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
+import { useLangue } from '../i18n/LangueProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 
 const IMAGE_REGLAGES = require('../../assets/scenes/creation-preferences.png');
 
 export default function SettingsScreen({ navigation }: Props) {
+  const { t } = useLangue();
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [embeddingsApiKey, setEmbeddingsApiKey] = useState('');
@@ -89,7 +91,7 @@ export default function SettingsScreen({ navigation }: Props) {
       await importerModeleLocal();
       rafraichirEtatModeleLocal();
     } catch (e) {
-      setErreurModeleLocal(e instanceof Error ? e.message : "Import impossible.");
+      setErreurModeleLocal(e instanceof Error ? e.message : t('Import impossible.'));
     } finally {
       setImportEnCours(false);
     }
@@ -125,7 +127,7 @@ export default function SettingsScreen({ navigation }: Props) {
       // Premier passage en ADULTE : le code saisi devient le code de
       // déverrouillage pour les prochaines fois.
       if (codeSaisi.trim().length < 4) {
-        setErreurProfil('Choisis un code d’au moins 4 caractères.');
+        setErreurProfil(t('Choisis un code d’au moins 4 caractères.'));
         return;
       }
       sauvegarderProfil('adulte', codeSaisi.trim());
@@ -133,7 +135,7 @@ export default function SettingsScreen({ navigation }: Props) {
       return;
     }
     if (codeSaisi.trim() !== codeDeverrouillage) {
-      setErreurProfil('Code incorrect.');
+      setErreurProfil(t('Code incorrect.'));
       return;
     }
     sauvegarderProfil('adulte', codeDeverrouillage);
@@ -153,13 +155,13 @@ export default function SettingsScreen({ navigation }: Props) {
     try {
       const info = await verifierMiseAJour();
       if (info.disponible) {
-        setMessageMaj(`Nouvelle version disponible : ${info.derniereVersion}${info.notes ? ` — ${info.notes}` : ''}`);
+        setMessageMaj(`${t('Nouvelle version disponible')} : ${info.derniereVersion}${info.notes ? ` — ${info.notes}` : ''}`);
         setUrlMaj(info.url);
       } else {
-        setMessageMaj('Tu utilises déjà la dernière version.');
+        setMessageMaj(t('Tu utilises déjà la dernière version.'));
       }
     } catch (e) {
-      setMessageMaj(e instanceof Error ? e.message : 'Vérification impossible pour le moment.');
+      setMessageMaj(e instanceof Error ? e.message : t('Vérification impossible pour le moment.'));
     } finally {
       setVerificationMaj(false);
     }
@@ -172,7 +174,7 @@ export default function SettingsScreen({ navigation }: Props) {
       setErreurModeles('');
       listerModeles()
         .then(setModeles)
-        .catch(() => setErreurModeles('Liste indisponible pour le moment. Tu peux saisir un identifiant de modèle manuellement.'))
+        .catch(() => setErreurModeles(t('Liste indisponible pour le moment. Tu peux saisir un identifiant de modèle manuellement.')))
         .finally(() => setChargementModeles(false));
     }
   }
@@ -189,9 +191,9 @@ export default function SettingsScreen({ navigation }: Props) {
         codeDeverrouillage,
         moteurInference,
       });
-      setMessageStatut('Réglages enregistrés.');
+      setMessageStatut(t('Réglages enregistrés.'));
     } catch {
-      setMessageStatut("Erreur lors de l'enregistrement.");
+      setMessageStatut(t("Erreur lors de l'enregistrement."));
     } finally {
       setEnregistrement(false);
     }
@@ -214,11 +216,11 @@ export default function SettingsScreen({ navigation }: Props) {
   return (
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_REGLAGES}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
-      <Text style={styles.titre}>Réglages</Text>
+      <Text style={styles.titre}>{t('Réglages')}</Text>
       <Separateur />
 
       <Champ
-        label="Clé API OpenRouter"
+        label={t('Clé API OpenRouter')}
         value={apiKey}
         onChangeText={setApiKey}
         placeholder="sk-or-v1-…"
@@ -228,12 +230,13 @@ export default function SettingsScreen({ navigation }: Props) {
         conteneurStyle={styles.champConteneur}
       />
       <Text style={styles.aide}>
-        Ta clé reste uniquement sur cet appareil (stockage local). Elle n'est jamais codée en dur ni transmise ailleurs
-        qu'à OpenRouter.
+        {t(
+          "Ta clé reste uniquement sur cet appareil (stockage local). Elle n'est jamais codée en dur ni transmise ailleurs qu'à OpenRouter.",
+        )}
       </Text>
 
       <Champ
-        label="Modèle"
+        label={t('Modèle')}
         value={model}
         onChangeText={setModel}
         placeholder="ex : anthropic/claude-sonnet-4.5"
@@ -241,10 +244,10 @@ export default function SettingsScreen({ navigation }: Props) {
         autoCorrect={false}
         conteneurStyle={styles.champConteneur}
       />
-      <Bouton titre="Choisir parmi les modèles OpenRouter" variante="secondaire" onPress={ouvrirSelecteurModeles} style={styles.boutonAction} />
+      <Bouton titre={t('Choisir parmi les modèles OpenRouter')} variante="secondaire" onPress={ouvrirSelecteurModeles} style={styles.boutonAction} />
 
       <Champ
-        label="Clé API embeddings (secours, optionnelle)"
+        label={t('Clé API embeddings (secours, optionnelle)')}
         value={embeddingsApiKey}
         onChangeText={setEmbeddingsApiKey}
         placeholder="sk-…"
@@ -254,14 +257,14 @@ export default function SettingsScreen({ navigation }: Props) {
         conteneurStyle={styles.champConteneur}
       />
       <Text style={styles.aide}>
-        La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès
-        aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en
-        secours pour cette fonction.
+        {t(
+          "La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en secours pour cette fonction.",
+        )}
       </Text>
 
       {Platform.OS !== 'web' && (
         <>
-          <Text style={styles.label}>Moteur d'inférence</Text>
+          <Text style={styles.label}>{t("Moteur d'inférence")}</Text>
           <View style={styles.rangeeMoteur}>
             <Pressable
               style={[styles.optionMoteur, moteurInference !== 'local' && styles.optionMoteurActive]}
@@ -273,24 +276,24 @@ export default function SettingsScreen({ navigation }: Props) {
               style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
               onPress={() => setMoteurInference('local')}
             >
-              <Text style={styles.texteOptionMoteur}>Local (sur l'appareil)</Text>
+              <Text style={styles.texteOptionMoteur}>{t("Local (sur l'appareil)")}</Text>
             </Pressable>
           </View>
 
           {moteurInference === 'local' ? (
             <Panneau style={styles.champConteneur}>
               <Text style={styles.aide}>
-                Le modèle tourne entièrement sur l'appareil, sans connexion réseau ni clé API. Sur du matériel
-                d'entrée de gamme, la génération peut être lente ou instable — c'est un compromis assumé, pas un
-                dysfonctionnement.
+                {t(
+                  "Le modèle tourne entièrement sur l'appareil, sans connexion réseau ni clé API. Sur du matériel d'entrée de gamme, la génération peut être lente ou instable — c'est un compromis assumé, pas un dysfonctionnement.",
+                )}
               </Text>
               <Text style={[styles.texteOptionProfil, { marginTop: espacement.sm }]}>
                 {modeleLocalPresent
-                  ? `Modèle importé (${formaterTailleOctets(tailleModeleLocal ?? 0)})`
-                  : 'Aucun modèle importé'}
+                  ? `${t('Modèle importé')} (${formaterTailleOctets(tailleModeleLocal ?? 0)})`
+                  : t('Aucun modèle importé')}
               </Text>
               <Bouton
-                titre={importEnCours ? 'Import…' : 'Importer un modèle (.litertlm ou .task)'}
+                titre={importEnCours ? t('Import…') : t('Importer un modèle (.litertlm ou .task)')}
                 variante="secondaire"
                 onPress={importerModele}
                 desactive={importEnCours}
@@ -298,7 +301,7 @@ export default function SettingsScreen({ navigation }: Props) {
               />
               {modeleLocalPresent ? (
                 <Bouton
-                  titre="Supprimer le modèle local"
+                  titre={t('Supprimer le modèle local')}
                   variante="secondaire"
                   onPress={supprimerModele}
                   style={styles.boutonAction}
@@ -310,49 +313,49 @@ export default function SettingsScreen({ navigation }: Props) {
         </>
       )}
 
-      <Text style={styles.label}>Profil de contenu</Text>
+      <Text style={styles.label}>{t('Profil de contenu')}</Text>
       <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>
         <Text style={styles.texteChampFactice}>
           {profilContenu === 'adulte'
-            ? 'Adulte'
+            ? t('Adulte')
             : profilContenu === 'grand_public'
-              ? 'Grand public'
-              : 'À déclarer — appuie ici'}
+              ? t('Grand public')
+              : t('À déclarer — appuie ici')}
         </Text>
       </Pressable>
       <Text style={styles.aide}>
-        En Grand public, le contenu explicite est retiré du contexte et bloqué par le contrôleur de sortie même si le
-        modèle en produit malgré tout. Le passage en Adulte est protégé par un code que tu choisis à la première
-        activation (pas une vraie protection anti-piratage — un garde-fou local).
+        {t(
+          "En Grand public, le contenu explicite est retiré du contexte et bloqué par le contrôleur de sortie même si le modèle en produit malgré tout. Le passage en Adulte est protégé par un code que tu choisis à la première activation (pas une vraie protection anti-piratage — un garde-fou local).",
+        )}
       </Text>
 
       {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
 
-      <Bouton titre={enregistrement ? 'Enregistrement…' : 'Enregistrer'} onPress={enregistrer} desactive={enregistrement} style={styles.boutonPrincipal} />
+      <Bouton titre={enregistrement ? t('Enregistrement…') : t('Enregistrer')} onPress={enregistrer} desactive={enregistrement} style={styles.boutonPrincipal} />
 
       <Separateur />
 
-      <Text style={styles.label}>Packs de contenu</Text>
-      <Bouton titre="Gérer les packs de contenu (plugins)" variante="secondaire" onPress={() => navigation.navigate('Plugins')} style={styles.boutonAction} />
+      <Text style={styles.label}>{t('Packs de contenu')}</Text>
+      <Bouton titre={t('Gérer les packs de contenu (plugins)')} variante="secondaire" onPress={() => navigation.navigate('Plugins')} style={styles.boutonAction} />
 
-      <Text style={styles.label}>À propos</Text>
-      <Text style={styles.aide}>Version {VERSION_APP}</Text>
-      <Bouton titre={verificationMaj ? 'Vérification…' : 'Vérifier les mises à jour'} variante="secondaire" onPress={verifierMaj} desactive={verificationMaj} style={styles.boutonAction} />
+      <Text style={styles.label}>{t('À propos')}</Text>
+      <Text style={styles.aide}>{t('Version')} {VERSION_APP}</Text>
+      <Bouton titre={verificationMaj ? t('Vérification…') : t('Vérifier les mises à jour')} variante="secondaire" onPress={verifierMaj} desactive={verificationMaj} style={styles.boutonAction} />
       {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
       {urlMaj ? (
-        <Bouton titre="Ouvrir la dernière version" variante="secondaire" onPress={() => Linking.openURL(urlMaj)} style={styles.boutonAction} />
+        <Bouton titre={t('Ouvrir la dernière version')} variante="secondaire" onPress={() => Linking.openURL(urlMaj)} style={styles.boutonAction} />
       ) : null}
 
-      <Text style={styles.label}>Concepteur</Text>
-      <Bouton titre="Réglages concepteur" variante="secondaire" onPress={() => navigation.navigate('ReglagesConcepteur')} style={styles.boutonAction} />
+      <Text style={styles.label}>{t('Concepteur')}</Text>
+      <Bouton titre={t('Réglages concepteur')} variante="secondaire" onPress={() => navigation.navigate('ReglagesConcepteur')} style={styles.boutonAction} />
       <Text style={styles.aide}>
-        Débogage narratif, contrôles moteur et réglages de prompt avancés — utile pendant la phase de test.
+        {t('Débogage narratif, contrôles moteur et réglages de prompt avancés — utile pendant la phase de test.')}
       </Text>
 
       <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titre}>Modèles OpenRouter</Text>
-          <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder="Rechercher…" conteneurStyle={styles.champConteneur} />
+          <Text style={styles.titre}>{t('Modèles OpenRouter')}</Text>
+          <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder={t('Rechercher…')} conteneurStyle={styles.champConteneur} />
           {chargementModeles ? (
             <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
           ) : erreurModeles ? (
@@ -376,39 +379,39 @@ export default function SettingsScreen({ navigation }: Props) {
               )}
             />
           )}
-          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
         </View>
       </Modal>
 
       <Modal visible={modalProfilOuvert} animationType="slide" onRequestClose={() => setModalProfilOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titre}>Profil de contenu</Text>
+          <Text style={styles.titre}>{t('Profil de contenu')}</Text>
 
           <Pressable onPress={choisirGrandPublic}>
             <Panneau style={[styles.optionProfil, profilContenu === 'grand_public' && styles.optionProfilActive]}>
-              <Text style={styles.texteOptionProfil}>Grand public</Text>
-              <Text style={styles.aide}>Contenu explicite retiré et bloqué par le contrôleur de sortie.</Text>
+              <Text style={styles.texteOptionProfil}>{t('Grand public')}</Text>
+              <Text style={styles.aide}>{t('Contenu explicite retiré et bloqué par le contrôleur de sortie.')}</Text>
             </Panneau>
           </Pressable>
 
           <Panneau style={[styles.optionProfil, profilContenu === 'adulte' && styles.optionProfilActive]}>
-            <Text style={styles.texteOptionProfil}>Adulte</Text>
+            <Text style={styles.texteOptionProfil}>{t('Adulte')}</Text>
             <Text style={styles.aide}>
               {codeDeverrouillage
-                ? 'Entre ton code pour activer.'
-                : 'Choisis un code (4 caractères minimum) — il te sera redemandé pour repasser en Adulte plus tard.'}
+                ? t('Entre ton code pour activer.')
+                : t('Choisis un code (4 caractères minimum) — il te sera redemandé pour repasser en Adulte plus tard.')}
             </Text>
             <Champ
               value={codeSaisi}
               onChangeText={setCodeSaisi}
-              placeholder="Code"
+              placeholder={t('Code')}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
               conteneurStyle={styles.champConteneur}
             />
             <Bouton
-              titre={codeDeverrouillage ? 'Déverrouiller' : 'Définir ce code et activer'}
+              titre={codeDeverrouillage ? t('Déverrouiller') : t('Définir ce code et activer')}
               variante="secondaire"
               onPress={choisirAdulte}
               style={styles.boutonAction}
@@ -417,7 +420,7 @@ export default function SettingsScreen({ navigation }: Props) {
 
           {erreurProfil ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurProfil}</Text> : null}
 
-          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalProfilOuvert(false)} style={styles.boutonAction} />
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalProfilOuvert(false)} style={styles.boutonAction} />
         </View>
       </Modal>
     </ScrollView>

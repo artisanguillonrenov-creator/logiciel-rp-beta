@@ -10,6 +10,7 @@ import {
 } from '@expo-google-fonts/cormorant-garamond';
 import RootNavigator from './src/navigation/RootNavigator';
 import { couleurs } from './src/theme/theme';
+import { LangueProvider } from './src/i18n/LangueProvider';
 
 export default function App() {
   // Direction artistique (grimoire illuminé) : une seule famille serif dans
@@ -34,8 +35,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <RootNavigator />
-        <StatusBar style="light" />
+        <LangueProvider>
+          <RootNavigator />
+          <StatusBar style="light" />
+        </LangueProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

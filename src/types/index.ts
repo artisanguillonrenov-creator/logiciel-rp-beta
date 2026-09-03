@@ -308,6 +308,13 @@ export interface AppSettings {
   // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
   // de cette phase.
   modeConcepteur?: boolean;
+  // Langue de l'interface et de la conversation (Ajouts_A_Integrer.md,
+  // sélecteur de langue) — code libre ('fr', 'en', 'es', 'ja', ...).
+  // undefined ou 'fr' = comportement historique, aucune traduction. Le
+  // moteur narratif continue de raisonner et d'écrire en français dans tous
+  // les cas (prompt système, lore, mémoire) ; seul l'affichage (interface +
+  // messages du narrateur) est traduit à la volée — voir src/i18n/.
+  langueInterface?: string;
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :

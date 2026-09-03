@@ -41,6 +41,7 @@ import MenuActionsMessage from '../components/MenuActionsMessage';
 import Panneau from '../components/Panneau';
 import TexteMessageFormate from '../components/TexteMessageFormate';
 import BoutonDictee from '../components/BoutonDictee';
+import { useLangue } from '../i18n/LangueProvider';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/creation-point-depart.png');
 
@@ -57,6 +58,7 @@ function messageErreur(e: unknown, messageParDefaut: string): string {
 
 export default function ConversationScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useLangue();
   const { storyId } = route.params;
   const [story, setStory] = useState<StoryState | null>(null);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
@@ -482,41 +484,41 @@ export default function ConversationScreen({ route, navigation }: Props) {
       <View style={styles.container}>
         {clefManquante && (
           <Pressable style={styles.bandeauAlerte} onPress={() => navigation.navigate('Reglages')}>
-            <Text style={styles.texteBandeau}>Aucune clé API configurée — appuie ici pour aller dans Réglages.</Text>
+            <Text style={styles.texteBandeau}>{t('Aucune clé API configurée — appuie ici pour aller dans Réglages.')}</Text>
           </Pressable>
         )}
         {profilNonDeclare && (
           <Pressable style={styles.bandeauAlerte} onPress={() => navigation.navigate('Reglages')}>
-            <Text style={styles.texteBandeau}>Profil de contenu non déclaré — appuie ici pour aller dans Réglages.</Text>
+            <Text style={styles.texteBandeau}>{t('Profil de contenu non déclaré — appuie ici pour aller dans Réglages.')}</Text>
           </Pressable>
         )}
 
         <Pressable style={styles.bandeauContexte} onPress={ouvrirContexte}>
           <Text style={styles.texteBandeauContexte} numberOfLines={1}>
-            📍 {story.meta.contexte.lieu || 'Contexte de l’histoire'}
-            {story.meta.contexte.ambiance ? ` — ${story.meta.contexte.ambiance}` : ''}
+            📍 {(story.meta.contexte.lieu && t(story.meta.contexte.lieu)) || t('Contexte de l’histoire')}
+            {story.meta.contexte.ambiance ? ` — ${t(story.meta.contexte.ambiance)}` : ''}
           </Text>
         </Pressable>
         {story.meta.brancheDeId && (
           <View style={styles.bandeauBranche}>
             <Text style={styles.texteBandeauBranche}>
-              🌿 Branche créée au message {story.meta.pointDeBranchement ?? '?'}
+              🌿 {t('Branche créée au message')} {story.meta.pointDeBranchement ?? '?'}
             </Text>
           </View>
         )}
 
         {derniereFoisVisible && (
           <Panneau style={styles.bandeauDerniereFois}>
-            <Text style={styles.labelDerniereFois}>La dernière fois…</Text>
-            <Text style={styles.texteDerniereFois}>{story.memoire.resume}</Text>
-            <Bouton titre="Continuer" variante="secondaire" onPress={() => setDerniereFoisVisible(false)} style={{ marginTop: espacement.sm }} />
+            <Text style={styles.labelDerniereFois}>{t('La dernière fois…')}</Text>
+            <Text style={styles.texteDerniereFois}>{t(story.memoire.resume)}</Text>
+            <Bouton titre={t('Continuer')} variante="secondaire" onPress={() => setDerniereFoisVisible(false)} style={{ marginTop: espacement.sm }} />
           </Panneau>
         )}
 
         {story.messages.length === 0 ? (
           <View style={styles.centreVide}>
-            <Text style={styles.pointDeDepart}>{story.meta.pointDeDepart}</Text>
-            <Text style={styles.aideVide}>Écris ta première action ou réplique pour commencer.</Text>
+            <Text style={styles.pointDeDepart}>{t(story.meta.pointDeDepart)}</Text>
+            <Text style={styles.aideVide}>{t('Écris ta première action ou réplique pour commencer.')}</Text>
           </View>
         ) : (
           <FlatList
@@ -535,14 +537,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
                   {messageCite && (
                     <View style={styles.citationPreview}>
                       <Text style={styles.texteCitationPreview} numberOfLines={1}>
-                        {messageCite.role === 'user' ? story.meta.personnageNom : 'Narrateur'} : {messageCite.content}
+                        {messageCite.role === 'user' ? story.meta.personnageNom : t('Narrateur')} : {t(messageCite.content)}
                       </Text>
                     </View>
                   )}
                   <Pressable onLongPress={() => setMessageActionsPour(item)} delayLongPress={400}>
                     <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
                       {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
-                      <TexteMessageFormate texte={item.content} style={styles.texteBulle} />
+                      <TexteMessageFormate texte={t(item.content)} style={styles.texteBulle} />
                     </View>
                   </Pressable>
                   {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
@@ -589,15 +591,15 @@ export default function ConversationScreen({ route, navigation }: Props) {
           </ScrollView>
         )}
 
-        {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
-        {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
+        {erreur ? <Text style={styles.erreur}>{t(erreur)}</Text> : null}
+        {messageStatut ? <Text style={styles.statut}>{t(messageStatut)}</Text> : null}
 
         <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
           {messageEnReponseA && (
             <View style={styles.bandeauReponseA}>
               <Text style={styles.texteBandeauReponseA} numberOfLines={1}>
-                Réponse à {messageEnReponseA.role === 'user' ? story.meta.personnageNom : 'Narrateur'} :{' '}
-                {messageEnReponseA.content}
+                {t('Réponse à')} {messageEnReponseA.role === 'user' ? story.meta.personnageNom : t('Narrateur')} :{' '}
+                {t(messageEnReponseA.content)}
               </Text>
               <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8}>
                 <Text style={styles.boutonFermerReponseA}>✕</Text>
@@ -606,10 +608,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
           )}
           <View style={styles.rangeeActionsRapides}>
             {dernierEstAssistant && (
-              <Bouton titre="Régénérer" variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
+              <Bouton titre={t('Régénérer')} variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
             )}
             <Bouton
-              titre={suggestionEnCours ? 'Suggestion…' : 'Suggérer une réplique'}
+              titre={suggestionEnCours ? t('Suggestion…') : t('Suggérer une réplique')}
               variante="secondaire"
               onPress={suggererReplique}
               desactive={enCours || suggestionEnCours}
@@ -621,7 +623,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Champ
               value={saisie}
               onChangeText={setSaisie}
-              placeholder="Ton action ou ta réplique… (« retiens que … » pour forcer un fait)"
+              placeholder={t('Ton action ou ta réplique… (« retiens que … » pour forcer un fait)')}
               multiligne
               editable={!enCours}
               conteneurStyle={{ flex: 1 }}
@@ -636,7 +638,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
               onPress={envoyer}
               disabled={enCours || !saisie.trim()}
             >
-              {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>Envoyer</Text>}
+              {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
             </Pressable>
           </View>
         </View>
@@ -644,21 +646,21 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
       <Modal visible={modalContexteOuvert} animationType="slide" onRequestClose={() => setModalContexteOuvert(false)}>
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
-          <Text style={styles.titreModal}>Contexte de l'histoire</Text>
+          <Text style={styles.titreModal}>{t("Contexte de l'histoire")}</Text>
 
-          <Champ label="Lieu" value={lieuEdit} onChangeText={setLieuEdit} conteneurStyle={styles.champConteneur} />
-          <Champ label="Ambiance" value={ambianceEdit} onChangeText={setAmbianceEdit} multiligne conteneurStyle={styles.champConteneur} />
-          <Champ label="Date / période" value={dateEdit} onChangeText={setDateEdit} conteneurStyle={styles.champConteneur} />
-          <Champ label="Objectifs" value={objectifsEdit} onChangeText={setObjectifsEdit} multiligne conteneurStyle={styles.champConteneur} />
+          <Champ label={t('Lieu')} value={lieuEdit} onChangeText={setLieuEdit} conteneurStyle={styles.champConteneur} />
+          <Champ label={t('Ambiance')} value={ambianceEdit} onChangeText={setAmbianceEdit} multiligne conteneurStyle={styles.champConteneur} />
+          <Champ label={t('Date / période')} value={dateEdit} onChangeText={setDateEdit} conteneurStyle={styles.champConteneur} />
+          <Champ label={t('Objectifs')} value={objectifsEdit} onChangeText={setObjectifsEdit} multiligne conteneurStyle={styles.champConteneur} />
 
-          <Bouton titre="Enregistrer" onPress={enregistrerContexte} style={{ marginTop: espacement.lg }} />
-          <Bouton titre="Fermer sans enregistrer" variante="secondaire" onPress={() => setModalContexteOuvert(false)} style={{ marginTop: espacement.sm }} />
+          <Bouton titre={t('Enregistrer')} onPress={enregistrerContexte} style={{ marginTop: espacement.lg }} />
+          <Bouton titre={t('Fermer sans enregistrer')} variante="secondaire" onPress={() => setModalContexteOuvert(false)} style={{ marginTop: espacement.sm }} />
         </ScrollView>
       </Modal>
 
       <Modal visible={modalRechercheOuvert} animationType="slide" onRequestClose={() => setModalRechercheOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titreModal}>Recherche</Text>
+          <Text style={styles.titreModal}>{t('Recherche')}</Text>
 
           <Champ
             value={texteRecherche}
@@ -666,11 +668,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
               setTexteRecherche(v);
               setEpinglesUniquement(false);
             }}
-            placeholder="Mot-clé dans la conversation…"
+            placeholder={t('Mot-clé dans la conversation…')}
             conteneurStyle={styles.champConteneur}
           />
           <Bouton
-            titre={epinglesUniquement ? '✓ Épinglés uniquement' : 'Épinglés uniquement'}
+            titre={epinglesUniquement ? `✓ ${t('Épinglés uniquement')}` : t('Épinglés uniquement')}
             variante={epinglesUniquement ? 'principal' : 'secondaire'}
             onPress={() => {
               setEpinglesUniquement((v) => !v);
@@ -686,47 +688,47 @@ export default function ConversationScreen({ route, navigation }: Props) {
             ListEmptyComponent={
               <Text style={styles.aideRecherche}>
                 {epinglesUniquement
-                  ? 'Aucun message épinglé — reste appuyé sur un message pour en épingler un.'
+                  ? t('Aucun message épinglé — reste appuyé sur un message pour en épingler un.')
                   : texteRecherche.trim()
-                    ? 'Aucun résultat.'
-                    : 'Tape un mot-clé pour chercher dans la conversation.'}
+                    ? t('Aucun résultat.')
+                    : t('Tape un mot-clé pour chercher dans la conversation.')}
               </Text>
             }
             renderItem={({ item }) => (
               <Pressable style={styles.resultatRecherche} onPress={() => allerAuMessage(item.id)}>
                 <Text style={styles.roleResultat}>
-                  {item.role === 'user' ? story.meta.personnageNom : 'Narrateur'}
+                  {item.role === 'user' ? story.meta.personnageNom : t('Narrateur')}
                   {item.epingle ? ' 📌' : ''}
                 </Text>
                 <Text style={styles.texteResultat} numberOfLines={2}>
-                  {item.content}
+                  {t(item.content)}
                 </Text>
               </Pressable>
             )}
           />
-          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalRechercheOuvert(false)} style={{ marginTop: espacement.md }} />
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalRechercheOuvert(false)} style={{ marginTop: espacement.md }} />
         </View>
       </Modal>
 
       <Modal visible={!!messageASupprimer} animationType="fade" transparent onRequestClose={() => setMessageASupprimer(null)}>
         <View style={styles.superpositionSuppression}>
           <Panneau style={styles.panneauSuppression}>
-            <Text style={styles.titreModal}>Supprimer</Text>
+            <Text style={styles.titreModal}>{t('Supprimer')}</Text>
             <Bouton
-              titre="Supprimer ce message"
+              titre={t('Supprimer ce message')}
               variante="secondaire"
               onPress={() => messageASupprimer && supprimerMessageSeul(messageASupprimer)}
               texteStyle={{ color: couleurs.danger }}
               style={{ marginTop: espacement.sm }}
             />
             <Bouton
-              titre="Supprimer ce message et les suivants"
+              titre={t('Supprimer ce message et les suivants')}
               variante="secondaire"
               onPress={() => messageASupprimer && supprimerMessagesASuivant(messageASupprimer)}
               texteStyle={{ color: couleurs.danger }}
               style={{ marginTop: espacement.sm }}
             />
-            <Bouton titre="Annuler" variante="secondaire" onPress={() => setMessageASupprimer(null)} style={{ marginTop: espacement.sm }} />
+            <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageASupprimer(null)} style={{ marginTop: espacement.sm }} />
           </Panneau>
         </View>
       </Modal>
@@ -744,28 +746,28 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
       <Modal visible={!!messageAEditer} animationType="slide" onRequestClose={() => setMessageAEditer(null)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titreModal}>Éditer le message</Text>
+          <Text style={styles.titreModal}>{t('Éditer le message')}</Text>
           <Champ value={texteEdition} onChangeText={setTexteEdition} multiligne conteneurStyle={styles.champConteneur} style={{ minHeight: 160 }} />
-          <Bouton titre="Enregistrer" onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
-          <Bouton titre="Annuler" variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
+          <Bouton titre={t('Enregistrer')} onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
+          <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
         </View>
       </Modal>
 
       <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
         <Pressable style={styles.superpositionSuppression} onPress={() => setModalExportOuvert(false)}>
           <Panneau style={styles.panneauSuppression}>
-            <Text style={styles.titreModal}>Télécharger la conversation</Text>
+            <Text style={styles.titreModal}>{t('Télécharger la conversation')}</Text>
             {(['texte', 'pdf', 'epub'] as FormatExport[]).map((format) => (
               <Bouton
                 key={format}
                 titre={
                   exportEnCours === format
-                    ? 'Génération…'
+                    ? t('Génération…')
                     : format === 'texte'
-                      ? 'Texte brut (.txt)'
+                      ? t('Texte brut (.txt)')
                       : format === 'pdf'
                         ? 'PDF'
-                        : 'EPUB (liseuse)'
+                        : t('EPUB (liseuse)')
                 }
                 variante="secondaire"
                 desactive={!!exportEnCours}
@@ -773,7 +775,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 style={{ marginTop: espacement.sm }}
               />
             ))}
-            <Bouton titre="Annuler" variante="secondaire" onPress={() => setModalExportOuvert(false)} style={{ marginTop: espacement.sm }} desactive={!!exportEnCours} />
+            <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setModalExportOuvert(false)} style={{ marginTop: espacement.sm }} desactive={!!exportEnCours} />
           </Panneau>
         </Pressable>
       </Modal>

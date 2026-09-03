@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Message } from '../types';
 import { couleurs, espacement, polices } from '../theme/theme';
+import { useLangue } from '../i18n/LangueProvider';
 
 const EMOJIS_REACTION = ['👍', '❤️', '😮'];
 
@@ -28,6 +29,7 @@ export default function MenuActionsMessage({
   onEditer: (message: Message) => void;
   onSupprimer: (message: Message) => void;
 }) {
+  const { t } = useLangue();
   return (
     <Modal visible={!!message} animationType="fade" transparent onRequestClose={onFermer}>
       <Pressable style={styles.superposition} onPress={onFermer}>
@@ -46,12 +48,12 @@ export default function MenuActionsMessage({
                 ))}
               </View>
               <Separateur />
-              <LigneAction titre="Copier le texte" onPress={() => onCopier(message)} />
-              <LigneAction titre="Répondre / citer" onPress={() => onRepondre(message)} />
-              <LigneAction titre={message.epingle ? 'Désépingler' : 'Épingler'} onPress={() => onEpingler(message)} />
-              <LigneAction titre="Éditer" onPress={() => onEditer(message)} />
-              <LigneAction titre="Supprimer" onPress={() => onSupprimer(message)} danger />
-              <LigneAction titre="Annuler" onPress={onFermer} />
+              <LigneAction titre={t('Copier le texte')} onPress={() => onCopier(message)} />
+              <LigneAction titre={t('Répondre / citer')} onPress={() => onRepondre(message)} />
+              <LigneAction titre={t(message.epingle ? 'Désépingler' : 'Épingler')} onPress={() => onEpingler(message)} />
+              <LigneAction titre={t('Éditer')} onPress={() => onEditer(message)} />
+              <LigneAction titre={t('Supprimer')} onPress={() => onSupprimer(message)} danger />
+              <LigneAction titre={t('Annuler')} onPress={onFermer} />
             </>
           )}
         </Pressable>

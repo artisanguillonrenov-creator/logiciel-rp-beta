@@ -8,6 +8,7 @@ const KEYS = {
   story: (id: string) => `@rp_beta/story/${id}`,
   personas: '@rp_beta/personas',
   plugins: '@rp_beta/plugins',
+  catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -244,4 +245,24 @@ export async function installerPlugin(plugin: Plugin): Promise<void> {
 export async function supprimerPlugin(id: string): Promise<void> {
   const plugins = await getPlugins();
   await AsyncStorage.setItem(KEYS.plugins, JSON.stringify(plugins.filter((p) => p.id !== id)));
+}
+
+// Sélecteur de langue (Ajouts_A_Integrer.md) : catalogue de traductions
+// texte-source (français) → texte traduit, un par langue, construit à la
+// volée par lot au fil de l'utilisation (voir src/i18n/traduction.ts) et
+// mis en cache ici pour ne jamais retraduire deux fois la même chaîne sur
+// un même appareil.
+export async function getCatalogueTraduction(langue: string): Promise<Record<string, string>> {
+  const raw = await AsyncStorage.getItem(KEYS.catalogueTraduction(langue));
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export async function fusionnerCatalogueTraduction(langue: string, ajout: Record<string, string>): Promise<void> {
+  const existant = await getCatalogueTraduction(langue);
+  await AsyncStorage.setItem(KEYS.catalogueTraduction(langue), JSON.stringify({ ...existant, ...ajout }));
 }

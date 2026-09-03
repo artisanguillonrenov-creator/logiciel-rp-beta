@@ -11,6 +11,7 @@ import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
+import { useLangue } from '../i18n/LangueProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChargerConversation'>;
 
@@ -21,6 +22,7 @@ function nomAffiche(meta: StoryMeta): string {
 }
 
 export default function LoadConversationScreen({ navigation }: Props) {
+  const { t } = useLangue();
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
   const [renommageId, setRenommageId] = useState<string | null>(null);
   const [renommageValeur, setRenommageValeur] = useState('');
@@ -75,12 +77,12 @@ export default function LoadConversationScreen({ navigation }: Props) {
   return (
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CHARGER}>
     <View style={styles.container}>
-      <Text style={styles.titre}>Charger conversation</Text>
+      <Text style={styles.titre}>{t('Charger conversation')}</Text>
       <FlatList
         data={histoires}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ gap: espacement.sm, paddingBottom: espacement.xl }}
-        ListEmptyComponent={<Text style={styles.aide}>Aucune conversation sauvegardée pour l'instant.</Text>}
+        ListEmptyComponent={<Text style={styles.aide}>{t("Aucune conversation sauvegardée pour l'instant.")}</Text>}
         renderItem={({ item }) => (
           <Swipeable
             ref={(ref) => {
@@ -91,7 +93,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
               const opacite = dragX.interpolate({ inputRange: [-80, -20, 0], outputRange: [1, 0.3, 0], extrapolate: 'clamp' });
               return (
                 <Pressable onPress={() => demanderSuppressionParSwipe(item)} style={styles.actionSwipeSupprimer}>
-                  <Animated.Text style={[styles.texteActionSwipe, { opacity: opacite }]}>Supprimer</Animated.Text>
+                  <Animated.Text style={[styles.texteActionSwipe, { opacity: opacite }]}>{t('Supprimer')}</Animated.Text>
                 </Pressable>
               );
             }}
@@ -102,21 +104,21 @@ export default function LoadConversationScreen({ navigation }: Props) {
               <>
                 <Champ value={renommageValeur} onChangeText={setRenommageValeur} placeholder={item.personnageNom} />
                 <View style={styles.rangeeActions}>
-                  <Bouton titre="Enregistrer" onPress={confirmerRenommage} style={styles.boutonAction} />
-                  <Bouton titre="Annuler" variante="secondaire" onPress={() => setRenommageId(null)} style={styles.boutonAction} />
+                  <Bouton titre={t('Enregistrer')} onPress={confirmerRenommage} style={styles.boutonAction} />
+                  <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setRenommageId(null)} style={styles.boutonAction} />
                 </View>
               </>
             ) : suppressionId === item.id ? (
               <>
-                <Text style={styles.texteConfirmation}>Supprimer définitivement cette conversation ?</Text>
+                <Text style={styles.texteConfirmation}>{t('Supprimer définitivement cette conversation ?')}</Text>
                 <View style={styles.rangeeActions}>
                   <Bouton
-                    titre="Confirmer la suppression"
+                    titre={t('Confirmer la suppression')}
                     onPress={() => confirmerSuppression(item.id)}
                     style={styles.boutonAction}
                     texteStyle={{ color: couleurs.danger }}
                   />
-                  <Bouton titre="Annuler" variante="secondaire" onPress={() => setSuppressionId(null)} style={styles.boutonAction} />
+                  <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setSuppressionId(null)} style={styles.boutonAction} />
                 </View>
               </>
             ) : (
@@ -127,13 +129,13 @@ export default function LoadConversationScreen({ navigation }: Props) {
                     {nomAffiche(item)}
                   </Text>
                   <Text style={styles.descriptionPersonnage} numberOfLines={2}>
-                    {item.pointDeDepart}
+                    {t(item.pointDeDepart)}
                   </Text>
                 </Pressable>
                 <View style={styles.rangeeActions}>
-                  <Bouton titre="Renommer" variante="secondaire" onPress={() => ouvrirRenommage(item)} style={styles.boutonAction} />
+                  <Bouton titre={t('Renommer')} variante="secondaire" onPress={() => ouvrirRenommage(item)} style={styles.boutonAction} />
                   <Bouton
-                    titre="Supprimer"
+                    titre={t('Supprimer')}
                     variante="secondaire"
                     onPress={() => {
                       setRenommageId(null);

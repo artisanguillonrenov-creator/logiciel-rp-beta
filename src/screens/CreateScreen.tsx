@@ -32,6 +32,7 @@ import FondAtmospherique from '../components/FondAtmospherique';
 import IndicateurEtapes from '../components/IndicateurEtapes';
 import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
+import { useLangue } from '../i18n/LangueProvider';
 
 // Une illustration par étape (brief Phase 2) — la dernière (Récapitulatif)
 // reprend celle de l'accueil pour boucler le parcours visuellement.
@@ -133,6 +134,7 @@ function RangeeOptions<T extends string>({
   valeur: T;
   onChange: (v: T) => void;
 }) {
+  const { t } = useLangue();
   return (
     <View style={styles.rangeeOptions}>
       {options.map((opt) => (
@@ -141,7 +143,7 @@ function RangeeOptions<T extends string>({
           style={[styles.option, valeur === opt.valeur && styles.optionActive]}
           onPress={() => onChange(opt.valeur)}
         >
-          <Text style={[styles.texteOption, valeur === opt.valeur && styles.texteOptionActive]}>{opt.label}</Text>
+          <Text style={[styles.texteOption, valeur === opt.valeur && styles.texteOptionActive]}>{t(opt.label)}</Text>
         </Pressable>
       ))}
     </View>
@@ -152,14 +154,30 @@ function RangeeOptions<T extends string>({
 // "Choisir l'histoire" — un seul monde pour l'instant (Elyndor) mais le
 // composant est prévu pour une liste qui grandira plus tard.
 function CarteMonde({ monde, selectionne, onPress }: { monde: (typeof MONDES)[number]; selectionne: boolean; onPress: () => void }) {
+  const { t } = useLangue();
   return (
     <Pressable onPress={onPress} style={[styles.carteMonde, selectionne && styles.carteMondeActive]}>
       <Image source={monde.image} style={styles.imageCarteMonde} resizeMode="cover" />
       <View style={styles.infoCarteMonde}>
         <Text style={styles.nomMonde}>{monde.nom}</Text>
-        <Text style={styles.genreMonde}>{monde.genre}</Text>
+        <Text style={styles.genreMonde}>{t(monde.genre)}</Text>
       </View>
     </Pressable>
+  );
+}
+
+// Une ligne icône + label + valeur choisie, pour la grille à deux colonnes
+// des préférences narratives dans le récapitulatif final.
+function LignePreferenceRecap({ icone, label, valeur }: { icone: string; label: string; valeur?: string }) {
+  const { t } = useLangue();
+  return (
+    <View style={styles.lignePreferenceRecap}>
+      <Text style={styles.iconePreferenceRecap}>{icone}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.labelPreferenceRecap}>{t(label)}</Text>
+        <Text style={styles.valeurPreferenceRecap}>{valeur ? t(valeur) : valeur}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -187,30 +205,31 @@ function ChampSelection({
   valeur: string;
   onChange: (nom: string) => void;
 }) {
+  const { t } = useLangue();
   const [ouvert, setOuvert] = useState(false);
   const actif = options.find((o) => o.nom === valeur);
 
   return (
     <View style={styles.champConteneur}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>{t(label)}</Text>
       <Pressable style={styles.selecteur} onPress={() => setOuvert(true)}>
         <Text style={[styles.texteSelecteur, !valeur && styles.texteSelecteurPlaceholder]} numberOfLines={1}>
-          {valeur || placeholder}
+          {valeur ? t(valeur) : t(placeholder)}
         </Text>
         <Text style={styles.chevronSelecteur}>▾</Text>
       </Pressable>
 
       {actif && (actif.sousTitre || actif.description) && (
         <Panneau style={styles.presentationSelection}>
-          <Text style={styles.nomSelection}>{actif.nom}</Text>
-          {actif.sousTitre ? <Text style={styles.sousTitreSelection}>{actif.sousTitre}</Text> : null}
-          {actif.description ? <Text style={styles.descriptionSelection}>{actif.description}</Text> : null}
+          <Text style={styles.nomSelection}>{t(actif.nom)}</Text>
+          {actif.sousTitre ? <Text style={styles.sousTitreSelection}>{t(actif.sousTitre)}</Text> : null}
+          {actif.description ? <Text style={styles.descriptionSelection}>{t(actif.description)}</Text> : null}
         </Panneau>
       )}
 
       <Modal visible={ouvert} animationType="slide" onRequestClose={() => setOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titre}>{label}</Text>
+          <Text style={styles.titre}>{t(label)}</Text>
           <FlatList
             data={options}
             keyExtractor={(item) => item.id}
@@ -222,12 +241,12 @@ function ChampSelection({
                   setOuvert(false);
                 }}
               >
-                <Text style={styles.nomOptionListe}>{item.nom}</Text>
-                {item.sousTitre ? <Text style={styles.sousTitreOptionListe}>{item.sousTitre}</Text> : null}
+                <Text style={styles.nomOptionListe}>{t(item.nom)}</Text>
+                {item.sousTitre ? <Text style={styles.sousTitreOptionListe}>{t(item.sousTitre)}</Text> : null}
               </Pressable>
             )}
           />
-          <Bouton titre="Fermer" variante="secondaire" onPress={() => setOuvert(false)} style={{ marginTop: espacement.md }} />
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setOuvert(false)} style={{ marginTop: espacement.md }} />
         </View>
       </Modal>
     </View>
@@ -235,6 +254,7 @@ function ChampSelection({
 }
 
 export default function CreateScreen({ navigation }: Props) {
+  const { t } = useLangue();
   const [etape, setEtape] = useState(0);
 
   // Étape 1 — Histoire (choix du monde + panneau Contexte de l'Histoire,
@@ -284,7 +304,7 @@ export default function CreateScreen({ navigation }: Props) {
     };
     await savePersona(persona);
     setPersonas((prev) => [...prev, persona]);
-    setMessagePersona('Personnage enregistré dans la bibliothèque.');
+    setMessagePersona(t('Personnage enregistré dans la bibliothèque.'));
   }
 
   // Compose la description finale envoyée au moteur : les champs structurés
@@ -437,7 +457,7 @@ export default function CreateScreen({ navigation }: Props) {
       await saveStory(histoire);
       navigation.replace('Conversation', { storyId: histoire.meta.id });
     } catch (e) {
-      setErreur("Impossible d'enregistrer l'histoire. Réessaie.");
+      setErreur(t("Impossible d'enregistrer l'histoire. Réessaie."));
     } finally {
       setEnregistrement(false);
     }
@@ -450,15 +470,15 @@ export default function CreateScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.etapeIndicateur}>{ETAPES[etape]}</Text>
+        <Text style={styles.etapeIndicateur}>{t(ETAPES[etape])}</Text>
         <IndicateurEtapes total={ETAPES.length} actif={etape} />
         <Separateur style={{ marginBottom: espacement.lg }} />
 
         {etape === 0 && (
           <>
-            <Text style={styles.titre}>Choisir l'histoire</Text>
+            <Text style={styles.titre}>{t("Choisir l'histoire")}</Text>
 
-            <Text style={styles.label}>Monde</Text>
+            <Text style={styles.label}>{t('Monde')}</Text>
             <View style={styles.rangeeChoixMonde}>
               <View style={styles.listeMondes}>
                 {MONDES.map((monde) => (
@@ -473,14 +493,14 @@ export default function CreateScreen({ navigation }: Props) {
 
               {mondeActif && (
                 <Panneau style={styles.presentationMonde}>
-                  <Text style={styles.labelPresentation}>Présentation</Text>
+                  <Text style={styles.labelPresentation}>{t('Présentation')}</Text>
                   <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
                   <Image source={mondeActif.image} style={styles.imagePresentationMonde} resizeMode="cover" />
-                  <Text style={styles.descriptionMonde}>{mondeActif.description}</Text>
+                  <Text style={styles.descriptionMonde}>{t(mondeActif.description)}</Text>
                   <View style={styles.rangeeTagsMonde}>
                     {mondeActif.tags.map((tag) => (
                       <View key={tag} style={styles.tagMonde}>
-                        <Text style={styles.texteTagMonde}>{tag.toUpperCase()}</Text>
+                        <Text style={styles.texteTagMonde}>{t(tag).toUpperCase()}</Text>
                       </View>
                     ))}
                   </View>
@@ -492,65 +512,65 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 1 && (
           <>
-            <Text style={styles.titre}>Personnage</Text>
+            <Text style={styles.titre}>{t('Personnage')}</Text>
             {personas.length > 0 && (
               <Bouton
-                titre="Choisir depuis la bibliothèque"
+                titre={t('Choisir depuis la bibliothèque')}
                 variante="secondaire"
                 onPress={() => setModalPersonasOuvert(true)}
                 style={styles.boutonAction}
               />
             )}
             <Champ
-              label="Nom du personnage"
+              label={t('Nom du personnage')}
               value={nom}
               onChangeText={(v) => {
                 setNom(v);
                 setMessagePersona('');
               }}
-              placeholder="Ex : Aelis Corvenn"
+              placeholder={t('Ex : Aelis Corvenn')}
               conteneurStyle={styles.champConteneur}
             />
 
-            <Text style={styles.label}>Sexe</Text>
+            <Text style={styles.label}>{t('Sexe')}</Text>
             <RangeeOptions options={OPTIONS_SEXE} valeur={sexe} onChange={setSexe} />
 
             <ChampSelection
-              label="Race / origine"
-              placeholder="Choisir une race"
+              label={t('Race / origine')}
+              placeholder={t('Choisir une race')}
               options={RACES_ELYNDOR}
               valeur={raceOrigine}
               onChange={setRaceOrigine}
             />
             <Champ
-              label="Âge"
+              label={t('Âge')}
               value={age}
               onChangeText={setAge}
-              placeholder="Ex : 29"
+              placeholder={t('Ex : 29')}
               keyboardType="number-pad"
               conteneurStyle={styles.champConteneur}
             />
             <Champ
-              label="Apparence"
+              label={t('Apparence')}
               value={apparence}
               onChangeText={setApparence}
-              placeholder="Silhouette, visage, tenue, signes distinctifs…"
+              placeholder={t('Silhouette, visage, tenue, signes distinctifs…')}
               multiligne
               conteneurStyle={styles.champConteneur}
             />
             <Champ
-              label="Description"
+              label={t('Description')}
               value={description}
               onChangeText={(v) => {
                 setDescription(v);
                 setMessagePersona('');
               }}
-              placeholder="Personnalité, passé, ce qui le pousse à avancer…"
+              placeholder={t('Personnalité, passé, ce qui le pousse à avancer…')}
               multiligne
               conteneurStyle={styles.champConteneur}
             />
             <Bouton
-              titre="Enregistrer dans la bibliothèque"
+              titre={t('Enregistrer dans la bibliothèque')}
               variante="secondaire"
               onPress={enregistrerPersonaDansBibliotheque}
               desactive={!nom.trim() || !description.trim()}
@@ -562,47 +582,47 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 2 && (
           <>
-            <Text style={styles.titre}>Point de départ</Text>
+            <Text style={styles.titre}>{t('Point de départ')}</Text>
 
             <ChampSelection
-              label="Lieu de départ"
-              placeholder="Choisir un lieu de départ"
+              label={t('Lieu de départ')}
+              placeholder={t('Choisir un lieu de départ')}
               options={LIEUX_DEPART}
               valeur={lieu}
               onChange={choisirLieuDepart}
             />
             <ChampSelection
-              label="Situation de départ"
-              placeholder={lieuDepartActif ? 'Choisir une situation' : "Choisir d'abord un lieu de départ"}
+              label={t('Situation de départ')}
+              placeholder={t(lieuDepartActif ? 'Choisir une situation' : "Choisir d'abord un lieu de départ")}
               options={situationsDisponibles}
               valeur={situationDepart}
               onChange={setSituationDepart}
             />
             <View style={styles.champConteneur}>
               <View style={styles.rangeeLabelCompteur}>
-                <Text style={[styles.label, { marginTop: 0 }]}>Scénario</Text>
+                <Text style={[styles.label, { marginTop: 0 }]}>{t('Scénario')}</Text>
                 <Text style={styles.compteurCaracteres}>{scenario.length}/600</Text>
               </View>
               <Champ
                 value={scenario}
                 onChangeText={(v) => setScenario(v.slice(0, 600))}
-                placeholder="Écris le scénario d'ouverture, ou génère-le avec l'IA à partir de ce que tu as déjà rempli…"
+                placeholder={t("Écris le scénario d'ouverture, ou génère-le avec l'IA à partir de ce que tu as déjà rempli…")}
                 multiligne
                 maxLength={600}
               />
               <Bouton
-                titre={generationEnCours ? 'Génération…' : "Générer avec l'IA"}
+                titre={generationEnCours ? t('Génération…') : t("Générer avec l'IA")}
                 variante="secondaire"
                 onPress={genererScenario}
                 desactive={generationEnCours || !lieuDepartActif}
                 style={styles.boutonAction}
               />
-              {erreurGeneration ? <Text style={styles.erreur}>{erreurGeneration}</Text> : null}
+              {erreurGeneration ? <Text style={styles.erreur}>{t(erreurGeneration)}</Text> : null}
             </View>
 
             {(lieuDepartActif || situationActive || scenario.trim()) && (
               <Panneau style={styles.presentationMonde}>
-                <Text style={styles.labelPresentation}>Résumé de la situation</Text>
+                <Text style={styles.labelPresentation}>{t('Résumé de la situation')}</Text>
                 <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
                 <Image source={IMAGES_ETAPES[2]} style={styles.imagePresentationMonde} resizeMode="cover" />
                 <Text style={styles.descriptionMonde}>{composerPointDeDepart()}</Text>
@@ -613,39 +633,40 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 3 && (
           <>
-            <Text style={styles.titre}>Préférences narratives</Text>
+            <Text style={styles.titre}>{t('Préférences narratives')}</Text>
 
-            <Text style={styles.label}>Ton général</Text>
+            <Text style={styles.label}>{t('Ton général')}</Text>
             <RangeeOptions options={OPTIONS_TON} valeur={ton} onChange={setTon} />
-            <Text style={styles.aideTon}>{OPTIONS_TON.find((o) => o.valeur === ton)?.description}</Text>
+            <Text style={styles.aideTon}>{t(OPTIONS_TON.find((o) => o.valeur === ton)?.description ?? '')}</Text>
 
-            <Text style={styles.label}>Créativité</Text>
+            <Text style={styles.label}>{t('Créativité')}</Text>
             <RangeeOptions options={OPTIONS_CREATIVITE} valeur={creativite} onChange={setCreativite} />
-            <Text style={styles.label}>Longueur de réponse</Text>
+            <Text style={styles.label}>{t('Longueur de réponse')}</Text>
             <RangeeOptions options={OPTIONS_LONGUEUR} valeur={longueur} onChange={setLongueur} />
-            <Text style={styles.label}>Rythme de l'histoire</Text>
+            <Text style={styles.label}>{t("Rythme de l'histoire")}</Text>
             <RangeeOptions options={OPTIONS_RYTHME} valeur={rythme} onChange={setRythme} />
-            <Text style={styles.label}>Liberté du joueur</Text>
+            <Text style={styles.label}>{t('Liberté du joueur')}</Text>
             <RangeeOptions options={OPTIONS_LIBERTE} valeur={liberteJoueur} onChange={setLiberteJoueur} />
-            <Text style={styles.label}>Niveau de violence</Text>
+            <Text style={styles.label}>{t('Niveau de violence')}</Text>
             <RangeeOptions options={OPTIONS_VIOLENCE} valeur={violence} onChange={setViolence} />
-            <Text style={styles.label}>Niveau de romance</Text>
+            <Text style={styles.label}>{t('Niveau de romance')}</Text>
             <RangeeOptions options={OPTIONS_ROMANCE} valeur={romance} onChange={setRomance} />
-            <Text style={styles.label}>Humour</Text>
+            <Text style={styles.label}>{t('Humour')}</Text>
             <RangeeOptions options={OPTIONS_HUMOUR} valeur={humour} onChange={setHumour} />
             <Text style={styles.aide}>
-              Violence et romance sont plafonnées par le profil de contenu de l'appareil (Réglages) s'il est
-              configuré en Grand public.
+              {t(
+                "Violence et romance sont plafonnées par le profil de contenu de l'appareil (Réglages) s'il est configuré en Grand public.",
+              )}
             </Text>
 
             <Separateur style={{ marginVertical: espacement.lg }} />
 
-            <Text style={styles.label}>À venir</Text>
+            <Text style={styles.label}>{t('À venir')}</Text>
             {OPTIONS_FONCTIONNALITES_A_VENIR.map((f) => (
               <View key={f} style={styles.rangeeFonctionnaliteAVenir}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.texteFonctionnaliteAVenir}>{f}</Text>
-                  <Text style={styles.aideFonctionnaliteAVenir}>Bientôt disponible</Text>
+                  <Text style={styles.texteFonctionnaliteAVenir}>{t(f)}</Text>
+                  <Text style={styles.aideFonctionnaliteAVenir}>{t('Bientôt disponible')}</Text>
                 </View>
                 <Switch value={false} disabled trackColor={{ false: couleurs.bordure, true: couleurs.bordure }} />
               </View>
@@ -655,41 +676,79 @@ export default function CreateScreen({ navigation }: Props) {
 
         {etape === 4 && (
           <>
-            <Text style={styles.titre}>Récapitulatif</Text>
-            <Panneau style={styles.recapBloc}>
-              <Text style={styles.recapLabel}>Histoire</Text>
-              <Text style={styles.recapTexte}>{mondeActif?.nom} — {lieu}</Text>
-            </Panneau>
-            <Panneau style={styles.recapBloc}>
-              <Text style={styles.recapLabel}>Personnage</Text>
-              <Text style={styles.recapTexte}>{nom}</Text>
-              {(sexe || raceOrigine || age) ? (
-                <Text style={styles.recapTexte}>
-                  {[sexe, raceOrigine.trim(), age.trim() ? `${age.trim()} ans` : ''].filter(Boolean).join(' · ')}
-                </Text>
-              ) : null}
-              {apparence.trim() ? <Text style={styles.recapTexte}>{apparence.trim()}</Text> : null}
-              <Text style={styles.recapTexte}>{description}</Text>
-            </Panneau>
-            <Panneau style={styles.recapBloc}>
-              <Text style={styles.recapLabel}>Point de départ</Text>
-              <Text style={styles.recapTexte}>{composerPointDeDepart()}</Text>
-            </Panneau>
-            <Panneau style={styles.recapBloc}>
-              <Text style={styles.recapLabel}>Préférences</Text>
-              <Text style={styles.recapTexte}>
-                Ton {OPTIONS_TON.find((o) => o.valeur === ton)?.label} · Créativité{' '}
-                {OPTIONS_CREATIVITE.find((o) => o.valeur === creativite)?.label} · Longueur{' '}
-                {OPTIONS_LONGUEUR.find((o) => o.valeur === longueur)?.label} · Rythme{' '}
-                {OPTIONS_RYTHME.find((o) => o.valeur === rythme)?.label}
-              </Text>
-              <Text style={styles.recapTexte}>
-                Liberté du joueur {OPTIONS_LIBERTE.find((o) => o.valeur === liberteJoueur)?.label} · Violence{' '}
-                {OPTIONS_VIOLENCE.find((o) => o.valeur === violence)?.label} · Romance{' '}
-                {OPTIONS_ROMANCE.find((o) => o.valeur === romance)?.label} · Humour{' '}
-                {OPTIONS_HUMOUR.find((o) => o.valeur === humour)?.label}
-              </Text>
-            </Panneau>
+            <Text style={styles.titre}>{t('Récapitulatif')}</Text>
+            <View style={styles.rangeeRecap}>
+              <View style={styles.colonneRecapChamps}>
+                <Panneau style={styles.recapBloc}>
+                  <View style={styles.enteteRecap}>
+                    <Text style={styles.iconeRecap}>📖</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recapLabel}>{t('Histoire')}</Text>
+                      <Text style={styles.recapTitreBloc}>{mondeActif?.nom}</Text>
+                      {mondeActif?.genre ? <Text style={styles.recapSousTitre}>{t(mondeActif.genre)}</Text> : null}
+                    </View>
+                  </View>
+                </Panneau>
+
+                <Panneau style={styles.recapBloc}>
+                  <View style={styles.enteteRecap}>
+                    <Text style={styles.iconeRecap}>👤</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recapLabel}>{t('Personnage')}</Text>
+                      <Text style={styles.recapTitreBloc}>{nom}</Text>
+                      {(sexe || raceOrigine || age) ? (
+                        <Text style={styles.recapSousTitre}>
+                          {[sexe ? t(sexe) : '', raceOrigine.trim(), age.trim() ? `${age.trim()} ${t('ans')}` : '']
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                  {apparence.trim() ? <Text style={styles.recapTexte}>{apparence.trim()}</Text> : null}
+                  <Text style={styles.recapTexte}>{description}</Text>
+                </Panneau>
+
+                <Panneau style={styles.recapBloc}>
+                  <View style={styles.enteteRecap}>
+                    <Text style={styles.iconeRecap}>📍</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recapLabel}>{t('Point de départ')}</Text>
+                      <Text style={styles.recapTitreBloc}>{lieuDepartActif?.nom ? t(lieuDepartActif.nom) : lieu}</Text>
+                      {situationActive ? <Text style={styles.recapSousTitre}>{t(situationActive.nom)}</Text> : null}
+                    </View>
+                  </View>
+                  <Text style={styles.recapTexte}>{composerPointDeDepart()}</Text>
+                </Panneau>
+
+                <Panneau style={styles.recapBloc}>
+                  <View style={styles.enteteRecap}>
+                    <Text style={styles.iconeRecap}>🎭</Text>
+                    <Text style={styles.recapLabel}>{t('Préférences narratives')}</Text>
+                  </View>
+                  <View style={styles.grilleRecapPrefs}>
+                    <View style={styles.colonneRecapPrefs}>
+                      <LignePreferenceRecap icone="🎭" label="Ton général" valeur={OPTIONS_TON.find((o) => o.valeur === ton)?.label} />
+                      <LignePreferenceRecap icone="⚔️" label="Niveau de violence" valeur={OPTIONS_VIOLENCE.find((o) => o.valeur === violence)?.label} />
+                      <LignePreferenceRecap icone="💗" label="Niveau de romance" valeur={OPTIONS_ROMANCE.find((o) => o.valeur === romance)?.label} />
+                      <LignePreferenceRecap icone="😄" label="Humour" valeur={OPTIONS_HUMOUR.find((o) => o.valeur === humour)?.label} />
+                    </View>
+                    <View style={styles.colonneRecapPrefs}>
+                      <LignePreferenceRecap icone="🧭" label="Liberté du joueur" valeur={OPTIONS_LIBERTE.find((o) => o.valeur === liberteJoueur)?.label} />
+                      <LignePreferenceRecap icone="⏳" label="Rythme de l'histoire" valeur={OPTIONS_RYTHME.find((o) => o.valeur === rythme)?.label} />
+                      <LignePreferenceRecap icone="🎨" label="Créativité" valeur={OPTIONS_CREATIVITE.find((o) => o.valeur === creativite)?.label} />
+                      <LignePreferenceRecap icone="📏" label="Longueur" valeur={OPTIONS_LONGUEUR.find((o) => o.valeur === longueur)?.label} />
+                    </View>
+                  </View>
+                </Panneau>
+              </View>
+
+              <Panneau style={styles.presentationMonde}>
+                <Text style={styles.labelPresentation}>{t('Aperçu')}</Text>
+                <Image source={mondeActif?.image ?? IMAGES_ETAPES[4]} style={styles.imagePresentationMonde} resizeMode="cover" />
+                {mondeActif?.description ? <Text style={styles.descriptionMonde}>{t(mondeActif.description)}</Text> : null}
+              </Panneau>
+            </View>
           </>
         )}
 
@@ -697,12 +756,12 @@ export default function CreateScreen({ navigation }: Props) {
 
         <Separateur style={{ marginTop: espacement.lg, marginBottom: espacement.sm }} />
         <View style={styles.rangeeNavigation}>
-          {etape > 0 && <Bouton titre="Précédent" variante="secondaire" onPress={precedent} style={{ flex: 1 }} />}
+          {etape > 0 && <Bouton titre={t('Précédent')} variante="secondaire" onPress={precedent} style={{ flex: 1 }} />}
           {etape < ETAPES.length - 1 ? (
-            <Bouton titre="Suivant" onPress={suivant} desactive={!etapeValide} style={{ flex: 1 }} />
+            <Bouton titre={t('Suivant')} onPress={suivant} desactive={!etapeValide} style={{ flex: 1 }} />
           ) : (
             <Bouton
-              titre={enregistrement ? 'Création…' : "Commencer l'histoire"}
+              titre={enregistrement ? t('Création…') : t("Commencer l'histoire")}
               onPress={valider}
               desactive={enregistrement}
               style={{ flex: 1 }}
@@ -713,7 +772,7 @@ export default function CreateScreen({ navigation }: Props) {
 
       <Modal visible={modalPersonasOuvert} animationType="slide" onRequestClose={() => setModalPersonasOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titre}>Bibliothèque de personnages</Text>
+          <Text style={styles.titre}>{t('Bibliothèque de personnages')}</Text>
           <FlatList
             data={personas}
             keyExtractor={(item) => item.id}
@@ -722,7 +781,9 @@ export default function CreateScreen({ navigation }: Props) {
                 <Text style={styles.nomPersona}>{item.nom}</Text>
                 {(item.sexe || item.raceOrigine || item.age) ? (
                   <Text style={styles.descriptionPersona}>
-                    {[item.sexe, item.raceOrigine, item.age ? `${item.age} ans` : ''].filter(Boolean).join(' · ')}
+                    {[item.sexe ? t(item.sexe) : '', item.raceOrigine, item.age ? `${item.age} ${t('ans')}` : '']
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 ) : null}
                 <Text style={styles.descriptionPersona} numberOfLines={2}>
@@ -731,7 +792,7 @@ export default function CreateScreen({ navigation }: Props) {
               </Pressable>
             )}
           />
-          <Bouton titre="Fermer" variante="secondaire" onPress={() => setModalPersonasOuvert(false)} style={{ marginTop: espacement.md }} />
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalPersonasOuvert(false)} style={{ marginTop: espacement.md }} />
         </View>
       </Modal>
     </KeyboardAvoidingView>
@@ -912,20 +973,76 @@ const styles = StyleSheet.create({
   boutonAction: {
     marginTop: espacement.md,
   },
+  rangeeRecap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espacement.md,
+  },
+  colonneRecapChamps: {
+    flex: 1.4,
+    gap: espacement.sm,
+  },
   recapBloc: {
-    marginBottom: espacement.sm,
+    marginBottom: 0,
+  },
+  enteteRecap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: espacement.sm,
+    marginBottom: espacement.xs,
+  },
+  iconeRecap: {
+    fontSize: 20,
+    marginTop: 2,
   },
   recapLabel: {
     ...stylePetitesCapitales,
     color: couleurs.accentClair,
     fontSize: 12,
-    marginBottom: espacement.xs,
+    marginBottom: 2,
+  },
+  recapTitreBloc: {
+    color: couleurs.dore,
+    fontFamily: polices.titre,
+    fontSize: 18,
+  },
+  recapSousTitre: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    marginTop: 2,
   },
   recapTexte: {
     color: couleurs.texte,
     fontFamily: polices.corps,
     fontSize: 16,
     lineHeight: 22,
+  },
+  grilleRecapPrefs: {
+    flexDirection: 'row',
+    gap: espacement.md,
+  },
+  colonneRecapPrefs: {
+    flex: 1,
+    gap: espacement.sm,
+  },
+  lignePreferenceRecap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: espacement.xs,
+  },
+  iconePreferenceRecap: {
+    fontSize: 15,
+  },
+  labelPreferenceRecap: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteAtténué,
+    fontSize: 10,
+  },
+  valeurPreferenceRecap: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 14,
   },
   erreur: {
     color: couleurs.danger,
