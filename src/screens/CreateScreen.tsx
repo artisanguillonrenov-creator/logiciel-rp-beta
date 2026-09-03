@@ -17,6 +17,7 @@ import type { Creativite, Longueur, NiveauCurseur, Persona } from '../types';
 import { MONDES } from '../data/mondes';
 import { RACES_ELYNDOR } from '../data/races';
 import { LIEUX_DEPART } from '../data/lieuxDepart';
+import { SITUATIONS_DEPART } from '../data/situationsDepart';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, saveStory, savePersona } from '../storage/storage';
 import { couleurs, espacement, ombresLueur, polices, stylePetitesCapitales } from '../theme/theme';
@@ -250,8 +251,26 @@ export default function CreateScreen({ navigation }: Props) {
     return lignes.join('\n');
   }
 
-  // Étape 3 — Point de départ
-  const [pointDeDepart, setPointDeDepart] = useState('');
+  // Étape 3 — Point de départ (le lieu de départ, choisi ici plutôt qu'à
+  // l'étape Personnage, sert aussi à composer le résumé de situation)
+  const [situationDepart, setSituationDepart] = useState('');
+  const [precisionDepart, setPrecisionDepart] = useState('');
+
+  const lieuDepartActif = LIEUX_DEPART.find((l) => l.nom === lieu);
+  const situationActive = SITUATIONS_DEPART.find((s) => s.nom === situationDepart);
+
+  // Compose la phrase de point de départ effectivement envoyée au moteur, à
+  // partir du lieu/situation choisis et de la précision libre — affichée
+  // aussi telle quelle dans le panneau "Résumé de la situation".
+  function composerPointDeDepart(): string {
+    const lieuTexte = lieuDepartActif
+      ? `à ${lieuDepartActif.nom}${lieuDepartActif.description ? ` (${lieuDepartActif.description.replace(/\.$/, '')})` : ''}`
+      : '';
+    const phrase = [`${nom.trim() || 'Le personnage'} arrive${lieuTexte ? ' ' + lieuTexte : ''}`, situationActive ? `pour ${situationActive.nom.toLowerCase()}` : '']
+      .filter(Boolean)
+      .join(', ');
+    return [`${phrase}.`, precisionDepart.trim()].filter(Boolean).join(' ');
+  }
 
   // Étape 4 — Préférences
   const [creativite, setCreativite] = useState<Creativite>('moyenne');
@@ -266,8 +285,8 @@ export default function CreateScreen({ navigation }: Props) {
 
   const etapeValide = [
     true,
-    nom.trim().length > 0 && description.trim().length > 0 && lieu.trim().length > 0,
-    pointDeDepart.trim().length > 0,
+    nom.trim().length > 0 && description.trim().length > 0,
+    lieu.trim().length > 0,
     true,
     true,
   ][etape];
@@ -289,7 +308,7 @@ export default function CreateScreen({ navigation }: Props) {
       const histoire = creerNouvelleHistoire({
         personnageNom: nom.trim(),
         personnageDescription: composerDescriptionPersonnage(),
-        pointDeDepart: pointDeDepart.trim(),
+        pointDeDepart: composerPointDeDepart(),
         contexte: {
           lieu: lieu.trim(),
           // Ambiance/date/objectifs ne sont plus saisis à la création — le
@@ -406,13 +425,6 @@ export default function CreateScreen({ navigation }: Props) {
               multiligne
               conteneurStyle={styles.champConteneur}
             />
-            <ChampSelection
-              label="Lieu de départ"
-              placeholder="Choisir un lieu de départ"
-              options={LIEUX_DEPART}
-              valeur={lieu}
-              onChange={setLieu}
-            />
             <Champ
               label="Description"
               value={description}
@@ -438,13 +450,43 @@ export default function CreateScreen({ navigation }: Props) {
         {etape === 2 && (
           <>
             <Text style={styles.titre}>Point de départ</Text>
-            <Champ
-              label="En une phrase"
-              value={pointDeDepart}
-              onChangeText={setPointDeDepart}
-              placeholder="Ex : Elle arrive aux portes d'Elyndor à la nuit tombée."
-              conteneurStyle={styles.champConteneur}
+
+            <ChampSelection
+              label="Lieu de départ"
+              placeholder="Choisir un lieu de départ"
+              options={LIEUX_DEPART}
+              valeur={lieu}
+              onChange={setLieu}
             />
+            <ChampSelection
+              label="Situation de départ"
+              placeholder="Choisir une situation"
+              options={SITUATIONS_DEPART}
+              valeur={situationDepart}
+              onChange={setSituationDepart}
+            />
+            <View style={styles.champConteneur}>
+              <View style={styles.rangeeLabelCompteur}>
+                <Text style={[styles.label, { marginTop: 0 }]}>Précision personnelle (optionnel)</Text>
+                <Text style={styles.compteurCaracteres}>{precisionDepart.length}/250</Text>
+              </View>
+              <Champ
+                value={precisionDepart}
+                onChangeText={(v) => setPrecisionDepart(v.slice(0, 250))}
+                placeholder="Un détail propre à cette histoire, en plus du lieu et de la situation…"
+                multiligne
+                maxLength={250}
+              />
+            </View>
+
+            {(lieuDepartActif || situationActive || precisionDepart.trim()) && (
+              <Panneau style={styles.presentationMonde}>
+                <Text style={styles.labelPresentation}>Résumé de la situation</Text>
+                <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
+                <Image source={IMAGES_ETAPES[2]} style={styles.imagePresentationMonde} resizeMode="cover" />
+                <Text style={styles.descriptionMonde}>{composerPointDeDepart()}</Text>
+              </Panneau>
+            )}
           </>
         )}
 
@@ -486,7 +528,7 @@ export default function CreateScreen({ navigation }: Props) {
             </Panneau>
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Point de départ</Text>
-              <Text style={styles.recapTexte}>{pointDeDepart}</Text>
+              <Text style={styles.recapTexte}>{composerPointDeDepart()}</Text>
             </Panneau>
             <Panneau style={styles.recapBloc}>
               <Text style={styles.recapLabel}>Préférences</Text>
@@ -573,6 +615,16 @@ const styles = StyleSheet.create({
   },
   champConteneur: {
     marginTop: espacement.md,
+  },
+  rangeeLabelCompteur: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  compteurCaracteres: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
   },
   rangeeChoixMonde: {
     flexDirection: 'row',
