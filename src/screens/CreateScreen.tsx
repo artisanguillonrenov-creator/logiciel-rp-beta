@@ -186,6 +186,19 @@ function CarteMonde({ monde, selectionne, onPress }: { monde: (typeof MONDES)[nu
   );
 }
 
+// Bloc de texte à hauteur bornée avec défilement interne — un pavé tapé
+// librement par le joueur (description, apparence, scénario...) ne doit
+// pas gonfler toute la page du récapitulatif, contrairement à un simple
+// <Text> qui grandit avec son contenu.
+function ZoneTexteDefilante({ texte, style, hauteurMax = 130 }: { texte: string; style?: object; hauteurMax?: number }) {
+  if (!texte.trim()) return null;
+  return (
+    <ScrollView style={[styles.zoneTexteDefilante, { maxHeight: hauteurMax }]} nestedScrollEnabled>
+      <Text style={style ?? styles.recapTexte}>{texte}</Text>
+    </ScrollView>
+  );
+}
+
 // Une ligne icône + label + valeur choisie, pour la grille à deux colonnes
 // des préférences narratives dans le récapitulatif final.
 function LignePreferenceRecap({ icone, label, valeur }: { icone: string; label: string; valeur?: string }) {
@@ -708,7 +721,7 @@ export default function CreateScreen({ navigation }: Props) {
                 <Text style={styles.labelPresentation}>{t('Résumé de la situation')}</Text>
                 <Separateur style={{ width: 60, marginTop: espacement.xs, marginBottom: espacement.md, alignSelf: 'center' }} />
                 <Image source={IMAGES_ETAPES[2]} style={styles.imagePresentationMonde} resizeMode="cover" />
-                <Text style={styles.descriptionMonde}>{composerPointDeDepart()}</Text>
+                <ZoneTexteDefilante texte={composerPointDeDepart()} style={styles.descriptionMonde} />
               </Panneau>
             )}
           </>
@@ -793,8 +806,7 @@ export default function CreateScreen({ navigation }: Props) {
                       ) : null}
                     </View>
                   </View>
-                  {apparence.trim() ? <Text style={styles.recapTexte}>{apparence.trim()}</Text> : null}
-                  <Text style={styles.recapTexte}>{description}</Text>
+                  <ZoneTexteDefilante texte={[apparence.trim(), description].filter(Boolean).join('\n\n')} />
                 </Panneau>
 
                 <Panneau style={styles.recapBloc}>
@@ -806,7 +818,7 @@ export default function CreateScreen({ navigation }: Props) {
                       {situationActive ? <Text style={styles.recapSousTitre}>{t(situationActive.nom)}</Text> : null}
                     </View>
                   </View>
-                  <Text style={styles.recapTexte}>{composerPointDeDepart()}</Text>
+                  <ZoneTexteDefilante texte={composerPointDeDepart()} />
                 </Panneau>
 
                 <Panneau style={styles.recapBloc}>
@@ -834,7 +846,7 @@ export default function CreateScreen({ navigation }: Props) {
               <Panneau style={styles.presentationMonde}>
                 <Text style={styles.labelPresentation}>{t('Aperçu')}</Text>
                 <Image source={mondeActif?.image ?? IMAGES_ETAPES[4]} style={styles.imagePresentationMonde} resizeMode="cover" />
-                {mondeActif?.description ? <Text style={styles.descriptionMonde}>{t(mondeActif.description)}</Text> : null}
+                <ZoneTexteDefilante texte={mondeActif?.description ? t(mondeActif.description) : ''} style={styles.descriptionMonde} />
               </Panneau>
             </View>
           </>
@@ -1111,6 +1123,12 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 16,
     lineHeight: 22,
+  },
+  zoneTexteDefilante: {
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    padding: espacement.sm,
+    marginTop: espacement.xs,
   },
   grilleRecapPrefs: {
     flexDirection: 'row',

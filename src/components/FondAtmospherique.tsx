@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Image, ImageSourcePropType, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { Animated, Image, ImageSourcePropType, Platform, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { couleurs } from '../theme/theme';
 import SceneChateau from './SceneChateau';
@@ -102,12 +102,27 @@ function FiorituresAngles() {
  * direction artistique d'origine sans dépendre d'illustrations externes
  * (droits/génération d'images remis à plus tard, voir la conversation).
  */
+// Sur web, un fond simplement en `position: absolute` reste calé sur son
+// conteneur — si le contenu défilable (curseurs, discussion...) dépasse la
+// hauteur de l'écran, ce conteneur peut s'étirer avec lui, et le fond
+// "voyage" avec le contenu au lieu de rester en place (particulièrement
+// visible au zoom navigateur, qui recalcule différemment du natif). En
+// `position: fixed`, la couche décorative entière (image, étoiles,
+// vignettage, angles) se cale une fois pour toutes sur la fenêtre du
+// navigateur, quel que soit le défilement ou le zoom — natif n'a pas ce
+// souci (l'écran est déjà borné par le navigateur de l'app) donc y garde
+// `absoluteFill` inchangé.
+const styleCoucheDecor: ViewStyle =
+  Platform.OS === 'web'
+    ? ({ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 } as unknown as ViewStyle)
+    : StyleSheet.absoluteFill;
+
 export default function FondAtmospherique({ children, style, densiteEtoiles = 'normale', imageFond }: FondAtmospheriqueProps) {
   const etoiles = useMemo(() => genererEtoiles(densiteEtoiles === 'discrete' ? 22 : 45, 7), [densiteEtoiles]);
 
   return (
     <View style={[styles.container, style]}>
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={styleCoucheDecor} pointerEvents="none">
         {imageFond ? (
           <>
             <Image source={imageFond} style={StyleSheet.absoluteFill} resizeMode="cover" />
