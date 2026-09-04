@@ -625,6 +625,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 </View>
               );
             }}
+            ListFooterComponent={
+              imageGeneree
+                ? () => (
+                    <Panneau style={styles.panneauImageGeneree}>
+                      <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
+                      <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" />
+                      <Text style={styles.aideImageGeneree}>{t("Appuie longuement sur l'image pour l'enregistrer.")}</Text>
+                      <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setImageGeneree(null)} style={{ marginTop: espacement.sm }} />
+                    </Panneau>
+                  )
+                : undefined
+            }
           />
         )}
 
@@ -838,19 +850,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Bouton titre={t('Enregistrer')} onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
           <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
         </View>
-      </Modal>
-
-      <Modal visible={!!imageGeneree} animationType="fade" transparent onRequestClose={() => setImageGeneree(null)}>
-        <Pressable style={styles.superpositionSuppression} onPress={() => setImageGeneree(null)}>
-          <Panneau style={styles.panneauImageGeneree}>
-            <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
-            {imageGeneree && (
-              <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" />
-            )}
-            <Text style={styles.aideImageGeneree}>{t("Appuie longuement sur l'image pour l'enregistrer.")}</Text>
-            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setImageGeneree(null)} style={{ marginTop: espacement.sm }} />
-          </Panneau>
-        </Pressable>
       </Modal>
 
       <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
