@@ -184,6 +184,10 @@ Liberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.
 Violence : ${libelleViolence(ctx.settings.violence)}.
 Romance : ${libelleRomance(ctx.settings.romance)}.
 Humour : ${libelleHumour(ctx.settings.humour)}.
+
+Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
+KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
+Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}
 ${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 }

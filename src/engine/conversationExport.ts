@@ -27,6 +27,10 @@ function segmentsVersHtml(texte: string): string {
       const contenu = echapperHtml(seg.contenu);
       if (seg.type === 'action') return `<em class="action">${contenu}</em>`;
       if (seg.type === 'dialogue') return `<span class="dialogue">${contenu}</span>`;
+      if (seg.type === 'repliquePersonnage') {
+        const locuteur = echapperHtml(seg.locuteur ?? '');
+        return `<strong class="locuteur">${locuteur} :</strong> <span class="dialogue">« ${contenu} »</span>`;
+      }
       return contenu;
     })
     .join('');
@@ -73,6 +77,7 @@ const STYLE_EXPORT = `
   .auteur { font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
   .action { font-style: italic; color: #555; }
   .dialogue { color: #7a5c1e; }
+  .locuteur { color: #1a1a1a; }
 `;
 
 // --- Écriture + partage natif (Android/iOS) : fichier temporaire dans le
