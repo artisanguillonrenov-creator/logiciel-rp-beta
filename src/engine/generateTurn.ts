@@ -262,40 +262,69 @@ export async function construirePromptDebug(
   return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
 }
 
-// Les cinq pipelines périodiques (mémoire, lore émergent, directeur, monde,
-// social) tournent toujours ensemble, à la même cadence — factorisé pour
-// être appelable soit depuis genererTour (quand le seuil de messages est
+// Les quatre pipelines périodiques (mémoire, directeur, monde, social)
+// tournent toujours ensemble, à la même cadence — factorisé pour être
+// appelable soit depuis genererTour (quand le seuil de messages est
 // atteint), soit à la demande depuis les réglages concepteur
-// (forcerMiseAJourEtat, sans attendre ce seuil).
+// (forcerMiseAJourEtat, sans attendre ce seuil). Le lore émergent (PNJ,
+// lieux...) n'en fait plus partie — voir mettreAJourLoreEmergentSeul.
 async function executerMisesAJourPeriodiques(
   appSettings: AppSettings,
   story: StoryState,
   messages: Message[],
-): Promise<Pick<StoryState, 'memoire' | 'loreEmergent' | 'directeur' | 'monde' | 'social'>> {
+): Promise<Pick<StoryState, 'memoire' | 'directeur' | 'monde' | 'social'>> {
   const depuisIndex = story.memoire.dernierMessageIndexMaj;
-  const [memoire, loreEmergent, directeur, monde, social] = await Promise.all([
+  const [memoire, directeur, monde, social] = await Promise.all([
     mettreAJourMemoire({
       appSettings,
       memoireActuelle: story.memoire,
       messages,
       personnageNom: story.meta.personnageNom,
     }),
-    mettreAJourLoreEmergent({ appSettings, existants: story.loreEmergent, messages, depuisIndex }),
     mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages, depuisIndex }),
     mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages, depuisIndex }),
     mettreAJourSocial({ appSettings, socialActuel: story.social, messages, depuisIndex }),
   ]);
-  return { memoire, loreEmergent, directeur, monde, social };
+  return { memoire, directeur, monde, social };
+}
+
+// Contrairement aux quatre pipelines ci-dessus (groupés, tournent tous les
+// NB_MESSAGES_AVANT_MAJ messages pour limiter les appels payants), le lore
+// émergent tourne à CHAQUE tour : un PNJ nommé doit être détecté dès sa
+// première apparition pour que son avatar puisse se générer immédiatement
+// (voir ConversationScreen.tsx) — attendre un groupe de 8 messages, comme
+// avant, laissait tout début de conversation sans aucun PNJ détecté, donc
+// sans aucun avatar possible avant plusieurs tours. Curseur séparé
+// (loreEmergentDernierIndex) pour ne jamais rescanner ce qui l'a déjà été.
+async function mettreAJourLoreEmergentSeul(
+  appSettings: AppSettings,
+  story: StoryState,
+  messages: Message[],
+): Promise<Pick<StoryState, 'loreEmergent' | 'loreEmergentDernierIndex'>> {
+  const loreEmergent = await mettreAJourLoreEmergent({
+    appSettings,
+    existants: story.loreEmergent,
+    messages,
+    depuisIndex: story.loreEmergentDernierIndex ?? 0,
+  });
+  return { loreEmergent, loreEmergentDernierIndex: messages.length };
 }
 
 /**
- * Réglages concepteur (Ajouts_A_Integrer.md #6) : force les cinq pipelines
- * périodiques à tourner immédiatement, sans attendre le seuil de 8 messages
- * — pour observer l'effet d'un tour sans en jouer sept de plus.
+ * Réglages concepteur (Ajouts_A_Integrer.md #6) : force les pipelines
+ * périodiques (mémoire, directeur, monde, social) à tourner immédiatement,
+ * sans attendre le seuil de 8 messages — pour observer l'effet d'un tour
+ * sans en jouer sept de plus. Le lore émergent tourne déjà à chaque tour
+ * (voir mettreAJourLoreEmergentSeul) ; on le relance quand même ici par
+ * cohérence, au cas où des messages plus anciens n'auraient pas encore été
+ * scannés (ex. après un import).
  */
 export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSettings): Promise<StoryState> {
-  const maj = await executerMisesAJourPeriodiques(appSettings, story, story.messages);
-  return { ...story, ...maj };
+  const [maj, majLore] = await Promise.all([
+    executerMisesAJourPeriodiques(appSettings, story, story.messages),
+    mettreAJourLoreEmergentSeul(appSettings, story, story.messages),
+  ]);
+  return { ...story, ...maj, ...majLore };
 }
 
 /**
@@ -432,9 +461,8 @@ export async function genererTour(
   };
 
   const messages = [...story.messages, messageUtilisateur, messageAssistant];
-  let etatPeriodique: Pick<StoryState, 'memoire' | 'loreEmergent' | 'directeur' | 'monde' | 'social'> = {
+  let etatPeriodique: Pick<StoryState, 'memoire' | 'directeur' | 'monde' | 'social'> = {
     memoire: story.memoire,
-    loreEmergent: story.loreEmergent,
     directeur: story.directeur,
     monde: story.monde,
     social: story.social,
@@ -442,9 +470,13 @@ export async function genererTour(
   if (doitMettreAJourMemoire(messages, story.memoire.dernierMessageIndexMaj)) {
     etatPeriodique = await executerMisesAJourPeriodiques(appSettings, story, messages);
   }
+  // Lore émergent (PNJ, lieux...) : à chaque tour, pas seulement tous les
+  // 8 messages (voir mettreAJourLoreEmergentSeul) — jamais gaté derrière
+  // doitMettreAJourMemoire, contrairement aux quatre pipelines ci-dessus.
+  const etatLoreEmergent = await mettreAJourLoreEmergentSeul(appSettings, story, messages);
 
   return {
-    story: { ...story, messages, ...etatPeriodique },
+    story: { ...story, messages, ...etatPeriodique, ...etatLoreEmergent },
     aEteCorrige,
     debugLore,
   };
@@ -476,6 +508,7 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
       ...story.directeur,
       dernierBeatIndex: Math.min(story.directeur.dernierBeatIndex, messages.length - 2),
     },
+    loreEmergentDernierIndex: Math.min(story.loreEmergentDernierIndex ?? 0, messages.length - 2),
   };
 
   return genererTour(storySansDernierEchange, appSettings, avantDernier.content);

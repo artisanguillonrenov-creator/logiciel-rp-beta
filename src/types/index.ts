@@ -279,6 +279,16 @@ export interface StoryState {
   directeur: DirecteurState;
   monde: MondeState;
   social: SocialState;
+  // Curseur de scan du lore émergent (PNJ, lieux...) — séparé de
+  // memoire.dernierMessageIndexMaj : contrairement à la mémoire/au
+  // directeur/au monde/aux relations sociales (groupés, tournent tous les
+  // NB_MESSAGES_AVANT_MAJ messages pour limiter les appels payants), le
+  // lore émergent tourne à CHAQUE tour (voir generateTurn.ts) — un PNJ
+  // nommé doit être détecté immédiatement pour que son avatar puisse se
+  // générer dès sa première apparition, pas seulement après un groupe de
+  // 8 messages. Optionnel : histoires sauvegardées avant cet ajout, traité
+  // comme 0 (rescan complet une fois, sans casser rien).
+  loreEmergentDernierIndex?: number;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
