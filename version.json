@@ -1,7 +1,7 @@
 {
-  "version": "1.14.0",
+  "version": "1.15.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Le portrait peint (race/sexe choisis à la création) est maintenant envoyé comme image de référence au générateur d'illustration de scène, en plus de la fiche texte — pour mieux ancrer l'apparence (ex. elfe noire) que le texte seul."
+  "notes": "Les avatars des PNJ déjà générés (panneau Debug lore) s'affichent maintenant directement dans le texte de la conversation, juste avant chaque mention de leur nom."
 }

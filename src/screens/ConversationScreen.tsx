@@ -341,6 +341,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // entrées "provisoires" n'ont été vues qu'une fois et peuvent disparaître.
   const pnjRecurrents = story?.loreEmergent.filter((e) => e.categorie === 'pnj' && e.statut === 'permanent') ?? [];
 
+  // PNJ dont l'avatar a déjà été généré (voir avatarsPnj) — seuls ceux-là
+  // s'affichent dans le texte des messages (voir TexteMessageFormate),
+  // jamais générés à la volée pendant la lecture.
+  const avatarsPnjPourTexte = pnjRecurrents
+    .filter((pnj) => avatarsPnj[pnj.id])
+    .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
+
   // Précharge les portraits déjà générés (stockage persistant, aucun appel
   // réseau) dès que la liste des PNJ change — ne génère jamais tout seul.
   useEffect(() => {
@@ -664,7 +671,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
                   <Pressable onLongPress={() => setMessageActionsPour(item)} delayLongPress={400}>
                     <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
                       {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
-                      <TexteMessageFormate texte={t(item.content)} style={styles.texteBulle} />
+                      <TexteMessageFormate
+                        texte={t(item.content)}
+                        style={styles.texteBulle}
+                        avatarsPnj={item.role === 'assistant' ? avatarsPnjPourTexte : undefined}
+                      />
                     </View>
                   </Pressable>
                   {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
