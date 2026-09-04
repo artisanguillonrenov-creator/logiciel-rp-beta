@@ -1,7 +1,7 @@
 {
-  "version": "1.17.1",
+  "version": "1.17.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige l'étiquette de dialogue PNJ : le narrateur utilisait parfois un rôle générique (\"MARCHAND\") au lieu du nom propre du personnage, ce qui empêchait l'avatar de s'afficher."
+  "notes": "Annule le changement de la v1.17.1 (consigne de nom propre PNJ) : le remplacement rôle générique → nom propre fonctionnait déjà correctement sans cette consigne supplémentaire."
 }

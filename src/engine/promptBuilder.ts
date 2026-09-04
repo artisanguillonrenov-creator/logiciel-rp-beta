@@ -187,7 +187,6 @@ Humour : ${libelleHumour(ctx.settings.humour)}.
 
 Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
 KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
-Utilise toujours le nom PROPRE du PNJ dès qu'il est connu (le sien, jamais son rôle ou son titre — pas "MARCHAND", "GARDE" ou "SEIGNEUR") — y compris s'il vient tout juste de se présenter dans cette même réplique : le nom qu'il donne devient immédiatement son étiquette, pas son rôle. N'utilise un rôle générique en étiquette que tant qu'aucun nom ne lui a encore été donné, par lui-même ou par le contexte.
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${ctx.noteCorrection}\n` : ''}
 ${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
