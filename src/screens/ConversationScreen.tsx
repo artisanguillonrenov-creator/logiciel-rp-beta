@@ -344,7 +344,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // du choix inverse (générer dès la première mention) : un appel payant
   // pour un PNJ qui ne reviendra peut-être jamais — acceptable, l'avatar
   // reste en cache si le personnage revient.
-  const pnjConnus = story?.loreEmergent.filter((e) => e.categorie === 'pnj') ?? [];
+  // Filet de sécurité : le personnage joueur ne doit jamais apparaître ici
+  // — normalement déjà exclu à l'extraction (emergentLore.ts), mais une
+  // histoire dont une fiche "PNJ" au nom du joueur a été créée avant ce
+  // correctif garderait sinon cette fiche indéfiniment (la fusion sur
+  // reconfirmation ne modifie jamais un titre déjà enregistré).
+  const nomJoueurMinuscule = story?.meta.personnageNom.trim().toLowerCase();
+  const pnjConnus =
+    story?.loreEmergent.filter((e) => e.categorie === 'pnj' && e.titre.trim().toLowerCase() !== nomJoueurMinuscule) ?? [];
 
   // PNJ dont l'avatar a déjà été généré (voir avatarsPnj) — seuls ceux-là
   // s'affichent dans le texte des messages (voir TexteMessageFormate),

@@ -306,6 +306,7 @@ async function mettreAJourLoreEmergentSeul(
     existants: story.loreEmergent,
     messages,
     depuisIndex: story.loreEmergentDernierIndex ?? 0,
+    personnageNom: story.meta.personnageNom,
   });
   return { loreEmergent, loreEmergentDernierIndex: messages.length };
 }
@@ -371,7 +372,7 @@ export async function genererTour(
     maxTokens,
   });
 
-  const heuristique = validerAgentiviteHeuristique(reponse);
+  const heuristique = validerAgentiviteHeuristique(reponse, story.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const llm = await validerReponseLLM({
     apiKey: appSettings.openRouterApiKey,

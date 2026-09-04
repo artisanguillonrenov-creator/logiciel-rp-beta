@@ -63,21 +63,49 @@ export function fusionnerRapports(...rapports: RapportValidation[]): RapportVali
   return { ok: checks.every((c) => c.ok), checks };
 }
 
-export function validerAgentiviteHeuristique(reponse: string): RapportValidation {
+// "NOM : « ... »" (format demandé au narrateur pour les répliques de PNJ,
+// voir promptBuilder.ts [STYLE]) avec le nom du PERSONNAGE JOUEUR en
+// étiquette — le narrateur invente alors une réplique à sa place, violation
+// de la règle 1 (AUTONOMIE DU JOUEUR STRICTE) que TOURNURES_INTERDITES ne
+// couvre pas (ciblé sur "tu ..." à la deuxième personne, pas ce format).
+function reponseFaitParlerLeJoueur(reponse: string, personnageNom: string): boolean {
+  const nom = personnageNom.trim();
+  if (!nom) return false;
+  const nomEchappe = nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^[ \\t]*${nomEchappe}[ \\t]*:[ \\t]*«`, 'im');
+  return regex.test(reponse);
+}
+
+export function validerAgentiviteHeuristique(reponse: string, personnageNom?: string): RapportValidation {
   const texte = reponse.toLowerCase();
   const tournure = TOURNURES_INTERDITES.find((t) => texte.includes(t));
-  if (!tournure) return rapportOk();
-  return {
-    ok: false,
-    checks: [
-      {
-        nom: 'contrat_joueur',
-        ok: false,
-        gravite: 'grave',
-        raison: `Tournure suspecte détectée : "${tournure}" (décision imposée au joueur).`,
-      },
-    ],
-  };
+  if (tournure) {
+    return {
+      ok: false,
+      checks: [
+        {
+          nom: 'contrat_joueur',
+          ok: false,
+          gravite: 'grave',
+          raison: `Tournure suspecte détectée : "${tournure}" (décision imposée au joueur).`,
+        },
+      ],
+    };
+  }
+  if (personnageNom && reponseFaitParlerLeJoueur(reponse, personnageNom)) {
+    return {
+      ok: false,
+      checks: [
+        {
+          nom: 'contrat_joueur',
+          ok: false,
+          gravite: 'grave',
+          raison: `Le narrateur écrit une réplique au nom du joueur ("${personnageNom} : « ... »") — jamais permis, le joueur écrit ses propres paroles (règle 1).`,
+        },
+      ],
+    };
+  }
+  return rapportOk();
 }
 
 export interface ValidationLLMOptions {

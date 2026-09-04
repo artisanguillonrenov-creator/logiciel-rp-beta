@@ -23,6 +23,7 @@ async function extraireCandidats(
   appSettings: AppSettings,
   transcript: string,
   existants: EntreeLoreEmergent[],
+  personnageNom: string,
 ): Promise<CandidatLoreEmergent[]> {
   const existantsTexte = existants.length
     ? existants.map((e) => `- [${e.categorie}] ${e.titre}`).join('\n')
@@ -41,6 +42,8 @@ async function extraireCandidats(
           content: `Tu identifies les éléments de MONDE nouveaux et durables introduits dans un extrait de jeu de rôle : PNJ nommés destinés à revenir, lieux nommés, factions, objets marquants, événements qui feront date. Réponds UNIQUEMENT avec un JSON strict :
 {"candidats": [{"categorie": "pnj|objet|lieu|faction|evenement", "titre": "...", "contenu": "description factuelle en une ou deux phrases"}]}
 
+Pour un PNJ, le "titre" doit être son NOM PROPRE dès que le texte en révèle un (ex. "Kaelen"), jamais son rôle ou son métier ("Marchand", "Garde") même si c'est ainsi qu'il est le plus souvent désigné dans l'extrait — un rôle générique comme titre ferait ensuite confondre ce PNJ précis avec n'importe quelle autre mention du même mot. N'utilise un rôle en titre que si aucun nom propre n'est donné nulle part dans l'extrait.
+N'inclus JAMAIS ${personnageNom} — c'est le personnage du joueur, pas un PNJ, quelle que soit la fréquence à laquelle il est mentionné.
 Ignore les figurants sans nom, les objets ou lieux anecdotiques sans suite probable. Ne réinvente rien : décris uniquement ce que le texte établit. Ce qui est déjà répertorié (ne le reprends que si une information nouvelle importante s'y ajoute) :
 ${existantsTexte}`,
         },
@@ -52,8 +55,14 @@ ${existantsTexte}`,
     if (!match) return [];
     const parsed = JSON.parse(match[0]);
     if (!Array.isArray(parsed.candidats)) return [];
+    // Filet de sécurité déterministe : même si le modèle l'inclut malgré la
+    // consigne, le personnage joueur ne devient jamais une fiche PNJ (son
+    // propre avatar généré et affiché comme s'il s'agissait d'un PNJ,
+    // constaté en usage réel).
+    const nomJoueurNormalise = personnageNom.trim().toLowerCase();
     return parsed.candidats
       .filter((c: any) => c && typeof c.titre === 'string' && c.titre.trim())
+      .filter((c: any) => String(c.titre).trim().toLowerCase() !== nomJoueurNormalise)
       .map((c: any): CandidatLoreEmergent => ({
         categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'pnj',
         titre: String(c.titre).trim(),
@@ -68,9 +77,10 @@ export interface MiseAJourLoreEmergentOptions {
   appSettings: AppSettings;
   existants: EntreeLoreEmergent[];
   messages: Message[];
-  // Index (dans `messages`) à partir duquel scanner — réutilise le même
-  // curseur que la mémoire, les deux pipelines tournant à la même cadence.
+  // Index (dans `messages`) à partir duquel scanner.
   depuisIndex: number;
+  // Nom du personnage joueur — jamais extrait comme PNJ (voir extraireCandidats).
+  personnageNom: string;
 }
 
 /**
@@ -87,6 +97,7 @@ export async function mettreAJourLoreEmergent({
   existants,
   messages,
   depuisIndex,
+  personnageNom,
 }: MiseAJourLoreEmergentOptions): Promise<EntreeLoreEmergent[]> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return existants;
@@ -95,7 +106,7 @@ export async function mettreAJourLoreEmergent({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const candidats = await extraireCandidats(appSettings, transcript, existants);
+  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom);
   if (candidats.length === 0) return existants;
 
   try {
