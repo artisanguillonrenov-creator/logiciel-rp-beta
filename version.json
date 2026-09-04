@@ -1,7 +1,7 @@
 {
-  "version": "1.15.0",
+  "version": "1.16.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Les avatars des PNJ déjà générés (panneau Debug lore) s'affichent maintenant directement dans le texte de la conversation, juste avant chaque mention de leur nom."
+  "notes": "Les portraits des PNJ récurrents se génèrent maintenant automatiquement (si la génération d'images est activée dans Réglages), une seule fois par PNJ puis conservés — plus besoin d'appuyer sur Générer."
 }

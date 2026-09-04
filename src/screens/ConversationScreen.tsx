@@ -348,17 +348,44 @@ export default function ConversationScreen({ route, navigation }: Props) {
     .filter((pnj) => avatarsPnj[pnj.id])
     .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
 
-  // Précharge les portraits déjà générés (stockage persistant, aucun appel
-  // réseau) dès que la liste des PNJ change — ne génère jamais tout seul.
+  // Clé stable des PNJ récurrents confirmés — sert de dépendance d'effet.
+  // .length seul ne suffit pas : le passage "provisoire" → "permanent"
+  // d'une entrée existante (emergentLore.ts) remplace l'entrée en place
+  // sans changer la longueur du tableau.
+  const clePnjRecurrents = pnjRecurrents
+    .map((p) => p.id)
+    .sort()
+    .join(',');
+
+  // Charge le portrait déjà généré de chaque PNJ récurrent confirmé
+  // (stockage persistant, aucun appel réseau) et, s'il n'existe pas encore
+  // et que la génération d'images est activée (Réglages), le génère
+  // automatiquement une seule fois puis le sauvegarde — obtenirOuGenererAvatarPnj
+  // revérifie le cache avant tout appel réseau, donc jamais régénéré
+  // ensuite pour ce PNJ. Un par un (pas en parallèle) pour ne pas envoyer
+  // une rafale d'appels payants dès qu'un nouveau PNJ est confirmé.
   useEffect(() => {
     if (!story) return;
     let annule = false;
     (async () => {
       for (const pnj of pnjRecurrents) {
+        if (annule) return;
         if (avatarsPnj[pnj.id]) continue;
         const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
-        if (!annule && existant) {
+        if (annule) return;
+        if (existant) {
           setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: existant }));
+          continue;
+        }
+        if (!appSettings?.genererImagesActive || !appSettings.openRouterApiKey || avatarsPnjEnCours[pnj.id]) continue;
+        setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
+        try {
+          const url = await obtenirOuGenererAvatarPnj(story.meta.id, pnj, appSettings.openRouterApiKey, appSettings.modeleImagesGratuit);
+          if (!annule) setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
+        } catch (e) {
+          if (!annule) setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));
+        } finally {
+          setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: false }));
         }
       }
     })();
@@ -366,7 +393,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       annule = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story?.meta.id, story?.loreEmergent.length]);
+  }, [story?.meta.id, clePnjRecurrents, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
 
   const genererAvatarPourPnj = useCallback(
     async (pnj: EntreeLoreEmergent) => {
@@ -736,6 +763,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
               ))
             )}
             <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
+            <Text style={styles.aideImageGeneree}>
+              {appSettings?.genererImagesActive
+                ? t('Générés automatiquement dès qu\'un PNJ devient récurrent, puis conservés.')
+                : t("Active la génération d'images dans Réglages pour les générer automatiquement.")}
+            </Text>
             {pnjRecurrents.length === 0 ? (
               <Text style={styles.ligneDebug}>Aucun PNJ récurrent confirmé pour l'instant.</Text>
             ) : (
@@ -745,7 +777,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     {avatarsPnj[pnj.id] ? (
                       <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
                     ) : (
-                      <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]} />
+                      <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
+                        {avatarsPnjEnCours[pnj.id] ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
+                      </View>
                     )}
                     <Text style={styles.nomPortraitPnj} numberOfLines={1}>
                       {pnj.titre}
