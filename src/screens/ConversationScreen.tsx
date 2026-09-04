@@ -358,17 +358,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
   // réel : le narrateur ne bascule pas toujours sur le nom une fois établi,
   // même après plusieurs régénérations. Plutôt que de forcer le modèle (déjà
   // tenté, pas fiable), on retrouve le PNJ probable en cherchant qui est
-  // mentionné par son nom dans les messages récents — seulement si un SEUL
-  // PNJ à avatar y est mentionné, pour ne jamais deviner à tort s'il y en a
-  // plusieurs en scène.
-  const MESSAGES_RECENTS_POUR_LOCUTEUR = 8;
-  const texteMessagesRecents = (story?.messages ?? [])
-    .slice(-MESSAGES_RECENTS_POUR_LOCUTEUR)
+  // mentionné par son nom dans TOUTE l'histoire (pas seulement les derniers
+  // messages : le PNJ est connu du narrateur dès qu'il l'a inventé, une
+  // fenêtre récente ne fait que perdre le lien une fois son nom sorti des
+  // derniers tours, alors qu'il continue de parler via son rôle) —
+  // seulement si un SEUL PNJ à avatar est mentionné, pour ne jamais deviner
+  // à tort s'il y en a plusieurs en scène.
+  const texteHistoireEntiere = (story?.messages ?? [])
     .map((m) => m.content)
     .join('\n')
     .toLowerCase();
-  const pnjMentionnesRecemment = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteMessagesRecents));
-  const avatarParDefautLocuteur = pnjMentionnesRecemment.length === 1 ? pnjMentionnesRecemment[0].avatarUri : undefined;
+  const pnjMentionnesDansHistoire = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteHistoireEntiere));
+  const avatarParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].avatarUri : undefined;
 
   // Clé stable des PNJ connus — sert de dépendance d'effet.
   const clePnjConnus = pnjConnus
