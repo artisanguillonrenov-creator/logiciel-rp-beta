@@ -17,6 +17,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { Creativite, Longueur, LiberteJoueur, NiveauQuatre, NiveauViolence, Persona, ProfilContenu, RythmeHistoire, TonHistoire } from '../types';
 import { MONDES } from '../data/mondes';
 import { RACES_ELYNDOR } from '../data/races';
+import { obtenirPortrait } from '../data/portraits';
 import { LIEUX_DEPART } from '../data/lieuxDepart';
 import { SITUATIONS_PAR_LIEU } from '../data/situationsDepart';
 import elyndorLoreRaw from '../data/elyndorLore.json';
@@ -382,6 +383,7 @@ export default function CreateScreen({ navigation }: Props) {
   const situationsDisponibles = lieuDepartActif ? SITUATIONS_PAR_LIEU[lieuDepartActif.id] ?? [] : [];
   const situationActive = situationsDisponibles.find((s) => s.nom === situationDepart);
   const raceActive = RACES_ELYNDOR.find((r) => r.nom === raceOrigine);
+  const portraitActif = obtenirPortrait(raceActive?.id, sexe);
 
   function choisirLieuDepart(nomLieu: string) {
     setLieu(nomLieu);
@@ -638,6 +640,9 @@ export default function CreateScreen({ navigation }: Props) {
               valeur={raceOrigine}
               onChange={setRaceOrigine}
             />
+            {portraitActif && (
+              <Image source={portraitActif} style={styles.portraitPersonnage} resizeMode="cover" />
+            )}
             <Champ
               label={t('Âge')}
               value={age}
@@ -927,6 +932,14 @@ const styles = StyleSheet.create({
   },
   champConteneur: {
     marginTop: espacement.md,
+  },
+  portraitPersonnage: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    marginTop: espacement.md,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
   },
   rangeeLabelCompteur: {
     flexDirection: 'row',
