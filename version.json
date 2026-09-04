@@ -1,7 +1,7 @@
 {
-  "version": "1.17.2",
+  "version": "1.18.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Annule le changement de la v1.17.1 (consigne de nom propre PNJ) : le remplacement rôle générique → nom propre fonctionnait déjà correctement sans cette consigne supplémentaire."
+  "notes": "Illustration de scène : le narrateur décrit maintenant lui-même la scène pour le générateur d'image (même contexte que sa réponse : fiche personnage, PNJ présents, lore de la scène), au lieu d'un prompt déduit du texte affiché."
 }
