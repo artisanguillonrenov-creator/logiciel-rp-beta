@@ -380,7 +380,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         if (!appSettings?.genererImagesActive || !appSettings.openRouterApiKey || avatarsPnjEnCours[pnj.id]) continue;
         setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
         try {
-          const url = await obtenirOuGenererAvatarPnj(story.meta.id, pnj, appSettings.openRouterApiKey, appSettings.modeleImagesGratuit);
+          const url = await obtenirOuGenererAvatarPnj(story, pnj, appSettings);
           if (!annule) setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
         } catch (e) {
           if (!annule) setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));
@@ -401,7 +401,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
       setErreurAvatarPnj('');
       try {
-        const url = await obtenirOuGenererAvatarPnj(story.meta.id, pnj, appSettings.openRouterApiKey, appSettings.modeleImagesGratuit);
+        const url = await obtenirOuGenererAvatarPnj(story, pnj, appSettings);
         setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
       } catch (e) {
         setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));

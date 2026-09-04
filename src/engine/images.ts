@@ -254,22 +254,96 @@ export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
   );
 }
 
+// Nombre max de messages où le PNJ est mentionné, utilisés comme matière
+// première pour décrire son portrait — au-delà, coût inutile pour un gain
+// marginal (mêmes limites que MAX_PNJ_DANS_PROMPT_SCENE/MAX_LORE...).
+const MAX_MESSAGES_PNJ_POUR_PORTRAIT = 4;
+
+// Même principe que INSTRUCTION_PROMPT_IMAGE, mais pour un portrait (buste,
+// apparence uniquement) plutôt qu'une scène (action, décor, lumière).
+const INSTRUCTION_PROMPT_AVATAR_PNJ = `Images-moi textuellement le portrait du personnage identifié ci-dessus, tel qu'il a été établi jusqu'ici dans l'histoire. Décris uniquement son apparence physique, sous forme de constats précis et denses (pas de prose littéraire) : race/apparence physique (carnation, silhouette, traits du visage), cheveux, yeux, tenue/équipement visible au buste, expression au repos. Pas de décor, pas d'action, pas de dialogue, pas de pensées. Reste strictement fidèle à ce qui a été établi ; n'invente rien de nouveau.`;
+
+/**
+ * Extraits des messages de l'histoire où ce PNJ est mentionné (même
+ * détection que pnjMentionneDansTexte) — matière première plus riche que le
+ * seul résumé condensé de sa fiche de lore émergent : les détails
+ * d'apparence donnés au moment de son introduction n'y survivent pas
+ * toujours intégralement.
+ */
+function trouverMessagesMentionnantPnj(story: StoryState, pnj: EntreeLoreEmergent, max: number): string[] {
+  return story.messages
+    .filter((m) => pnjMentionneDansTexte(pnj, m.content.toLowerCase()))
+    .slice(-max)
+    .map((m) => m.content);
+}
+
+/**
+ * Demande au modèle narratif de décrire visuellement un PNJ pour son
+ * portrait — même principe que genererPromptImageViaModele (voir plus
+ * haut), mais centré sur l'apparence seule (pas de scène). Reçoit sa fiche
+ * de lore émergent, le lore Elyndor pertinent (ex. sa race, sa culture —
+ * même recherche sémantique que pour le narrateur) et des extraits des
+ * messages où il a été mentionné.
+ */
+async function genererPromptAvatarPnjViaModele(story: StoryState, pnj: EntreeLoreEmergent, appSettings: AppSettings): Promise<string> {
+  const { loreElyndor } = await calculerSelectionLore(story, pnj.contenu, appSettings);
+
+  const messagesPertinents = trouverMessagesMentionnantPnj(story, pnj, MAX_MESSAGES_PNJ_POUR_PORTRAIT);
+  const blocMentions =
+    messagesPertinents.length > 0 ? `[EXTRAITS DE L'HISTOIRE MENTIONNANT CE PERSONNAGE]\n${messagesPertinents.join('\n---\n')}` : '';
+
+  const loreTexte = loreElyndor
+    .slice(0, MAX_LORE_DANS_PROMPT_IMAGE)
+    .map((e) => `- ${e.titre} : ${e.contenu}`)
+    .join('\n');
+  const blocLore = loreTexte ? `[LORE PERTINENT — ex. race, culture]\n${loreTexte}` : '';
+
+  const contexte = [`[PNJ À PORTRAITURER]\n${pnj.titre} : ${pnj.contenu}`, blocLore, blocMentions].filter(Boolean).join('\n\n');
+
+  const sortie = await appellerModele({
+    apiKey: appSettings.openRouterApiKey,
+    model: appSettings.model,
+    moteurInference: appSettings.moteurInference,
+    temperature: 0.4,
+    maxTokens: 300,
+    raisonnement: false,
+    messages: [
+      { role: 'system', content: contexte },
+      { role: 'user', content: INSTRUCTION_PROMPT_AVATAR_PNJ },
+    ],
+  });
+
+  const description = sortie.trim();
+  if (!description) throw new ErreurOpenRouter('Description visuelle vide reçue du modèle.');
+  return `Portrait (buste, cadrage serré sur le visage et les épaules) de ${pnj.titre}.\n${description}\n\nStyle : ${ANCRAGE_STYLE}, character portrait, plain dark background.`;
+}
+
+/**
+ * Prompt de portrait pour un PNJ : tente de le faire décrire par le modèle
+ * narratif lui-même (meilleure source, voir genererPromptAvatarPnjViaModele)
+ * ; replie silencieusement sur l'ancienne méthode (construirePromptAvatarPnj,
+ * simple mise en forme de la fiche de lore) si l'appel échoue.
+ */
+async function obtenirPromptAvatarPnj(story: StoryState, pnj: EntreeLoreEmergent, appSettings: AppSettings): Promise<string> {
+  try {
+    return await genererPromptAvatarPnjViaModele(story, pnj, appSettings);
+  } catch {
+    return construirePromptAvatarPnj(pnj);
+  }
+}
+
 /**
  * Renvoie l'avatar d'un PNJ, depuis le cache persistant (pnjAvatarsStore)
  * s'il existe déjà, sinon le génère puis l'y enregistre — un seul appel
  * payant par PNJ pour toute la durée de l'histoire, et un visage qui ne
  * change plus d'une scène à l'autre.
  */
-export async function obtenirOuGenererAvatarPnj(
-  storyId: string,
-  pnj: EntreeLoreEmergent,
-  apiKey: string,
-  gratuit?: boolean
-): Promise<string> {
-  const existant = await obtenirAvatarPnj(storyId, pnj.id);
+export async function obtenirOuGenererAvatarPnj(story: StoryState, pnj: EntreeLoreEmergent, appSettings: AppSettings): Promise<string> {
+  const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
-  const url = await appellerModeleImage(apiKey, construirePromptAvatarPnj(pnj), gratuit);
-  await enregistrerAvatarPnj(storyId, pnj.id, url);
+  const prompt = await obtenirPromptAvatarPnj(story, pnj, appSettings);
+  const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
+  await enregistrerAvatarPnj(story.meta.id, pnj.id, url);
   return url;
 }
 
