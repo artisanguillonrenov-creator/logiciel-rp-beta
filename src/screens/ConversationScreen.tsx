@@ -30,7 +30,7 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
-import { construirePromptScene, genererImageScene, obtenirOuGenererAvatarPnj, obtenirPortraitReferenceJoueur } from '../engine/images';
+import { obtenirPromptScene, genererImageScene, obtenirOuGenererAvatarPnj, obtenirPortraitReferenceJoueur } from '../engine/images';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
@@ -325,7 +325,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setImageEnCours(true);
     setErreurImage('');
     try {
-      const prompt = construirePromptScene(story);
+      const prompt = await obtenirPromptScene(story, appSettings);
       const portraitReference = await obtenirPortraitReferenceJoueur(story);
       const url = await genererImageScene(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit, portraitReference);
       setImageGeneree(url);

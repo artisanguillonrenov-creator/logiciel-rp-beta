@@ -1,6 +1,7 @@
 import { Image } from 'react-native';
-import type { EntreeLoreEmergent, StoryState } from '../types';
-import { ErreurOpenRouter } from './openrouter';
+import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
+import { appellerModele, ErreurOpenRouter } from './openrouter';
+import { calculerSelectionLore } from './generateTurn';
 import { obtenirAvatarPnj, enregistrerAvatarPnj } from '../storage/pnjAvatarsStore';
 import { obtenirPortrait } from '../data/portraits';
 
@@ -83,6 +84,94 @@ export function construirePromptScene(story: StoryState): string {
     : '';
   const blocPnj = construireBlocPnjPresents(story, texteScene);
   return `${blocPersonnage}${blocPnj}Scène :\n${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
+}
+
+// Nombre max d'entrées de lore Elyndor injectées dans le prompt image —
+// même logique que MAX_PNJ_DANS_PROMPT_SCENE : en injecter sans discernement
+// dilue l'attention du modèle plutôt que d'aider.
+const MAX_LORE_DANS_PROMPT_IMAGE = 4;
+
+// Consigne donnée au modèle narratif pour qu'il décrive lui-même,
+// visuellement, la scène qu'il vient d'écrire — plutôt que de la deviner
+// après coup par déduction (troncature de texte + détection de PNJ, voir
+// construirePromptScene). Le narrateur a déjà tout le contexte au moment
+// d'écrire (fiche personnage, lore, PNJ, mémoire) ; le texte rendu au
+// joueur n'en répète qu'une partie. Format en constats par catégorie
+// (apparence / action / décor / lumière) plutôt qu'un résumé vague : un
+// prompt d'image dense et découpé donne de bien meilleurs résultats à FLUX
+// qu'une phrase narrative généraliste.
+const INSTRUCTION_PROMPT_IMAGE = `Images-moi textuellement la scène que tu viens d'écrire. Décris uniquement ce qui se voit, sous forme de constats précis et denses (pas de prose littéraire) :
+— Personnages présents : qui, et pour chacun — race/apparence physique (carnation, silhouette), tenue/équipement visible, posture et expression au moment précis de la scène.
+— Action : ce que chacun est en train de faire, physiquement, à cet instant.
+— Décor : lieu, éléments visibles au premier plan et en arrière-plan, objets notables.
+— Lumière et ambiance : source de lumière, heure, météo, atmosphère générale.
+Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas déjà établi dans la scène ou la fiche des personnages.`;
+
+/**
+ * Demande au modèle narratif lui-même (celui qui vient d'écrire la scène,
+ * avec tout son contexte) de produire une description visuelle dédiée à la
+ * génération d'image — plutôt que de la déduire après coup depuis son texte
+ * rendu. Reçoit le même genre de contexte que sa réponse narrative : fiche
+ * personnage, PNJ présents, lore Elyndor sélectionné pour cette scène par
+ * la même recherche sémantique que le narrateur (calculerSelectionLore,
+ * recalculée ici — aucun cache partagé pour l'instant, donc un appel
+ * embeddings de plus, mais seulement quand on illustre, pas à chaque tour).
+ */
+async function genererPromptImageViaModele(story: StoryState, appSettings: AppSettings): Promise<string> {
+  const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
+  const texteScene = dernierMessageNarrateur?.content ?? story.meta.pointDeDepart;
+
+  const { loreElyndor } = await calculerSelectionLore(story, texteScene, appSettings);
+
+  const ficheJoueur = story.meta.personnageDescription?.trim();
+  const blocPersonnage = ficheJoueur ? `[PERSONNAGE PRINCIPAL — ${story.meta.personnageNom}]\n${ficheJoueur}` : '';
+
+  const blocPnj = construireBlocPnjPresents(story, texteScene);
+
+  const loreTexte = loreElyndor
+    .slice(0, MAX_LORE_DANS_PROMPT_IMAGE)
+    .map((e) => `- ${e.titre} : ${e.contenu}`)
+    .join('\n');
+  const blocLore = loreTexte ? `[LORE PERTINENT POUR CETTE SCÈNE]\n${loreTexte}` : '';
+
+  const contexte = [blocPersonnage, blocPnj.trim(), blocLore, `[SCÈNE QUE TU VIENS D'ÉCRIRE]\n${texteScene}`]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const sortie = await appellerModele({
+    apiKey: appSettings.openRouterApiKey,
+    model: appSettings.model,
+    moteurInference: appSettings.moteurInference,
+    temperature: 0.4,
+    maxTokens: 350,
+    raisonnement: false,
+    messages: [
+      { role: 'system', content: contexte },
+      { role: 'user', content: INSTRUCTION_PROMPT_IMAGE },
+    ],
+  });
+
+  const description = sortie.trim();
+  if (!description) throw new ErreurOpenRouter('Description visuelle vide reçue du modèle.');
+  return description;
+}
+
+/**
+ * Point d'entrée utilisé par l'écran de conversation pour illustrer la
+ * scène en cours : tente de faire décrire la scène par le modèle narratif
+ * lui-même (genererPromptImageViaModele, la meilleure source puisqu'il a
+ * tout le contexte de l'histoire) ; si l'appel échoue pour une raison
+ * quelconque (pas de clé, réseau, erreur du modèle), replie silencieusement
+ * sur l'ancienne méthode par déduction (construirePromptScene) plutôt que
+ * de bloquer l'illustration.
+ */
+export async function obtenirPromptScene(story: StoryState, appSettings: AppSettings): Promise<string> {
+  try {
+    const description = await genererPromptImageViaModele(story, appSettings);
+    return `${description}\n\nStyle : ${ANCRAGE_STYLE}.`;
+  } catch {
+    return construirePromptScene(story);
+  }
 }
 
 /**
