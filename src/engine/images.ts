@@ -1,5 +1,6 @@
-import type { StoryState } from '../types';
+import type { EntreeLoreEmergent, StoryState } from '../types';
 import { ErreurOpenRouter } from './openrouter';
+import { obtenirAvatarPnj, enregistrerAvatarPnj } from '../storage/pnjAvatarsStore';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
 // l'API image unifiée d'OpenRouter (même fournisseur/même clé que le texte
@@ -23,11 +24,23 @@ const ANCRAGE_STYLE =
  * narrateur (la scène telle qu'elle vient d'être décrite) — à défaut, le
  * point de départ de l'histoire. Tronqué : un prompt d'image trop long dilue
  * l'attention du modèle plutôt que d'améliorer le résultat.
+ *
+ * La fiche personnage (race, apparence...) est placée EN TÊTE, avant la
+ * scène : sans elle, rien dans le prompt ne dit au modèle à quoi ressemble
+ * {{user}} (race, teint...) — la scène narrée seule ne le répète pas à
+ * chaque tour, d'où des personnages visuellement incohérents d'une
+ * génération à l'autre malgré une fiche pourtant déjà renseignée à la
+ * création (constaté en usage réel : une elfe noire rendue comme une
+ * humaine générique).
  */
 export function construirePromptScene(story: StoryState): string {
   const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
   const texteScene = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).slice(0, 600);
-  return `${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
+  const ficheJoueur = story.meta.personnageDescription?.trim();
+  const blocPersonnage = ficheJoueur
+    ? `Personnage principal (${story.meta.personnageNom}) — respecter strictement cette apparence :\n${ficheJoueur.slice(0, 400)}\n\n`
+    : '';
+  return `${blocPersonnage}Scène :\n${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
 }
 
 /**
@@ -39,6 +52,44 @@ export function construirePromptScene(story: StoryState): string {
  * corrigé une fois ce soir (voir storage.ts, ecrireAvecRetraitSurQuota).
  */
 export async function genererImageScene(apiKey: string, prompt: string, gratuit?: boolean): Promise<string> {
+  return appellerModeleImage(apiKey, prompt, gratuit);
+}
+
+/**
+ * Construit le prompt d'un portrait PNJ (cadrage buste/visage, pas une
+ * scène) à partir de sa fiche de lore émergent (titre + description
+ * factuelle déjà extraite par emergentLore.ts). Le même ancrage de style
+ * que les illustrations de scène garantit une cohérence visuelle entre
+ * portraits et scènes.
+ */
+export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
+  return (
+    `Portrait (buste, cadrage serré sur le visage et les épaules) de ${pnj.titre}.\n` +
+    `Description : ${pnj.contenu.slice(0, 400)}\n\n` +
+    `Style : ${ANCRAGE_STYLE}, character portrait, plain dark background.`
+  );
+}
+
+/**
+ * Renvoie l'avatar d'un PNJ, depuis le cache persistant (pnjAvatarsStore)
+ * s'il existe déjà, sinon le génère puis l'y enregistre — un seul appel
+ * payant par PNJ pour toute la durée de l'histoire, et un visage qui ne
+ * change plus d'une scène à l'autre.
+ */
+export async function obtenirOuGenererAvatarPnj(
+  storyId: string,
+  pnj: EntreeLoreEmergent,
+  apiKey: string,
+  gratuit?: boolean
+): Promise<string> {
+  const existant = await obtenirAvatarPnj(storyId, pnj.id);
+  if (existant) return existant;
+  const url = await appellerModeleImage(apiKey, construirePromptAvatarPnj(pnj), gratuit);
+  await enregistrerAvatarPnj(storyId, pnj.id, url);
+  return url;
+}
+
+async function appellerModeleImage(apiKey: string, prompt: string, gratuit?: boolean): Promise<string> {
   if (!apiKey) {
     throw new ErreurOpenRouter("Aucune clé API OpenRouter renseignée. Configure-la dans Réglages.");
   }

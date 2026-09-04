@@ -1,7 +1,7 @@
 {
-  "version": "1.12.0",
+  "version": "1.13.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige les plantages sur les conversations longues (cache d'embeddings et sauvegarde d'histoire pleins), fiabilise \"Suggérer une réplique\" (ne se coupe plus). Nouveau récapitulatif de création, sélecteur de langue, contenu Grand public renforcé, champs de texte bornés et fond fixe, numéro de message et temps de génération affichés."
+  "notes": "Illustration de scène : la fiche du personnage (race, apparence) est maintenant envoyée au générateur d'image pour éviter les incohérences visuelles. Nouveau : portraits de PNJ récurrents (panneau Debug lore), générés une fois puis conservés dans un stockage dédié hors quota."
 }

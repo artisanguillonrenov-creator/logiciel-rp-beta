@@ -17,7 +17,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { AppSettings, Message, StoryState } from '../types';
+import type { AppSettings, EntreeLoreEmergent, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
 import {
   calculerDebugLore,
@@ -30,7 +30,8 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
-import { construirePromptScene, genererImageScene } from '../engine/images';
+import { construirePromptScene, genererImageScene, obtenirOuGenererAvatarPnj } from '../engine/images';
+import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
@@ -111,6 +112,12 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [imageEnCours, setImageEnCours] = useState(false);
   const [imageGeneree, setImageGeneree] = useState<string | null>(null);
   const [erreurImage, setErreurImage] = useState('');
+
+  // Portraits PNJ — cache local (data: URL) alimenté depuis le stockage
+  // persistant (pnjAvatarsStore) au chargement, généré à la demande sinon.
+  const [avatarsPnj, setAvatarsPnj] = useState<Record<string, string>>({});
+  const [avatarsPnjEnCours, setAvatarsPnjEnCours] = useState<Record<string, boolean>>({});
+  const [erreurAvatarPnj, setErreurAvatarPnj] = useState('');
 
   // Suppression de message(s) : bouton visible sur chaque message, choix
   // entre supprimer ce seul message ou lui et tout ce qui suit.
@@ -327,6 +334,48 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setImageEnCours(false);
     }
   }, [story, appSettings, imageEnCours]);
+
+  // PNJ récurrents confirmés (lore émergent "permanent") — seuls ceux-là
+  // ont une fiche assez stable pour justifier un portrait dédié ; les
+  // entrées "provisoires" n'ont été vues qu'une fois et peuvent disparaître.
+  const pnjRecurrents = story?.loreEmergent.filter((e) => e.categorie === 'pnj' && e.statut === 'permanent') ?? [];
+
+  // Précharge les portraits déjà générés (stockage persistant, aucun appel
+  // réseau) dès que la liste des PNJ change — ne génère jamais tout seul.
+  useEffect(() => {
+    if (!story) return;
+    let annule = false;
+    (async () => {
+      for (const pnj of pnjRecurrents) {
+        if (avatarsPnj[pnj.id]) continue;
+        const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
+        if (!annule && existant) {
+          setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: existant }));
+        }
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [story?.meta.id, story?.loreEmergent.length]);
+
+  const genererAvatarPourPnj = useCallback(
+    async (pnj: EntreeLoreEmergent) => {
+      if (!story || !appSettings || avatarsPnjEnCours[pnj.id]) return;
+      setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
+      setErreurAvatarPnj('');
+      try {
+        const url = await obtenirOuGenererAvatarPnj(story.meta.id, pnj, appSettings.openRouterApiKey, appSettings.modeleImagesGratuit);
+        setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
+      } catch (e) {
+        setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));
+      } finally {
+        setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: false }));
+      }
+    },
+    [story, appSettings, avatarsPnjEnCours]
+  );
 
   const togglerEpingle = useCallback(
     async (id: string) => {
@@ -674,6 +723,36 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 </Text>
               ))
             )}
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
+            {pnjRecurrents.length === 0 ? (
+              <Text style={styles.ligneDebug}>Aucun PNJ récurrent confirmé pour l'instant.</Text>
+            ) : (
+              <View style={styles.grillePortraitsPnj}>
+                {pnjRecurrents.map((pnj) => (
+                  <View key={pnj.id} style={styles.cartePortraitPnj}>
+                    {avatarsPnj[pnj.id] ? (
+                      <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]} />
+                    )}
+                    <Text style={styles.nomPortraitPnj} numberOfLines={1}>
+                      {pnj.titre}
+                    </Text>
+                    {appSettings?.genererImagesActive && (
+                      <Bouton
+                        titre={t(avatarsPnj[pnj.id] ? 'Régénérer' : 'Générer')}
+                        variante="secondaire"
+                        onPress={() => genererAvatarPourPnj(pnj)}
+                        desactive={!!avatarsPnjEnCours[pnj.id]}
+                        style={styles.boutonPortraitPnj}
+                        texteStyle={styles.texteBoutonPortraitPnj}
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+            {erreurAvatarPnj ? <Text style={styles.erreur}>{t(erreurAvatarPnj)}</Text> : null}
           </ScrollView>
         )}
 
@@ -1102,6 +1181,41 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 13,
     lineHeight: 18,
+  },
+  grillePortraitsPnj: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacement.sm,
+    marginTop: espacement.xs,
+  },
+  cartePortraitPnj: {
+    width: 76,
+    alignItems: 'center',
+  },
+  imagePortraitPnj: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+  },
+  imagePortraitPnjVide: {
+    backgroundColor: couleurs.fondCarte,
+  },
+  nomPortraitPnj: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 11,
+    marginTop: espacement.xs / 2,
+    textAlign: 'center',
+  },
+  boutonPortraitPnj: {
+    paddingVertical: espacement.xs / 2,
+    paddingHorizontal: espacement.xs,
+    marginTop: espacement.xs / 2,
+  },
+  texteBoutonPortraitPnj: {
+    fontSize: 10,
   },
   bandeauContexte: {
     paddingHorizontal: espacement.md,
