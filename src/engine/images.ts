@@ -3,7 +3,7 @@ import { ErreurOpenRouter } from './openrouter';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
 // l'API image unifiée d'OpenRouter (même fournisseur/même clé que le texte
-// — /chat/completions avec modalities: ['image', 'text']). Fixe (pas le
+// — /chat/completions avec modalities: ['image']). Fixe (pas le
 // modèle de texte choisi par le joueur, souvent optimisé conversation, pas
 // image) pour garder un style cohérent d'une image à l'autre. Variante
 // gratuite (":free") disponible mais limitée en requêtes/minute et sans
@@ -54,7 +54,12 @@ export async function genererImageScene(apiKey: string, prompt: string, gratuit?
       },
       body: JSON.stringify({
         model: gratuit ? MODELE_IMAGE_GRATUIT : MODELE_IMAGE_PAYANT,
-        modalities: ['image', 'text'],
+        // FLUX ne produit QUE des images, jamais de texte en retour — lui
+        // demander modalities: ['image', 'text'] fait qu'aucun endpoint ne
+        // correspond côté OpenRouter (404 "No endpoints found that support
+        // the requested output modalities: image, text", constaté en usage
+        // réel). ['image'] seul est ce que ce type de modèle accepte.
+        modalities: ['image'],
         messages: [{ role: 'user', content: prompt }],
       }),
     });
