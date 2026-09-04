@@ -58,6 +58,14 @@ export interface StoryMeta {
   // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
   // affiché à la place de personnageNom quand présent.
   titre?: string;
+  // Race (id, ex. "elfes-noirs") et sexe choisis à la création — dupliqués
+  // ici hors de personnageDescription (simple texte) pour retrouver le
+  // portrait peint correspondant (src/data/portraits.ts) et l'envoyer comme
+  // image de référence au générateur d'illustration de scène (voir
+  // src/engine/images.ts). Optionnels : histoires déjà sauvegardées sans,
+  // pas de génération d'image de référence pour elles, c'est tout.
+  raceOrigineId?: string;
+  sexe?: string;
 }
 
 // Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit

@@ -11,6 +11,8 @@ export function creerNouvelleHistoire(params: {
   pointDeDepart: string;
   contexte: ContexteHistoire;
   settings: StorySettings;
+  raceOrigineId?: string;
+  sexe?: string;
 }): StoryState {
   const maintenant = Date.now();
   return {
@@ -23,6 +25,8 @@ export function creerNouvelleHistoire(params: {
       contexte: params.contexte,
       createdAt: maintenant,
       updatedAt: maintenant,
+      raceOrigineId: params.raceOrigineId,
+      sexe: params.sexe,
     },
     messages: [],
     memoire: {

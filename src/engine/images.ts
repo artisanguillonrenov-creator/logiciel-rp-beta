@@ -1,6 +1,8 @@
+import { Image } from 'react-native';
 import type { EntreeLoreEmergent, StoryState } from '../types';
 import { ErreurOpenRouter } from './openrouter';
 import { obtenirAvatarPnj, enregistrerAvatarPnj } from '../storage/pnjAvatarsStore';
+import { obtenirPortrait } from '../data/portraits';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
 // l'API image unifiée d'OpenRouter (même fournisseur/même clé que le texte
@@ -84,15 +86,68 @@ export function construirePromptScene(story: StoryState): string {
 }
 
 /**
+ * Convertit une image embarquée (require('...png'), comme les portraits de
+ * src/data/portraits.ts) en data: URL base64 — format accepté à la fois par
+ * <Image source={{uri}}> et par l'entrée image_url envoyée à OpenRouter.
+ * Image.resolveAssetSource() + fetch + FileReader fonctionne à l'identique
+ * sur web et natif (RN polyfille Blob/FileReader), sans dépendre
+ * d'expo-file-system ni d'expo-asset pour ce cas précis (juste lire un
+ * asset déjà empaqueté, pas écrire dans le stockage persistant de l'app).
+ */
+async function assetVersDataUrl(source: ReturnType<typeof obtenirPortrait>): Promise<string | null> {
+  if (!source) return null;
+  try {
+    const { uri } = Image.resolveAssetSource(source);
+    const reponse = await fetch(uri);
+    const blob = await reponse.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const lecteur = new FileReader();
+      lecteur.onerror = () => reject(lecteur.error);
+      lecteur.onload = () => resolve(String(lecteur.result));
+      lecteur.readAsDataURL(blob);
+    });
+  } catch {
+    // Portrait de référence indisponible (asset manquant, réseau...) — pas
+    // bloquant, la génération continue simplement sans image de référence.
+    return null;
+  }
+}
+
+/**
+ * Portrait peint (race × sexe, choisi à la création — voir CreateScreen et
+ * src/data/portraits.ts) du personnage joueur, à envoyer comme image de
+ * référence au générateur d'illustration : le texte seul (fiche + prompt)
+ * laisse au modèle le soin d'interpréter "elfe noire" ou "peau bleue" —
+ * une image de référence ancre bien plus fiablement l'apparence que la
+ * description textuelle seule. Renvoie null si la race/le sexe ne sont pas
+ * connus pour cette histoire (créée avant cet ajout) ou si la combinaison
+ * n'a pas de portrait peint.
+ */
+export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise<string | null> {
+  const portrait = obtenirPortrait(story.meta.raceOrigineId, story.meta.sexe);
+  return assetVersDataUrl(portrait);
+}
+
+/**
  * Génère une illustration à partir d'un prompt texte via l'API image
  * unifiée d'OpenRouter. Renvoie une URL data: (PNG en base64) — jamais
  * persistée par l'appelant (voir ConversationScreen) : une image générée
  * pèse facilement plusieurs centaines de Ko à quelques Mo, l'enregistrer
  * dans l'histoire referait dépasser le quota de stockage du navigateur déjà
  * corrigé une fois ce soir (voir storage.ts, ecrireAvecRetraitSurQuota).
+ *
+ * imageReferenceJoueur (optionnelle, voir obtenirPortraitReferenceJoueur) :
+ * jointe au prompt comme image de référence — FLUX.2 sait éditer/varier à
+ * partir d'une ou plusieurs images de référence plutôt que de générer à
+ * l'aveugle depuis du texte seul.
  */
-export async function genererImageScene(apiKey: string, prompt: string, gratuit?: boolean): Promise<string> {
-  return appellerModeleImage(apiKey, prompt, gratuit);
+export async function genererImageScene(
+  apiKey: string,
+  prompt: string,
+  gratuit?: boolean,
+  imageReferenceJoueur?: string | null
+): Promise<string> {
+  return appellerModeleImage(apiKey, prompt, gratuit, imageReferenceJoueur ? [imageReferenceJoueur] : undefined);
 }
 
 /**
@@ -129,10 +184,28 @@ export async function obtenirOuGenererAvatarPnj(
   return url;
 }
 
-async function appellerModeleImage(apiKey: string, prompt: string, gratuit?: boolean): Promise<string> {
+async function appellerModeleImage(
+  apiKey: string,
+  prompt: string,
+  gratuit?: boolean,
+  imagesReference?: string[]
+): Promise<string> {
   if (!apiKey) {
     throw new ErreurOpenRouter("Aucune clé API OpenRouter renseignée. Configure-la dans Réglages.");
   }
+
+  // Sans image de référence : contenu texte simple, comme avant. Avec :
+  // tableau [texte, image_url...] — même convention que l'entrée d'image
+  // envoyée aux modèles de vision sur /chat/completions ; FLUX.2 accepte
+  // jusqu'à plusieurs images de référence pour éditer/varier plutôt que
+  // générer à l'aveugle depuis du texte seul (texte d'abord, recommandé).
+  const contenu =
+    imagesReference && imagesReference.length > 0
+      ? [
+          { type: 'text', text: prompt },
+          ...imagesReference.map((url) => ({ type: 'image_url', image_url: { url } })),
+        ]
+      : prompt;
 
   let response: Response;
   try {
@@ -151,7 +224,7 @@ async function appellerModeleImage(apiKey: string, prompt: string, gratuit?: boo
         // the requested output modalities: image, text", constaté en usage
         // réel). ['image'] seul est ce que ce type de modèle accepte.
         modalities: ['image'],
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: contenu }],
       }),
     });
   } catch {

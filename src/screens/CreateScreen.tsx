@@ -538,6 +538,8 @@ export default function CreateScreen({ navigation }: Props) {
           objectifs: '',
         },
         settings: { ton, creativite, longueur, violence, romance, humour, liberteJoueur, rythme },
+        raceOrigineId: raceActive?.id,
+        sexe: sexe || undefined,
       });
       // Enrichissement automatique et invisible de l'ouverture (chantier 3) :
       // génère la scène d'ouverture avant même que le joueur n'arrive sur
