@@ -60,6 +60,7 @@ export default function SettingsScreen({ navigation }: Props) {
   // uniquement, jamais proposé sur le build web (expo-litert-lm n'existe
   // pas côté web, voir src/engine/localInference.web.ts).
   const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
+  const [genererImagesActive, setGenererImagesActive] = useState(false);
   const [modeleLocalPresent, setModeleLocalPresent] = useState(false);
   const [tailleModeleLocal, setTailleModeleLocal] = useState<number | null>(null);
   const [importEnCours, setImportEnCours] = useState(false);
@@ -73,6 +74,7 @@ export default function SettingsScreen({ navigation }: Props) {
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
+      setGenererImagesActive(settings.genererImagesActive ?? false);
       setChargement(false);
     });
     rafraichirEtatModeleLocal();
@@ -190,6 +192,7 @@ export default function SettingsScreen({ navigation }: Props) {
         profilContenu,
         codeDeverrouillage,
         moteurInference,
+        genererImagesActive,
       });
       setMessageStatut(t('Réglages enregistrés.'));
     } catch {
@@ -312,6 +315,27 @@ export default function SettingsScreen({ navigation }: Props) {
           ) : null}
         </>
       )}
+
+      <Text style={styles.label}>{t('Génération d’images')}</Text>
+      <View style={styles.rangeeMoteur}>
+        <Pressable
+          style={[styles.optionMoteur, !genererImagesActive && styles.optionMoteurActive]}
+          onPress={() => setGenererImagesActive(false)}
+        >
+          <Text style={styles.texteOptionMoteur}>{t('Désactivée')}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.optionMoteur, genererImagesActive && styles.optionMoteurActive]}
+          onPress={() => setGenererImagesActive(true)}
+        >
+          <Text style={styles.texteOptionMoteur}>{t('Activée')}</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.aide}>
+        {t(
+          "Ajoute un bouton « Illustrer cette scène » dans la conversation, qui génère une image via le même compte OpenRouter (modèle ouvert dédié aux images, pas celui choisi pour le texte). Les images générées ne sont pas sauvegardées avec l'histoire — elles disparaissent si tu quittes l'écran.",
+        )}
+      </Text>
 
       <Text style={styles.label}>{t('Profil de contenu')}</Text>
       <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>

@@ -319,6 +319,12 @@ export interface AppSettings {
   // les cas (prompt système, lore, mémoire) ; seul l'affichage (interface +
   // messages du narrateur) est traduit à la volée — voir src/i18n/.
   langueInterface?: string;
+  // Génération d'images de scène à la demande (voir src/engine/images.ts) —
+  // désactivée par défaut : appel réseau supplémentaire, coût, et pas tous
+  // les comptes OpenRouter n'ont accès aux modèles d'image. Un modèle
+  // ouvert (FLUX) via le même fournisseur/la même clé que le texte, pas de
+  // second service à configurer.
+  genererImagesActive?: boolean;
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :

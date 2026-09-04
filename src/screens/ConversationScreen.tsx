@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,6 +30,7 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
+import { construirePromptScene, genererImageScene } from '../engine/images';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
@@ -103,6 +105,12 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
   // Suggestion de réplique pour le joueur (Ajouts_A_Integrer.md #4).
   const [suggestionEnCours, setSuggestionEnCours] = useState(false);
+
+  // Illustration de scène à la demande — réglage désactivé par défaut (voir
+  // SettingsScreen). Jamais persistée avec l'histoire (voir images.ts).
+  const [imageEnCours, setImageEnCours] = useState(false);
+  const [imageGeneree, setImageGeneree] = useState<string | null>(null);
+  const [erreurImage, setErreurImage] = useState('');
 
   // Suppression de message(s) : bouton visible sur chaque message, choix
   // entre supprimer ce seul message ou lui et tout ce qui suit.
@@ -304,6 +312,21 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setSuggestionEnCours(false);
     }
   }, [story, appSettings, enCours, suggestionEnCours]);
+
+  const illustrerScene = useCallback(async () => {
+    if (!story || !appSettings || imageEnCours) return;
+    setImageEnCours(true);
+    setErreurImage('');
+    try {
+      const prompt = construirePromptScene(story);
+      const url = await genererImageScene(appSettings.openRouterApiKey, prompt);
+      setImageGeneree(url);
+    } catch (e) {
+      setErreurImage(messageErreur(e, "Impossible de générer l'illustration pour le moment."));
+    } finally {
+      setImageEnCours(false);
+    }
+  }, [story, appSettings, imageEnCours]);
 
   const togglerEpingle = useCallback(
     async (id: string) => {
@@ -643,6 +666,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         )}
 
         {erreur ? <Text style={styles.erreur}>{t(erreur)}</Text> : null}
+        {erreurImage ? <Text style={styles.erreur}>{t(erreurImage)}</Text> : null}
         {messageStatut ? <Text style={styles.statut}>{t(messageStatut)}</Text> : null}
 
         <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
@@ -669,6 +693,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
               style={styles.boutonRapide}
               texteStyle={styles.texteBoutonRapide}
             />
+            {appSettings?.genererImagesActive && (
+              <Bouton
+                titre={imageEnCours ? t('Illustration…') : t('Illustrer cette scène')}
+                variante="secondaire"
+                onPress={illustrerScene}
+                desactive={enCours || imageEnCours}
+                style={styles.boutonRapide}
+                texteStyle={styles.texteBoutonRapide}
+              />
+            )}
           </View>
           <View style={styles.rangeeSaisie}>
             <Champ
@@ -804,6 +838,19 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Bouton titre={t('Enregistrer')} onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
           <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
         </View>
+      </Modal>
+
+      <Modal visible={!!imageGeneree} animationType="fade" transparent onRequestClose={() => setImageGeneree(null)}>
+        <Pressable style={styles.superpositionSuppression} onPress={() => setImageGeneree(null)}>
+          <Panneau style={styles.panneauImageGeneree}>
+            <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
+            {imageGeneree && (
+              <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" />
+            )}
+            <Text style={styles.aideImageGeneree}>{t("Appuie longuement sur l'image pour l'enregistrer.")}</Text>
+            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setImageGeneree(null)} style={{ marginTop: espacement.sm }} />
+          </Panneau>
+        </Pressable>
       </Modal>
 
       <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
@@ -999,6 +1046,21 @@ const styles = StyleSheet.create({
   },
   panneauSuppression: {
     alignSelf: 'stretch',
+  },
+  panneauImageGeneree: {
+    alignSelf: 'stretch',
+  },
+  imageGeneree: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    marginTop: espacement.sm,
+    borderRadius: 4,
+  },
+  aideImageGeneree: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    marginTop: espacement.xs,
   },
   erreur: {
     color: couleurs.danger,
