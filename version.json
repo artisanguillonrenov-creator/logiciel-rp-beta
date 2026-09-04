@@ -1,7 +1,7 @@
 {
-  "version": "1.19.0",
+  "version": "1.19.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Portraits de PNJ : même principe que l'illustration de scène — le narrateur décrit maintenant lui-même l'apparence du personnage (avec le lore de sa race/culture et les passages où il a été mentionné), au lieu d'un prompt basé uniquement sur le résumé condensé de sa fiche."
+  "notes": "L'avatar d'un PNJ s'affiche maintenant aussi quand le narrateur utilise un rôle générique (\"MARCHAND :\") plutôt que son nom propre, tant qu'il n'y a pas d'ambiguïté avec un autre PNJ dans les messages récents."
 }

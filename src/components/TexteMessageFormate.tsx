@@ -82,10 +82,18 @@ export default function TexteMessageFormate({
   texte,
   style,
   avatarsPnj,
+  avatarParDefaut,
 }: {
   texte: string;
   style?: StyleProp<TextStyle>;
   avatarsPnj?: AvatarPnjPourTexte[];
+  // Avatar à utiliser pour une réplique nommée dont l'étiquette ne
+  // correspond à aucun PNJ connu (le narrateur écrit parfois un rôle
+  // générique — "MARCHAND" — au lieu du nom propre, même une fois ce nom
+  // établi ailleurs dans la conversation ; voir ConversationScreen, qui ne
+  // le fournit que si un seul PNJ à avatar est mentionné dans les messages
+  // récents, pour ne jamais deviner à tort entre plusieurs PNJ actifs).
+  avatarParDefaut?: string;
 }) {
   const segments = analyserMessage(texte);
   const index = avatarsPnj && avatarsPnj.length > 0 ? construireIndexAvatarsPnj(avatarsPnj) : null;
@@ -93,7 +101,7 @@ export default function TexteMessageFormate({
     <Text style={style}>
       {segments.map((seg, i) => {
         if (seg.type === 'repliquePersonnage') {
-          const avatarUri = index?.parNom.get((seg.locuteur ?? '').toLowerCase());
+          const avatarUri = index?.parNom.get((seg.locuteur ?? '').toLowerCase()) ?? avatarParDefaut;
           return (
             <Text key={i}>
               {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarInline} /> : null}

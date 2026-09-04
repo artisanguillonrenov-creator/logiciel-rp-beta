@@ -34,7 +34,7 @@ const MAX_PNJ_DANS_PROMPT_SCENE = 3;
  * aussi le seul prénom (premier mot du titre) : la narration réutilise
  * rarement le nom complet à chaque mention.
  */
-function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteSceneMinuscule: string): boolean {
+export function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteSceneMinuscule: string): boolean {
   const titre = pnj.titre.trim().toLowerCase();
   if (!titre) return false;
   if (texteSceneMinuscule.includes(titre)) return true;

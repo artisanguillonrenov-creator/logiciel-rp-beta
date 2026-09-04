@@ -30,7 +30,7 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
-import { obtenirPromptScene, genererImageScene, obtenirOuGenererAvatarPnj, obtenirPortraitReferenceJoueur } from '../engine/images';
+import { obtenirPromptScene, genererImageScene, obtenirOuGenererAvatarPnj, obtenirPortraitReferenceJoueur, pnjMentionneDansTexte } from '../engine/images';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
@@ -347,6 +347,23 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const avatarsPnjPourTexte = pnjRecurrents
     .filter((pnj) => avatarsPnj[pnj.id])
     .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
+
+  // Repli pour une réplique nommée par un rôle générique ("MARCHAND :")
+  // plutôt que par le nom propre du PNJ ("KAELEN :") — constaté en usage
+  // réel : le narrateur ne bascule pas toujours sur le nom une fois établi,
+  // même après plusieurs régénérations. Plutôt que de forcer le modèle (déjà
+  // tenté, pas fiable), on retrouve le PNJ probable en cherchant qui est
+  // mentionné par son nom dans les messages récents — seulement si un SEUL
+  // PNJ à avatar y est mentionné, pour ne jamais deviner à tort s'il y en a
+  // plusieurs en scène.
+  const MESSAGES_RECENTS_POUR_LOCUTEUR = 8;
+  const texteMessagesRecents = (story?.messages ?? [])
+    .slice(-MESSAGES_RECENTS_POUR_LOCUTEUR)
+    .map((m) => m.content)
+    .join('\n')
+    .toLowerCase();
+  const pnjMentionnesRecemment = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteMessagesRecents));
+  const avatarParDefautLocuteur = pnjMentionnesRecemment.length === 1 ? pnjMentionnesRecemment[0].avatarUri : undefined;
 
   // Clé stable des PNJ récurrents confirmés — sert de dépendance d'effet.
   // .length seul ne suffit pas : le passage "provisoire" → "permanent"
@@ -702,6 +719,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         texte={t(item.content)}
                         style={styles.texteBulle}
                         avatarsPnj={item.role === 'assistant' ? avatarsPnjPourTexte : undefined}
+                        avatarParDefaut={item.role === 'assistant' ? avatarParDefautLocuteur : undefined}
                       />
                     </View>
                   </Pressable>
