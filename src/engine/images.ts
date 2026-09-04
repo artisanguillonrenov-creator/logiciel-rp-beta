@@ -19,6 +19,44 @@ const MODELE_IMAGE_GRATUIT = 'black-forest-labs/flux.2-flex:free';
 const ANCRAGE_STYLE =
   "digital painting, dark romantic fantasy illustration, cinematic dramatic lighting, painted texture, rich detail, no text, no watermark, no logo, no signature";
 
+// Nombre max de PNJ dont l'apparence est injectée dans le prompt de scène —
+// au-delà, le prompt gonfle sans gain (un prompt trop long dilue l'attention
+// du modèle, cf. la troncature de texteScene ci-dessous).
+const MAX_PNJ_DANS_PROMPT_SCENE = 3;
+
+/**
+ * Un PNJ est considéré "présent" dans la scène si son nom (titre de sa
+ * fiche de lore émergent) apparaît dans le texte narré — comparaison en
+ * minuscules, même approche que normalise() dans socialDynamics.ts. Accepte
+ * aussi le seul prénom (premier mot du titre) : la narration réutilise
+ * rarement le nom complet à chaque mention.
+ */
+function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteSceneMinuscule: string): boolean {
+  const titre = pnj.titre.trim().toLowerCase();
+  if (!titre) return false;
+  if (texteSceneMinuscule.includes(titre)) return true;
+  const premierMot = titre.split(/\s+/)[0];
+  return premierMot.length > 2 && texteSceneMinuscule.includes(premierMot);
+}
+
+/**
+ * Bloc d'apparence des PNJ récurrents confirmés (lore émergent "permanent",
+ * même filtre que la galerie de portraits) détectés dans le texte de la
+ * scène — sans ça, seule l'apparence du personnage joueur était respectée ;
+ * un PNJ présent dans la scène n'avait aucune ancre visuelle au-delà de ce
+ * que la prose narrée redit (rarement l'apparence physique complète).
+ */
+function construireBlocPnjPresents(story: StoryState, texteScene: string): string {
+  const texteMinuscule = texteScene.toLowerCase();
+  const presents = story.loreEmergent
+    .filter((e) => e.categorie === 'pnj' && e.statut === 'permanent')
+    .filter((pnj) => pnjMentionneDansTexte(pnj, texteMinuscule))
+    .slice(0, MAX_PNJ_DANS_PROMPT_SCENE);
+  if (presents.length === 0) return '';
+  const lignes = presents.map((pnj) => `- ${pnj.titre} : ${pnj.contenu.slice(0, 150)}`).join('\n');
+  return `Personnages secondaires présents — respecter leur apparence :\n${lignes}\n\n`;
+}
+
 /**
  * Construit le prompt d'illustration à partir de la dernière réponse du
  * narrateur (la scène telle qu'elle vient d'être décrite) — à défaut, le
@@ -31,7 +69,8 @@ const ANCRAGE_STYLE =
  * chaque tour, d'où des personnages visuellement incohérents d'une
  * génération à l'autre malgré une fiche pourtant déjà renseignée à la
  * création (constaté en usage réel : une elfe noire rendue comme une
- * humaine générique).
+ * humaine générique). Les PNJ récurrents détectés dans la scène suivent le
+ * même principe (voir construireBlocPnjPresents).
  */
 export function construirePromptScene(story: StoryState): string {
   const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
@@ -40,7 +79,8 @@ export function construirePromptScene(story: StoryState): string {
   const blocPersonnage = ficheJoueur
     ? `Personnage principal (${story.meta.personnageNom}) — respecter strictement cette apparence :\n${ficheJoueur.slice(0, 400)}\n\n`
     : '';
-  return `${blocPersonnage}Scène :\n${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
+  const blocPnj = construireBlocPnjPresents(story, texteScene);
+  return `${blocPersonnage}${blocPnj}Scène :\n${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
 }
 
 /**

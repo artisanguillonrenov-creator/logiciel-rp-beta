@@ -1,7 +1,7 @@
 {
-  "version": "1.13.0",
+  "version": "1.13.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Illustration de scène : la fiche du personnage (race, apparence) est maintenant envoyée au générateur d'image pour éviter les incohérences visuelles. Nouveau : portraits de PNJ récurrents (panneau Debug lore), générés une fois puis conservés dans un stockage dédié hors quota."
+  "notes": "Illustration de scène : l'apparence des PNJ récurrents détectés dans la scène est maintenant aussi envoyée au générateur d'image (en plus de la fiche du personnage joueur), pour éviter les incohérences visuelles sur les personnages secondaires."
 }
