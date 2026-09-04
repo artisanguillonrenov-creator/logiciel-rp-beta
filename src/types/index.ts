@@ -325,6 +325,11 @@ export interface AppSettings {
   // ouvert (FLUX) via le même fournisseur/la même clé que le texte, pas de
   // second service à configurer.
   genererImagesActive?: boolean;
+  // Variante gratuite du modèle d'image (flux.2-flex:free) plutôt que la
+  // version payante — undefined/false = payant par défaut (plus fiable,
+  // coût négligeable ~0,05-0,08 $/image) ; true = gratuite mais limitée en
+  // requêtes/minute et sans garantie de disponibilité, voir images.ts.
+  modeleImagesGratuit?: boolean;
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :

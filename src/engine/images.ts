@@ -3,11 +3,13 @@ import { ErreurOpenRouter } from './openrouter';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
 // l'API image unifiée d'OpenRouter (même fournisseur/même clé que le texte
-// — /chat/completions avec modalities: ['image', 'text']). Choisi pour la
-// génération de scène : un seul modèle fixe garde un style cohérent d'une
-// image à l'autre plutôt que de dépendre du modèle de texte choisi par le
-// joueur (souvent optimisé conversation, pas image).
-const MODELE_IMAGE = 'black-forest-labs/flux.2-flex';
+// — /chat/completions avec modalities: ['image', 'text']). Fixe (pas le
+// modèle de texte choisi par le joueur, souvent optimisé conversation, pas
+// image) pour garder un style cohérent d'une image à l'autre. Variante
+// gratuite (":free") disponible mais limitée en requêtes/minute et sans
+// garantie de disponibilité aux heures de pointe — voir AppSettings.modeleImagesGratuit.
+const MODELE_IMAGE_PAYANT = 'black-forest-labs/flux.2-flex';
+const MODELE_IMAGE_GRATUIT = 'black-forest-labs/flux.2-flex:free';
 
 // Cadrage artistique commun à toutes les illustrations de scène — la seule
 // vraie garantie de cohérence visuelle ici (le modèle ne garde pas de
@@ -36,7 +38,7 @@ export function construirePromptScene(story: StoryState): string {
  * dans l'histoire referait dépasser le quota de stockage du navigateur déjà
  * corrigé une fois ce soir (voir storage.ts, ecrireAvecRetraitSurQuota).
  */
-export async function genererImageScene(apiKey: string, prompt: string): Promise<string> {
+export async function genererImageScene(apiKey: string, prompt: string, gratuit?: boolean): Promise<string> {
   if (!apiKey) {
     throw new ErreurOpenRouter("Aucune clé API OpenRouter renseignée. Configure-la dans Réglages.");
   }
@@ -51,7 +53,7 @@ export async function genererImageScene(apiKey: string, prompt: string): Promise
         'X-Title': 'Logiciel RP Beta',
       },
       body: JSON.stringify({
-        model: MODELE_IMAGE,
+        model: gratuit ? MODELE_IMAGE_GRATUIT : MODELE_IMAGE_PAYANT,
         modalities: ['image', 'text'],
         messages: [{ role: 'user', content: prompt }],
       }),

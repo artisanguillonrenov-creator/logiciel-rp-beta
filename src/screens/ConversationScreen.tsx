@@ -319,7 +319,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setErreurImage('');
     try {
       const prompt = construirePromptScene(story);
-      const url = await genererImageScene(appSettings.openRouterApiKey, prompt);
+      const url = await genererImageScene(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
       setImageGeneree(url);
     } catch (e) {
       setErreurImage(messageErreur(e, "Impossible de générer l'illustration pour le moment."));

@@ -61,6 +61,7 @@ export default function SettingsScreen({ navigation }: Props) {
   // pas côté web, voir src/engine/localInference.web.ts).
   const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
   const [genererImagesActive, setGenererImagesActive] = useState(false);
+  const [modeleImagesGratuit, setModeleImagesGratuit] = useState(false);
   const [modeleLocalPresent, setModeleLocalPresent] = useState(false);
   const [tailleModeleLocal, setTailleModeleLocal] = useState<number | null>(null);
   const [importEnCours, setImportEnCours] = useState(false);
@@ -75,6 +76,7 @@ export default function SettingsScreen({ navigation }: Props) {
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
       setGenererImagesActive(settings.genererImagesActive ?? false);
+      setModeleImagesGratuit(settings.modeleImagesGratuit ?? false);
       setChargement(false);
     });
     rafraichirEtatModeleLocal();
@@ -193,6 +195,7 @@ export default function SettingsScreen({ navigation }: Props) {
         codeDeverrouillage,
         moteurInference,
         genererImagesActive,
+        modeleImagesGratuit,
       });
       setMessageStatut(t('Réglages enregistrés.'));
     } catch {
@@ -336,6 +339,31 @@ export default function SettingsScreen({ navigation }: Props) {
           "Ajoute un bouton « Illustrer cette scène » dans la conversation, qui génère une image via le même compte OpenRouter (modèle ouvert dédié aux images, pas celui choisi pour le texte). Les images générées ne sont pas sauvegardées avec l'histoire — elles disparaissent si tu quittes l'écran.",
         )}
       </Text>
+
+      {genererImagesActive && (
+        <>
+          <Text style={styles.label}>{t("Modèle d'images")}</Text>
+          <View style={styles.rangeeMoteur}>
+            <Pressable
+              style={[styles.optionMoteur, !modeleImagesGratuit && styles.optionMoteurActive]}
+              onPress={() => setModeleImagesGratuit(false)}
+            >
+              <Text style={styles.texteOptionMoteur}>{t('Payant (fiable)')}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.optionMoteur, modeleImagesGratuit && styles.optionMoteurActive]}
+              onPress={() => setModeleImagesGratuit(true)}
+            >
+              <Text style={styles.texteOptionMoteur}>{t('Gratuit (limité)')}</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.aide}>
+            {t(
+              "Payant : ~0,05-0,08 $ par image, fiable. Gratuit : même modèle, sans coût, mais limité en requêtes par minute et sans garantie de disponibilité aux heures de pointe (peut échouer, réessaie alors plus tard).",
+            )}
+          </Text>
+        </>
+      )}
 
       <Text style={styles.label}>{t('Profil de contenu')}</Text>
       <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>
