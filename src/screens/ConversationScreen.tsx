@@ -336,15 +336,20 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings, imageEnCours]);
 
-  // PNJ récurrents confirmés (lore émergent "permanent") — seuls ceux-là
-  // ont une fiche assez stable pour justifier un portrait dédié ; les
-  // entrées "provisoires" n'ont été vues qu'une fois et peuvent disparaître.
-  const pnjRecurrents = story?.loreEmergent.filter((e) => e.categorie === 'pnj' && e.statut === 'permanent') ?? [];
+  // Tout PNJ nommé du lore émergent — "provisoire" (vu une seule fois)
+  // inclus. Exiger "récurrent confirmé" (statut "permanent") laissait tout
+  // début de conversation sans aucun avatar possible : la confirmation
+  // n'arrive qu'après une seconde mention, donc rien ne se déclenchait
+  // jamais tant qu'on n'était pas déjà plusieurs tours avancé. Le seul coût
+  // du choix inverse (générer dès la première mention) : un appel payant
+  // pour un PNJ qui ne reviendra peut-être jamais — acceptable, l'avatar
+  // reste en cache si le personnage revient.
+  const pnjConnus = story?.loreEmergent.filter((e) => e.categorie === 'pnj') ?? [];
 
   // PNJ dont l'avatar a déjà été généré (voir avatarsPnj) — seuls ceux-là
   // s'affichent dans le texte des messages (voir TexteMessageFormate),
   // jamais générés à la volée pendant la lecture.
-  const avatarsPnjPourTexte = pnjRecurrents
+  const avatarsPnjPourTexte = pnjConnus
     .filter((pnj) => avatarsPnj[pnj.id])
     .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
 
@@ -365,27 +370,24 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const pnjMentionnesRecemment = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteMessagesRecents));
   const avatarParDefautLocuteur = pnjMentionnesRecemment.length === 1 ? pnjMentionnesRecemment[0].avatarUri : undefined;
 
-  // Clé stable des PNJ récurrents confirmés — sert de dépendance d'effet.
-  // .length seul ne suffit pas : le passage "provisoire" → "permanent"
-  // d'une entrée existante (emergentLore.ts) remplace l'entrée en place
-  // sans changer la longueur du tableau.
-  const clePnjRecurrents = pnjRecurrents
+  // Clé stable des PNJ connus — sert de dépendance d'effet.
+  const clePnjConnus = pnjConnus
     .map((p) => p.id)
     .sort()
     .join(',');
 
-  // Charge le portrait déjà généré de chaque PNJ récurrent confirmé
-  // (stockage persistant, aucun appel réseau) et, s'il n'existe pas encore
-  // et que la génération d'images est activée (Réglages), le génère
-  // automatiquement une seule fois puis le sauvegarde — obtenirOuGenererAvatarPnj
-  // revérifie le cache avant tout appel réseau, donc jamais régénéré
-  // ensuite pour ce PNJ. Un par un (pas en parallèle) pour ne pas envoyer
-  // une rafale d'appels payants dès qu'un nouveau PNJ est confirmé.
+  // Charge le portrait déjà généré de chaque PNJ nommé (stockage persistant,
+  // aucun appel réseau) et, s'il n'existe pas encore et que la génération
+  // d'images est activée (Réglages), le génère automatiquement une seule
+  // fois puis le sauvegarde — obtenirOuGenererAvatarPnj revérifie le cache
+  // avant tout appel réseau, donc jamais régénéré ensuite pour ce PNJ. Un
+  // par un (pas en parallèle) pour ne pas envoyer une rafale d'appels
+  // payants dès que plusieurs PNJ apparaissent dans le même tour.
   useEffect(() => {
     if (!story) return;
     let annule = false;
     (async () => {
-      for (const pnj of pnjRecurrents) {
+      for (const pnj of pnjConnus) {
         if (annule) return;
         if (avatarsPnj[pnj.id]) continue;
         const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
@@ -410,7 +412,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       annule = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story?.meta.id, clePnjRecurrents, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
+  }, [story?.meta.id, clePnjConnus, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
 
   const genererAvatarPourPnj = useCallback(
     async (pnj: EntreeLoreEmergent) => {
@@ -783,14 +785,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
             <Text style={styles.aideImageGeneree}>
               {appSettings?.genererImagesActive
-                ? t('Générés automatiquement dès qu\'un PNJ devient récurrent, puis conservés.')
+                ? t('Générés automatiquement dès qu\'un PNJ est nommé, puis conservés.')
                 : t("Active la génération d'images dans Réglages pour les générer automatiquement.")}
             </Text>
-            {pnjRecurrents.length === 0 ? (
-              <Text style={styles.ligneDebug}>Aucun PNJ récurrent confirmé pour l'instant.</Text>
+            {pnjConnus.length === 0 ? (
+              <Text style={styles.ligneDebug}>Aucun PNJ nommé pour l'instant.</Text>
             ) : (
               <View style={styles.grillePortraitsPnj}>
-                {pnjRecurrents.map((pnj) => (
+                {pnjConnus.map((pnj) => (
                   <View key={pnj.id} style={styles.cartePortraitPnj}>
                     {avatarsPnj[pnj.id] ? (
                       <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />

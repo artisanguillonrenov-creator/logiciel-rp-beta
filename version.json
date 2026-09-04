@@ -1,7 +1,7 @@
 {
-  "version": "1.19.1",
+  "version": "1.20.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "L'avatar d'un PNJ s'affiche maintenant aussi quand le narrateur utilise un rôle générique (\"MARCHAND :\") plutôt que son nom propre, tant qu'il n'y a pas d'ambiguïté avec un autre PNJ dans les messages récents."
+  "notes": "Les portraits de PNJ se génèrent maintenant dès la première mention d'un personnage nommé, sans attendre qu'il soit confirmé comme récurrent (qui n'arrivait qu'après une seconde mention, donc rien ne se déclenchait en début de conversation)."
 }
