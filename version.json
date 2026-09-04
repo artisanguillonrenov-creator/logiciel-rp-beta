@@ -1,7 +1,7 @@
 {
-  "version": "1.17.0",
+  "version": "1.17.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Le narrateur nomme maintenant chaque réplique de PNJ (\"NOM : « ... »\"), affichée avec son nom en évidence et son avatar s'il a déjà été généré. Export PDF/EPUB mis à jour en conséquence."
+  "notes": "Corrige l'étiquette de dialogue PNJ : le narrateur utilisait parfois un rôle générique (\"MARCHAND\") au lieu du nom propre du personnage, ce qui empêchait l'avatar de s'afficher."
 }
