@@ -1,7 +1,7 @@
 {
-  "version": "1.28.1",
+  "version": "1.28.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Nouvelle tentative de correction du plantage sur conversation longue : les avatars de PNJ dans le texte (jamais plafonnés jusqu'ici, contrairement à celui du joueur) sont maintenant eux aussi réservés aux messages récents."
+  "notes": "Corrige la duplication de portraits de PNJ (et du tien) à chaque réouverture d'une conversation. Ajoute aussi un bouton \"Supprimer\" pour nettoyer manuellement un portrait, PNJ ou le tien."
 }
