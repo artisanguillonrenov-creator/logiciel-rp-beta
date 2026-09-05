@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { BackHandler, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { BackHandler, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -10,6 +10,7 @@ import Separateur from '../components/Separateur';
 import FondAtmospherique from '../components/FondAtmospherique';
 import { VERSION_APP } from '../version';
 import { LANGUES_SUGGEREES, useLangue } from '../i18n/LangueProvider';
+import { RACES_ELYNDOR } from '../data/races';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
 
@@ -45,6 +46,8 @@ export default function StartScreen({ navigation }: Props) {
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
   const [messageQuitter, setMessageQuitter] = useState('');
   const [modalLangueOuvert, setModalLangueOuvert] = useState(false);
+  const [modalGuideOuvert, setModalGuideOuvert] = useState(false);
+  const [modalSynopsisOuvert, setModalSynopsisOuvert] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,6 +101,10 @@ export default function StartScreen({ navigation }: Props) {
         <Text style={styles.puceMenu}>◇</Text>
         <ElementMenu titre={t('Paramètres')} onPress={() => navigation.navigate('Reglages')} />
         <Text style={styles.puceMenu}>◇</Text>
+        <ElementMenu titre={t('Guide')} onPress={() => setModalGuideOuvert(true)} />
+        <Text style={styles.puceMenu}>◇</Text>
+        <ElementMenu titre={t('Le monde d’Elyndor')} onPress={() => setModalSynopsisOuvert(true)} />
+        <Text style={styles.puceMenu}>◇</Text>
         <ElementMenu titre={t('Quitter')} onPress={quitter} />
         {messageQuitter ? <Text style={styles.messageQuitter}>{messageQuitter}</Text> : null}
       </View>
@@ -105,7 +112,137 @@ export default function StartScreen({ navigation }: Props) {
       <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>
 
       <SelecteurLangue visible={modalLangueOuvert} onFermer={() => setModalLangueOuvert(false)} />
+      <ModalGuide visible={modalGuideOuvert} onFermer={() => setModalGuideOuvert(false)} />
+      <ModalSynopsis visible={modalSynopsisOuvert} onFermer={() => setModalSynopsisOuvert(false)} />
     </FondAtmospherique>
+  );
+}
+
+// Guide d'utilisation (accueil) : un point d'entrée statique, jamais généré
+// par le modèle — décrit ce que fait chaque action de l'écran de
+// conversation, pour un premier lancement sans tutoriel interactif.
+function ModalGuide({ visible, onFermer }: { visible: boolean; onFermer: () => void }) {
+  const { t } = useLangue();
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onFermer}>
+      <Pressable style={styles.superpositionLangue} onPress={onFermer}>
+        <Pressable style={styles.feuilleGuide} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.titreLangue}>{t('Guide d’utilisation')}</Text>
+          <ScrollView style={styles.scrollGuide} showsVerticalScrollIndicator={false}>
+            <Text style={styles.titreSectionGuide}>{t('Commencer')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                '« Nouveau » ouvre la création de personnage en quelques étapes (identité, apparence, point de départ, préférences de ton). « Continuer » reprend ta dernière histoire, « Charger conversation » ouvre la liste complète — un appui long ou un glissement permet de la renommer, l’archiver en branche ou la supprimer.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Écrire')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Tape ton action ou ta réplique dans le champ en bas de la conversation. Commence un message par « retiens que … » pour forcer un fait immédiatement en mémoire, sans passer par une réponse du narrateur.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Actions rapides')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                '« Régénérer » redemande une nouvelle réponse à la dernière réplique. « Suggérer une réplique » propose un texte à ta place dans le champ de saisie, à modifier avant d’envoyer. « Illustrer cette scène » (si activé dans Réglages) génère une image de la scène en cours.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('PNJ et portraits')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Les personnages récurrents nommés obtiennent automatiquement un portrait (si la génération d’images est activée) : consultable et régénérable dans le panneau « Debug lore », et affiché directement à côté de leur nom dans le texte une fois généré.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Debug lore')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Ce panneau, en bas de la conversation, montre ce que le narrateur a utilisé pour écrire sa dernière réponse : métamoteurs et lore d’Elyndor sélectionnés, souvenirs retrouvés dans l’historique, portraits des PNJ. Utile pour comprendre une incohérence plutôt qu’une simple boîte noire.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Réglages')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Clé API OpenRouter, moteur d’inférence (en ligne ou modèle local), profil de contenu (Grand public par défaut), langue de l’interface, génération d’images — tout se configure depuis « Paramètres », à faire avant la première conversation.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Exporter')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Depuis une conversation, l’icône de téléchargement propose un export en texte brut, PDF ou EPUB — pour relire son histoire comme un livre en dehors de l’app.',
+              )}
+            </Text>
+          </ScrollView>
+          <Pressable style={styles.boutonFermerModal} onPress={onFermer}>
+            <Text style={styles.texteBoutonFermerModal}>{t('Fermer')}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// Synopsis du monde (accueil) : contenu rédigé pour un public général — le
+// lore complet (src/data/elyndorLore.json) contient des détails matures
+// réservés au profil Adulte à la génération ; ce résumé s'en tient aux
+// faits d'ambiance/d'histoire sans détail explicite, cohérent avec le
+// principe "Grand public par défaut" de l'app.
+function ModalSynopsis({ visible, onFermer }: { visible: boolean; onFermer: () => void }) {
+  const { t } = useLangue();
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onFermer}>
+      <Pressable style={styles.superpositionLangue} onPress={onFermer}>
+        <Pressable style={styles.feuilleGuide} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.titreLangue}>{t('Le monde d’Elyndor')}</Text>
+          <ScrollView style={styles.scrollGuide} showsVerticalScrollIndicator={false}>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Elyndor épouse la géographie exacte de la Terre — mêmes continents, mêmes pays, mêmes grandes villes — mais y superpose un monde de dark fantasy où la magie est réelle et où quatorze capitales, chacune tenue par un peuple différent, concentrent le pouvoir, le commerce et les intrigues. Le pouvoir n’y est jamais donné : il se prend, se défend, ou se perd.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Les Portes Astra')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Héritage détourné d’une guerre ancienne, les Portes Astra sont des portails de téléportation instantanée reliant les quatorze capitales — accessibles à tous moyennant paiement, sous le contrôle neutre d’un conseil multiracial. Elles ont fait du monde un espace où l’on peut traverser un continent en quelques pas, et où contrôler une Porte, c’est contrôler une région entière.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Une histoire en cinq ères')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                '① Les Origines — les peuples d’Elyndor vivent séparés, sans domination globale.\n② La Guerre des Voiles — des fissures dimensionnelles s’ouvrent et déversent des créatures hostiles ; une coalition de tous les peuples les referme et retourne cette magie pour créer les Portes Astra. Les Zones Corrompues nées de ce conflit n’ont jamais totalement disparu.\n③ La Domination Elfique — les Hauts-Elfes imposent leur suprématie sur une grande partie du monde.\n④ La Rébellion des Sang-Mêlé — une magie hybride interdite fracture cet empire sans le faire tomber.\n⑤ L’Ère des Royaumes (aujourd’hui) — de multiples royaumes coexistent, les guildes prospèrent, la paix reste fragile — et, en secret, les cicatrices de la Guerre des Voiles recommencent lentement à se rouvrir.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('La magie')}</Text>
+            <Text style={styles.texteGuide}>
+              {t(
+                'Omniprésente mais inégalement accessible : dons raciaux, apprentissage long, artefacts ou pactes. Les formes simples (soins mineurs, lumière, protection) restent courantes ; les formes avancées demandent des ressources rares et ont toujours un coût visible. Aucune magie ne ressuscite les morts.',
+              )}
+            </Text>
+
+            <Text style={styles.titreSectionGuide}>{t('Les peuples d’Elyndor')}</Text>
+            {RACES_ELYNDOR.map((race) => (
+              <Text key={race.id} style={styles.texteGuide}>
+                <Text style={styles.nomRaceSynopsis}>{t(race.nom)} </Text>
+                <Text style={styles.regionRaceSynopsis}>({t(race.sousTitre)})</Text>
+                {' — '}
+                {t(race.description)}
+              </Text>
+            ))}
+          </ScrollView>
+          <Pressable style={styles.boutonFermerModal} onPress={onFermer}>
+            <Text style={styles.texteBoutonFermerModal}>{t('Fermer')}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -287,6 +424,54 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: couleurs.bordure,
     padding: espacement.md,
+  },
+  feuilleGuide: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '80%',
+    backgroundColor: couleurs.fondCarte,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    padding: espacement.md,
+  },
+  scrollGuide: {
+    marginTop: espacement.xs,
+  },
+  titreSectionGuide: {
+    color: couleurs.dore,
+    fontFamily: polices.corpsMedium,
+    fontSize: 15,
+    marginTop: espacement.md,
+    marginBottom: espacement.xs,
+  },
+  texteGuide: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  nomRaceSynopsis: {
+    fontFamily: polices.corpsMedium,
+    color: couleurs.accentClair,
+  },
+  regionRaceSynopsis: {
+    color: couleurs.texteAtténué,
+    fontSize: 12,
+  },
+  boutonFermerModal: {
+    alignSelf: 'center',
+    marginTop: espacement.md,
+    borderWidth: 1,
+    borderColor: couleurs.accent,
+    paddingHorizontal: espacement.lg,
+    paddingVertical: espacement.sm,
+  },
+  texteBoutonFermerModal: {
+    color: couleurs.accentClair,
+    fontFamily: polices.corpsMedium,
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
   titreLangue: {
     color: couleurs.dore,

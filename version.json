@@ -1,7 +1,7 @@
 {
-  "version": "1.22.0",
+  "version": "1.23.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige deux bugs révélés par l'extraction de PNJ à chaque tour : le personnage joueur pouvait être classé comme PNJ, et un PNJ pouvait être enregistré sous un rôle générique (\"Marchand\") plutôt que son nom propre, faisant apparaître l'avatar sur tout mot correspondant. Corrige aussi une réplique écrite au nom du joueur, non détectée par le contrôle existant."
+  "notes": "Nouveau sur l'écran d'accueil : un Guide d'utilisation (comment créer une histoire, écrire, actions rapides, PNJ, réglages, export) et un synopsis du monde d'Elyndor (histoire en cinq ères, Portes Astra, magie, les 15 peuples)."
 }
