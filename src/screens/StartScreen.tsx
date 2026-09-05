@@ -11,6 +11,7 @@ import FondAtmospherique from '../components/FondAtmospherique';
 import { VERSION_APP } from '../version';
 import { LANGUES_SUGGEREES, useLangue } from '../i18n/LangueProvider';
 import { RACES_ELYNDOR } from '../data/races';
+import { SYNOPSIS_ELYNDOR } from '../data/synopsisElyndor';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
 
@@ -200,34 +201,34 @@ function ModalSynopsis({ visible, onFermer }: { visible: boolean; onFermer: () =
         <Pressable style={styles.feuilleGuide} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.titreLangue}>{t('Le monde d’Elyndor')}</Text>
           <ScrollView style={styles.scrollGuide} showsVerticalScrollIndicator={false}>
+            {SYNOPSIS_ELYNDOR.map((paragraphe, i) => (
+              <Text key={i} style={styles.texteSynopsis}>
+                {t(paragraphe)}
+              </Text>
+            ))}
+
+            <Text style={[styles.titreSectionGuide, { marginTop: espacement.lg }]}>{t('Repères — Les Portes Astra')}</Text>
             <Text style={styles.texteGuide}>
               {t(
-                'Elyndor épouse la géographie exacte de la Terre — mêmes continents, mêmes pays, mêmes grandes villes — mais y superpose un monde de dark fantasy où la magie est réelle et où quatorze capitales, chacune tenue par un peuple différent, concentrent le pouvoir, le commerce et les intrigues. Le pouvoir n’y est jamais donné : il se prend, se défend, ou se perd.',
+                'Héritage détourné d’une guerre ancienne, les Portes Astra sont des portails de téléportation instantanée reliant les quatorze capitales — accessibles à tous moyennant paiement, sous le contrôle neutre d’un conseil multiracial. Contrôler une Porte, c’est contrôler une région entière.',
               )}
             </Text>
 
-            <Text style={styles.titreSectionGuide}>{t('Les Portes Astra')}</Text>
-            <Text style={styles.texteGuide}>
-              {t(
-                'Héritage détourné d’une guerre ancienne, les Portes Astra sont des portails de téléportation instantanée reliant les quatorze capitales — accessibles à tous moyennant paiement, sous le contrôle neutre d’un conseil multiracial. Elles ont fait du monde un espace où l’on peut traverser un continent en quelques pas, et où contrôler une Porte, c’est contrôler une région entière.',
-              )}
-            </Text>
-
-            <Text style={styles.titreSectionGuide}>{t('Une histoire en cinq ères')}</Text>
+            <Text style={styles.titreSectionGuide}>{t('Repères — Une histoire en cinq ères')}</Text>
             <Text style={styles.texteGuide}>
               {t(
                 '① Les Origines — les peuples d’Elyndor vivent séparés, sans domination globale.\n② La Guerre des Voiles — des fissures dimensionnelles s’ouvrent et déversent des créatures hostiles ; une coalition de tous les peuples les referme et retourne cette magie pour créer les Portes Astra. Les Zones Corrompues nées de ce conflit n’ont jamais totalement disparu.\n③ La Domination Elfique — les Hauts-Elfes imposent leur suprématie sur une grande partie du monde.\n④ La Rébellion des Sang-Mêlé — une magie hybride interdite fracture cet empire sans le faire tomber.\n⑤ L’Ère des Royaumes (aujourd’hui) — de multiples royaumes coexistent, les guildes prospèrent, la paix reste fragile — et, en secret, les cicatrices de la Guerre des Voiles recommencent lentement à se rouvrir.',
               )}
             </Text>
 
-            <Text style={styles.titreSectionGuide}>{t('La magie')}</Text>
+            <Text style={styles.titreSectionGuide}>{t('Repères — La magie')}</Text>
             <Text style={styles.texteGuide}>
               {t(
                 'Omniprésente mais inégalement accessible : dons raciaux, apprentissage long, artefacts ou pactes. Les formes simples (soins mineurs, lumière, protection) restent courantes ; les formes avancées demandent des ressources rares et ont toujours un coût visible. Aucune magie ne ressuscite les morts.',
               )}
             </Text>
 
-            <Text style={styles.titreSectionGuide}>{t('Les peuples d’Elyndor')}</Text>
+            <Text style={styles.titreSectionGuide}>{t('Repères — Les peuples d’Elyndor')}</Text>
             {RACES_ELYNDOR.map((race) => (
               <Text key={race.id} style={styles.texteGuide}>
                 <Text style={styles.nomRaceSynopsis}>{t(race.nom)} </Text>
@@ -449,6 +450,13 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 14,
     lineHeight: 21,
+  },
+  texteSynopsis: {
+    color: couleurs.texte,
+    fontFamily: polices.corps,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: espacement.sm,
   },
   nomRaceSynopsis: {
     fontFamily: polices.corpsMedium,

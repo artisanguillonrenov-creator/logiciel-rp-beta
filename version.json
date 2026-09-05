@@ -1,7 +1,7 @@
 {
-  "version": "1.23.1",
+  "version": "1.24.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige le contrôle empêchant le narrateur d'écrire à la place du joueur : la correction automatique pouvait échouer à retirer la réplique fautive sans que rien ne le revérifie. Ajoute un retrait garanti, sans appel modèle, comme dernier filet."
+  "notes": "Nouveau synopsis narratif du monde d'Elyndor dans le panneau \"Le monde d'Elyndor\" de l'accueil, suivi des repères factuels (Portes Astra, histoire en cinq ères, magie, peuples)."
 }
