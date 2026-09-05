@@ -30,7 +30,15 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
-import { obtenirPromptScene, genererImageScene, obtenirOuGenererAvatarPnj, obtenirPortraitReferenceJoueur, pnjMentionneDansTexte } from '../engine/images';
+import {
+  obtenirPromptScene,
+  genererImageScene,
+  obtenirOuGenererAvatarPnj,
+  obtenirOuGenererAvatarJoueur,
+  obtenirPortraitReferenceJoueur,
+  pnjMentionneDansTexte,
+  ID_AVATAR_JOUEUR,
+} from '../engine/images';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
@@ -54,6 +62,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 // Rouvrir une histoire après une pause plus longue que ça déclenche le
 // bandeau "La dernière fois…" (Ajouts_A_Integrer.md #3).
 const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
+
+// Nombre max d'avatars de PNJ envoyés comme images de référence à
+// l'illustration de scène (voir illustrerScene) — même logique de plafond
+// que le reste (dilue l'attention/le payload au-delà d'un certain point).
+const MAX_PNJ_REFERENCE_SCENE = 2;
 
 function messageErreur(e: unknown, messageParDefaut: string): string {
   if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
@@ -118,6 +131,17 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [avatarsPnj, setAvatarsPnj] = useState<Record<string, string>>({});
   const [avatarsPnjEnCours, setAvatarsPnjEnCours] = useState<Record<string, boolean>>({});
   const [erreurAvatarPnj, setErreurAvatarPnj] = useState('');
+  // Portrait agrandi (tap sur un avatar, dans le texte ou une galerie —
+  // PNJ ou joueur) — affiche simplement en plus grand ce qui est déjà en
+  // cache, aucun appel réseau. Forme générique (pas EntreeLoreEmergent) :
+  // le joueur n'a pas de fiche de lore émergent.
+  const [portraitAgrandi, setPortraitAgrandi] = useState<{ titre: string; avatarUri: string } | null>(null);
+
+  // Avatar du joueur généré par le modèle d'image (même principe que les
+  // PNJ, voir avatarsPnj) — vient en plus du portrait peint statique choisi
+  // à la création (obtenirPortraitReferenceJoueur), ne le remplace pas.
+  const [avatarJoueur, setAvatarJoueur] = useState<string | null>(null);
+  const [avatarJoueurEnCours, setAvatarJoueurEnCours] = useState(false);
 
   // Suppression de message(s) : bouton visible sur chaque message, choix
   // entre supprimer ce seul message ou lui et tout ce qui suit.
@@ -320,22 +344,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings, enCours, suggestionEnCours]);
 
-  const illustrerScene = useCallback(async () => {
-    if (!story || !appSettings || imageEnCours) return;
-    setImageEnCours(true);
-    setErreurImage('');
-    try {
-      const prompt = await obtenirPromptScene(story, appSettings);
-      const portraitReference = await obtenirPortraitReferenceJoueur(story);
-      const url = await genererImageScene(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit, portraitReference);
-      setImageGeneree(url);
-    } catch (e) {
-      setErreurImage(messageErreur(e, "Impossible de générer l'illustration pour le moment."));
-    } finally {
-      setImageEnCours(false);
-    }
-  }, [story, appSettings, imageEnCours]);
-
   // Tout PNJ nommé du lore émergent — "provisoire" (vu une seule fois)
   // inclus. Exiger "récurrent confirmé" (statut "permanent") laissait tout
   // début de conversation sans aucun avatar possible : la confirmation
@@ -360,6 +368,38 @@ export default function ConversationScreen({ route, navigation }: Props) {
     .filter((pnj) => avatarsPnj[pnj.id])
     .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
 
+  const illustrerScene = useCallback(async () => {
+    if (!story || !appSettings || imageEnCours) return;
+    setImageEnCours(true);
+    setErreurImage('');
+    try {
+      const prompt = await obtenirPromptScene(story, appSettings);
+      // Images de référence envoyées au modèle d'image, EN PLUS du portrait
+      // peint statique déjà utilisé (portraitReference, inchangé) : l'avatar
+      // du joueur généré par le modèle d'image (même style que la scène) et
+      // les avatars des PNJ présents dans la scène (max 2) — meilleure
+      // cohérence visuelle qu'une description texte seule. genererImageScene
+      // filtre lui-même les entrées vides (portrait pas encore généré...).
+      const portraitReference = await obtenirPortraitReferenceJoueur(story);
+      const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
+      const texteSceneMinuscule = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).toLowerCase();
+      const avatarsPnjPresents = avatarsPnjPourTexte
+        .filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteSceneMinuscule))
+        .slice(0, MAX_PNJ_REFERENCE_SCENE)
+        .map(({ avatarUri }) => avatarUri);
+      const url = await genererImageScene(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit, [
+        portraitReference,
+        avatarJoueur,
+        ...avatarsPnjPresents,
+      ]);
+      setImageGeneree(url);
+    } catch (e) {
+      setErreurImage(messageErreur(e, "Impossible de générer l'illustration pour le moment."));
+    } finally {
+      setImageEnCours(false);
+    }
+  }, [story, appSettings, imageEnCours, avatarJoueur, avatarsPnjPourTexte]);
+
   // Repli pour une réplique nommée par un rôle générique ("MARCHAND :")
   // plutôt que par le nom propre du PNJ ("KAELEN :") — constaté en usage
   // réel : le narrateur ne bascule pas toujours sur le nom une fois établi,
@@ -377,6 +417,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     .toLowerCase();
   const pnjMentionnesDansHistoire = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteHistoireEntiere));
   const avatarParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].avatarUri : undefined;
+  const pnjParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].pnj : undefined;
 
   // Noms de TOUS les PNJ connus (avatar généré ou non) — sert à distinguer,
   // pour une réplique nommée sans avatar en cache, un PNJ légitimement
@@ -456,6 +497,50 @@ export default function ConversationScreen({ route, navigation }: Props) {
     },
     [story, appSettings, avatarsPnjEnCours]
   );
+
+  // Même principe que l'effet PNJ ci-dessus, mais pour le portrait du joueur
+  // (un seul, pas de liste) — charge le cache, puis génère automatiquement
+  // si la génération d'images est activée.
+  useEffect(() => {
+    if (!story) return;
+    let annule = false;
+    (async () => {
+      const existant = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
+      if (annule) return;
+      if (existant) {
+        setAvatarJoueur(existant);
+        return;
+      }
+      if (!appSettings?.genererImagesActive || !appSettings.openRouterApiKey || avatarJoueurEnCours) return;
+      setAvatarJoueurEnCours(true);
+      try {
+        const url = await obtenirOuGenererAvatarJoueur(story, appSettings);
+        if (!annule) setAvatarJoueur(url);
+      } catch (e) {
+        if (!annule) setErreurAvatarPnj(messageErreur(e, 'Impossible de générer ton portrait pour le moment.'));
+      } finally {
+        if (!annule) setAvatarJoueurEnCours(false);
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [story?.meta.id, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
+
+  const genererAvatarJoueur = useCallback(async () => {
+    if (!story || !appSettings || avatarJoueurEnCours) return;
+    setAvatarJoueurEnCours(true);
+    setErreurAvatarPnj('');
+    try {
+      const url = await obtenirOuGenererAvatarJoueur(story, appSettings);
+      setAvatarJoueur(url);
+    } catch (e) {
+      setErreurAvatarPnj(messageErreur(e, 'Impossible de générer ton portrait pour le moment.'));
+    } finally {
+      setAvatarJoueurEnCours(false);
+    }
+  }, [story, appSettings, avatarJoueurEnCours]);
 
   const togglerEpingle = useCallback(
     async (id: string) => {
@@ -748,7 +833,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         style={styles.texteBulle}
                         avatarsPnj={item.role === 'assistant' ? avatarsPnjPourTexte : undefined}
                         avatarParDefaut={item.role === 'assistant' ? avatarParDefautLocuteur : undefined}
+                        pnjParDefaut={item.role === 'assistant' ? pnjParDefautLocuteur : undefined}
                         nomsPnjConnus={item.role === 'assistant' ? nomsPnjConnus : undefined}
+                        onPressAvatar={
+                          item.role === 'assistant'
+                            ? (pnj) => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })
+                            : undefined
+                        }
                       />
                     </View>
                   </Pressable>
@@ -809,6 +900,39 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 </Text>
               ))
             )}
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Mon portrait</Text>
+            <Text style={styles.aideImageGeneree}>
+              {appSettings?.genererImagesActive
+                ? t('Généré automatiquement par le modèle d\'image, en plus du portrait choisi à la création — sert aussi de référence pour la cohérence des scènes illustrées.')
+                : t("Active la génération d'images dans Réglages pour le générer automatiquement.")}
+            </Text>
+            <View style={styles.grillePortraitsPnj}>
+              <View style={styles.cartePortraitPnj}>
+                {avatarJoueur ? (
+                  <Pressable onPress={() => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur })}>
+                    <Image source={{ uri: avatarJoueur }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                  </Pressable>
+                ) : (
+                  <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
+                    {avatarJoueurEnCours ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
+                  </View>
+                )}
+                <Text style={styles.nomPortraitPnj} numberOfLines={1}>
+                  {story.meta.personnageNom}
+                </Text>
+                {appSettings?.genererImagesActive && (
+                  <Bouton
+                    titre={t(avatarJoueur ? 'Régénérer' : 'Générer')}
+                    variante="secondaire"
+                    onPress={genererAvatarJoueur}
+                    desactive={avatarJoueurEnCours}
+                    style={styles.boutonPortraitPnj}
+                    texteStyle={styles.texteBoutonPortraitPnj}
+                  />
+                )}
+              </View>
+            </View>
+
             <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
             <Text style={styles.aideImageGeneree}>
               {appSettings?.genererImagesActive
@@ -822,7 +946,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 {pnjConnus.map((pnj) => (
                   <View key={pnj.id} style={styles.cartePortraitPnj}>
                     {avatarsPnj[pnj.id] ? (
-                      <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                      <Pressable onPress={() => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })}>
+                        <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                      </Pressable>
                     ) : (
                       <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
                         {avatarsPnjEnCours[pnj.id] ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
@@ -1022,6 +1148,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Bouton titre={t('Enregistrer')} onPress={enregistrerEdition} style={{ marginTop: espacement.lg }} />
           <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageAEditer(null)} style={{ marginTop: espacement.sm }} />
         </View>
+      </Modal>
+
+      <Modal visible={!!portraitAgrandi} animationType="fade" transparent onRequestClose={() => setPortraitAgrandi(null)}>
+        <Pressable style={styles.superpositionSuppression} onPress={() => setPortraitAgrandi(null)}>
+          <Panneau style={styles.panneauPortraitAgrandi}>
+            {portraitAgrandi?.avatarUri ? (
+              <Image source={{ uri: portraitAgrandi.avatarUri }} style={styles.imagePortraitAgrandi} resizeMode="cover" />
+            ) : null}
+            <Text style={styles.titreModal}>{portraitAgrandi?.titre}</Text>
+            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setPortraitAgrandi(null)} style={{ marginTop: espacement.sm }} />
+          </Panneau>
+        </Pressable>
       </Modal>
 
       <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
@@ -1294,6 +1432,18 @@ const styles = StyleSheet.create({
   },
   imagePortraitPnjVide: {
     backgroundColor: couleurs.fondCarte,
+  },
+  panneauPortraitAgrandi: {
+    alignSelf: 'center',
+    alignItems: 'center',
+  },
+  imagePortraitAgrandi: {
+    width: 260,
+    height: 260,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    marginBottom: espacement.md,
   },
   nomPortraitPnj: {
     color: couleurs.texteAtténué,

@@ -217,6 +217,12 @@ export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise
   return assetVersDataUrl(portrait);
 }
 
+// Nombre max d'images de référence envoyées pour une illustration de scène —
+// portrait peint statique + avatar généré du joueur + PNJ présents (voir
+// genererImageScene). Un plafond pour éviter un payload démesuré, pas une
+// limite technique connue de FLUX.2.
+const MAX_IMAGES_REFERENCE_SCENE = 4;
+
 /**
  * Génère une illustration à partir d'un prompt texte via l'API image
  * unifiée d'OpenRouter. Renvoie une URL data: (PNG en base64) — jamais
@@ -225,18 +231,23 @@ export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise
  * dans l'histoire referait dépasser le quota de stockage du navigateur déjà
  * corrigé une fois ce soir (voir storage.ts, ecrireAvecRetraitSurQuota).
  *
- * imageReferenceJoueur (optionnelle, voir obtenirPortraitReferenceJoueur) :
- * jointe au prompt comme image de référence — FLUX.2 sait éditer/varier à
- * partir d'une ou plusieurs images de référence plutôt que de générer à
- * l'aveugle depuis du texte seul.
+ * imagesReference (optionnelles — portrait peint statique du joueur voir
+ * obtenirPortraitReferenceJoueur, son avatar généré voir
+ * obtenirOuGenererAvatarJoueur, et les avatars des PNJ présents dans la
+ * scène) : jointes au prompt comme images de référence — FLUX.2 sait
+ * éditer/varier à partir d'une ou plusieurs images de référence plutôt que
+ * de générer à l'aveugle depuis du texte seul, ce qui améliore la cohérence
+ * visuelle d'une scène à l'autre. Les entrées vides (null/undefined, ex. un
+ * portrait pas encore généré) sont filtrées silencieusement.
  */
 export async function genererImageScene(
   apiKey: string,
   prompt: string,
   gratuit?: boolean,
-  imageReferenceJoueur?: string | null
+  imagesReference?: (string | null | undefined)[]
 ): Promise<string> {
-  return appellerModeleImage(apiKey, prompt, gratuit, imageReferenceJoueur ? [imageReferenceJoueur] : undefined);
+  const images = (imagesReference ?? []).filter((u): u is string => !!u).slice(0, MAX_IMAGES_REFERENCE_SCENE);
+  return appellerModeleImage(apiKey, prompt, gratuit, images.length > 0 ? images : undefined);
 }
 
 /**
@@ -344,6 +355,97 @@ export async function obtenirOuGenererAvatarPnj(story: StoryState, pnj: EntreeLo
   const prompt = await obtenirPromptAvatarPnj(story, pnj, appSettings);
   const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
   await enregistrerAvatarPnj(story.meta.id, pnj.id, url);
+  return url;
+}
+
+// Identifiant synthétique réutilisant le même stockage (pnjAvatarsStore,
+// une clé "storyId_pnjId") pour l'avatar du joueur — un seul par histoire,
+// pas besoin d'un magasin dédié pour ça.
+export const ID_AVATAR_JOUEUR = '__joueur__';
+
+/**
+ * Construit le prompt du portrait du joueur (repli, sans appel modèle) à
+ * partir de sa fiche de personnage — même principe que
+ * construirePromptAvatarPnj.
+ */
+export function construirePromptAvatarJoueur(story: StoryState): string {
+  const fiche = story.meta.personnageDescription?.trim();
+  return (
+    `Portrait (buste, cadrage serré sur le visage et les épaules) de ${story.meta.personnageNom}.\n` +
+    `Description : ${(fiche || 'Personnage principal de l\'histoire.').slice(0, 400)}\n\n` +
+    `Style : ${ANCRAGE_STYLE}, character portrait, plain dark background.`
+  );
+}
+
+// Même principe que INSTRUCTION_PROMPT_AVATAR_PNJ, pour le personnage joueur.
+const INSTRUCTION_PROMPT_AVATAR_JOUEUR = `Images-moi textuellement le portrait du personnage principal identifié ci-dessus, tel qu'il a été établi jusqu'ici dans l'histoire. Décris uniquement son apparence physique, sous forme de constats précis et denses (pas de prose littéraire) : race/apparence physique (carnation, silhouette, traits du visage), cheveux, yeux, tenue/équipement visible au buste, expression au repos. Pas de décor, pas d'action, pas de dialogue, pas de pensées. Reste strictement fidèle à ce qui a été établi dans sa fiche ; n'invente rien de nouveau.`;
+
+/**
+ * Demande au modèle narratif de décrire visuellement le personnage joueur
+ * pour son portrait — même principe que genererPromptAvatarPnjViaModele,
+ * à partir de sa fiche de personnage et du lore Elyndor pertinent (ex. sa
+ * race, sa culture).
+ */
+async function genererPromptAvatarJoueurViaModele(story: StoryState, appSettings: AppSettings): Promise<string> {
+  const fiche = story.meta.personnageDescription?.trim() || story.meta.personnageNom;
+  const { loreElyndor } = await calculerSelectionLore(story, fiche, appSettings);
+
+  const loreTexte = loreElyndor
+    .slice(0, MAX_LORE_DANS_PROMPT_IMAGE)
+    .map((e) => `- ${e.titre} : ${e.contenu}`)
+    .join('\n');
+  const blocLore = loreTexte ? `[LORE PERTINENT — ex. race, culture]\n${loreTexte}` : '';
+
+  const contexte = [`[PERSONNAGE PRINCIPAL À PORTRAITURER]\n${story.meta.personnageNom} : ${fiche}`, blocLore]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const sortie = await appellerModele({
+    apiKey: appSettings.openRouterApiKey,
+    model: appSettings.model,
+    moteurInference: appSettings.moteurInference,
+    temperature: 0.4,
+    maxTokens: 300,
+    raisonnement: false,
+    messages: [
+      { role: 'system', content: contexte },
+      { role: 'user', content: INSTRUCTION_PROMPT_AVATAR_JOUEUR },
+    ],
+  });
+
+  const description = sortie.trim();
+  if (!description) throw new ErreurOpenRouter('Description visuelle vide reçue du modèle.');
+  return `Portrait (buste, cadrage serré sur le visage et les épaules) de ${story.meta.personnageNom}.\n${description}\n\nStyle : ${ANCRAGE_STYLE}, character portrait, plain dark background.`;
+}
+
+/**
+ * Prompt de portrait pour le joueur : tente de le faire décrire par le
+ * modèle narratif lui-même (meilleure source), replie silencieusement sur
+ * construirePromptAvatarJoueur si l'appel échoue.
+ */
+async function obtenirPromptAvatarJoueur(story: StoryState, appSettings: AppSettings): Promise<string> {
+  try {
+    return await genererPromptAvatarJoueurViaModele(story, appSettings);
+  } catch {
+    return construirePromptAvatarJoueur(story);
+  }
+}
+
+/**
+ * Renvoie l'avatar du joueur, généré par le modèle d'image (comme les PNJ,
+ * voir obtenirOuGenererAvatarPnj) — depuis le cache persistant s'il existe
+ * déjà, sinon le génère puis l'y enregistre. Vient EN PLUS du portrait peint
+ * statique (obtenirPortraitReferenceJoueur, choisi à la création) : les deux
+ * coexistent, celui-ci sert à la fois d'affichage (portrait cliquable,
+ * cohérent avec le style des scènes générées) et de référence supplémentaire
+ * envoyée au modèle d'image pour l'illustration de scène.
+ */
+export async function obtenirOuGenererAvatarJoueur(story: StoryState, appSettings: AppSettings): Promise<string> {
+  const existant = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
+  if (existant) return existant;
+  const prompt = await obtenirPromptAvatarJoueur(story, appSettings);
+  const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
+  await enregistrerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR, url);
   return url;
 }
 

@@ -9,21 +9,23 @@ export interface AvatarPnjPourTexte {
   avatarUri: string;
 }
 
-// Table nom (complet ou prénom seul) → avatar, plus le motif regex qui va
-// avec — construite une fois par rendu de bulle, pas par segment.
+// Table nom (complet ou prénom seul) → {pnj, avatarUri}, plus le motif regex
+// qui va avec — construite une fois par rendu de bulle, pas par segment.
+// Garde le PNJ entier (pas seulement l'URI) pour pouvoir l'identifier au tap
+// (voir onPressAvatar) et ouvrir son portrait en grand.
 interface IndexAvatarsPnj {
   regex: RegExp;
-  parNom: Map<string, string>;
+  parNom: Map<string, AvatarPnjPourTexte>;
 }
 
 function construireIndexAvatarsPnj(avatars: AvatarPnjPourTexte[]): IndexAvatarsPnj | null {
-  const parNom = new Map<string, string>();
-  for (const { pnj, avatarUri } of avatars) {
-    const titre = pnj.titre.trim();
+  const parNom = new Map<string, AvatarPnjPourTexte>();
+  for (const item of avatars) {
+    const titre = item.pnj.titre.trim();
     if (!titre) continue;
-    parNom.set(titre.toLowerCase(), avatarUri);
+    parNom.set(titre.toLowerCase(), item);
     const premierMot = titre.split(/\s+/)[0];
-    if (premierMot.length > 2) parNom.set(premierMot.toLowerCase(), avatarUri);
+    if (premierMot.length > 2) parNom.set(premierMot.toLowerCase(), item);
   }
   if (parNom.size === 0) return null;
   // Les plus longs d'abord : "Lirael Sombre-Lune" doit matcher avant le
@@ -49,18 +51,27 @@ function capitaliser(nom: string): string {
 // Découpe un segment de narration/action en insérant un petit avatar juste
 // avant chaque mention reconnue d'un PNJ — jamais dans le dialogue lui-même
 // (son propre nom n'y apparaît quasiment jamais), voir l'appelant.
-function segmentAvecAvatars(contenu: string, index: IndexAvatarsPnj, clePrefixe: string): React.ReactNode[] {
+// onPress est posé sur le <Text> englobant (pas un Pressable autour de
+// l'Image) : un Pressable est une View, et une View comme enfant direct
+// d'un Text n'est pas fiable en RN — Text.onPress couvre nativement toute
+// sa zone, avatar inclus, sans casser le flux de texte en ligne.
+function segmentAvecAvatars(
+  contenu: string,
+  index: IndexAvatarsPnj,
+  clePrefixe: string,
+  onPressAvatar?: (pnj: EntreeLoreEmergent) => void,
+): React.ReactNode[] {
   const morceaux = contenu.split(index.regex);
   return morceaux.map((morceau, i) => {
     if (!morceau) return null;
     // String.split avec un groupe capturant place les correspondances aux
     // index impairs, entrelacées avec le texte non-match aux index pairs.
     if (i % 2 === 1) {
-      const avatarUri = index.parNom.get(morceau.toLowerCase());
-      if (avatarUri) {
+      const trouve = index.parNom.get(morceau.toLowerCase());
+      if (trouve) {
         return (
-          <Text key={`${clePrefixe}-${i}`}>
-            <Image source={{ uri: avatarUri }} style={styles.avatarInline} />
+          <Text key={`${clePrefixe}-${i}`} onPress={onPressAvatar ? () => onPressAvatar(trouve.pnj) : undefined}>
+            <Image source={{ uri: trouve.avatarUri }} style={styles.avatarInline} />
             {' ' + morceau}
           </Text>
         );
@@ -83,7 +94,9 @@ export default function TexteMessageFormate({
   style,
   avatarsPnj,
   avatarParDefaut,
+  pnjParDefaut,
   nomsPnjConnus,
+  onPressAvatar,
 }: {
   texte: string;
   style?: StyleProp<TextStyle>;
@@ -95,12 +108,18 @@ export default function TexteMessageFormate({
   // le fournit que si un seul PNJ à avatar est mentionné dans les messages
   // récents, pour ne jamais deviner à tort entre plusieurs PNJ actifs).
   avatarParDefaut?: string;
+  // Le PNJ correspondant à avatarParDefaut (même provenance) — pour que le
+  // tap sur cet avatar de repli ouvre lui aussi le bon portrait en grand.
+  pnjParDefaut?: EntreeLoreEmergent;
   // Noms (complet + prénom) de TOUS les PNJ connus du lore, avatar généré ou
   // non — sert à ne PAS appliquer avatarParDefaut à un PNJ légitimement
   // différent dont le portrait n'est simplement pas encore prêt (seul un nom
   // absent de cet ensemble, donc une étiquette de rôle générique, doit
   // recevoir le repli).
   nomsPnjConnus?: Set<string>;
+  // Appelé avec le PNJ dont l'avatar vient d'être touché — voir
+  // ConversationScreen, qui ouvre alors son portrait en grand.
+  onPressAvatar?: (pnj: EntreeLoreEmergent) => void;
 }) {
   const segments = analyserMessage(texte);
   const index = avatarsPnj && avatarsPnj.length > 0 ? construireIndexAvatarsPnj(avatarsPnj) : null;
@@ -109,10 +128,12 @@ export default function TexteMessageFormate({
       {segments.map((seg, i) => {
         if (seg.type === 'repliquePersonnage') {
           const locuteurMinuscule = (seg.locuteur ?? '').toLowerCase();
-          const avatarConnu = index?.parNom.get(locuteurMinuscule);
-          const avatarUri = avatarConnu ?? (nomsPnjConnus?.has(locuteurMinuscule) ? undefined : avatarParDefaut);
+          const trouve = index?.parNom.get(locuteurMinuscule);
+          const connuSansAvatar = !trouve && nomsPnjConnus?.has(locuteurMinuscule);
+          const avatarUri = trouve?.avatarUri ?? (connuSansAvatar ? undefined : avatarParDefaut);
+          const pnjPourTap = trouve?.pnj ?? (connuSansAvatar ? undefined : pnjParDefaut);
           return (
-            <Text key={i}>
+            <Text key={i} onPress={avatarUri && pnjPourTap && onPressAvatar ? () => onPressAvatar(pnjPourTap) : undefined}>
               {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarInline} /> : null}
               <Text style={styles.nomLocuteur}>
                 {avatarUri ? ' ' : ''}
@@ -126,7 +147,7 @@ export default function TexteMessageFormate({
         if (index && seg.type !== 'dialogue') {
           return (
             <Text key={i} style={segStyle}>
-              {segmentAvecAvatars(seg.contenu, index, String(i))}
+              {segmentAvecAvatars(seg.contenu, index, String(i), onPressAvatar)}
             </Text>
           );
         }
