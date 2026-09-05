@@ -1,7 +1,7 @@
 {
-  "version": "1.27.1",
+  "version": "1.27.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Ton avatar s'affiche maintenant avec ton nom au-dessus de chacun de tes messages (il n'apparaissait pas avant : contrairement aux PNJ, rien dans ton propre texte ne permettait de le détecter)."
+  "notes": "Corrige un plantage (écran blanc) sur les conversations longues : ton avatar ne s'affichait plus qu'en texte (nom) sur les anciens messages, l'image reste réservée aux 20 derniers pour éviter de la redécoder des dizaines de fois d'affilée."
 }

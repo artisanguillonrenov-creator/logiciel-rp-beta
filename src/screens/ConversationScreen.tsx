@@ -68,6 +68,13 @@ const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
 // que le reste (dilue l'attention/le payload au-delà d'un certain point).
 const MAX_PNJ_REFERENCE_SCENE = 2;
 
+// Nombre max de messages du joueur (en partant de la fin) qui affichent
+// l'image de son avatar en en-tête — voir le rendu de la bulle plus bas.
+// Le nom seul (texte) reste affiché sur tous les messages, sans plafond :
+// c'est l'IMAGE (un data: URL base64 potentiellement lourd) répétée sur
+// chaque message qui pose problème sur une longue histoire.
+const MAX_AVATARS_JOUEUR_AFFICHES = 20;
+
 function messageErreur(e: unknown, messageParDefaut: string): string {
   if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
     return e.message;
@@ -832,13 +839,25 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     // possible. Son nom + avatar sont donc affichés en
                     // en-tête de la bulle, inconditionnellement, plutôt que
                     // par le même mécanisme que TexteMessageFormate.
+                    //
+                    // L'IMAGE (avatarJoueur, un data: URL base64 pouvant
+                    // peser plusieurs centaines de Ko à quelques Mo) n'est
+                    // affichée que sur les derniers messages — sur une
+                    // longue histoire (constaté en usage réel : 74 messages),
+                    // la décoder identique des dizaines de fois d'affilée a
+                    // fait planter l'appli (écran blanc, plantage natif côté
+                    // mémoire, pas une erreur JS rattrapable) là où avant
+                    // aucun message du joueur n'embarquait d'image. Le nom
+                    // seul (texte, négligeable) reste affiché partout.
                     <Pressable
                       style={styles.enTeteMessageJoueur}
                       onPress={
                         avatarJoueur ? () => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur }) : undefined
                       }
                     >
-                      {avatarJoueur ? <Image source={{ uri: avatarJoueur }} style={styles.avatarInlineJoueur} /> : null}
+                      {avatarJoueur && story.messages.length - index <= MAX_AVATARS_JOUEUR_AFFICHES ? (
+                        <Image source={{ uri: avatarJoueur }} style={styles.avatarInlineJoueur} />
+                      ) : null}
                       <Text style={styles.nomMessageJoueur}>{story.meta.personnageNom}</Text>
                     </Pressable>
                   )}
