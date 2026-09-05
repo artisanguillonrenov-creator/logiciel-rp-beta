@@ -68,12 +68,17 @@ const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
 // que le reste (dilue l'attention/le payload au-delà d'un certain point).
 const MAX_PNJ_REFERENCE_SCENE = 2;
 
-// Nombre max de messages du joueur (en partant de la fin) qui affichent
-// l'image de son avatar en en-tête — voir le rendu de la bulle plus bas.
-// Le nom seul (texte) reste affiché sur tous les messages, sans plafond :
-// c'est l'IMAGE (un data: URL base64 potentiellement lourd) répétée sur
-// chaque message qui pose problème sur une longue histoire.
-const MAX_AVATARS_JOUEUR_AFFICHES = 20;
+// Nombre max de messages (en partant de la fin de l'histoire) qui affichent
+// des images d'avatar — joueur (en-tête) ou PNJ (dans TexteMessageFormate,
+// à chaque mention/réplique). Le texte (nom, réplique) reste affiché sur
+// TOUS les messages, sans plafond : ce sont les IMAGES (data: URL base64
+// potentiellement lourdes) répétées sur beaucoup de messages qui posent
+// problème sur une longue histoire — constaté en usage réel (74+ messages,
+// écran blanc = plantage natif côté mémoire, pas une erreur JS rattrapable).
+// D'abord limité au seul avatar du joueur (v1.27.2), élargi ici aux PNJ
+// (jamais plafonnés jusqu'ici, et potentiellement bien plus nombreux : une
+// image par mention, pas juste une par message).
+const MAX_MESSAGES_RECENTS_AVEC_AVATARS = 20;
 
 function messageErreur(e: unknown, messageParDefaut: string): string {
   if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
@@ -863,7 +868,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         avatarJoueur ? () => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur }) : undefined
                       }
                     >
-                      {avatarJoueur && story.messages.length - index <= MAX_AVATARS_JOUEUR_AFFICHES ? (
+                      {avatarJoueur && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS ? (
                         <Image source={{ uri: avatarJoueur }} style={styles.avatarInlineJoueur} />
                       ) : null}
                       <Text style={styles.nomMessageJoueur}>{story.meta.personnageNom}</Text>
@@ -875,9 +880,30 @@ export default function ConversationScreen({ route, navigation }: Props) {
                       <TexteMessageFormate
                         texte={t(item.content)}
                         style={styles.texteBulle}
-                        avatarsPnj={item.role === 'assistant' ? avatarsPnjPourTexte : undefined}
-                        avatarParDefaut={item.role === 'assistant' ? avatarParDefautLocuteur : undefined}
-                        pnjParDefaut={item.role === 'assistant' ? pnjParDefautLocuteur : undefined}
+                        // Comme pour l'en-tête du joueur : les IMAGES d'avatar
+                        // PNJ (à chaque mention/réplique, jamais plafonnées
+                        // jusqu'ici — potentiellement bien plus nombreuses
+                        // qu'une par message) ne sont fournies que pour les
+                        // messages récents, pour la même raison (plantage
+                        // natif constaté sur une longue histoire). Le texte
+                        // (nom du PNJ, réplique) n'est jamais affecté : seul
+                        // TexteMessageFormate décide, via ces props, s'il a
+                        // une image à insérer ou non.
+                        avatarsPnj={
+                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
+                            ? avatarsPnjPourTexte
+                            : undefined
+                        }
+                        avatarParDefaut={
+                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
+                            ? avatarParDefautLocuteur
+                            : undefined
+                        }
+                        pnjParDefaut={
+                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
+                            ? pnjParDefautLocuteur
+                            : undefined
+                        }
                         nomsPnjConnus={item.role === 'assistant' ? nomsPnjConnus : undefined}
                         onPressAvatar={
                           item.role === 'assistant'
