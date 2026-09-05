@@ -61,7 +61,12 @@ export function selectionnerMetamoteursSemantique(
   entries: MetamoteurEntry[],
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
-  maxSupplementaires = 5,
+  // Infinity plutôt qu'un plafond : demande explicite de l'utilisateur, les
+  // 15 métamoteurs (le socle + tout le reste) sont désormais TOUJOURS actifs
+  // à chaque tour plutôt qu'un tri par pertinence n'en retenant que 9 — ce
+  // sont les règles qui gouvernent COMMENT toute réponse est produite, pas
+  // du contenu de scène ponctuel, donc rien à gagner à en exclure certaines.
+  maxSupplementaires = Infinity,
 ): LoreEntry[] {
   const socle = entries.filter((e) => METAMOTEURS_SOCLE.includes(e.titre));
   const reste = entries.filter((e) => !METAMOTEURS_SOCLE.includes(e.titre));
@@ -167,7 +172,13 @@ export function selectionnerLoreElyndorSemantique(
   texteRequete: string,
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
-  maxSupplementaires = 4,
+  // Plafond relevé (demande explicite) : 4 → 18, pour qu'avec les entrées
+  // toujours actives (6 "constant" du lorebook statique + la table
+  // Géographie et Races, soit 7 actuellement) le total puisse monter
+  // jusqu'à ~25 entrées quand le tour s'y prête, sans que ce soit un
+  // plancher — un tour dont peu d'entrées dépassent le seuil de pertinence
+  // continue d'en injecter moins.
+  maxSupplementaires = 18,
   options?: OptionsSelectionLore,
 ): LoreEntry[] {
   const texteNormalise = normalise(texteRequete);

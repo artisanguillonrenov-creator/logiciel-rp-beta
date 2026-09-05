@@ -1,7 +1,7 @@
 {
-  "version": "1.24.2",
+  "version": "1.25.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Correction : le cache d'embeddings pouvait dépasser la taille max d'une ligne de stockage sur Android (\"Row too big to fit into CursorWindow\"), bloquant la sauvegarde. Stocké désormais entrée par entrée."
+  "notes": "Sélection du lore élargie : les 15 métamoteurs sont désormais toujours actifs (au lieu de 9), et le lore Elyndor (lorebook statique + PNJ/lieux émergents + tes packs de contenu) peut monter jusqu'à ~25 entrées par tour (au lieu de 11) — une entrée que tu mentionnes explicitement a donc bien plus de chances d'être retenue."
 }

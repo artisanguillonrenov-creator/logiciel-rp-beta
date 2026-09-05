@@ -37,7 +37,13 @@ export function analyserPackJson(nom: string, texteJson: string): Plugin {
 /**
  * Convertit les packs installés au format attendu par le sélecteur
  * sémantique du lore Elyndor, pour qu'ils rejoignent le même pool de
- * sélection que le lorebook statique et le lore émergent.
+ * sélection que le lorebook statique et le lore émergent — traitées à
+ * l'identique d'une entrée Elyndor normale (constant: false, sélectionnées
+ * par similarité comme les autres) plutôt que comme une catégorie à part.
+ * Une entrée explicitement mentionnée doit désormais avoir de bien
+ * meilleures chances d'être retenue grâce au plafond relevé (4 → 18, voir
+ * selectionnerLoreElyndorSemantique), sans pour autant s'imposer dans
+ * chaque tour comme le ferait "constant: true".
  */
 export function convertirPluginsPourSelection(plugins: Plugin[]): ElyndorEntryChargee[] {
   return plugins.flatMap((plugin) =>
