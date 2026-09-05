@@ -83,17 +83,24 @@ export default function TexteMessageFormate({
   style,
   avatarsPnj,
   avatarParDefaut,
+  nomsPnjConnus,
 }: {
   texte: string;
   style?: StyleProp<TextStyle>;
   avatarsPnj?: AvatarPnjPourTexte[];
   // Avatar à utiliser pour une réplique nommée dont l'étiquette ne
-  // correspond à aucun PNJ connu (le narrateur écrit parfois un rôle
+  // correspond à AUCUN PNJ connu du tout (le narrateur écrit parfois un rôle
   // générique — "MARCHAND" — au lieu du nom propre, même une fois ce nom
   // établi ailleurs dans la conversation ; voir ConversationScreen, qui ne
   // le fournit que si un seul PNJ à avatar est mentionné dans les messages
   // récents, pour ne jamais deviner à tort entre plusieurs PNJ actifs).
   avatarParDefaut?: string;
+  // Noms (complet + prénom) de TOUS les PNJ connus du lore, avatar généré ou
+  // non — sert à ne PAS appliquer avatarParDefaut à un PNJ légitimement
+  // différent dont le portrait n'est simplement pas encore prêt (seul un nom
+  // absent de cet ensemble, donc une étiquette de rôle générique, doit
+  // recevoir le repli).
+  nomsPnjConnus?: Set<string>;
 }) {
   const segments = analyserMessage(texte);
   const index = avatarsPnj && avatarsPnj.length > 0 ? construireIndexAvatarsPnj(avatarsPnj) : null;
@@ -101,7 +108,9 @@ export default function TexteMessageFormate({
     <Text style={style}>
       {segments.map((seg, i) => {
         if (seg.type === 'repliquePersonnage') {
-          const avatarUri = index?.parNom.get((seg.locuteur ?? '').toLowerCase()) ?? avatarParDefaut;
+          const locuteurMinuscule = (seg.locuteur ?? '').toLowerCase();
+          const avatarConnu = index?.parNom.get(locuteurMinuscule);
+          const avatarUri = avatarConnu ?? (nomsPnjConnus?.has(locuteurMinuscule) ? undefined : avatarParDefaut);
           return (
             <Text key={i}>
               {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarInline} /> : null}

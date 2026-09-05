@@ -378,6 +378,24 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const pnjMentionnesDansHistoire = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteHistoireEntiere));
   const avatarParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].avatarUri : undefined;
 
+  // Noms de TOUS les PNJ connus (avatar généré ou non) — sert à distinguer,
+  // pour une réplique nommée sans avatar en cache, un PNJ légitimement
+  // différent dont le portrait n'est pas encore prêt (ne doit PAS recevoir
+  // avatarParDefautLocuteur, sous peine d'afficher le visage d'un autre PNJ
+  // sous son nom) d'une étiquette de rôle générique inconnue du lore
+  // ("MARCHAND" au lieu de "KAELEN"), seul cas où ce repli est pertinent.
+  // Constaté en usage réel : tant qu'un seul PNJ avait son portrait généré,
+  // chaque nouveau PNJ nommé affichait ce même portrait le temps que le
+  // sien soit prêt.
+  const nomsPnjConnus = new Set<string>();
+  pnjConnus.forEach((pnj) => {
+    const titre = pnj.titre.trim().toLowerCase();
+    if (!titre) return;
+    nomsPnjConnus.add(titre);
+    const premierMot = titre.split(/\s+/)[0];
+    if (premierMot.length > 2) nomsPnjConnus.add(premierMot);
+  });
+
   // Clé stable des PNJ connus — sert de dépendance d'effet.
   const clePnjConnus = pnjConnus
     .map((p) => p.id)
@@ -730,6 +748,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         style={styles.texteBulle}
                         avatarsPnj={item.role === 'assistant' ? avatarsPnjPourTexte : undefined}
                         avatarParDefaut={item.role === 'assistant' ? avatarParDefautLocuteur : undefined}
+                        nomsPnjConnus={item.role === 'assistant' ? nomsPnjConnus : undefined}
                       />
                     </View>
                   </Pressable>

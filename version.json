@@ -1,7 +1,7 @@
 {
-  "version": "1.24.0",
+  "version": "1.24.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Nouveau synopsis narratif du monde d'Elyndor dans le panneau \"Le monde d'Elyndor\" de l'accueil, suivi des repères factuels (Portes Astra, histoire en cinq ères, magie, peuples)."
+  "notes": "Correction : un PNJ dont le portrait n'était pas encore généré affichait le portrait d'un autre PNJ déjà en cache au lieu de patienter."
 }
