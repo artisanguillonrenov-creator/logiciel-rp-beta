@@ -1,7 +1,7 @@
 {
-  "version": "1.24.1",
+  "version": "1.24.2",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Correction : un PNJ dont le portrait n'était pas encore généré affichait le portrait d'un autre PNJ déjà en cache au lieu de patienter."
+  "notes": "Correction : le cache d'embeddings pouvait dépasser la taille max d'une ligne de stockage sur Android (\"Row too big to fit into CursorWindow\"), bloquant la sauvegarde. Stocké désormais entrée par entrée."
 }

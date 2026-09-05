@@ -2,19 +2,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings } from '../types';
 import { obtenirEmbeddings, type FournisseurEmbeddings } from '../engine/embeddings';
 
-const CLEF_CACHE = '@rp_beta/embeddings_cache';
+// Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
+// tout le cache) — le blob unique a fini par dépasser la taille max d'une
+// ligne SQLite qu'AsyncStorage utilise comme backend sur Android ("Row too
+// big to fit into CursorWindow", constaté en usage réel après plusieurs
+// histoires jouées). Le lore Elyndor, les métamoteurs, et surtout les PNJ /
+// lieux / factions émergents de CHAQUE histoire s'accumulent dans ce cache
+// sans jamais être purgés — seules les entrées "msg-" (souvenirs) sont
+// plafonnées, voir idsAEvincer — donc un unique blob ne fait que grossir. Un
+// vecteur seul (quelques Ko une fois sérialisé) reste largement sous cette
+// limite ; seul un blob qui en regroupe des centaines pouvait la dépasser.
+const PREFIXE_ENTREE = '@rp_beta/embeddings_cache/';
+const CLEF_INDEX = '@rp_beta/embeddings_cache_index';
+const CLEF_FOURNISSEUR = '@rp_beta/embeddings_cache_fournisseur';
 
 interface EntreeCache {
   hash: string;
   vecteur: number[];
 }
 
-interface CacheEmbeddings {
-  fournisseur: FournisseurEmbeddings | null;
-  entrees: Record<string, EntreeCache>;
+function cleEntree(id: string): string {
+  return `${PREFIXE_ENTREE}${id}`;
 }
-
-const CACHE_VIDE: CacheEmbeddings = { fournisseur: null, entrees: {} };
 
 // Empreinte simple (FNV-1a 32 bits) pour détecter qu'une entrée de lore a
 // changé de contenu et doit être ré-embeddée — pas un usage cryptographique.
@@ -27,14 +36,20 @@ function empreinte(texte: string): string {
   return (h >>> 0).toString(16);
 }
 
-async function chargerCache(): Promise<CacheEmbeddings> {
-  const raw = await AsyncStorage.getItem(CLEF_CACHE);
-  if (!raw) return CACHE_VIDE;
+async function chargerIndex(): Promise<string[]> {
+  const raw = await AsyncStorage.getItem(CLEF_INDEX);
+  if (!raw) return [];
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return CACHE_VIDE;
+    return [];
   }
+}
+
+async function chargerFournisseur(): Promise<FournisseurEmbeddings | null> {
+  const raw = await AsyncStorage.getItem(CLEF_FOURNISSEUR);
+  return raw === 'openrouter' || raw === 'openai' ? raw : null;
 }
 
 // Le cache grossit d'une entrée par ancien message de chaque histoire
@@ -49,28 +64,22 @@ async function chargerCache(): Promise<CacheEmbeddings> {
 // gardant les plus récemment ajoutées.
 const MAX_ENTREES_MESSAGES = 150;
 
-function plafonnerEntrees(entrees: Record<string, EntreeCache>): Record<string, EntreeCache> {
-  const clesMessages = Object.keys(entrees).filter((cle) => cle.startsWith('msg-'));
-  if (clesMessages.length <= MAX_ENTREES_MESSAGES) return entrees;
-  const aEvincer = new Set(clesMessages.slice(0, clesMessages.length - MAX_ENTREES_MESSAGES));
-  const plafonnees: Record<string, EntreeCache> = {};
-  for (const [cle, valeur] of Object.entries(entrees)) {
-    if (!aEvincer.has(cle)) plafonnees[cle] = valeur;
-  }
-  return plafonnees;
+function idsAEvincer(index: string[]): string[] {
+  const clesMessages = index.filter((id) => id.startsWith('msg-'));
+  if (clesMessages.length <= MAX_ENTREES_MESSAGES) return [];
+  return clesMessages.slice(0, clesMessages.length - MAX_ENTREES_MESSAGES);
 }
 
-async function sauvegarderCache(cache: CacheEmbeddings): Promise<void> {
-  const aEnregistrer: CacheEmbeddings = { ...cache, entrees: plafonnerEntrees(cache.entrees) };
-  try {
-    await AsyncStorage.setItem(CLEF_CACHE, JSON.stringify(aEnregistrer));
-  } catch {
-    // Le cache est une optimisation (évite de recalculer des embeddings déjà
-    // connus), pas une condition pour que le tour aboutisse — un échec
-    // d'écriture (quota dépassé, stockage indisponible...) ne doit jamais
-    // faire échouer la génération en cours. Les vecteurs déjà calculés
-    // restent utilisables pour ce tour, seule la mise en cache est perdue.
-  }
+// Réglages concepteur (mode test) : vider le cache force un recalcul complet
+// des embeddings au prochain tour — utile après un changement de contenu
+// massif (pack de contenu, lore) qu'on veut voir pris en compte tout de
+// suite plutôt que d'attendre l'invalidation entrée par entrée. Aussi
+// utilisé comme filet de secours quand l'écriture d'une histoire échoue
+// faute de place (voir storage.ts, ecrireAvecRetraitSurQuota).
+export async function viderCacheEmbeddings(): Promise<void> {
+  const index = await chargerIndex();
+  if (index.length > 0) await AsyncStorage.multiRemove(index.map(cleEntree));
+  await AsyncStorage.multiRemove([CLEF_INDEX, CLEF_FOURNISSEUR]);
 }
 
 export interface EntreeAEmbeder {
@@ -78,12 +87,37 @@ export interface EntreeAEmbeder {
   contenu: string;
 }
 
-// Réglages concepteur (mode test) : vider le cache force un recalcul complet
-// des embeddings au prochain tour — utile après un changement de contenu
-// massif (pack de contenu, lore) qu'on veut voir pris en compte tout de
-// suite plutôt que d'attendre l'invalidation entrée par entrée.
-export async function viderCacheEmbeddings(): Promise<void> {
-  await AsyncStorage.removeItem(CLEF_CACHE);
+// Écrit les entrées nouvelles/mises à jour (une clé par id, voir l'en-tête
+// du fichier), met à jour l'index et le fournisseur, et applique le plafond
+// des entrées "msg-" (idsAEvincer). Jamais d'échec bloquant : le cache est
+// une optimisation, pas une condition pour que le tour aboutisse — les
+// vecteurs déjà calculés restent utilisables pour ce tour même si la mise
+// en cache échoue (quota dépassé, stockage indisponible...).
+async function ecrireEntrees(
+  fournisseur: FournisseurEmbeddings,
+  nouvelles: Record<string, EntreeCache>,
+  indexPrecedent: string[],
+): Promise<void> {
+  try {
+    const idsNouveaux = Object.keys(nouvelles);
+    const indexMaj = [...new Set([...indexPrecedent, ...idsNouveaux])];
+    const aEvincer = idsAEvincer(indexMaj);
+    const aEvincerSet = new Set(aEvincer);
+    const indexFinal = indexMaj.filter((id) => !aEvincerSet.has(id));
+
+    const paires: [string, string][] = idsNouveaux
+      .filter((id) => !aEvincerSet.has(id))
+      .map((id) => [cleEntree(id), JSON.stringify(nouvelles[id])]);
+
+    if (paires.length > 0) await AsyncStorage.multiSet(paires);
+    if (aEvincer.length > 0) await AsyncStorage.multiRemove(aEvincer.map(cleEntree));
+    await AsyncStorage.multiSet([
+      [CLEF_INDEX, JSON.stringify(indexFinal)],
+      [CLEF_FOURNISSEUR, fournisseur],
+    ]);
+  } catch {
+    // Optimisation seulement, voir plus haut.
+  }
 }
 
 /**
@@ -98,38 +132,56 @@ export async function assurerEmbeddings(
   entrees: EntreeAEmbeder[],
   appSettings: AppSettings,
 ): Promise<Record<string, number[]>> {
-  const cache = await chargerCache();
+  const index = await chargerIndex();
+  const indexSet = new Set(index);
+  const fournisseurCache = await chargerFournisseur();
   const hashParId = new Map(entrees.map((e) => [e.id, empreinte(e.contenu)]));
 
+  const idsPresents = entrees.map((e) => e.id).filter((id) => indexSet.has(id));
+  const pairesExistantes = idsPresents.length > 0 ? await AsyncStorage.multiGet(idsPresents.map(cleEntree)) : [];
+  const existantesParId = new Map<string, EntreeCache>();
+  for (const [cle, valeur] of pairesExistantes) {
+    if (!valeur) continue;
+    try {
+      existantesParId.set(cle.slice(PREFIXE_ENTREE.length), JSON.parse(valeur));
+    } catch {
+      // Entrée corrompue : ignorée, traitée comme absente (recalculée ci-dessous).
+    }
+  }
+
   const manquants = entrees.filter((e) => {
-    const existant = cache.entrees[e.id];
+    const existant = existantesParId.get(e.id);
     return !existant || existant.hash !== hashParId.get(e.id);
   });
 
   if (manquants.length === 0) {
-    return Object.fromEntries(entrees.map((e) => [e.id, cache.entrees[e.id].vecteur]));
+    return Object.fromEntries(entrees.map((e) => [e.id, existantesParId.get(e.id)!.vecteur]));
   }
 
   const resultat = await obtenirEmbeddings(manquants.map((e) => e.contenu), appSettings);
-  const cacheAvaitDejaDesEntrees = Object.keys(cache.entrees).length > 0;
+  const cacheAvaitDejaDesEntrees = index.length > 0;
 
-  if (cacheAvaitDejaDesEntrees && cache.fournisseur !== resultat.fournisseur) {
-    // Le fournisseur a changé : impossible de mélanger les anciens vecteurs
-    // avec les nouveaux, on recalcule tout le lot demandé d'un coup.
+  if (cacheAvaitDejaDesEntrees && fournisseurCache !== null && fournisseurCache !== resultat.fournisseur) {
+    // Fournisseur changé : impossible de mélanger les anciens vecteurs avec
+    // les nouveaux — on jette tout le cache existant et on recalcule le lot
+    // demandé d'un coup.
     const tout = await obtenirEmbeddings(entrees.map((e) => e.contenu), appSettings);
-    const entreesMaj: Record<string, EntreeCache> = {};
+    const nouvellesEntrees: Record<string, EntreeCache> = {};
     entrees.forEach((e, i) => {
-      entreesMaj[e.id] = { hash: hashParId.get(e.id)!, vecteur: tout.vecteurs[i] };
+      nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: tout.vecteurs[i] };
     });
-    await sauvegarderCache({ fournisseur: tout.fournisseur, entrees: entreesMaj });
-    return Object.fromEntries(entrees.map((e) => [e.id, entreesMaj[e.id].vecteur]));
+    if (index.length > 0) await AsyncStorage.multiRemove(index.map(cleEntree));
+    await ecrireEntrees(tout.fournisseur, nouvellesEntrees, []);
+    return Object.fromEntries(entrees.map((e) => [e.id, nouvellesEntrees[e.id].vecteur]));
   }
 
-  const entreesMaj = { ...cache.entrees };
+  const nouvellesEntrees: Record<string, EntreeCache> = {};
   manquants.forEach((e, i) => {
-    entreesMaj[e.id] = { hash: hashParId.get(e.id)!, vecteur: resultat.vecteurs[i] };
+    nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: resultat.vecteurs[i] };
   });
-  await sauvegarderCache({ fournisseur: resultat.fournisseur, entrees: entreesMaj });
+  await ecrireEntrees(resultat.fournisseur, nouvellesEntrees, index);
 
-  return Object.fromEntries(entrees.map((e) => [e.id, entreesMaj[e.id].vecteur]));
+  return Object.fromEntries(
+    entrees.map((e) => [e.id, nouvellesEntrees[e.id]?.vecteur ?? existantesParId.get(e.id)!.vecteur]),
+  );
 }
