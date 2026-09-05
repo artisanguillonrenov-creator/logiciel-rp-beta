@@ -247,8 +247,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const clefManquante = appSettings && appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey;
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
-  const envoyer = useCallback(async () => {
-    const texte = saisie.trim();
+  const envoyer = useCallback(async (texteOverride?: string) => {
+    const texte = (texteOverride ?? saisie).trim();
     if (!texte || !story || !appSettings || enCours) return;
 
     // Commande rapide "retiens que X" (Ajouts_A_Integrer.md #5) : force un
@@ -316,6 +316,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setEnCours(false);
     }
   }, [saisie, story, appSettings, enCours, messageEnReponseA]);
+
+  // Bouton rapide "Continuer" : jusqu'ici, faire avancer le récit sans
+  // proposer d'action précise obligeait à taper "continue" à la main à
+  // chaque fois. Même chemin que l'envoi normal (envoyer), juste avec un
+  // texte fixe au lieu de la saisie — le joueur tapait déjà "continue" avec
+  // de bons résultats, donc même mot plutôt qu'une formulation nouvelle et
+  // non éprouvée.
+  const continuerRecit = useCallback(() => envoyer('continue'), [envoyer]);
 
   const regenerer = useCallback(async () => {
     if (!story || !appSettings || enCours) return;
@@ -1032,6 +1040,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
               <Bouton titre={t('Régénérer')} variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
             )}
             <Bouton
+              titre={t('Continuer')}
+              variante="secondaire"
+              onPress={continuerRecit}
+              desactive={enCours}
+              style={styles.boutonRapide}
+              texteStyle={styles.texteBoutonRapide}
+            />
+            <Bouton
               titre={suggestionEnCours ? t('Suggestion…') : t('Suggérer une réplique')}
               variante="secondaire"
               onPress={suggererReplique}
@@ -1066,7 +1082,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
             />
             <Pressable
               style={[styles.boutonEnvoyer, (enCours || !saisie.trim()) && styles.boutonDesactive]}
-              onPress={envoyer}
+              onPress={() => envoyer()}
               disabled={enCours || !saisie.trim()}
             >
               {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}

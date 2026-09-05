@@ -147,7 +147,7 @@ function ModalGuide({ visible, onFermer }: { visible: boolean; onFermer: () => v
             <Text style={styles.titreSectionGuide}>{t('Actions rapides')}</Text>
             <Text style={styles.texteGuide}>
               {t(
-                '« Régénérer » redemande une nouvelle réponse à la dernière réplique. « Suggérer une réplique » propose un texte à ta place dans le champ de saisie, à modifier avant d’envoyer. « Illustrer cette scène » (si activé dans Réglages) génère une image de la scène en cours.',
+                '« Régénérer » redemande une nouvelle réponse à la dernière réplique. « Continuer » fait avancer le récit sans proposer d’action précise, sans avoir à taper quoi que ce soit. « Suggérer une réplique » propose un texte à ta place dans le champ de saisie, à modifier avant d’envoyer. « Illustrer cette scène » (si activé dans Réglages) génère une image de la scène en cours.',
               )}
             </Text>
 

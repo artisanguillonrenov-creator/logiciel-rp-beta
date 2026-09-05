@@ -1,7 +1,7 @@
 {
-  "version": "1.27.2",
+  "version": "1.28.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige un plantage (écran blanc) sur les conversations longues : ton avatar ne s'affichait plus qu'en texte (nom) sur les anciens messages, l'image reste réservée aux 20 derniers pour éviter de la redécoder des dizaines de fois d'affilée."
+  "notes": "Nouveau bouton \"Continuer\" à côté de Régénérer/Suggérer une réplique/Illustrer cette scène : fait avancer le récit sans avoir à taper « continue » à chaque fois."
 }
