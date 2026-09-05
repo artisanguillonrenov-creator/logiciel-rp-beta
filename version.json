@@ -1,7 +1,7 @@
 {
-  "version": "1.27.0",
+  "version": "1.27.1",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Ton personnage a maintenant lui aussi un portrait généré par le modèle d'image (en plus du portrait peint choisi à la création), visible et cliquable dans le panneau Debug lore. Cet avatar, ainsi que ceux des PNJ présents, sont désormais envoyés comme images de référence au modèle lors de l'illustration d'une scène, pour une meilleure cohérence visuelle."
+  "notes": "Ton avatar s'affiche maintenant avec ton nom au-dessus de chacun de tes messages (il n'apparaissait pas avant : contrairement aux PNJ, rien dans ton propre texte ne permettait de le détecter)."
 }

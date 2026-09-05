@@ -825,6 +825,23 @@ export default function ConversationScreen({ route, navigation }: Props) {
                       </Text>
                     </View>
                   )}
+                  {item.role === 'user' && (
+                    // Contrairement aux PNJ (avatar affiché en détectant leur
+                    // nom DANS le texte narré), le joueur écrit ses messages
+                    // sans jamais s'y nommer lui-même — aucune détection
+                    // possible. Son nom + avatar sont donc affichés en
+                    // en-tête de la bulle, inconditionnellement, plutôt que
+                    // par le même mécanisme que TexteMessageFormate.
+                    <Pressable
+                      style={styles.enTeteMessageJoueur}
+                      onPress={
+                        avatarJoueur ? () => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur }) : undefined
+                      }
+                    >
+                      {avatarJoueur ? <Image source={{ uri: avatarJoueur }} style={styles.avatarInlineJoueur} /> : null}
+                      <Text style={styles.nomMessageJoueur}>{story.meta.personnageNom}</Text>
+                    </Pressable>
+                  )}
                   <Pressable onLongPress={() => setMessageActionsPour(item)} delayLongPress={400}>
                     <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
                       {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
@@ -1296,6 +1313,22 @@ const styles = StyleSheet.create({
   groupeMessageNarrateur: {
     alignSelf: 'flex-start',
     alignItems: 'flex-start',
+  },
+  enTeteMessageJoueur: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  avatarInlineJoueur: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 5,
+  },
+  nomMessageJoueur: {
+    fontFamily: polices.corpsMedium,
+    color: couleurs.accentClair,
+    fontSize: 12,
   },
   bulle: {
     borderWidth: 1,
