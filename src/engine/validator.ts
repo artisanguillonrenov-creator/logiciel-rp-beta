@@ -68,12 +68,38 @@ export function fusionnerRapports(...rapports: RapportValidation[]): RapportVali
 // étiquette — le narrateur invente alors une réplique à sa place, violation
 // de la règle 1 (AUTONOMIE DU JOUEUR STRICTE) que TOURNURES_INTERDITES ne
 // couvre pas (ciblé sur "tu ..." à la deuxième personne, pas ce format).
-function reponseFaitParlerLeJoueur(reponse: string, personnageNom: string): boolean {
+export function reponseFaitParlerLeJoueur(reponse: string, personnageNom: string): boolean {
   const nom = personnageNom.trim();
   if (!nom) return false;
   const nomEchappe = nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`^[ \\t]*${nomEchappe}[ \\t]*:[ \\t]*«`, 'im');
   return regex.test(reponse);
+}
+
+/**
+ * Filet de sécurité déterministe (fail-closed, comme le verrou GRAND_PUBLIC
+ * ci-dessous) : retire la ou les répliques écrites au nom du joueur si la
+ * tentative de réparation en amont (reparerReponse, un appel modèle qui
+ * peut échouer à corriger ce point précis) ne les a pas retirées — constaté
+ * en usage réel, la réparation seule ne suffit pas toujours. Aucun appel
+ * réseau, jamais d'échec possible, contrairement à une nouvelle tentative
+ * de réparation.
+ */
+export function retirerRepliqueDuJoueur(reponse: string, personnageNom: string): string {
+  const nom = personnageNom.trim();
+  if (!nom) return reponse;
+  const nomEchappe = nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Découpe par paragraphe (séparateur : ligne(s) vide(s), même convention
+  // que le reste de la réponse) plutôt qu'un motif de ligne unique : un
+  // paragraphe fautif mélange souvent la réplique avec une ou plusieurs
+  // didascalies/guillemets supplémentaires sur le même bloc — un motif exigeant
+  // "toute la ligne = uniquement la réplique" ne les retirait pas.
+  const debutRegex = new RegExp(`^[ \\t]*${nomEchappe}[ \\t]*:[ \\t]*«`, 'i');
+  return reponse
+    .split(/\n{2,}/)
+    .filter((paragraphe) => !debutRegex.test(paragraphe.trim()))
+    .join('\n\n')
+    .trim();
 }
 
 export function validerAgentiviteHeuristique(reponse: string, personnageNom?: string): RapportValidation {

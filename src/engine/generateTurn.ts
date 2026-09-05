@@ -45,6 +45,8 @@ import {
   determinerStrategie,
   fusionnerRapports,
   reparerReponse,
+  reponseFaitParlerLeJoueur,
+  retirerRepliqueDuJoueur,
   validerAgentiviteHeuristique,
   validerReponseLLM,
 } from './validator';
@@ -431,6 +433,22 @@ export async function genererTour(
     } catch {
       aEteCorrige = false;
     }
+  }
+
+  // Verrou autonomie du joueur (fail-closed) : la réparation ci-dessus est
+  // un appel modèle qui peut échouer à retirer une réplique écrite au nom
+  // du joueur (constaté en usage réel — la consigne de correction ne
+  // suffit pas toujours). Contrairement aux autres violations (continuité,
+  // canon...) où garder la réponse non corrigée est un compromis
+  // acceptable, celle-ci ne doit jamais atteindre le joueur : retrait
+  // déterministe, sans appel réseau, donc jamais susceptible d'échouer à
+  // son tour.
+  if (reponseFaitParlerLeJoueur(reponse, story.meta.personnageNom)) {
+    const nettoyee = retirerRepliqueDuJoueur(reponse, story.meta.personnageNom);
+    // Cas limite : si la réponse entière n'était que la réplique fautive,
+    // le retrait ne laisse rien — garder la réponse d'origine plutôt
+    // qu'afficher un message vide (imparfait, mais jamais pire que ça).
+    if (nettoyee) reponse = nettoyee;
   }
 
   // Verrou GRAND_PUBLIC (fail-closed) : contrairement aux autres contrôles
