@@ -42,6 +42,19 @@ export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataU
   });
 }
 
+/** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR
+ * dans images.ts) — pour un nettoyage manuel, ex. une fiche dupliquée, sans
+ * attendre de vider toute l'histoire (supprimerAvatarsHistoire). */
+export async function supprimerAvatarPnj(storyId: string, pnjId: string): Promise<void> {
+  const db = await ouvrirDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MAGASIN, 'readwrite');
+    tx.objectStore(MAGASIN).delete(cle(storyId, pnjId));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function supprimerAvatarsHistoire(storyId: string): Promise<void> {
   const db = await ouvrirDB();
   return new Promise((resolve, reject) => {

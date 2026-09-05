@@ -154,21 +154,20 @@ export async function mettreAJourLoreEmergent({
 
     return entrees;
   } catch {
-    // Échec de la déduplication par embeddings (ex. aucun fournisseur
-    // disponible) : on garde les candidats comme provisoires plutôt que de
-    // perdre l'observation, sans les fusionner avec l'existant.
-    return [
-      ...existants,
-      ...candidats.map((c) => ({
-        id: idEntree(),
-        categorie: c.categorie,
-        titre: c.titre,
-        contenu: c.contenu,
-        statut: 'provisoire' as const,
-        premiereMention: messages.length,
-        dernierAcces: messages.length,
-      })),
-    ];
+    // Échec de l'appel d'embeddings servant à la déduplication (réseau,
+    // quota dépassé — plusieurs appels partent souvent en même temps à
+    // l'ouverture d'une histoire : sélection de lore, génération des
+    // avatars... — d'où un risque de collision plus élevé à ce moment-là).
+    // On NE crée PAS les candidats à l'aveugle : sans embeddings pour les
+    // comparer aux fiches existantes, impossible de savoir si un candidat
+    // est un PNJ déjà connu ou réellement nouveau. Les ajouter quand même
+    // créerait une fiche en double (un nouvel id) pour un PNJ déjà établi
+    // à chaque fois que cet appel échoue — constaté en usage réel : PNJ
+    // dupliqués avec un nouvel avatar généré à chaque réouverture, l'ancien
+    // jamais nettoyé. Mieux vaut perdre cette observation (retentée
+    // naturellement au prochain tour, depuisIndex n'avance pas) que de
+    // corrompre le lore avec des doublons.
+    return existants;
   }
 }
 

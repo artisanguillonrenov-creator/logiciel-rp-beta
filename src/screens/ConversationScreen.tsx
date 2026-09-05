@@ -39,7 +39,7 @@ import {
   pnjMentionneDansTexte,
   ID_AVATAR_JOUEUR,
 } from '../engine/images';
-import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
+import { obtenirAvatarPnj, supprimerAvatarPnj } from '../storage/pnjAvatarsStore';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
@@ -518,6 +518,21 @@ export default function ConversationScreen({ route, navigation }: Props) {
     [story, appSettings, avatarsPnjEnCours]
   );
 
+  // Suppression manuelle d'un portrait (PNJ) — utile pour nettoyer une
+  // fiche dupliquée (voir le correctif emergentLore.ts) ou simplement un
+  // portrait qui ne convient pas, sans devoir régénérer immédiatement.
+  const supprimerAvatarPourPnj = useCallback(
+    async (pnj: EntreeLoreEmergent) => {
+      if (!story) return;
+      await supprimerAvatarPnj(story.meta.id, pnj.id);
+      setAvatarsPnj((prev) => {
+        const { [pnj.id]: _retire, ...reste } = prev;
+        return reste;
+      });
+    },
+    [story]
+  );
+
   // Même principe que l'effet PNJ ci-dessus, mais pour le portrait du joueur
   // (un seul, pas de liste) — charge le cache, puis génère automatiquement
   // si la génération d'images est activée.
@@ -561,6 +576,12 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setAvatarJoueurEnCours(false);
     }
   }, [story, appSettings, avatarJoueurEnCours]);
+
+  const supprimerLAvatarJoueur = useCallback(async () => {
+    if (!story) return;
+    await supprimerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
+    setAvatarJoueur(null);
+  }, [story]);
 
   const togglerEpingle = useCallback(
     async (id: string) => {
@@ -1000,6 +1021,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     texteStyle={styles.texteBoutonPortraitPnj}
                   />
                 )}
+                {avatarJoueur && appSettings?.genererImagesActive && (
+                  <Bouton
+                    titre={t('Supprimer')}
+                    variante="secondaire"
+                    onPress={supprimerLAvatarJoueur}
+                    desactive={avatarJoueurEnCours}
+                    style={styles.boutonPortraitPnj}
+                    texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
+                  />
+                )}
               </View>
             </View>
 
@@ -1035,6 +1066,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         desactive={!!avatarsPnjEnCours[pnj.id]}
                         style={styles.boutonPortraitPnj}
                         texteStyle={styles.texteBoutonPortraitPnj}
+                      />
+                    )}
+                    {avatarsPnj[pnj.id] && appSettings?.genererImagesActive && (
+                      <Bouton
+                        titre={t('Supprimer')}
+                        variante="secondaire"
+                        onPress={() => supprimerAvatarPourPnj(pnj)}
+                        desactive={!!avatarsPnjEnCours[pnj.id]}
+                        style={styles.boutonPortraitPnj}
+                        texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
                       />
                     )}
                   </View>

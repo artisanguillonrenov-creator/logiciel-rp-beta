@@ -33,6 +33,14 @@ export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataU
   fichier.write(extraireBase64(dataUrl), { encoding: 'base64' });
 }
 
+/** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR
+ * dans images.ts) — pour un nettoyage manuel, ex. une fiche dupliquée, sans
+ * attendre de vider toute l'histoire (supprimerAvatarsHistoire). */
+export async function supprimerAvatarPnj(storyId: string, pnjId: string): Promise<void> {
+  const fichier = new File(Paths.document, DOSSIER_AVATARS, nomFichier(storyId, pnjId));
+  if (fichier.exists) fichier.delete();
+}
+
 export async function supprimerAvatarsHistoire(storyId: string): Promise<void> {
   const dossier = new Directory(Paths.document, DOSSIER_AVATARS);
   if (!dossier.exists) return;
