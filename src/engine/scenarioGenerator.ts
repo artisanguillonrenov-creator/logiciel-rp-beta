@@ -1,5 +1,5 @@
 import type { AppSettings } from '../types';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 import { ErreurProfilContenu, INSTRUCTION_REGISTRE_GRAND_PUBLIC, validerProfilContenuHeuristique } from './contenuAdulte';
 
 export interface ParametresGenerationScenario {
@@ -53,9 +53,7 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
     p.appSettings.profilContenu === 'grand_public' ? `\n\n${INSTRUCTION_REGISTRE_GRAND_PUBLIC}` : '';
 
   const contenu = await appellerModele({
-    apiKey: p.appSettings.openRouterApiKey,
-    model: p.appSettings.model,
-    moteurInference: p.appSettings.moteurInference,
+    ...configurationLLM(p.appSettings),
     temperature: 0.9,
     maxTokens: 280,
     messages: [

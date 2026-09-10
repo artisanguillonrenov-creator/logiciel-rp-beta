@@ -1,5 +1,5 @@
 import type { AppSettings, Fact, FactType, MemoryState, Message, NiveauMemoire } from '../types';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 import { obtenirEmbeddings, similariteCosinus } from './embeddings';
 
 // Cadence de régénération de la mémoire (brief bêta section 3, conservée en
@@ -98,9 +98,7 @@ async function extraireCandidats({
 
   try {
     const sortie = await appellerModele({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 600,
       messages: [

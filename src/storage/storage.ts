@@ -45,6 +45,9 @@ const KEYS = {
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
+  // Migration des réglages antérieurs : l'absence de fournisseur conserve
+  // strictement le comportement réseau historique.
+  moteurInference: 'openrouter',
   // Grand public par défaut (fail-safe) : sans ce champ, tout le filtrage de
   // contenu (validerEntreeUtilisateur, validerProfilContenuHeuristique,
   // plafonnerCurseurs...) traite l'absence de choix comme équivalente à

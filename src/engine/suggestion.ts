@@ -1,5 +1,5 @@
 import type { AppSettings, StoryState } from '../types';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 import { libelleRomance, libelleViolence } from './promptBuilder';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, plafonnerCurseurs } from './contenuAdulte';
 
@@ -39,9 +39,7 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
       : `Registre établi pour cette histoire — violence : ${libelleViolence(settings.violence)} ; romance : ${libelleRomance(settings.romance)}. Tu peux être aussi direct et explicite que le reste de la conversation si la scène l'appelle, sans jamais t'interrompre en cours de phrase.`;
 
   const contenu = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings),
     temperature: 0.8,
     // Le format est déjà contraint par la consigne (1-2 phrases, un seul
     // personnage) — cette marge sert seulement à ne jamais couper une

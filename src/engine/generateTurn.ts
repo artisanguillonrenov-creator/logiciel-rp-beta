@@ -16,7 +16,7 @@ import {
   NB_MESSAGES_RECENTS,
   type ContexteConstruction,
 } from './promptBuilder';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 import { obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
@@ -361,14 +361,12 @@ export async function genererTour(
   // Réglages de prompt avancés (réglages concepteur) : override par
   // histoire du modèle/de la température, sinon les valeurs globales
   // habituelles.
-  const modelePourAppel = story.meta.modeleOverride?.trim() || appSettings.model;
+  const modelePourAppel = story.meta.modeleOverride?.trim() || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
 
   let reponse = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: modelePourAppel,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase),
     temperature,
     maxTokens,
@@ -377,9 +375,7 @@ export async function genererTour(
   const heuristique = validerAgentiviteHeuristique(reponse, story.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const llm = await validerReponseLLM({
-    apiKey: appSettings.openRouterApiKey,
-    model: modelePourAppel,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings, modelePourAppel),
     reponse,
     faits: ctxBase.faits,
     meta: story.meta,
@@ -406,9 +402,7 @@ export async function genererTour(
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
     try {
       reponse = await reparerReponse({
-        apiKey: appSettings.openRouterApiKey,
-        model: modelePourAppel,
-        moteurInference: appSettings.moteurInference,
+        ...configurationLLM(appSettings, modelePourAppel),
         reponse,
         rapport,
         partiel: strategie === 'regeneration_partielle',
@@ -423,9 +417,7 @@ export async function genererTour(
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     try {
       reponse = await appellerModele({
-        apiKey: appSettings.openRouterApiKey,
-        model: modelePourAppel,
-        moteurInference: appSettings.moteurInference,
+        ...configurationLLM(appSettings, modelePourAppel),
         messages: construireMessages({ ...ctxBase, noteCorrection }),
         temperature,
         maxTokens,

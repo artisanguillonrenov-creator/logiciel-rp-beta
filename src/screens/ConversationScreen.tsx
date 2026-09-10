@@ -249,7 +249,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey;
+  const clefManquante = appSettings && appSettings.moteurInference !== 'local' &&
+    !(appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
   const envoyer = useCallback(async (texteOverride?: string) => {
@@ -271,8 +272,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey) {
-      setErreur('Configure ta clé API OpenRouter dans Réglages avant de commencer.');
+    const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
+    const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
+    if (appSettings.moteurInference !== 'local' && !cleApi) {
+      setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
       return;
     }
     if (!appSettings.profilContenu) {

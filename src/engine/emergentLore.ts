@@ -1,6 +1,6 @@
 import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message } from '../types';
 import type { ElyndorEntryChargee } from './loreLoader';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 import { obtenirEmbeddings, similariteCosinus } from './embeddings';
 
 const CATEGORIES: CategorieLoreEmergent[] = ['pnj', 'objet', 'lieu', 'faction', 'evenement'];
@@ -31,9 +31,7 @@ async function extraireCandidats(
 
   try {
     const sortie = await appellerModele({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
       messages: [
