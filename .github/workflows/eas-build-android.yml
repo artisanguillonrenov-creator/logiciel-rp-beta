@@ -1,6 +1,16 @@
 name: Build Android APK (EAS)
 
 on:
+  push:
+    branches:
+      - claude/new-session-glwy6e
+    paths:
+      - app.json
+      - eas.json
+      - package.json
+      - package-lock.json
+      - plugins/**
+      - .github/workflows/eas-build-android.yml
   workflow_dispatch:
 
 jobs:
