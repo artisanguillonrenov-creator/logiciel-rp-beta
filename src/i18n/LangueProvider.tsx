@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { fusionnerCatalogueTraduction, getCatalogueTraduction, getSettings, saveSettings } from '../storage/storage';
 import { traduireLot } from './traduction';
 import type { AppSettings } from '../types';
+import { configurationLLM } from '../engine/llmProvider';
 
 export interface LangueOption {
   code: string;
@@ -87,7 +88,7 @@ export function LangueProvider({ children }: { children: React.ReactNode }) {
       const lot = Array.from(pendingRef.current);
       pendingRef.current.clear();
       if (!settings || langueCourante === 'fr' || lot.length === 0) return;
-      if (!settings.openRouterApiKey && settings.moteurInference !== 'local') return;
+      if (!configurationLLM(settings).apiKey && settings.moteurInference !== 'local') return;
       const libelleLangue = LANGUES_SUGGEREES.find((l) => l.code === langueCourante)?.label ?? langueCourante;
       const traductions = await traduireLot(lot, libelleLangue, settings).catch(() => lot);
       const ajout: Record<string, string> = {};

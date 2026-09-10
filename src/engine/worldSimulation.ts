@@ -6,7 +6,7 @@ import type {
   NiveauActivite,
   ZoneMonde,
 } from '../types';
-import { appellerModeleAvecOutils, type AppelOutil } from './openrouter';
+import { configurationLLM, appellerModeleAvecOutils, type AppelOutil } from './openrouter';
 import { outilsPourComposant, validerEtReparerArguments } from './tools';
 
 // Mêmes paliers d'écart (en nombre de messages depuis le dernier accès)
@@ -58,9 +58,7 @@ async function extraireAppelsMonde(
 
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
       outils: outilsPourComposant('monde'),

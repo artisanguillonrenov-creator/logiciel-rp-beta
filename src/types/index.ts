@@ -54,6 +54,8 @@ export interface StoryMeta {
   // par histoire des paramètres normalement fixés globalement dans
   // Réglages. Optionnels, ignorés tant qu'absents.
   modeleOverride?: string;
+  // Absent sur les anciennes histoires : leur override est OpenRouter-only.
+  modeleOverrideFournisseur?: 'openrouter' | 'infermatic';
   temperatureOverride?: number;
   // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
   // affiché à la place de personnageNom quand présent.
@@ -303,11 +305,14 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // reste le mode par défaut, 'local' bascule sur expo-litert-lm — voir
 // src/engine/localInference.ts et src/storage/modeleLocalStore.ts.
 // Natif uniquement : jamais proposé/activable sur le build web.
-export type MoteurInference = 'openrouter' | 'local';
+export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local';
+export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
+  infermaticApiKey?: string;
+  infermaticModel?: string;
   // undefined (ou 'openrouter') = comportement historique. Voir MoteurInference.
   moteurInference?: MoteurInference;
   // Clé de secours pour les embeddings (recherche sémantique du lore) si

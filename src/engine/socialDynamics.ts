@@ -1,5 +1,5 @@
 import type { AppSettings, Engagement, Message, RelationPersonnage, SocialState, TypeEngagement } from '../types';
-import { appellerModeleAvecOutils, type AppelOutil } from './openrouter';
+import { configurationLLM, appellerModeleAvecOutils, type AppelOutil } from './openrouter';
 import { outilsPourComposant, validerEtReparerArguments } from './tools';
 
 const BORNE = 3;
@@ -53,9 +53,7 @@ async function extraireAppelsSocial(
 
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
       outils: outilsPourComposant('social'),

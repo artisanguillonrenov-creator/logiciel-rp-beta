@@ -1,5 +1,5 @@
 import type { AppSettings } from '../types';
-import { appellerModele } from '../engine/openrouter';
+import { configurationLLM, appellerModele } from '../engine/openrouter';
 
 // Traduction de l'interface et de la conversation (sélecteur de langue) :
 // le moteur narratif raisonne et écrit toujours en français en interne
@@ -28,9 +28,7 @@ export async function traduireLot(textes: string[], langueCible: string, appSett
   if (textes.length === 0) return [];
   try {
     const contenu = await appellerModele({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: Math.min(4000, Math.max(400, textes.join(' ').length * 3)),
       messages: [

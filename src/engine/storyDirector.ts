@@ -1,5 +1,5 @@
 import type { AppSettings, BeatNarratif, DirecteurState, Message, NiveauTension } from '../types';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
 
 const NIVEAUX_TENSION: NiveauTension[] = ['calme', 'montante', 'climax', 'retombee'];
 
@@ -33,9 +33,7 @@ async function analyserDirecteur(
 
   try {
     const sortie = await appellerModele({
-      apiKey: appSettings.openRouterApiKey,
-      model: appSettings.model,
-      moteurInference: appSettings.moteurInference,
+      ...configurationLLM(appSettings),
       temperature: 0.3,
       maxTokens: 400,
       messages: [

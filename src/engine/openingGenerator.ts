@@ -1,7 +1,8 @@
 import type { AppSettings, Message, StoryState } from '../types';
 import { calculerSelectionLore, construireCtxBase } from './generateTurn';
 import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite } from './promptBuilder';
-import { appellerModele } from './openrouter';
+import { configurationLLM, appellerModele } from './openrouter';
+import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
 
 function genererId(): string {
@@ -41,14 +42,16 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
 
   const ctxBase = construireCtxBase(story, INSTRUCTION_OUVERTURE, appSettings, selection);
 
-  const modelePourAppel = story.meta.modeleOverride?.trim() || appSettings.model;
+  const modelePourAppel = modeleOverridePourFournisseur(
+    appSettings,
+    story.meta.modeleOverride,
+    story.meta.modeleOverrideFournisseur,
+  ) || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
 
   const contenu = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: modelePourAppel,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase),
     temperature,
     maxTokens,

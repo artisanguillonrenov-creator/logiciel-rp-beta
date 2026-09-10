@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
+import { listerModelesDistants } from '../engine/llmProvider';
 import { verifierMiseAJour } from '../engine/updater';
 import {
   importerModeleLocal,
@@ -29,6 +30,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const { t } = useLangue();
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [infermaticApiKey, setInfermaticApiKey] = useState('');
+  const [infermaticModel, setInfermaticModel] = useState('');
   const [embeddingsApiKey, setEmbeddingsApiKey] = useState('');
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -48,6 +51,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const [rechercheModele, setRechercheModele] = useState('');
   const [chargementModeles, setChargementModeles] = useState(false);
   const [erreurModeles, setErreurModeles] = useState('');
+  const [fournisseurCatalogue, setFournisseurCatalogue] = useState<'openrouter' | 'infermatic'>('openrouter');
+  const requeteCatalogueRef = useRef(0);
 
   // Auto-updater "esprit" (brief Phase 2, distribution) : vérification à la
   // demande, pas de mise à jour automatique en arrière-plan.
@@ -71,6 +76,8 @@ export default function SettingsScreen({ navigation }: Props) {
     getSettings().then((settings: AppSettings) => {
       setApiKey(settings.openRouterApiKey);
       setModel(settings.model);
+      setInfermaticApiKey(settings.infermaticApiKey ?? '');
+      setInfermaticModel(settings.infermaticModel ?? '');
       setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
@@ -171,25 +178,34 @@ export default function SettingsScreen({ navigation }: Props) {
     }
   }
 
-  function ouvrirSelecteurModeles() {
+  function ouvrirSelecteurModeles(fournisseur: 'openrouter' | 'infermatic') {
+    const requeteId = ++requeteCatalogueRef.current;
+    setFournisseurCatalogue(fournisseur);
     setModalOuvert(true);
-    if (modeles.length === 0) {
-      setChargementModeles(true);
-      setErreurModeles('');
-      listerModeles()
-        .then(setModeles)
-        .catch(() => setErreurModeles(t('Liste indisponible pour le moment. Tu peux saisir un identifiant de modèle manuellement.')))
-        .finally(() => setChargementModeles(false));
-    }
+    setModeles([]);
+    setChargementModeles(true);
+    setErreurModeles('');
+    (fournisseur === 'infermatic' ? listerModelesDistants('infermatic', infermaticApiKey.trim()) : listerModeles())
+      .then((liste) => { if (requeteCatalogueRef.current === requeteId) setModeles(liste); })
+      .catch((e) => {
+        if (requeteCatalogueRef.current === requeteId) {
+          setErreurModeles(e instanceof Error ? e.message : t('Liste indisponible pour le moment.'));
+        }
+      })
+      .finally(() => { if (requeteCatalogueRef.current === requeteId) setChargementModeles(false); });
   }
 
   async function enregistrer() {
     setEnregistrement(true);
     setMessageStatut('');
     try {
+      const settingsActuelles = await getSettings();
       await saveSettings({
+        ...settingsActuelles,
         openRouterApiKey: apiKey.trim(),
         model: model.trim(),
+        infermaticApiKey: infermaticApiKey.trim() || undefined,
+        infermaticModel: infermaticModel.trim() || undefined,
         embeddingsApiKey: embeddingsApiKey.trim() || undefined,
         profilContenu,
         codeDeverrouillage,
@@ -250,7 +266,31 @@ export default function SettingsScreen({ navigation }: Props) {
         autoCorrect={false}
         conteneurStyle={styles.champConteneur}
       />
-      <Bouton titre={t('Choisir parmi les modèles OpenRouter')} variante="secondaire" onPress={ouvrirSelecteurModeles} style={styles.boutonAction} />
+      <Bouton titre={t('Choisir parmi les modèles OpenRouter')} variante="secondaire" onPress={() => ouvrirSelecteurModeles('openrouter')} style={styles.boutonAction} />
+
+      <Champ
+        label={t('Clé API Infermatic')}
+        value={infermaticApiKey}
+        onChangeText={setInfermaticApiKey}
+        placeholder="Clé Infermatic"
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+        conteneurStyle={styles.champConteneur}
+      />
+      <Text style={styles.aide}>
+        {t("Cette clé reste sur cet appareil et n'est envoyée qu'à Infermatic lorsque ce fournisseur est sélectionné.")}
+      </Text>
+      <Champ
+        label={t('Modèle Infermatic')}
+        value={infermaticModel}
+        onChangeText={setInfermaticModel}
+        placeholder={t('Sélectionne un modèle retourné par Infermatic')}
+        autoCapitalize="none"
+        autoCorrect={false}
+        conteneurStyle={styles.champConteneur}
+      />
+      <Bouton titre={t('Choisir parmi les modèles Infermatic')} variante="secondaire" onPress={() => ouvrirSelecteurModeles('infermatic')} style={styles.boutonAction} />
 
       <Champ
         label={t('Clé API embeddings (secours, optionnelle)')}
@@ -264,29 +304,36 @@ export default function SettingsScreen({ navigation }: Props) {
       />
       <Text style={styles.aide}>
         {t(
-          "La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en secours pour cette fonction.",
+          "Recherche sémantique : OpenRouter utilise ses embeddings puis cette clé OpenAI en secours ; Infermatic utilise ses propres embeddings. La génération d’images reste toujours OpenRouter-only.",
         )}
       </Text>
 
-      {Platform.OS !== 'web' && (
-        <>
+      <>
           <Text style={styles.label}>{t("Moteur d'inférence")}</Text>
           <View style={styles.rangeeMoteur}>
             <Pressable
-              style={[styles.optionMoteur, moteurInference !== 'local' && styles.optionMoteurActive]}
+              style={[styles.optionMoteur, moteurInference === 'openrouter' && styles.optionMoteurActive]}
               onPress={() => setMoteurInference('openrouter')}
             >
               <Text style={styles.texteOptionMoteur}>OpenRouter</Text>
             </Pressable>
+            <Pressable
+              style={[styles.optionMoteur, moteurInference === 'infermatic' && styles.optionMoteurActive]}
+              onPress={() => { setMoteurInference('infermatic'); setModeles([]); }}
+            >
+              <Text style={styles.texteOptionMoteur}>Infermatic</Text>
+            </Pressable>
+            {Platform.OS !== 'web' && (
             <Pressable
               style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
               onPress={() => setMoteurInference('local')}
             >
               <Text style={styles.texteOptionMoteur}>{t("Local (sur l'appareil)")}</Text>
             </Pressable>
+            )}
           </View>
 
-          {moteurInference === 'local' ? (
+          {Platform.OS !== 'web' && moteurInference === 'local' ? (
             <Panneau style={styles.champConteneur}>
               <Text style={styles.aide}>
                 {t(
@@ -317,7 +364,6 @@ export default function SettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
         </>
-      )}
 
       <Text style={styles.label}>{t('Génération d’images')}</Text>
       <View style={styles.rangeeMoteur}>
@@ -406,7 +452,7 @@ export default function SettingsScreen({ navigation }: Props) {
 
       <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
         <View style={styles.modalContainer}>
-          <Text style={styles.titre}>{t('Modèles OpenRouter')}</Text>
+          <Text style={styles.titre}>{fournisseurCatalogue === 'infermatic' ? t('Modèles Infermatic') : t('Modèles OpenRouter')}</Text>
           <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder={t('Rechercher…')} conteneurStyle={styles.champConteneur} />
           {chargementModeles ? (
             <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
@@ -421,7 +467,8 @@ export default function SettingsScreen({ navigation }: Props) {
                 <Pressable
                   style={styles.ligneModele}
                   onPress={() => {
-                    setModel(item.id);
+                    if (fournisseurCatalogue === 'infermatic') setInfermaticModel(item.id);
+                    else setModel(item.id);
                     setModalOuvert(false);
                   }}
                 >

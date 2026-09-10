@@ -109,6 +109,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [erreur, setErreur] = useState('');
   const [messageStatut, setMessageStatut] = useState('');
   const [debugLore, setDebugLore] = useState<DebugLore | null>(null);
+  const debugLoreMessageIdRef = useRef<string | null>(null);
   const [debugOuvert, setDebugOuvert] = useState(false);
   const listeRef = useRef<FlatList<Message>>(null);
 
@@ -242,14 +243,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!story || !appSettings) return;
     const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
-    if (dernierMessageJoueur) {
+    if (dernierMessageJoueur && debugLoreMessageIdRef.current !== dernierMessageJoueur.id) {
       calculerDebugLore(story, dernierMessageJoueur.content, appSettings)
-        .then(setDebugLore)
+        .then((debug) => {
+          debugLoreMessageIdRef.current = dernierMessageJoueur.id;
+          setDebugLore(debug);
+        })
         .catch(() => {});
     }
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey;
+  const clefManquante = appSettings && appSettings.moteurInference !== 'local' &&
+    !(appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
   const envoyer = useCallback(async (texteOverride?: string) => {
@@ -271,8 +276,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    if (appSettings.moteurInference !== 'local' && !appSettings.openRouterApiKey) {
-      setErreur('Configure ta clé API OpenRouter dans Réglages avant de commencer.');
+    const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
+    const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
+    if (appSettings.moteurInference !== 'local' && !cleApi) {
+      setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
       return;
     }
     if (!appSettings.profilContenu) {
@@ -295,12 +302,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setSaisie('');
     const reponseAId = messageEnReponseA?.id;
     setMessageEnReponseA(null);
-    // TODO(debug): calculée en parallèle de l'appel API pour rester visible
-    // même si la génération échoue ensuite (non bloquant : meilleur effort).
-    calculerDebugLore(story, texte, appSettings).then(setDebugLore).catch(() => {});
     try {
       const { story: storyMaj, debugLore: debugMaj } = await genererTour(story, appSettings, texte, reponseAId);
       setStory(storyMaj);
+      debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
       try {
         await saveStory(storyMaj);
@@ -337,6 +342,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     try {
       const { story: storyMaj, debugLore: debugMaj } = await regenererDernierTour(story, appSettings);
       setStory(storyMaj);
+      debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
       try {
         await saveStory(storyMaj);
@@ -744,6 +750,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
       meta: {
         ...story.meta,
         modeleOverride: modeleOverrideEdit.trim() || undefined,
+        modeleOverrideFournisseur: modeleOverrideEdit.trim()
+          ? (appSettings?.moteurInference === 'infermatic' ? 'infermatic' : 'openrouter')
+          : undefined,
         temperatureOverride: temperature !== undefined && !Number.isNaN(temperature) ? temperature : undefined,
       },
     };

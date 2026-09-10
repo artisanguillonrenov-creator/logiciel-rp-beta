@@ -1,6 +1,6 @@
 import { Image } from 'react-native';
 import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
-import { appellerModele, ErreurOpenRouter } from './openrouter';
+import { configurationLLM, appellerModele, ErreurOpenRouter } from './openrouter';
 import { calculerSelectionLore } from './generateTurn';
 import { obtenirAvatarPnj, enregistrerAvatarPnj } from '../storage/pnjAvatarsStore';
 import { obtenirPortrait } from '../data/portraits';
@@ -139,9 +139,7 @@ async function genererPromptImageViaModele(story: StoryState, appSettings: AppSe
     .join('\n\n');
 
   const sortie = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 350,
     raisonnement: false,
@@ -312,9 +310,7 @@ async function genererPromptAvatarPnjViaModele(story: StoryState, pnj: EntreeLor
   const contexte = [`[PNJ À PORTRAITURER]\n${pnj.titre} : ${pnj.contenu}`, blocLore, blocMentions].filter(Boolean).join('\n\n');
 
   const sortie = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 300,
     raisonnement: false,
@@ -401,9 +397,7 @@ async function genererPromptAvatarJoueurViaModele(story: StoryState, appSettings
     .join('\n\n');
 
   const sortie = await appellerModele({
-    apiKey: appSettings.openRouterApiKey,
-    model: appSettings.model,
-    moteurInference: appSettings.moteurInference,
+    ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 300,
     raisonnement: false,
