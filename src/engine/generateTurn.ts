@@ -17,7 +17,8 @@ import {
   type ContexteConstruction,
 } from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
-import { obtenirEmbeddings } from './embeddings';
+import { modeleOverridePourFournisseur } from './llmProvider';
+import { embeddingsDisponibles, obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
@@ -144,7 +145,7 @@ export async function calculerSelectionLore(
   // mode local, entièrement hors-ligne — on ne tente même pas l'appel : on
   // continue sans lore ni historique retrouvés plutôt que de faire
   // échouer tout le tour pour un enrichissement optionnel.
-  if (!appSettings.openRouterApiKey && !appSettings.embeddingsApiKey) {
+  if (!embeddingsDisponibles(appSettings)) {
     return {
       metamoteursSelectionnes: [],
       loreElyndor: [],
@@ -361,7 +362,11 @@ export async function genererTour(
   // Réglages de prompt avancés (réglages concepteur) : override par
   // histoire du modèle/de la température, sinon les valeurs globales
   // habituelles.
-  const modelePourAppel = story.meta.modeleOverride?.trim() || configurationLLM(appSettings).model;
+  const modelePourAppel = modeleOverridePourFournisseur(
+    appSettings,
+    story.meta.modeleOverride,
+    story.meta.modeleOverrideFournisseur,
+  ) || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
 

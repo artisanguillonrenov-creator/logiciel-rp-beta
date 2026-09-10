@@ -1,4 +1,6 @@
 import type { AppSettings, FournisseurLLM } from '../types';
+import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson.ts';
+import type { ToolDefinition } from './openrouter';
 
 export const URLS_FOURNISSEURS = {
   openrouter: 'https://openrouter.ai/api/v1',
@@ -21,6 +23,19 @@ export function configurationLLM(settings: AppSettings, modeleOverride?: string)
     };
   }
   return { apiKey: settings.openRouterApiKey, model: modeleOverride || settings.model, moteurInference };
+}
+
+export function modeleOverridePourFournisseur(
+  settings: AppSettings,
+  modeleOverride?: string,
+  fournisseurOverride?: 'openrouter' | 'infermatic',
+): string | undefined {
+  if (!modeleOverride?.trim()) return undefined;
+  const fournisseurActuel = normaliserFournisseur(settings.moteurInference);
+  // Migration sûre : tout override historique non étiqueté appartenait à
+  // OpenRouter et ne doit pas devenir fortuitement un ID Infermatic.
+  const proprietaire = fournisseurOverride ?? 'openrouter';
+  return fournisseurActuel === proprietaire ? modeleOverride.trim() : undefined;
 }
 
 export class ErreurFournisseurLLM extends Error {
@@ -125,6 +140,33 @@ export function parserAppelsOutils(message: any): AppelOutilDistant[] {
     appels.push({ nom: appel.function.name, arguments: args as Record<string, unknown> });
   }
   return appels;
+}
+
+export async function appelerChatDistantAvecOutils(
+  options: RequeteChatDistante,
+  outils: ToolDefinition[],
+  schemas: unknown[],
+): Promise<{ contenu: string; appelsOutils: AppelOutilDistant[] }> {
+  let data: any;
+  try {
+    data = await appelerChatDistant({ ...options, tools: schemas });
+  } catch (erreur) {
+    const repliAutorise = options.fournisseur === 'infermatic' && erreur instanceof ErreurFournisseurLLM &&
+      (erreur.statut === 400 || erreur.statut === 422);
+    if (!repliAutorise) throw erreur;
+    data = await appelerChatDistant({
+      ...options,
+      messages: ajouterInstructionsOutilsJson(options.messages as any, outils),
+      tools: undefined,
+    });
+    const brut = data?.choices?.[0]?.message?.content;
+    return extraireAppelsOutilsJson(typeof brut === 'string' ? brut : '');
+  }
+  const message = data?.choices?.[0]?.message;
+  return {
+    contenu: typeof message?.content === 'string' ? message.content : '',
+    appelsOutils: parserAppelsOutils(message),
+  };
 }
 
 export async function listerModelesDistants(

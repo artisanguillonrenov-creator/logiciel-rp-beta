@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -52,6 +52,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [chargementModeles, setChargementModeles] = useState(false);
   const [erreurModeles, setErreurModeles] = useState('');
   const [fournisseurCatalogue, setFournisseurCatalogue] = useState<'openrouter' | 'infermatic'>('openrouter');
+  const requeteCatalogueRef = useRef(0);
 
   // Auto-updater "esprit" (brief Phase 2, distribution) : vérification à la
   // demande, pas de mise à jour automatique en arrière-plan.
@@ -178,15 +179,20 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   function ouvrirSelecteurModeles(fournisseur: 'openrouter' | 'infermatic') {
+    const requeteId = ++requeteCatalogueRef.current;
     setFournisseurCatalogue(fournisseur);
     setModalOuvert(true);
     setModeles([]);
     setChargementModeles(true);
     setErreurModeles('');
     (fournisseur === 'infermatic' ? listerModelesDistants('infermatic', infermaticApiKey.trim()) : listerModeles())
-      .then(setModeles)
-      .catch((e) => setErreurModeles(e instanceof Error ? e.message : t('Liste indisponible pour le moment.')))
-      .finally(() => setChargementModeles(false));
+      .then((liste) => { if (requeteCatalogueRef.current === requeteId) setModeles(liste); })
+      .catch((e) => {
+        if (requeteCatalogueRef.current === requeteId) {
+          setErreurModeles(e instanceof Error ? e.message : t('Liste indisponible pour le moment.'));
+        }
+      })
+      .finally(() => { if (requeteCatalogueRef.current === requeteId) setChargementModeles(false); });
   }
 
   async function enregistrer() {

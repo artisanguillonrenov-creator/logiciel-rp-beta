@@ -6,6 +6,7 @@ import {
 } from 'expo-litert-lm';
 import { cheminModeleLocal } from '../storage/modeleLocalStore';
 import type { AppelOutil, ChatMessage, ToolDefinition } from './openrouter';
+import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 
 // Moteur local (expo-litert-lm, natif uniquement — voir localInference.web.ts
 // pour le web, jamais bundlé ensemble grâce à la résolution de plateforme de
@@ -144,46 +145,6 @@ export async function genererTexteLocal(messages: ChatMessage[]): Promise<string
   return nettoyee;
 }
 
-function formaterInstructionsOutils(outils: ToolDefinition[]): string {
-  const liste = outils
-    .map((o) => {
-      const params = Object.entries(o.parametres)
-        .map(([nom, def]) => {
-          const optionnel = o.requis.includes(nom) ? '' : '?';
-          const enumTxt = def.enum ? ` parmi (${def.enum.join('|')})` : '';
-          return `${nom}${optionnel}: ${def.type}${enumTxt}`;
-        })
-        .join(', ');
-      return `- ${o.nom}(${params}) — ${o.description}`;
-    })
-    .join('\n');
-
-  return `Outils disponibles :\n${liste}\n\nSi un ou plusieurs outils doivent être appelés, termine ta réponse par un bloc JSON strict, seul sur sa dernière ligne, de cette forme exacte :\n{"appels": [{"outil": "nom_outil", "arguments": {...}}]}\nSi aucun outil n'est nécessaire, n'ajoute aucun bloc JSON.`;
-}
-
-function extraireAppelsOutils(brut: string): { contenu: string; appelsOutils: AppelOutil[] } {
-  const correspondance = brut.match(/\{[\s\S]*"appels"[\s\S]*\}\s*$/);
-  if (!correspondance || correspondance.index === undefined) {
-    return { contenu: brut, appelsOutils: [] };
-  }
-
-  const contenu = brut.slice(0, correspondance.index).trim();
-  try {
-    const parsed = JSON.parse(correspondance[0]);
-    const appelsBruts: unknown[] = Array.isArray(parsed?.appels) ? parsed.appels : [];
-    const appelsOutils: AppelOutil[] = [];
-    for (const a of appelsBruts) {
-      const candidat = a as { outil?: unknown; arguments?: unknown };
-      if (candidat && typeof candidat.outil === 'string' && candidat.arguments && typeof candidat.arguments === 'object') {
-        appelsOutils.push({ nom: candidat.outil, arguments: candidat.arguments as Record<string, unknown> });
-      }
-    }
-    return { contenu, appelsOutils };
-  } catch {
-    return { contenu: brut, appelsOutils: [] };
-  }
-}
-
 /**
  * Fallback JSON-en-prose pour le tool calling en mode local (l'API
  * d'expo-litert-lm ne connaît que du texte, pas de function calling natif).
@@ -195,12 +156,9 @@ export async function appellerModeleLocalAvecOutilsJson(
   messages: ChatMessage[],
   outils: ToolDefinition[],
 ): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
-  const messagesAvecInstructions: ChatMessage[] = [
-    ...messages,
-    { role: 'system', content: formaterInstructionsOutils(outils) },
-  ];
+  const messagesAvecInstructions = ajouterInstructionsOutilsJson(messages, outils);
   const brut = await genererTexteLocal(messagesAvecInstructions);
-  return extraireAppelsOutils(brut);
+  return extraireAppelsOutilsJson(brut);
 }
 
 export async function dechargerModeleLocal(): Promise<void> {

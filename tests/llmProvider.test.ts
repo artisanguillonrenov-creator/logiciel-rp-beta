@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   appelerChatDistant,
+  appelerChatDistantAvecOutils,
+  configurationLLM,
   ErreurFournisseurLLM,
   listerModelesDistants,
   normaliserFournisseur,
+  modeleOverridePourFournisseur,
   parserAppelsOutils,
 } from '../src/engine/llmProvider.ts';
+import { embeddingsDisponibles, identiteEmbeddingsConfiguree, obtenirEmbeddings } from '../src/engine/embeddings.ts';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
@@ -70,4 +74,60 @@ test('les tool_calls valides sont parsés et les arguments invalides ignorés', 
     { type: 'function', function: { name: 'invalide', arguments: '{' } },
   ] });
   assert.deepEqual(appels, [{ nom: 'changer_lieu', arguments: { lieu: 'tour' } }]);
+});
+
+test('Infermatic-only dispose des embeddings nécessaires au lore et aux métamoteurs', async () => {
+  const settings = {
+    openRouterApiKey: '', model: 'ancien', moteurInference: 'infermatic' as const,
+    infermaticApiKey: 'infermatic-only', infermaticModel: 'narrateur',
+  };
+  assert.equal(embeddingsDisponibles(settings), true);
+  let requete: { url: string; body: any; authorization: string } | undefined;
+  globalThis.fetch = async (url, init) => {
+    requete = {
+      url: String(url), body: JSON.parse(String(init?.body)),
+      authorization: (init?.headers as Record<string, string>).Authorization,
+    };
+    return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
+  };
+  const resultat = await obtenirEmbeddings(['quête à Elyndor'], settings);
+  assert.equal(requete?.url, 'https://api.totalgpt.ai/v1/embeddings');
+  assert.equal(requete?.authorization, 'Bearer infermatic-only');
+  assert.equal(requete?.body.model, 'text-embedding-3-small');
+  assert.deepEqual(resultat.vecteurs, [[1, 0]]);
+  assert.equal(resultat.identiteCache, 'infermatic:text-embedding-3-small');
+  assert.notEqual(
+    identiteEmbeddingsConfiguree(settings),
+    identiteEmbeddingsConfiguree({ ...settings, moteurInference: 'openrouter', openRouterApiKey: 'or-key' }),
+  );
+});
+
+test('un rejet de tool_choice Infermatic se replie sur le JSON-en-prose', async () => {
+  let nombreAppels = 0;
+  globalThis.fetch = async (_url, init) => {
+    nombreAppels++;
+    const body = JSON.parse(String(init?.body));
+    if (nombreAppels === 1) {
+      assert.equal(body.tool_choice, 'auto');
+      return Response.json({ error: { message: 'tool_choice unsupported' } }, { status: 400 });
+    }
+    assert.equal(body.tools, undefined);
+    assert.match(body.messages.at(-1).content, /Outils disponibles/);
+    return Response.json({ choices: [{ message: { content: 'Analyse\n{"appels":[{"outil":"changer_lieu","arguments":{"lieu":"tour"}}]}' } }] });
+  };
+  const outils = [{ composant: 'monde', nom: 'changer_lieu', description: 'Change le lieu', parametres: { lieu: { type: 'string' as const } }, requis: ['lieu'] }];
+  const resultat = await appelerChatDistantAvecOutils(
+    { fournisseur: 'infermatic', apiKey: 'k', model: 'm', messages: [], temperature: 0.2, maxTokens: 50 },
+    outils,
+    [{ type: 'function' }],
+  );
+  assert.equal(nombreAppels, 2);
+  assert.deepEqual(resultat.appelsOutils, [{ nom: 'changer_lieu', arguments: { lieu: 'tour' } }]);
+});
+
+test('traduction et overrides résolvent le fournisseur sélectionné sans fuite inter-provider', () => {
+  const infermatic = { openRouterApiKey: '', model: 'or-model', moteurInference: 'infermatic' as const, infermaticApiKey: 'inf-key', infermaticModel: 'inf-model' };
+  assert.deepEqual(configurationLLM(infermatic), { apiKey: 'inf-key', model: 'inf-model', moteurInference: 'infermatic' });
+  assert.equal(modeleOverridePourFournisseur(infermatic, 'ancien-modele-openrouter'), undefined);
+  assert.equal(modeleOverridePourFournisseur(infermatic, 'modele-inf', 'infermatic'), 'modele-inf');
 });

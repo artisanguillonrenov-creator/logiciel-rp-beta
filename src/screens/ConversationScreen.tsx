@@ -747,6 +747,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
       meta: {
         ...story.meta,
         modeleOverride: modeleOverrideEdit.trim() || undefined,
+        modeleOverrideFournisseur: modeleOverrideEdit.trim()
+          ? (appSettings?.moteurInference === 'infermatic' ? 'infermatic' : 'openrouter')
+          : undefined,
         temperatureOverride: temperature !== undefined && !Number.isNaN(temperature) ? temperature : undefined,
       },
     };

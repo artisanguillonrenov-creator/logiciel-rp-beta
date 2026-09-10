@@ -54,6 +54,8 @@ export interface StoryMeta {
   // par histoire des paramètres normalement fixés globalement dans
   // Réglages. Optionnels, ignorés tant qu'absents.
   modeleOverride?: string;
+  // Absent sur les anciennes histoires : leur override est OpenRouter-only.
+  modeleOverrideFournisseur?: 'openrouter' | 'infermatic';
   temperatureOverride?: number;
   // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
   // affiché à la place de personnageNom quand présent.

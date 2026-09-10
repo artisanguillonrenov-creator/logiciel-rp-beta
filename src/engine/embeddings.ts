@@ -8,12 +8,15 @@ const MODELE_OPENROUTER = 'openai/text-embedding-3-small';
 // Modèle de secours si OpenRouter ne sert pas d'embeddings pour ce compte,
 // appelé directement chez OpenAI avec la clé de secours des Réglages.
 const MODELE_OPENAI = 'text-embedding-3-small';
+const MODELE_INFERMATIC = 'text-embedding-3-small';
 
-export type FournisseurEmbeddings = 'openrouter' | 'openai';
+export type FournisseurEmbeddings = 'openrouter' | 'infermatic' | 'openai';
 
 export interface ResultatEmbeddings {
   vecteurs: number[][];
   fournisseur: FournisseurEmbeddings;
+  /** Sépare aussi deux modèles différents servis par le même fournisseur. */
+  identiteCache: string;
 }
 
 async function appellerEndpointEmbeddings(
@@ -76,7 +79,29 @@ export async function obtenirEmbeddings(
   textes: string[],
   appSettings: AppSettings,
 ): Promise<ResultatEmbeddings> {
-  if (textes.length === 0) return { vecteurs: [], fournisseur: 'openrouter' };
+  if (textes.length === 0) return { vecteurs: [], fournisseur: 'openrouter', identiteCache: `openrouter:${MODELE_OPENROUTER}` };
+
+  // En mode Infermatic, une clé dédiée désigne volontairement OpenAI ; sans
+  // elle, la clé Infermatic suffit pour conserver le lore sémantique.
+  if (appSettings.moteurInference === 'infermatic' && appSettings.embeddingsApiKey) {
+    const vecteurs = await appellerEndpointEmbeddings(
+      'https://api.openai.com/v1/embeddings',
+      appSettings.embeddingsApiKey,
+      MODELE_OPENAI,
+      textes,
+    );
+    return { vecteurs, fournisseur: 'openai', identiteCache: `openai:${MODELE_OPENAI}` };
+  }
+
+  if (appSettings.moteurInference === 'infermatic' && appSettings.infermaticApiKey) {
+    const vecteurs = await appellerEndpointEmbeddings(
+      'https://api.totalgpt.ai/v1/embeddings',
+      appSettings.infermaticApiKey,
+      MODELE_INFERMATIC,
+      textes,
+    );
+    return { vecteurs, fournisseur: 'infermatic', identiteCache: `infermatic:${MODELE_INFERMATIC}` };
+  }
 
   if (appSettings.openRouterApiKey) {
     try {
@@ -86,7 +111,7 @@ export async function obtenirEmbeddings(
         MODELE_OPENROUTER,
         textes,
       );
-      return { vecteurs, fournisseur: 'openrouter' };
+      return { vecteurs, fournisseur: 'openrouter', identiteCache: `openrouter:${MODELE_OPENROUTER}` };
     } catch {
       // OpenRouter ne sert peut-être pas d'embeddings pour ce compte —
       // on tente le secours ci-dessous plutôt que d'échouer directement.
@@ -100,12 +125,30 @@ export async function obtenirEmbeddings(
       MODELE_OPENAI,
       textes,
     );
-    return { vecteurs, fournisseur: 'openai' };
+    return { vecteurs, fournisseur: 'openai', identiteCache: `openai:${MODELE_OPENAI}` };
   }
 
   throw new ErreurEmbeddings(
-    "La recherche sémantique du lore n'a pas pu joindre OpenRouter et aucune clé d'embeddings de secours n'est configurée dans Réglages.",
+    "La recherche sémantique du lore n'a trouvé aucune clé d'embeddings utilisable dans Réglages.",
   );
+}
+
+export function embeddingsDisponibles(appSettings: AppSettings): boolean {
+  return Boolean(
+    appSettings.embeddingsApiKey ||
+    appSettings.openRouterApiKey ||
+    (appSettings.moteurInference === 'infermatic' && appSettings.infermaticApiKey),
+  );
+}
+
+export function identiteEmbeddingsConfiguree(appSettings: AppSettings): string | null {
+  if (appSettings.moteurInference === 'infermatic' && appSettings.embeddingsApiKey) return `openai:${MODELE_OPENAI}`;
+  if (appSettings.moteurInference === 'infermatic' && appSettings.infermaticApiKey) {
+    return `infermatic:${MODELE_INFERMATIC}`;
+  }
+  if (appSettings.openRouterApiKey) return `openrouter:${MODELE_OPENROUTER}`;
+  if (appSettings.embeddingsApiKey) return `openai:${MODELE_OPENAI}`;
+  return null;
 }
 
 export function similariteCosinus(a: number[], b: number[]): number {

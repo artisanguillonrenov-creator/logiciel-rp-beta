@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings } from '../types';
-import { obtenirEmbeddings, type FournisseurEmbeddings } from '../engine/embeddings';
+import { identiteEmbeddingsConfiguree, obtenirEmbeddings } from '../engine/embeddings';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -47,9 +47,9 @@ async function chargerIndex(): Promise<string[]> {
   }
 }
 
-async function chargerFournisseur(): Promise<FournisseurEmbeddings | null> {
+async function chargerFournisseur(): Promise<string | null> {
   const raw = await AsyncStorage.getItem(CLEF_FOURNISSEUR);
-  return raw === 'openrouter' || raw === 'openai' ? raw : null;
+  return raw;
 }
 
 // Le cache grossit d'une entrée par ancien message de chaque histoire
@@ -94,7 +94,7 @@ export interface EntreeAEmbeder {
 // vecteurs déjà calculés restent utilisables pour ce tour même si la mise
 // en cache échoue (quota dépassé, stockage indisponible...).
 async function ecrireEntrees(
-  fournisseur: FournisseurEmbeddings,
+  identiteCache: string,
   nouvelles: Record<string, EntreeCache>,
   indexPrecedent: string[],
 ): Promise<void> {
@@ -113,7 +113,7 @@ async function ecrireEntrees(
     if (aEvincer.length > 0) await AsyncStorage.multiRemove(aEvincer.map(cleEntree));
     await AsyncStorage.multiSet([
       [CLEF_INDEX, JSON.stringify(indexFinal)],
-      [CLEF_FOURNISSEUR, fournisseur],
+      [CLEF_FOURNISSEUR, identiteCache],
     ]);
   } catch {
     // Optimisation seulement, voir plus haut.
@@ -135,6 +135,8 @@ export async function assurerEmbeddings(
   const index = await chargerIndex();
   const indexSet = new Set(index);
   const fournisseurCache = await chargerFournisseur();
+  const identiteConfiguree = identiteEmbeddingsConfiguree(appSettings);
+  const cacheCompatible = fournisseurCache === null || fournisseurCache === identiteConfiguree;
   const hashParId = new Map(entrees.map((e) => [e.id, empreinte(e.contenu)]));
 
   const idsPresents = entrees.map((e) => e.id).filter((id) => indexSet.has(id));
@@ -150,6 +152,7 @@ export async function assurerEmbeddings(
   }
 
   const manquants = entrees.filter((e) => {
+    if (!cacheCompatible) return true;
     const existant = existantesParId.get(e.id);
     return !existant || existant.hash !== hashParId.get(e.id);
   });
@@ -161,7 +164,7 @@ export async function assurerEmbeddings(
   const resultat = await obtenirEmbeddings(manquants.map((e) => e.contenu), appSettings);
   const cacheAvaitDejaDesEntrees = index.length > 0;
 
-  if (cacheAvaitDejaDesEntrees && fournisseurCache !== null && fournisseurCache !== resultat.fournisseur) {
+  if (cacheAvaitDejaDesEntrees && fournisseurCache !== null && fournisseurCache !== resultat.identiteCache) {
     // Fournisseur changé : impossible de mélanger les anciens vecteurs avec
     // les nouveaux — on jette tout le cache existant et on recalcule le lot
     // demandé d'un coup.
@@ -171,7 +174,7 @@ export async function assurerEmbeddings(
       nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: tout.vecteurs[i] };
     });
     if (index.length > 0) await AsyncStorage.multiRemove(index.map(cleEntree));
-    await ecrireEntrees(tout.fournisseur, nouvellesEntrees, []);
+    await ecrireEntrees(tout.identiteCache, nouvellesEntrees, []);
     return Object.fromEntries(entrees.map((e) => [e.id, nouvellesEntrees[e.id].vecteur]));
   }
 
@@ -179,7 +182,7 @@ export async function assurerEmbeddings(
   manquants.forEach((e, i) => {
     nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: resultat.vecteurs[i] };
   });
-  await ecrireEntrees(resultat.fournisseur, nouvellesEntrees, index);
+  await ecrireEntrees(resultat.identiteCache, nouvellesEntrees, index);
 
   return Object.fromEntries(
     entrees.map((e) => [e.id, nouvellesEntrees[e.id]?.vecteur ?? existantesParId.get(e.id)!.vecteur]),

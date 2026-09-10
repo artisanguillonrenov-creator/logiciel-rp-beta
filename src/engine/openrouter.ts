@@ -1,6 +1,6 @@
 import type { MoteurInference } from '../types';
 import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
-import { appelerChatDistant, ErreurFournisseurLLM, listerModelesDistants, parserAppelsOutils, type ModeleDistant } from './llmProvider';
+import { appelerChatDistant, appelerChatDistantAvecOutils, ErreurFournisseurLLM, listerModelesDistants, type ModeleDistant } from './llmProvider';
 export { configurationLLM } from './llmProvider';
 
 export interface ChatMessage {
@@ -127,23 +127,11 @@ export async function appellerModeleAvecOutils({
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
-  let data: any;
-  try {
-    data = await appelerChatDistant({
-      fournisseur, apiKey, model, messages, temperature, maxTokens,
-      tools: outils.map(versSchemaOutil),
-    });
-  } catch (erreur) {
-    // Tous les modèles Infermatic ne prennent pas en charge tool_choice=auto.
-    // Pour un sous-moteur technique, une réponse texte sans mutation vaut
-    // mieux que l'échec de toute la conversation. OpenRouter reste inchangé.
-    if (fournisseur !== 'infermatic' || !(erreur instanceof ErreurFournisseurLLM) ||
-        erreur.statut === 401 || erreur.statut === 403 || (erreur.statut !== 400 && erreur.statut !== 422)) throw erreur;
-    data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens });
-  }
-  const message = data?.choices?.[0]?.message;
-  const appelsOutils: AppelOutil[] = parserAppelsOutils(message);
-  return { contenu: typeof message?.content === 'string' ? message.content : '', appelsOutils };
+  return appelerChatDistantAvecOutils(
+    { fournisseur, apiKey, model, messages, temperature, maxTokens },
+    outils,
+    outils.map(versSchemaOutil),
+  );
 }
 
 export type ModeleOpenRouter = ModeleDistant;
