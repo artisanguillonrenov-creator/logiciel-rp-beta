@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings } from '../types';
-import { identiteEmbeddingsConfiguree, obtenirEmbeddings } from '../engine/embeddings';
+import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddings';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -135,8 +135,7 @@ export async function assurerEmbeddings(
   const index = await chargerIndex();
   const indexSet = new Set(index);
   const fournisseurCache = await chargerFournisseur();
-  const identiteConfiguree = identiteEmbeddingsConfiguree(appSettings);
-  const cacheCompatible = fournisseurCache === null || fournisseurCache === identiteConfiguree;
+  const cacheCompatible = cacheEmbeddingsCompatible(fournisseurCache, appSettings);
   const hashParId = new Map(entrees.map((e) => [e.id, empreinte(e.contenu)]));
 
   const idsPresents = entrees.map((e) => e.id).filter((id) => indexSet.has(id));

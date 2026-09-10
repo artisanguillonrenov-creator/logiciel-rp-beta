@@ -10,7 +10,12 @@ import {
   modeleOverridePourFournisseur,
   parserAppelsOutils,
 } from '../src/engine/llmProvider.ts';
-import { embeddingsDisponibles, identiteEmbeddingsConfiguree, obtenirEmbeddings } from '../src/engine/embeddings.ts';
+import {
+  cacheEmbeddingsCompatible,
+  embeddingsDisponibles,
+  identiteEmbeddingsConfiguree,
+  obtenirEmbeddings,
+} from '../src/engine/embeddings.ts';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
@@ -93,13 +98,34 @@ test('Infermatic-only dispose des embeddings nécessaires au lore et aux métamo
   const resultat = await obtenirEmbeddings(['quête à Elyndor'], settings);
   assert.equal(requete?.url, 'https://api.totalgpt.ai/v1/embeddings');
   assert.equal(requete?.authorization, 'Bearer infermatic-only');
-  assert.equal(requete?.body.model, 'text-embedding-3-small');
+  assert.equal(requete?.body.model, 'intfloat-multilingual-e5-base');
   assert.deepEqual(resultat.vecteurs, [[1, 0]]);
-  assert.equal(resultat.identiteCache, 'infermatic:text-embedding-3-small');
+  assert.equal(resultat.identiteCache, 'infermatic:intfloat-multilingual-e5-base');
   assert.notEqual(
     identiteEmbeddingsConfiguree(settings),
     identiteEmbeddingsConfiguree({ ...settings, moteurInference: 'openrouter', openRouterApiKey: 'or-key' }),
   );
+});
+
+test('le cache OpenAI fallback reste compatible avec une configuration OpenRouter', async () => {
+  const settings = {
+    openRouterApiKey: 'or-key', model: 'chat', moteurInference: 'openrouter' as const,
+    embeddingsApiKey: 'openai-key',
+  };
+  let appels = 0;
+  globalThis.fetch = async (url) => {
+    appels++;
+    if (String(url).includes('openrouter.ai')) {
+      return Response.json({ error: { message: 'embeddings indisponibles' } }, { status: 400 });
+    }
+    return Response.json({ data: [{ index: 0, embedding: [0, 1] }] });
+  };
+  const resultat = await obtenirEmbeddings(['lore'], settings);
+  assert.equal(appels, 2);
+  assert.equal(resultat.identiteCache, 'openai:text-embedding-3-small');
+  // C'est la décision utilisée par assurerEmbeddings au tour suivant : un
+  // cache compatible est servi directement, sans rappeler obtenirEmbeddings.
+  assert.equal(cacheEmbeddingsCompatible(resultat.identiteCache, settings), true);
 });
 
 test('un rejet de tool_choice Infermatic se replie sur le JSON-en-prose', async () => {

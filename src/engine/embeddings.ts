@@ -8,7 +8,7 @@ const MODELE_OPENROUTER = 'openai/text-embedding-3-small';
 // Modèle de secours si OpenRouter ne sert pas d'embeddings pour ce compte,
 // appelé directement chez OpenAI avec la clé de secours des Réglages.
 const MODELE_OPENAI = 'text-embedding-3-small';
-const MODELE_INFERMATIC = 'text-embedding-3-small';
+const MODELE_INFERMATIC = 'intfloat-multilingual-e5-base';
 
 export type FournisseurEmbeddings = 'openrouter' | 'infermatic' | 'openai';
 
@@ -149,6 +149,27 @@ export function identiteEmbeddingsConfiguree(appSettings: AppSettings): string |
   if (appSettings.openRouterApiKey) return `openrouter:${MODELE_OPENROUTER}`;
   if (appSettings.embeddingsApiKey) return `openai:${MODELE_OPENAI}`;
   return null;
+}
+
+/**
+ * Toutes les identités qu'une configuration peut légitimement produire.
+ * OpenAI est compatible avec une configuration OpenRouter quand sa clé de
+ * secours est présente : conserver ce résultat évite de retester puis de
+ * recalculer tout le cache à chaque tour si OpenRouter refuse les embeddings.
+ */
+export function identitesEmbeddingsCompatibles(appSettings: AppSettings): string[] {
+  if (appSettings.moteurInference === 'infermatic') {
+    if (appSettings.embeddingsApiKey) return [`openai:${MODELE_OPENAI}`];
+    return appSettings.infermaticApiKey ? [`infermatic:${MODELE_INFERMATIC}`] : [];
+  }
+  const identites: string[] = [];
+  if (appSettings.openRouterApiKey) identites.push(`openrouter:${MODELE_OPENROUTER}`);
+  if (appSettings.embeddingsApiKey) identites.push(`openai:${MODELE_OPENAI}`);
+  return identites;
+}
+
+export function cacheEmbeddingsCompatible(identiteCache: string | null, appSettings: AppSettings): boolean {
+  return identiteCache === null || identitesEmbeddingsCompatibles(appSettings).includes(identiteCache);
 }
 
 export function similariteCosinus(a: number[], b: number[]): number {
