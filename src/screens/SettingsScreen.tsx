@@ -304,7 +304,7 @@ export default function SettingsScreen({ navigation }: Props) {
       />
       <Text style={styles.aide}>
         {t(
-          "La recherche sémantique du lore essaie d'abord OpenRouter avec ta clé ci-dessus. Si ton compte n'a pas accès aux embeddings, renseigne ici une clé OpenAI (compatible text-embedding-3-small) utilisée uniquement en secours pour cette fonction.",
+          "Recherche sémantique : OpenRouter utilise ses embeddings puis cette clé OpenAI en secours ; Infermatic utilise ses propres embeddings. La génération d’images reste toujours OpenRouter-only.",
         )}
       </Text>
 

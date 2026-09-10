@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings } from '../types';
 import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddings';
+import { planifierTransactionCache } from './embeddingsCacheMutex';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -128,7 +129,7 @@ async function ecrireEntrees(
  * entier est invalidé — les espaces vectoriels de deux modèles différents
  * ne sont pas comparables entre eux.
  */
-export async function assurerEmbeddings(
+async function assurerEmbeddingsTransaction(
   entrees: EntreeAEmbeder[],
   appSettings: AppSettings,
 ): Promise<Record<string, number[]>> {
@@ -186,4 +187,12 @@ export async function assurerEmbeddings(
   return Object.fromEntries(
     entrees.map((e) => [e.id, nouvellesEntrees[e.id]?.vecteur ?? existantesParId.get(e.id)!.vecteur]),
   );
+}
+
+/** Sérialise lecture, calcul et écriture pour empêcher toute mise à jour perdue. */
+export function assurerEmbeddings(
+  entrees: EntreeAEmbeder[],
+  appSettings: AppSettings,
+): Promise<Record<string, number[]>> {
+  return planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings));
 }

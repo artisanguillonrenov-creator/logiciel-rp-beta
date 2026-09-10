@@ -1,6 +1,8 @@
 import type { AppSettings, FournisseurLLM } from '../types';
-import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson.ts';
+import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import type { ToolDefinition } from './openrouter';
+import { fetchInfermatic } from './infermaticScheduler';
+import { masquerSecrets, nettoyerRaisonnementInterne } from './responseSanitizer';
 
 export const URLS_FOURNISSEURS = {
   openrouter: 'https://openrouter.ai/api/v1',
@@ -69,12 +71,6 @@ function nomFournisseur(fournisseur: Exclude<FournisseurLLM, 'local'>): string {
   return fournisseur === 'infermatic' ? 'Infermatic' : 'OpenRouter';
 }
 
-function nettoyerDetail(detail: string, apiKey: string): string {
-  let nettoye = detail.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [masqué]');
-  if (apiKey) nettoye = nettoye.split(apiKey).join('[clé masquée]');
-  return nettoye.slice(0, 500);
-}
-
 async function detailErreur(response: Response, apiKey: string): Promise<string> {
   let detail = '';
   try {
@@ -83,7 +79,7 @@ async function detailErreur(response: Response, apiKey: string): Promise<string>
   } catch {
     detail = await response.text();
   }
-  return nettoyerDetail(detail, apiKey);
+  return masquerSecrets(detail, [apiKey]);
 }
 
 export async function appelerChatDistant(options: RequeteChatDistante): Promise<any> {
@@ -102,7 +98,8 @@ export async function appelerChatDistant(options: RequeteChatDistante): Promise<
   };
   let response: Response;
   try {
-    response = await fetch(`${URLS_FOURNISSEURS[fournisseur]}/chat/completions`, {
+    const effectuerFetch = fournisseur === 'infermatic' ? fetchInfermatic : fetch;
+    response = await effectuerFetch(`${URLS_FOURNISSEURS[fournisseur]}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -122,7 +119,12 @@ export async function appelerChatDistant(options: RequeteChatDistante): Promise<
     const detail = await detailErreur(response, apiKey);
     throw new ErreurFournisseurLLM(`Erreur ${nom} (${response.status})${detail ? ` : ${detail}` : ''}`, fournisseur, response.status);
   }
-  return response.json();
+  const data = await response.json();
+  const message = data?.choices?.[0]?.message;
+  if (fournisseur === 'infermatic' && typeof message?.content === 'string') {
+    message.content = nettoyerRaisonnementInterne(message.content);
+  }
+  return data;
 }
 
 export interface ModeleDistant { id: string; nom: string }
@@ -179,7 +181,8 @@ export async function listerModelesDistants(
   }
   let response: Response;
   try {
-    response = await fetch(`${URLS_FOURNISSEURS[fournisseur]}/models`, {
+    const effectuerFetch = fournisseur === 'infermatic' ? fetchInfermatic : fetch;
+    response = await effectuerFetch(`${URLS_FOURNISSEURS[fournisseur]}/models`, {
       headers: fournisseur === 'infermatic' ? { Authorization: `Bearer ${apiKey}` } : undefined,
     });
   } catch {
