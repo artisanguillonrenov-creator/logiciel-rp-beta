@@ -27,6 +27,16 @@ jobs:
 
       - run: npm install --global eas-cli
 
+      - name: Configurer la mémoire Gradle
+        run: |
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/gradle.properties" <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8
+          org.gradle.daemon=false
+          org.gradle.workers.max=2
+          kotlin.daemon.jvmargs=-Xmx768m
+          EOF
+
       - name: Build Android APK localement sur GitHub Actions
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
