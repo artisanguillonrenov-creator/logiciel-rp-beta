@@ -17,15 +17,6 @@ export interface AppelModeleOptions {
   // Bascule vers le modèle local (expo-litert-lm) au lieu d'OpenRouter —
   // voir MoteurInference. apiKey/model sont ignorés dans ce cas.
   moteurInference?: MoteurInference;
-  // Certains modèles (DeepSeek V3.1+/hybrides, Qwen3...) raisonnent en
-  // interne avant de répondre, et ce raisonnement consomme le même budget
-  // maxTokens que la réponse visible — sur un appel qui n'en a pas besoin
-  // (ex. suggestion.ts), la part restante pour la réponse elle-même devient
-  // imprévisible et peut être coupée bien avant maxTokens, quelle que soit
-  // sa valeur. À false, désactive ce raisonnement via le paramètre unifié
-  // d'OpenRouter (pris en charge par les modèles qui l'exposent, ignoré
-  // sinon) — voir suggestion.ts.
-  raisonnement?: boolean;
 }
 
 export { ErreurFournisseurLLM as ErreurOpenRouter };
@@ -42,13 +33,12 @@ export async function appellerModele({
   temperature = 0.9,
   maxTokens = 700,
   moteurInference,
-  raisonnement,
 }: AppelModeleOptions): Promise<string> {
   if (moteurInference === 'local') return genererTexteLocal(messages);
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   const TENTATIVES_MAX = 3;
   for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
-    const data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens, raisonnement });
+    const data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens });
     const contenu = data?.choices?.[0]?.message?.content;
     if (typeof contenu === 'string' && contenu.trim()) return contenu.trim();
     if (tentative === TENTATIVES_MAX) {

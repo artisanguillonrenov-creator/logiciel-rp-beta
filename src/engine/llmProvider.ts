@@ -2,7 +2,8 @@ import type { AppSettings, FournisseurLLM } from '../types';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import type { ToolDefinition } from './openrouter';
 import { fetchInfermatic } from './infermaticScheduler';
-import { masquerSecrets, nettoyerRaisonnementInterne } from './responseSanitizer';
+import { masquerSecrets } from './responseSanitizer';
+import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 
 export const URLS_FOURNISSEURS = {
   openrouter: 'https://openrouter.ai/api/v1',
@@ -63,7 +64,6 @@ export interface RequeteChatDistante {
   messages: unknown[];
   temperature: number;
   maxTokens: number;
-  raisonnement?: boolean;
   tools?: unknown[];
 }
 
@@ -83,17 +83,22 @@ async function detailErreur(response: Response, apiKey: string): Promise<string>
 }
 
 export async function appelerChatDistant(options: RequeteChatDistante): Promise<any> {
-  const { fournisseur, apiKey, model, messages, temperature, maxTokens, raisonnement, tools } = options;
+  const { fournisseur, apiKey, model, messages, temperature, maxTokens, tools } = options;
   const nom = nomFournisseur(fournisseur);
   if (!apiKey) throw new ErreurFournisseurLLM(`Aucune clé API ${nom} renseignée. Configure-la dans Réglages.`, fournisseur);
   if (!model) throw new ErreurFournisseurLLM(`Aucun modèle ${nom} sélectionné. Choisis-en un dans Réglages.`, fournisseur);
 
+  // Logiciel exclusivement RP : la politique de raisonnement (voir
+  // reasoningPolicy.ts) est appliquée à CHAQUE appel, jamais laissée à la
+  // discrétion de l'appelant — c'est la couche provider/response parser qui
+  // protège l'interface, pas une consigne dans le prompt système.
+  const profilRaisonnement = resoudreProfilRaisonnement(fournisseur, model);
   const body = {
     model,
     messages,
     temperature,
     max_tokens: maxTokens,
-    ...(fournisseur === 'openrouter' && raisonnement === false ? { reasoning: { enabled: false } } : {}),
+    ...(profilRaisonnement.reasoningRequestParameters ?? {}),
     ...(tools ? { tools, tool_choice: 'auto' } : {}),
   };
   let response: Response;
@@ -120,10 +125,7 @@ export async function appelerChatDistant(options: RequeteChatDistante): Promise<
     throw new ErreurFournisseurLLM(`Erreur ${nom} (${response.status})${detail ? ` : ${detail}` : ''}`, fournisseur, response.status);
   }
   const data = await response.json();
-  const message = data?.choices?.[0]?.message;
-  if (fournisseur === 'infermatic' && typeof message?.content === 'string') {
-    message.content = nettoyerRaisonnementInterne(message.content);
-  }
+  appliquerPolitiqueRaisonnement(data?.choices?.[0]?.message, profilRaisonnement);
   return data;
 }
 
