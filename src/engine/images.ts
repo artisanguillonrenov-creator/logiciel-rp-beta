@@ -142,7 +142,6 @@ async function genererPromptImageViaModele(story: StoryState, appSettings: AppSe
     ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 350,
-    raisonnement: false,
     messages: [
       { role: 'system', content: contexte },
       { role: 'user', content: INSTRUCTION_PROMPT_IMAGE },
@@ -313,7 +312,6 @@ async function genererPromptAvatarPnjViaModele(story: StoryState, pnj: EntreeLor
     ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 300,
-    raisonnement: false,
     messages: [
       { role: 'system', content: contexte },
       { role: 'user', content: INSTRUCTION_PROMPT_AVATAR_PNJ },
@@ -400,7 +398,6 @@ async function genererPromptAvatarJoueurViaModele(story: StoryState, appSettings
     ...configurationLLM(appSettings),
     temperature: 0.4,
     maxTokens: 300,
-    raisonnement: false,
     messages: [
       { role: 'system', content: contexte },
       { role: 'user', content: INSTRUCTION_PROMPT_AVATAR_JOUEUR },

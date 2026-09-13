@@ -18,6 +18,7 @@ import {
 } from '../src/engine/embeddings';
 import { nettoyerRaisonnementInterne } from '../src/engine/responseSanitizer';
 import { planifierTransactionCache } from '../src/storage/embeddingsCacheMutex';
+import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from '../src/engine/reasoningPolicy';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
@@ -274,4 +275,57 @@ test('traduction et overrides résolvent le fournisseur sélectionné sans fuite
   assert.deepEqual(configurationLLM(infermatic), { apiKey: 'inf-key', model: 'inf-model', moteurInference: 'infermatic' });
   assert.equal(modeleOverridePourFournisseur(infermatic, 'ancien-modele-openrouter'), undefined);
   assert.equal(modeleOverridePourFournisseur(infermatic, 'modele-inf', 'infermatic'), 'modele-inf');
+});
+
+test('la politique de raisonnement OpenRouter coupe systématiquement le raisonnement natif, sans opt-in par appel', async () => {
+  let corps: any;
+  globalThis.fetch = async (_url, init) => {
+    corps = JSON.parse(String(init?.body));
+    return Response.json({ choices: [{ message: { content: 'ok' } }] });
+  };
+  await appelerChatDistant({ fournisseur: 'openrouter', apiKey: 'k', model: 'deepseek/deepseek-v3.2', messages: [], temperature: 1, maxTokens: 5 });
+  assert.deepEqual(corps.reasoning, { enabled: false });
+});
+
+test("Infermatic n'a pas de paramètre natif : hidden repose sur le filtrage de la réponse", () => {
+  const profil = resoudreProfilRaisonnement('infermatic', 'un-modele-quelconque');
+  assert.equal(profil.reasoningPolicy, 'hidden');
+  assert.equal(profil.reasoningRequestParameters, undefined);
+  const openrouter = resoudreProfilRaisonnement('openrouter', 'un-modele-quelconque');
+  assert.equal(openrouter.reasoningPolicy, 'disabled');
+  assert.deepEqual(openrouter.reasoningRequestParameters, { reasoning: { enabled: false } });
+});
+
+test('un raisonnement natif (reasoning/reasoning_content/analysis/thinking) est toujours ignoré, jamais transmis', () => {
+  const message: Record<string, unknown> = {
+    content: 'Le récit continue.',
+    reasoning: 'chaîne de pensée brute',
+    reasoning_content: 'autre variante brute',
+    reasoning_details: [{ type: 'text', text: 'détails' }],
+    analysis: 'canal analysis brut',
+    thinking: 'canal thinking brut',
+  };
+  appliquerPolitiqueRaisonnement(message, resoudreProfilRaisonnement('openrouter', 'gpt-oss-120b'));
+  assert.deepEqual(message, { content: 'Le récit continue.' });
+});
+
+test('le filtrage OpenRouter agit aussi en repli si un modèle injecte son raisonnement dans content malgré le paramètre natif', async () => {
+  globalThis.fetch = async () => Response.json({ choices: [{ message: { content: '<think>chaîne de pensée</think>Récit visible.' } }] });
+  const data = await appelerChatDistant({ fournisseur: 'openrouter', apiKey: 'k', model: 'deepseek/deepseek-v3.2', messages: [], temperature: 1, maxTokens: 5 });
+  assert.equal(data.choices[0].message.content, 'Récit visible.');
+});
+
+test('appliquerPolitiqueRaisonnement refuse une politique "visible" (invariant RP)', () => {
+  assert.throws(() => appliquerPolitiqueRaisonnement({ content: 'x' }, {
+    supportsReasoning: true, reasoningPolicy: 'visible', balisesRaisonnement: [],
+  }));
+});
+
+test('seules les balises déclarées sont retirées : pas de regex générique qui mangerait de la narration RP', () => {
+  const narration = 'Il analysait la situation en silence, pensif, avant de répondre.';
+  assert.equal(nettoyerRaisonnementInterne(narration, ['think', 'analysis']), narration);
+  assert.equal(
+    nettoyerRaisonnementInterne('<analysis>note interne</analysis>Bonjour à toi.', ['think', 'analysis']),
+    'Bonjour à toi.',
+  );
 });
