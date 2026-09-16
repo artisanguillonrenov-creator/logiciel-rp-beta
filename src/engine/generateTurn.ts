@@ -20,10 +20,11 @@ import { configurationLLM, appellerModele } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { embeddingsDisponibles, obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
-import { doitMettreAJourMemoire, mettreAJourMemoire } from './memory';
+import { mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
 import { convertirPluginsPourSelection } from './plugins';
-import { getPlugins } from '../storage/storage';
+import { getPlugins, getStory } from '../storage/storage';
+import { fusionnerEtatDerivePersistant } from './derivedState';
 import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
@@ -265,12 +266,10 @@ export async function construirePromptDebug(
   return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
 }
 
-// Les quatre pipelines périodiques (mémoire, directeur, monde, social)
-// tournent toujours ensemble, à la même cadence — factorisé pour être
-// appelable soit depuis genererTour (quand le seuil de messages est
-// atteint), soit à la demande depuis les réglages concepteur
-// (forcerMiseAJourEtat, sans attendre ce seuil). Le lore émergent (PNJ,
-// lieux...) n'en fait plus partie — voir mettreAJourLoreEmergentSeul.
+// Ces fonctions restent disponibles pour la commande concepteur « mise à
+// jour forcée ». Le flux joueur normal ne les attend plus : le
+// AutomationKernel exécute désormais mémoire/directeur/monde/social/lore
+// après la sauvegarde du tour.
 async function executerMisesAJourPeriodiques(
   appSettings: AppSettings,
   story: StoryState,
@@ -291,14 +290,6 @@ async function executerMisesAJourPeriodiques(
   return { memoire, directeur, monde, social };
 }
 
-// Contrairement aux quatre pipelines ci-dessus (groupés, tournent tous les
-// NB_MESSAGES_AVANT_MAJ messages pour limiter les appels payants), le lore
-// émergent tourne à CHAQUE tour : un PNJ nommé doit être détecté dès sa
-// première apparition pour que son avatar puisse se générer immédiatement
-// (voir ConversationScreen.tsx) — attendre un groupe de 8 messages, comme
-// avant, laissait tout début de conversation sans aucun PNJ détecté, donc
-// sans aucun avatar possible avant plusieurs tours. Curseur séparé
-// (loreEmergentDernierIndex) pour ne jamais rescanner ce qui l'a déjà été.
 async function mettreAJourLoreEmergentSeul(
   appSettings: AppSettings,
   story: StoryState,
@@ -315,13 +306,9 @@ async function mettreAJourLoreEmergentSeul(
 }
 
 /**
- * Réglages concepteur (Ajouts_A_Integrer.md #6) : force les pipelines
- * périodiques (mémoire, directeur, monde, social) à tourner immédiatement,
- * sans attendre le seuil de 8 messages — pour observer l'effet d'un tour
- * sans en jouer sept de plus. Le lore émergent tourne déjà à chaque tour
- * (voir mettreAJourLoreEmergentSeul) ; on le relance quand même ici par
- * cohérence, au cas où des messages plus anciens n'auraient pas encore été
- * scannés (ex. après un import).
+ * Réglages concepteur : force les pipelines dérivés immédiatement. Cette
+ * action reste volontairement synchrone car l'utilisateur concepteur attend
+ * précisément le résultat de cette commande de diagnostic.
  */
 export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSettings): Promise<StoryState> {
   const [maj, majLore] = await Promise.all([
@@ -331,44 +318,52 @@ export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSet
   return { ...story, ...maj, ...majLore };
 }
 
+async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StoryState> {
+  try {
+    return fusionnerEtatDerivePersistant(story, await getStory(story.meta.id));
+  } catch {
+    // Une lecture de synchronisation ne doit pas transformer une panne de
+    // stockage secondaire en panne de narration : la sauvegarde normale
+    // signalera l'erreur ensuite si le stockage est réellement indisponible.
+    return story;
+  }
+}
+
 /**
- * Flux de génération d'un tour (brief section 5, sélection mise à jour
- * Phase 2) : message joueur → sélection sémantique des métamoteurs et du
- * lore pertinents → construction du contexte → appel API → vérification
- * basique → une nouvelle tentative si violation → affichage. Puis mise à
- * jour périodique de la mémoire.
+ * Flux critique d'un tour : sélection du contexte → génération → validation
+ * → ajout des deux messages. Les pipelines dérivés ne sont plus exécutés ici.
+ * La sauvegarde confirmée publie ensuite la révision au AutomationKernel,
+ * qui traite mémoire, directeur, monde, social et lore émergent en arrière-
+ * plan avec garde de révision.
  */
 export async function genererTour(
   story: StoryState,
   appSettings: AppSettings,
   messageJoueur: string,
-  // Citation (chantier Actions sur les messages) : id du message auquel
-  // celui-ci répond — affichage uniquement, jamais transmis au moteur.
   reponseAId?: string,
 ): Promise<ResultatTour> {
-  // Temps total ressenti par le joueur entre l'envoi et l'affichage de la
-  // réponse (sélection de lore + appel modèle + validation + réparation
-  // éventuelle) — affiché sous le message, voir ConversationScreen.tsx.
   const debutMs = Date.now();
 
+  // Le Kernel peut avoir terminé le post-traitement du tour précédent alors
+  // que l'écran détient encore sa copie. On récupère uniquement les champs
+  // dérivés si le transcript persisté est strictement identique.
+  const storyCourante = await rafraichirEtatDeriveAvantTour(story);
+
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
-    story,
+    storyCourante,
     messageJoueur,
     appSettings,
   );
 
-  const ctxBase = construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
+  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
 
-  // Réglages de prompt avancés (réglages concepteur) : override par
-  // histoire du modèle/de la température, sinon les valeurs globales
-  // habituelles.
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
-    story.meta.modeleOverride,
-    story.meta.modeleOverrideFournisseur,
+    storyCourante.meta.modeleOverride,
+    storyCourante.meta.modeleOverrideFournisseur,
   ) || configurationLLM(appSettings).model;
-  const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
-  const maxTokens = maxTokensPourLongueur(story.settings.longueur);
+  const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
+  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
 
   let reponse = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
@@ -377,31 +372,19 @@ export async function genererTour(
     maxTokens,
   });
 
-  const heuristique = validerAgentiviteHeuristique(reponse, story.meta.personnageNom);
+  const heuristique = validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const llm = await validerReponseLLM({
     ...configurationLLM(appSettings, modelePourAppel),
     reponse,
     faits: ctxBase.faits,
-    meta: story.meta,
+    meta: storyCourante.meta,
   });
   const rapport = fusionnerRapports(heuristique, profilContenuCheck, llm);
 
-  // Suite de validation complète (brief Phase 2) : la stratégie de
-  // réparation dépend de la gravité constatée — patch local (déterministe,
-  // sans appel modèle) → repair ciblé → régénération partielle (même
-  // consigne, contexte complet) → régénération complète. Un seul passage de
-  // réparation par tour, quelle que soit la stratégie choisie (pas de
-  // boucle de correction sans fin).
   const strategie = determinerStrategie(rapport);
   let aEteCorrige = strategie !== 'aucune';
 
-  // La réparation est un raffinement, pas une condition pour que le joueur
-  // reçoive une réponse : si l'appel de correction lui-même échoue (réseau,
-  // réponse vide...), on garde la réponse initiale non corrigée plutôt que
-  // de faire échouer tout le tour pour un souci secondaire — même logique
-  // que validerReponseLLM, qui n'interrompt jamais la génération sur un
-  // échec du vérificateur.
   if (strategie === 'patch_local') {
     reponse = appliquerPatchLocal(reponse, rapport);
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
@@ -432,29 +415,11 @@ export async function genererTour(
     }
   }
 
-  // Verrou autonomie du joueur (fail-closed) : la réparation ci-dessus est
-  // un appel modèle qui peut échouer à retirer une réplique écrite au nom
-  // du joueur (constaté en usage réel — la consigne de correction ne
-  // suffit pas toujours). Contrairement aux autres violations (continuité,
-  // canon...) où garder la réponse non corrigée est un compromis
-  // acceptable, celle-ci ne doit jamais atteindre le joueur : retrait
-  // déterministe, sans appel réseau, donc jamais susceptible d'échouer à
-  // son tour.
-  if (reponseFaitParlerLeJoueur(reponse, story.meta.personnageNom)) {
-    const nettoyee = retirerRepliqueDuJoueur(reponse, story.meta.personnageNom);
-    // Cas limite : si la réponse entière n'était que la réplique fautive,
-    // le retrait ne laisse rien — garder la réponse d'origine plutôt
-    // qu'afficher un message vide (imparfait, mais jamais pire que ça).
+  if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
+    const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
     if (nettoyee) reponse = nettoyee;
   }
 
-  // Verrou GRAND_PUBLIC (fail-closed) : contrairement aux autres contrôles
-  // ci-dessus (continuité, canon...) où garder la réponse non corrigée est
-  // un compromis acceptable pour ne pas casser le tour, un dépassement du
-  // profil de contenu ne doit JAMAIS être affiché tel quel si la tentative
-  // de correction n'a pas suffi. On revérifie la réponse finale, quel que
-  // soit le chemin emprunté ci-dessus, et on interrompt le tour plutôt que
-  // d'afficher un contenu hors-limites.
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
     throw new ErreurProfilContenu(
       "Cette réponse ne respecte pas les limites du profil Grand public et n'a pas pu être corrigée automatiquement. Réessaie avec une formulation différente.",
@@ -476,34 +441,26 @@ export async function genererTour(
     dureeGenerationMs: Date.now() - debutMs,
   };
 
-  const messages = [...story.messages, messageUtilisateur, messageAssistant];
-  let etatPeriodique: Pick<StoryState, 'memoire' | 'directeur' | 'monde' | 'social'> = {
-    memoire: story.memoire,
-    directeur: story.directeur,
-    monde: story.monde,
-    social: story.social,
-  };
-  if (doitMettreAJourMemoire(messages, story.memoire.dernierMessageIndexMaj)) {
-    etatPeriodique = await executerMisesAJourPeriodiques(appSettings, story, messages);
-  }
-  // Lore émergent (PNJ, lieux...) : à chaque tour, pas seulement tous les
-  // 8 messages (voir mettreAJourLoreEmergentSeul) — jamais gaté derrière
-  // doitMettreAJourMemoire, contrairement aux quatre pipelines ci-dessus.
-  const etatLoreEmergent = await mettreAJourLoreEmergentSeul(appSettings, story, messages);
+  const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
 
+  // Point de bascule V3 : aucun appel mémoire/directeur/monde/social/lore
+  // après la réponse. Le résultat peut être affiché et sauvegardé tout de
+  // suite ; saveStory() déclenchera story.postprocess derrière.
   return {
-    story: { ...story, messages, ...etatPeriodique, ...etatLoreEmergent },
+    story: { ...storyCourante, messages },
     aEteCorrige,
     debugLore,
   };
 }
 
 /**
- * Régénère uniquement la dernière réponse du narrateur (bouton "régénérer"),
- * en repartant du dernier message du joueur.
+ * Régénère uniquement la dernière réponse du narrateur. On synchronise
+ * d'abord les champs dérivés avec le stockage, puis on rembobine le dernier
+ * échange et ses curseurs avant de repasser par le même flux critique.
  */
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
-  const messages = [...story.messages];
+  const storyCourante = await rafraichirEtatDeriveAvantTour(story);
+  const messages = [...storyCourante.messages];
   const dernier = messages[messages.length - 1];
   if (!dernier || dernier.role !== 'assistant') {
     throw new Error('Aucune réponse à régénérer.');
@@ -514,17 +471,17 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
   }
 
   const storySansDernierEchange: StoryState = {
-    ...story,
+    ...storyCourante,
     messages: messages.slice(0, -2),
     memoire: {
-      ...story.memoire,
-      dernierMessageIndexMaj: Math.min(story.memoire.dernierMessageIndexMaj, messages.length - 2),
+      ...storyCourante.memoire,
+      dernierMessageIndexMaj: Math.min(storyCourante.memoire.dernierMessageIndexMaj, messages.length - 2),
     },
     directeur: {
-      ...story.directeur,
-      dernierBeatIndex: Math.min(story.directeur.dernierBeatIndex, messages.length - 2),
+      ...storyCourante.directeur,
+      dernierBeatIndex: Math.min(storyCourante.directeur.dernierBeatIndex, messages.length - 2),
     },
-    loreEmergentDernierIndex: Math.min(story.loreEmergentDernierIndex ?? 0, messages.length - 2),
+    loreEmergentDernierIndex: Math.min(storyCourante.loreEmergentDernierIndex ?? 0, messages.length - 2),
   };
 
   return genererTour(storySansDernierEchange, appSettings, avantDernier.content);
