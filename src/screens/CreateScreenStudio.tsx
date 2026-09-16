@@ -55,7 +55,6 @@ const LORE_ELYNDOR = chargerLoreElyndor(elyndorLoreRaw as any);
 const ETAPES = ['Monde', 'Personnage', 'Départ', 'Style', 'Résumé'] as const;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;
-
 type Option<T extends string> = { valeur: T; label: string };
 
 const OPTIONS_SEXE: Option<string>[] = [
@@ -676,7 +675,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   ecran: { flex: 1 },
-  voile: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 10, 18, 0.70)' },
+  voile: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(3, 10, 18, 0.70)' },
   page: { flex: 1 },
   barreSuperieure: {
     minHeight: 58,
@@ -770,8 +769,8 @@ const styles = StyleSheet.create({
   grilleStyles: { flexDirection: 'row', flexWrap: 'wrap', gap: espacement.md },
   carteStyle: { minWidth: 220, flexGrow: 1, flexBasis: '45%', height: 230, overflow: 'hidden', borderWidth: 1, borderColor: couleurs.bordureSubtile, position: 'relative' },
   carteStyleActive: { borderColor: couleurs.accent },
-  imageStyle: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined },
-  voileStyle: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3, 9, 16, 0.48)' },
+  imageStyle: { ...StyleSheet.absoluteFill, width: undefined, height: undefined },
+  voileStyle: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(3, 9, 16, 0.48)' },
   texteStyleCarte: { position: 'absolute', left: espacement.md, right: espacement.md, bottom: espacement.md },
   titreStyle: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, fontSize: 21 },
   descriptionStyle: { color: couleurs.texte, fontFamily: polices.corps, fontSize: 13, lineHeight: 18, marginTop: 4 },
