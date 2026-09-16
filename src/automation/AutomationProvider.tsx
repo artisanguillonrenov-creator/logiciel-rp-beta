@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
-import { getSettings } from '../storage/storage';
+import { getSettings, getStoriesIndex, getStory, updateStoryIf } from '../storage/storage';
 import { modeleLocalTelecharge } from '../storage/modeleLocalStore';
 import { abonnerReglages } from './settingsStore';
+import { abonnerSauvegardesNarratives } from './storyEvents';
 import { calculerCapacites } from './capabilities';
 import {
   initializeAutomationKernel,
@@ -10,6 +11,12 @@ import {
   setAutomationCapabilities,
 } from './kernel';
 import { enqueueUpdateCheckIfDue, registerBuiltInAutomationHandlers } from './routines';
+import {
+  enqueueNarrativeCatchupOnStartup,
+  enqueueNarrativePostprocess,
+  registerNarrativeAutomationHandlers,
+  type NarrativeAutomationDeps,
+} from './narrativeRoutines';
 
 function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>): void {
   let modeleLocalPresent = false;
@@ -28,10 +35,18 @@ function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>):
   );
 }
 
+const narrativeDeps: NarrativeAutomationDeps = {
+  getSettings,
+  getStory,
+  getStoryIds: async () => (await getStoriesIndex()).map((meta) => meta.id),
+  updateStoryIf,
+};
+
 /**
  * Monte une seule fois le noyau d'automatismes au niveau racine :
  * - restaure les jobs interrompus après fermeture/crash ;
  * - garde les capacités synchronisées avec chaque sauvegarde de réglages ;
+ * - relie chaque nouvelle révision narrative aux routines de rattrapage ;
  * - traite les jobs persistants en attente ;
  * - vérifie les mises à jour au retour au premier plan, avec TTL.
  */
@@ -39,8 +54,13 @@ export default function AutomationProvider({ children }: { children: React.React
   useEffect(() => {
     let actif = true;
     const unregisterHandlers = registerBuiltInAutomationHandlers();
+    const unregisterNarrativeHandlers = registerNarrativeAutomationHandlers(narrativeDeps);
     const unsubscribeSettings = abonnerReglages((settings) => {
       if (actif) recalculerCapacites(settings);
+    });
+    const unsubscribeStories = abonnerSauvegardesNarratives((event) => {
+      if (!actif) return;
+      void enqueueNarrativePostprocess(event).catch(() => {});
     });
 
     const demarrer = async () => {
@@ -53,6 +73,10 @@ export default function AutomationProvider({ children }: { children: React.React
         // noyau ne doit pas empêcher l'application de démarrer.
       }
       if (!actif) return;
+      // Une fermeture a pu survenir après la sauvegarde d'un tour mais avant
+      // l'enqueue du job. Le scan de démarrage ne retient que les histoires
+      // dont au moins un pipeline est réellement en retard.
+      await enqueueNarrativeCatchupOnStartup(narrativeDeps).catch(() => 0);
       await enqueueUpdateCheckIfDue().catch(() => false);
       void processAutomationQueue();
     };
@@ -72,7 +96,9 @@ export default function AutomationProvider({ children }: { children: React.React
     return () => {
       actif = false;
       subscription.remove();
+      unsubscribeStories();
       unsubscribeSettings();
+      unregisterNarrativeHandlers();
       unregisterHandlers();
     };
   }, []);
