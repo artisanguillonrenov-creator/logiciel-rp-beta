@@ -3,8 +3,9 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { Plugin } from '../types';
-import { getPlugins, installerPlugin, supprimerPlugin } from '../storage/storage';
+import { getPlugins, getSettings, installerPlugin, supprimerPlugin } from '../storage/storage';
 import { analyserPackJson } from '../engine/plugins';
+import { validerEntreeUtilisateur } from '../engine/contenuAdulte';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
@@ -20,8 +21,6 @@ const EXEMPLE_JSON = `[
   { "titre": "Titre de l'entrée", "contenu": "Texte de lore…" }
 ]`;
 
-// Les packs restent strictement des données de lore JSON : aucune exécution
-// de code. Cette version ne change que la hiérarchie et la lisibilité de l'écran.
 export default function PluginsScreen({}: Props) {
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [nom, setNom] = useState('');
@@ -30,7 +29,11 @@ export default function PluginsScreen({}: Props) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    getPlugins().then(setPlugins);
+    let actif = true;
+    getPlugins()
+      .then((liste) => { if (actif) setPlugins(liste); })
+      .catch(() => { if (actif) setErreur('Impossible de lire les packs installés.'); });
+    return () => { actif = false; };
   }, []);
 
   async function ajouter() {
@@ -38,6 +41,11 @@ export default function PluginsScreen({}: Props) {
     setMessage('');
     try {
       const plugin = analyserPackJson(nom, texteJson);
+      const settings = await getSettings();
+      const textePack = [plugin.nom, ...plugin.entrees.flatMap((entree) => [entree.titre, entree.contenu])].join('\n');
+      const controle = validerEntreeUtilisateur(textePack, settings.profilContenu);
+      if (!controle.ok) throw new Error(controle.motif);
+
       await installerPlugin(plugin);
       setPlugins((prev) => [...prev, plugin]);
       setNom('');
@@ -49,8 +57,14 @@ export default function PluginsScreen({}: Props) {
   }
 
   async function retirer(id: string) {
-    await supprimerPlugin(id);
-    setPlugins((prev) => prev.filter((p) => p.id !== id));
+    setErreur('');
+    setMessage('');
+    try {
+      await supprimerPlugin(id);
+      setPlugins((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      setErreur('Impossible de retirer ce pack pour le moment.');
+    }
   }
 
   return (
@@ -74,7 +88,8 @@ export default function PluginsScreen({}: Props) {
               <Text style={styles.titreCarte}>Installer un pack</Text>
               <Text style={styles.aide}>
                 Un pack contient uniquement du texte de lore — PNJ, lieux, objets ou factions. Aucun code n’est
-                exécuté. Le format attendu est une liste JSON d’entrées avec un titre et un contenu.
+                exécuté. Le format attendu est une liste JSON d’entrées avec un titre et un contenu. Le profil de
+                contenu actif s’applique également aux packs importés.
               </Text>
               <Separateur style={styles.separateur} />
               <Champ
@@ -129,7 +144,7 @@ export default function PluginsScreen({}: Props) {
               <Bouton
                 titre="Retirer"
                 variante="secondaire"
-                onPress={() => retirer(item.id)}
+                onPress={() => void retirer(item.id)}
                 style={styles.boutonRetirer}
                 texteStyle={{ color: couleurs.danger }}
               />
