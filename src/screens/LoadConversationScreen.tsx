@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   voilePortrait: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(4, 10, 18, 0.14)',
     borderRightWidth: 1,
     borderRightColor: couleurs.bordureDoree,
