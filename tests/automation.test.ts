@@ -8,6 +8,7 @@ import {
   reinitialiserSettingsStorePourTests,
 } from '../src/automation/settingsStore';
 import { createAutomationJobRepository } from '../src/automation/jobRepositoryCore';
+import { listerStoryIdsOrphelins } from '../src/automation/lifecyclePlanning';
 
 const baseSettings = {
   openRouterApiKey: '',
@@ -103,4 +104,28 @@ test('un job interrompu en running revient en pending au prochain démarrage', a
   assert.equal(recovered, 1);
   assert.equal(restored.status, 'pending');
   assert.match(restored.lastError ?? '', /Interrompu/);
+});
+
+test('supprimer une histoire retire tous ses jobs sans toucher aux autres', async () => {
+  let now = 3000;
+  const repo = createAutomationJobRepository(memoryStorage(), () => now++);
+  await repo.enqueue({ type: 'story.postprocess', storyId: 'story-a' });
+  await repo.enqueue({ type: 'visual.avatar.generate', storyId: 'story-a' });
+  await repo.enqueue({ type: 'story.postprocess', storyId: 'story-b' });
+  await repo.enqueue({ type: 'updates.check' });
+
+  const removed = await repo.removeByStoryId('story-a');
+  const restants = await repo.list();
+  assert.equal(removed, 2);
+  assert.deepEqual(restants.map((job) => job.storyId ?? 'global'), ['story-b', 'global']);
+});
+
+test('le sweep repère les storyId orphelins une seule fois', () => {
+  const jobs = [
+    { id: '1', type: 'a', storyId: 'story-ok', status: 'pending' as const, attempts: 0, createdAt: 1 },
+    { id: '2', type: 'b', storyId: 'story-old', status: 'failed' as const, attempts: 1, createdAt: 2 },
+    { id: '3', type: 'c', storyId: 'story-old', status: 'pending' as const, attempts: 0, createdAt: 3 },
+    { id: '4', type: 'global', status: 'pending' as const, attempts: 0, createdAt: 4 },
+  ];
+  assert.deepEqual(listerStoryIdsOrphelins(jobs, ['story-ok']), ['story-old']);
 });
