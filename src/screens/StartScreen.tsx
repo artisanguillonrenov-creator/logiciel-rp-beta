@@ -45,6 +45,7 @@ function ElementMenu({ titre, onPress, desactive }: { titre: string; onPress: ()
 export default function StartScreen({ navigation }: Props) {
   const { t, langue } = useLangue();
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
+  const [erreurHistoires, setErreurHistoires] = useState('');
   const [messageQuitter, setMessageQuitter] = useState('');
   const [modalLangueOuvert, setModalLangueOuvert] = useState(false);
   const [modalGuideOuvert, setModalGuideOuvert] = useState(false);
@@ -54,7 +55,9 @@ export default function StartScreen({ navigation }: Props) {
     useCallback(() => {
       let actif = true;
       getStoriesIndex().then((liste) => {
-        if (actif) setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt));
+        if (actif) { setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt)); setErreurHistoires(''); }
+      }).catch(() => {
+        if (actif) setErreurHistoires('Impossible de lire tes histoires. Ouvre « Charger conversation » pour réessayer.');
       });
       return () => {
         actif = false;
@@ -89,7 +92,7 @@ export default function StartScreen({ navigation }: Props) {
 
       <View style={styles.entete}>
         <Text style={styles.titre}>ELYNDOR</Text>
-        <Text style={styles.sousTitre}>{t('Narrative Roleplay Engine')}</Text>
+        <Text style={styles.sousTitre}>{t('Vos décisions laissent des traces.')}</Text>
         <Separateur style={styles.separateur} />
       </View>
 
@@ -108,6 +111,7 @@ export default function StartScreen({ navigation }: Props) {
         <Text style={styles.puceMenu}>◇</Text>
         <ElementMenu titre={t('Quitter')} onPress={quitter} />
         {messageQuitter ? <Text style={styles.messageQuitter}>{messageQuitter}</Text> : null}
+        {erreurHistoires ? <Text style={styles.messageQuitter}>{t(erreurHistoires)}</Text> : null}
       </View>
 
       <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>

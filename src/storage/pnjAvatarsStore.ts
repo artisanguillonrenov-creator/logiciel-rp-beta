@@ -21,16 +21,24 @@ function extraireBase64(dataUrl: string): string {
 export async function obtenirAvatarPnj(storyId: string, pnjId: string): Promise<string | null> {
   const fichier = new File(Paths.document, DOSSIER_AVATARS, nomFichier(storyId, pnjId));
   if (!fichier.exists) return null;
-  const base64 = await fichier.base64();
-  return `data:image/png;base64,${base64}`;
+  return fichier.uri;
 }
 
-export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataUrl: string): Promise<void> {
+export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataUrl: string): Promise<string> {
   const dossier = new Directory(Paths.document, DOSSIER_AVATARS);
   if (!dossier.exists) dossier.create({ intermediates: true });
   const fichier = new File(dossier, nomFichier(storyId, pnjId));
   fichier.create({ overwrite: true });
   fichier.write(extraireBase64(dataUrl), { encoding: 'base64' });
+  return fichier.uri;
+}
+
+// Le base64 n'est nécessaire que pour envoyer une référence au fournisseur,
+// jamais pour afficher les portraits dans l'historique ou les agrandir.
+export async function preparerImageReference(uri: string): Promise<string> {
+  if (!uri.startsWith('file:')) return uri;
+  const fichier = new File(uri);
+  return `data:image/png;base64,${await fichier.base64()}`;
 }
 
 /** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR

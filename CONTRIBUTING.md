@@ -23,13 +23,17 @@ d'origine.
 
 ## Mettre en place l'environnement
 
+Utiliser Node.js 24 ou plus récent, comme la CI (les tests de stockage
+utilisent le SQLite intégré à Node).
+
 ```bash
 npm install
 npm start
 ```
 
-Scanner le QR code avec **Expo Go** (Android) pour tester en direct, sans
-build ni compte développeur.
+Utiliser `npm run web` pour le navigateur. Pour le natif, installer un
+build incluant les modules du projet (inférence locale, SQLite, SecureStore).
+Un ajout de module natif exige un nouveau binaire, pas uniquement une OTA.
 
 ## Avant d'ouvrir une pull request
 
@@ -63,13 +67,14 @@ c'est plus rapide que d'attendre le retour de la CI.
   schématiques de la section « Exemples » du README
   (`assets/branding/exemple-conversation.svg`) — voir la roadmap du
   README.
-- **Tests** : la couverture actuelle (`tests/llmProvider.test.ts`) est
-  volontairement minimale pour une bêta ; étendre la couverture au
+- **Tests** : les fournisseurs, le stockage transactionnel et la migration des
+  clés sont couverts (`tests/`) ; étendre la couverture au
   pipeline de mémoire (`src/engine/memory.ts`) ou à la sélection sémantique
   (`src/engine/loreLoader.ts`) est bienvenu.
 - **Documentation** : `docs/` ne contient pour l'instant que la charte
   graphique du dépôt ; un guide d'architecture par module de
-  `src/engine/` serait utile aux nouveaux contributeurs.
+  `src/engine/` serait utile aux nouveaux contributeurs. Le stockage est décrit
+  dans `docs/fiabilite-et-immersion.md`.
 
 ## Signaler un problème
 

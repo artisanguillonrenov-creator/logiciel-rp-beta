@@ -189,21 +189,32 @@ interface traduisible (`src/i18n/`), et un contrôle de profil de contenu
 | Validation & contenu | `src/engine/validator.ts`, `src/engine/contenuAdulte.ts`, `src/engine/responseSanitizer.ts` |
 | Génération de scénario | `src/engine/scenarioGenerator.ts`, `src/engine/openingGenerator.ts`, `src/engine/suggestion.ts` |
 | Écrans | `src/screens/` (Démarrage, Création rapide, Conversation, Réglages, Charger conversation, Plugins, Réglages concepteur, Activation) |
-| Stockage local | `src/storage/` (AsyncStorage : histoires, réglages, cache d'embeddings, avatars PNJ) |
+| Histoires | `src/storage/storyRepository.ts` : SQLite sur Android/iOS, IndexedDB sur le web ; messages séparés, écritures transactionnelles et migration des anciennes sauvegardes |
+| Réglages et clés | Réglages dans AsyncStorage ; clés API dans SecureStore sur Android/iOS, session du navigateur par défaut sur le web |
+| Portraits et caches | Fichiers locaux pour les portraits natifs, IndexedDB sur le web ; cache d'embeddings dans AsyncStorage |
 
 ## Lancer la bêta
+
+Utiliser **Node.js 24 ou plus récent** (la CI utilise Node 24).
 
 ```bash
 npm install
 npm start
 ```
 
-Puis scanner le QR code avec l'app **Expo Go** (Android) — aucun build,
-aucun compte développeur nécessaire.
+Pour le web : `npm run web`. Sur Android, utiliser le build de développement
+ou l'APK du projet : les modules natifs, notamment l'inférence locale,
+nécessitent un binaire qui les inclut.
+
+L'ajout de SQLite et SecureStore exige **un nouvel APK**. La politique de
+runtime `fingerprint` empêche l'envoi de ce code aux anciens binaires par OTA.
+Le workflow Android existant est déclenché par les changements de dépendances
+après fusion.
 
 ## Configuration
 
-Au premier lancement, aller dans **Réglages** et renseigner :
+Au premier lancement, aller dans **Réglages → Connexion et réglages avancés**
+(ouverts automatiquement si aucune clé n'est configurée) et renseigner :
 
 - une clé API [OpenRouter](https://openrouter.ai/) (jamais codée en dur,
   stockée uniquement en local sur l'appareil) — ou une clé
@@ -214,6 +225,19 @@ Au premier lancement, aller dans **Réglages** et renseigner :
   principal n'en sert pas pour ton compte,
 - optionnellement, un **modèle local** téléchargé sur l'appareil
   (`expo-litert-lm`) pour jouer sans dépendre d'une API distante.
+
+Sur le web, les clés survivent au rechargement mais restent limitées à la
+session de l'onglet par défaut. La conservation durable sur un navigateur
+personnel se choisit explicitement et reste **non chiffrée**. Sur Android/iOS,
+les clés sont transférées vers SecureStore avant leur retrait des réglages.
+
+Dans la conversation, **Continuer** reste visible. Le menu **Actions du récit**
+regroupe régénération, suggestion, illustration, portraits et épingles. Le
+diagnostic narratif et les compteurs techniques sont réservés au mode concepteur.
+Ce mode reste librement activable pendant la bêta : ce n'est pas un contrôle d'accès.
+
+Les règles de migration, les limites et le protocole de validation sont décrits
+dans [`docs/fiabilite-et-immersion.md`](docs/fiabilite-et-immersion.md).
 
 ## Structure du dépôt
 
@@ -227,7 +251,8 @@ src/
   screens/         8 écrans (Démarrage, Création, Conversation, Réglages,
                     Charger, Plugins, Réglages concepteur, Activation)
   navigation/       pile de navigation
-  storage/          persistance locale (AsyncStorage)
+  storage/          histoires SQLite/IndexedDB, clés SecureStore/session web,
+                    réglages et caches AsyncStorage, portraits
   i18n/             traduction de l'interface
   theme/            tokens visuels de l'application (direction « grimoire
                     illuminé » — distincte de la charte du dépôt, voir plus bas)
@@ -262,7 +287,11 @@ Ouvert, sans engagement de date :
       de vraies captures d'écran.
 - [ ] Étoffer `docs/` avec un guide d'architecture par module de
       `src/engine/`.
-- [ ] Élargir la couverture de tests (`tests/`) au-delà du fournisseur LLM.
+- [x] Couvrir les migrations de stockage, transactions, clés API et locuteurs.
+- [ ] Unifier l'observation de l'état narratif et définir la propriété canonique
+      des faits entre moteurs, avec tests de continuité.
+- [ ] Ajouter le parcours d'aventure rapide et supprimer le faux choix d'univers
+      tant qu'Elyndor est le seul monde.
 - [ ] Publier des bannières haute résolution (PNG) dérivées de la charte
       graphique pour les stores, en plus des SVG du dépôt.
 
@@ -279,4 +308,3 @@ des types, export web.
 ## Licence
 
 [MIT](LICENSE).
-

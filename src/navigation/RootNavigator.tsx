@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
+import Bouton from '../components/Bouton';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
@@ -34,16 +35,24 @@ export default function RootNavigator() {
   // l'app — d'où l'attente du réglage avant de fixer l'écran de départ.
   const [pret, setPret] = useState(false);
   const [betaAcceptee, setBetaAcceptee] = useState(false);
+  const [erreurChargement, setErreurChargement] = useState(false);
 
-  useEffect(() => {
+  function charger() {
+    setErreurChargement(false);
     getSettings().then((settings) => {
       setBetaAcceptee(!!settings.betaAcceptee);
       setPret(true);
-    });
-  }, []);
+    }).catch(() => setErreurChargement(true));
+  }
+  useEffect(charger, []);
 
   if (!pret) {
-    return <View style={{ flex: 1, backgroundColor: couleurs.fond }} />;
+    return <View style={{ flex: 1, backgroundColor: couleurs.fond, justifyContent: 'center', padding: 24 }}>
+      {erreurChargement && <>
+        <Text style={{ color: couleurs.texte, marginBottom: 16 }}>Impossible de lire les réglages. Déverrouille l’appareil ou autorise le stockage du navigateur, puis réessaie. Rien n’a été réinitialisé.</Text>
+        <Bouton titre="Réessayer" onPress={charger} />
+      </>}
+    </View>;
   }
 
   return (

@@ -32,14 +32,21 @@ export async function obtenirAvatarPnj(storyId: string, pnjId: string): Promise<
   });
 }
 
-export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataUrl: string): Promise<void> {
+export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataUrl: string): Promise<string> {
   const db = await ouvrirDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(MAGASIN, 'readwrite');
     tx.objectStore(MAGASIN).put(dataUrl, cle(storyId, pnjId));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('Enregistrement du portrait interrompu.'));
   });
+  db.close();
+  return dataUrl;
+}
+
+export async function preparerImageReference(uri: string): Promise<string> {
+  return uri;
 }
 
 /** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR

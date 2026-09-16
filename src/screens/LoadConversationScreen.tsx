@@ -24,21 +24,30 @@ function nomAffiche(meta: StoryMeta): string {
 export default function LoadConversationScreen({ navigation }: Props) {
   const { t } = useLangue();
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
+  const [erreur, setErreur] = useState('');
+  const [chargement, setChargement] = useState(true);
   const [renommageId, setRenommageId] = useState<string | null>(null);
   const [renommageValeur, setRenommageValeur] = useState('');
   const [suppressionId, setSuppressionId] = useState<string | null>(null);
   const swipeablesRef = useRef<Map<string, Swipeable>>(new Map());
 
   const recharger = useCallback(() => {
-    getStoriesIndex().then((liste) => setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt)));
+    setChargement(true);
+    setErreur('');
+    getStoriesIndex().then((liste) => setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt)))
+      .catch((e) => setErreur(e instanceof Error ? e.message : 'Impossible de lire les histoires.'))
+      .finally(() => setChargement(false));
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       let actif = true;
+      setChargement(true);
+      setErreur('');
       getStoriesIndex().then((liste) => {
         if (actif) setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt));
-      });
+      }).catch((e) => { if (actif) setErreur(e instanceof Error ? e.message : 'Impossible de lire les histoires.'); })
+        .finally(() => { if (actif) setChargement(false); });
       return () => {
         actif = false;
       };
@@ -53,16 +62,20 @@ export default function LoadConversationScreen({ navigation }: Props) {
 
   async function confirmerRenommage() {
     if (!renommageId) return;
-    await renommerStory(renommageId, renommageValeur);
-    setRenommageId(null);
-    recharger();
+    try {
+      await renommerStory(renommageId, renommageValeur);
+      setRenommageId(null);
+      recharger();
+    } catch (e) { setErreur(e instanceof Error ? e.message : 'Renommage impossible.'); }
   }
 
   async function confirmerSuppression(id: string) {
-    await deleteStory(id);
-    setSuppressionId(null);
-    swipeablesRef.current.delete(id);
-    recharger();
+    try {
+      await deleteStory(id);
+      setSuppressionId(null);
+      swipeablesRef.current.delete(id);
+      recharger();
+    } catch (e) { setErreur(e instanceof Error ? e.message : 'Suppression impossible.'); }
   }
 
   // Balayage latéral pour supprimer — geste standard mobile, en plus du
@@ -78,11 +91,15 @@ export default function LoadConversationScreen({ navigation }: Props) {
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CHARGER}>
     <View style={styles.container}>
       <Text style={styles.titre}>{t('Charger conversation')}</Text>
+      {erreur ? <>
+        <Text style={[styles.aide, { color: couleurs.danger }]}>{t(erreur)}</Text>
+        <Bouton titre={t('Réessayer')} onPress={recharger} />
+      </> : null}
       <FlatList
         data={histoires}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ gap: espacement.sm, paddingBottom: espacement.xl }}
-        ListEmptyComponent={<Text style={styles.aide}>{t("Aucune conversation sauvegardée pour l'instant.")}</Text>}
+        ListEmptyComponent={erreur ? null : <Text style={styles.aide}>{t(chargement ? 'Chargement des histoires…' : "Aucune conversation sauvegardée pour l'instant.")}</Text>}
         renderItem={({ item }) => (
           <Swipeable
             ref={(ref) => {
