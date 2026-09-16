@@ -168,7 +168,7 @@ function CadreModal({ children, onFermer }: { children: React.ReactNode; onFerme
 }
 
 function SelecteurLangue({ visible, onFermer }: { visible: boolean; onFermer: () => void }) {
-  const { t, langue, changerLangue } = useLangue();
+  const { t, langue, definirLangue } = useLangue();
   const [libre, setLibre] = useState('');
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onFermer}>
@@ -179,7 +179,7 @@ function SelecteurLangue({ visible, onFermer }: { visible: boolean; onFermer: ()
             <Pressable
               key={l.code}
               style={[styles.optionLangue, langue === l.code && styles.optionLangueActive]}
-              onPress={() => { changerLangue(l.code); onFermer(); }}
+              onPress={() => { definirLangue(l.code); onFermer(); }}
             >
               <Text style={[styles.texteOptionLangue, langue === l.code && styles.texteOptionLangueActive]}>{l.label}</Text>
             </Pressable>
@@ -199,7 +199,7 @@ function SelecteurLangue({ visible, onFermer }: { visible: boolean; onFermer: ()
               onPress={() => {
                 const code = libre.trim().toLowerCase();
                 if (!code) return;
-                changerLangue(code);
+                definirLangue(code);
                 onFermer();
               }}
             >
