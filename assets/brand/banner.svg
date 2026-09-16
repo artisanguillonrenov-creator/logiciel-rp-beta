@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" width="1600" height="400" role="img" aria-labelledby="elyndorBannerTitle">
+  <title id="elyndorBannerTitle">Elyndor Premium</title>
+  <defs>
+    <linearGradient id="bandBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0A0A" />
+      <stop offset="45%" stop-color="#1A3C34" />
+      <stop offset="100%" stop-color="#0A0A0A" />
+    </linearGradient>
+    <linearGradient id="titleGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C9A66B" />
+      <stop offset="50%" stop-color="#E8D5B7" />
+      <stop offset="100%" stop-color="#C9A66B" />
+    </linearGradient>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+      <stop offset="60%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1600" height="400" fill="url(#bandBg)" />
+
+  <!-- motif ornemental discret -->
+  <g stroke="#4B2E5E" stroke-width="1" opacity="0.5">
+    <path d="M0 340 Q400 300 800 340 T1600 340" fill="none" />
+    <path d="M0 60 Q400 100 800 60 T1600 60" fill="none" />
+  </g>
+  <g fill="#9A2C2C" opacity="0.8">
+    <circle cx="120" cy="200" r="2.5" />
+    <circle cx="1480" cy="200" r="2.5" />
+    <circle cx="800" cy="48" r="2.5" />
+    <circle cx="800" cy="352" r="2.5" />
+  </g>
+
+  <!-- filet encadrant -->
+  <rect x="24" y="24" width="1552" height="352" fill="none" stroke="url(#titleGold)" stroke-width="1.5" opacity="0.7" />
+
+  <text x="800" y="196" font-family="Cinzel, 'Times New Roman', serif" font-size="96" font-weight="700"
+        text-anchor="middle" fill="url(#titleGold)" letter-spacing="10">ELYNDOR</text>
+  <text x="800" y="252" font-family="'Cormorant Garamond', Georgia, serif" font-size="30" font-style="italic"
+        text-anchor="middle" fill="#E8D5B7" letter-spacing="4">PREMIUM</text>
+
+  <text x="800" y="300" font-family="'Cormorant Garamond', Georgia, serif" font-size="20"
+        text-anchor="middle" fill="#C9A66B" opacity="0.9">Le logiciel porte l'autorité — le modèle ne prête que le langage</text>
+
+  <rect width="1600" height="400" fill="url(#vignette)" />
+</svg>

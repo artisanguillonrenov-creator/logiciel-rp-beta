@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="elyndorLogoTitle">
+  <title id="elyndorLogoTitle">Elyndor — sceau</title>
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#1A3C34" stop-opacity="0.55" />
+      <stop offset="55%" stop-color="#0A0A0A" stop-opacity="1" />
+      <stop offset="100%" stop-color="#0A0A0A" stop-opacity="1" />
+    </radialGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8D5B7" />
+      <stop offset="50%" stop-color="#C9A66B" />
+      <stop offset="100%" stop-color="#E8D5B7" />
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4B2E5E" />
+      <stop offset="100%" stop-color="#1A3C34" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="256" cy="256" r="252" fill="url(#bgGlow)" />
+  <circle cx="256" cy="256" r="228" fill="none" stroke="url(#goldGrad)" stroke-width="3" />
+  <circle cx="256" cy="256" r="206" fill="none" stroke="#C9A66B" stroke-width="1" stroke-opacity="0.5" />
+
+  <!-- Ornements cardinaux -->
+  <g stroke="url(#goldGrad)" stroke-width="2" fill="none" stroke-opacity="0.8">
+    <path d="M256 28 L256 60" />
+    <path d="M256 484 L256 452" />
+    <path d="M28 256 L60 256" />
+    <path d="M484 256 L452 256" />
+  </g>
+  <g fill="#9A2C2C">
+    <circle cx="256" cy="44" r="4" />
+    <circle cx="256" cy="468" r="4" />
+    <circle cx="44" cy="256" r="4" />
+    <circle cx="468" cy="256" r="4" />
+  </g>
+
+  <!-- Losange interne (émeraude / améthyste) -->
+  <polygon points="256,120 340,256 256,392 172,256" fill="url(#purpleGrad)" stroke="url(#goldGrad)" stroke-width="2" opacity="0.9" />
+
+  <!-- Monogramme E -->
+  <text x="256" y="300" font-family="Cinzel, 'Times New Roman', serif" font-size="180" font-weight="700"
+        text-anchor="middle" fill="url(#goldGrad)" stroke="#0A0A0A" stroke-width="2">E</text>
+
+  <!-- Filet inférieur -->
+  <path d="M156 360 Q256 396 356 360" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.85" />
+</svg>
