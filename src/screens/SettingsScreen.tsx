@@ -259,6 +259,13 @@ export default function SettingsScreen({ navigation }: Props) {
       ? t('Grand public')
       : t('À déclarer');
 
+  const illustrationsPretes = genererImagesActive && !!apiKey.trim();
+  const etatIllustrations = !genererImagesActive
+    ? t('Désactivées')
+    : illustrationsPretes
+      ? t('Prêtes')
+      : t('Clé OpenRouter requise');
+
   if (chargement) {
     return (
       <View style={[styles.container, styles.centreChargement]}>
@@ -296,7 +303,7 @@ export default function SettingsScreen({ navigation }: Props) {
           </Panneau>
           <Panneau style={[styles.resumeCarte, estTablette && styles.resumeCarteTablette]}>
             <Text style={styles.resumeLabel}>{t('ILLUSTRATIONS')}</Text>
-            <Text style={styles.resumeValeur}>{t(genererImagesActive ? 'Activées' : 'Désactivées')}</Text>
+            <Text style={styles.resumeValeur}>{etatIllustrations}</Text>
           </Panneau>
         </View>
 
@@ -453,7 +460,7 @@ export default function SettingsScreen({ navigation }: Props) {
             <Panneau style={styles.section}>
               <Text style={styles.sectionSurtitre}>{t('ILLUSTRATION')}</Text>
               <Text style={styles.sectionTitre}>{t('Images de scène')}</Text>
-              <Text style={styles.sectionDescription}>{t('La génération d’images reste optionnelle et n’interrompt jamais la narration.')}</Text>
+              <Text style={styles.sectionDescription}>{t('La génération d’images reste optionnelle, fonctionne en arrière-plan et ne bloque jamais la narration.')}</Text>
 
               <View style={styles.rangeeMoteur}>
                 <Pressable
@@ -470,10 +477,25 @@ export default function SettingsScreen({ navigation }: Props) {
                 </Pressable>
               </View>
 
-              <Text style={styles.aide}>{t('Quand elle est active, l’action « Illustrer cette scène » apparaît dans le récit. Les images ne sont pas enregistrées avec la sauvegarde.')}</Text>
+              <Text style={styles.aide}>{t('Quand elle est active et qu’une clé OpenRouter est configurée, l’action « Illustrer cette scène » apparaît dans le récit. Les illustrations sont conservées localement pour l’histoire et supprimées avec elle.')}</Text>
 
               {genererImagesActive && (
                 <View style={styles.blocFournisseur}>
+                  {moteurInference !== 'openrouter' && (
+                    <Champ
+                      label={t('Clé OpenRouter pour les images')}
+                      value={apiKey}
+                      onChangeText={setApiKey}
+                      placeholder="sk-or-v1-…"
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      conteneurStyle={styles.champConteneur}
+                    />
+                  )}
+                  {!apiKey.trim() && (
+                    <Text style={[styles.aide, { color: couleurs.danger }]}>{t('Une clé API OpenRouter est requise pour les illustrations et les portraits générés, même si le narrateur utilise Infermatic ou un modèle local.')}</Text>
+                  )}
                   <Text style={styles.label}>{t("Mode d'images")}</Text>
                   <View style={styles.rangeeMoteur}>
                     <Pressable
@@ -489,7 +511,7 @@ export default function SettingsScreen({ navigation }: Props) {
                       <Text style={[styles.texteOptionMoteur, modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Gratuit · limité')}</Text>
                     </Pressable>
                   </View>
-                  <Text style={styles.aide}>{t('La génération d’images utilise actuellement OpenRouter, même si le narrateur utilise Infermatic ou un modèle local.')}</Text>
+                  <Text style={styles.aide}>{t('La génération d’images utilise actuellement OpenRouter, indépendamment du fournisseur choisi pour le narrateur.')}</Text>
                 </View>
               )}
             </Panneau>
