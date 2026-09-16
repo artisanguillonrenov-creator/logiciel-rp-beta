@@ -2,7 +2,7 @@ import { Image } from 'react-native';
 import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
 import { configurationLLM, appellerModele, ErreurOpenRouter } from './openrouter';
 import { calculerSelectionLore } from './generateTurn';
-import { obtenirAvatarPnj, enregistrerAvatarPnj } from '../storage/pnjAvatarsStore';
+import { obtenirAvatarPnj, enregistrerAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirPortrait } from '../data/portraits';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
@@ -348,8 +348,7 @@ export async function obtenirOuGenererAvatarPnj(story: StoryState, pnj: EntreeLo
   if (existant) return existant;
   const prompt = await obtenirPromptAvatarPnj(story, pnj, appSettings);
   const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
-  await enregistrerAvatarPnj(story.meta.id, pnj.id, url);
-  return url;
+  return enregistrerAvatarPnj(story.meta.id, pnj.id, url);
 }
 
 // Identifiant synthétique réutilisant le même stockage (pnjAvatarsStore,
@@ -436,8 +435,7 @@ export async function obtenirOuGenererAvatarJoueur(story: StoryState, appSetting
   if (existant) return existant;
   const prompt = await obtenirPromptAvatarJoueur(story, appSettings);
   const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
-  await enregistrerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR, url);
-  return url;
+  return enregistrerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR, url);
 }
 
 async function appellerModeleImage(
@@ -455,11 +453,12 @@ async function appellerModeleImage(
   // envoyée aux modèles de vision sur /chat/completions ; FLUX.2 accepte
   // jusqu'à plusieurs images de référence pour éditer/varier plutôt que
   // générer à l'aveugle depuis du texte seul (texte d'abord, recommandé).
+  const references = await Promise.all((imagesReference ?? []).map(preparerImageReference));
   const contenu =
-    imagesReference && imagesReference.length > 0
+    references.length > 0
       ? [
           { type: 'text', text: prompt },
-          ...imagesReference.map((url) => ({ type: 'image_url', image_url: { url } })),
+          ...references.map((url) => ({ type: 'image_url', image_url: { url } })),
         ]
       : prompt;
 

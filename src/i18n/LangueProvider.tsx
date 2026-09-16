@@ -56,7 +56,7 @@ export function LangueProvider({ children }: { children: React.ReactNode }) {
       const l = s.langueInterface || 'fr';
       langueRef.current = l;
       setLangue(l);
-    });
+    }).catch(() => {}); // Le navigateur racine affiche l'erreur et propose de réessayer.
   }, []);
 
   useEffect(() => {

@@ -36,6 +36,9 @@ export default function SettingsScreen({ navigation }: Props) {
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
   const [messageStatut, setMessageStatut] = useState('');
+  const [conserverClesWeb, setConserverClesWeb] = useState(false);
+  const [avancesOuverts, setAvancesOuverts] = useState(false);
+  const [erreurChargement, setErreurChargement] = useState('');
 
   // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil,
   // code de déverrouillage requis pour repasser en ADULTE ensuite —
@@ -72,20 +75,32 @@ export default function SettingsScreen({ navigation }: Props) {
   const [importEnCours, setImportEnCours] = useState(false);
   const [erreurModeleLocal, setErreurModeleLocal] = useState('');
 
-  useEffect(() => {
+  function chargerReglages() {
+    setErreurChargement('');
+    setChargement(true);
     getSettings().then((settings: AppSettings) => {
       setApiKey(settings.openRouterApiKey);
       setModel(settings.model);
       setInfermaticApiKey(settings.infermaticApiKey ?? '');
       setInfermaticModel(settings.infermaticModel ?? '');
       setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
+      setConserverClesWeb(settings.conserverClesWeb ?? false);
+      const cleConfiguree = settings.moteurInference === 'infermatic' ? settings.infermaticApiKey : settings.openRouterApiKey;
+      setAvancesOuverts(settings.moteurInference !== 'local' && !cleConfiguree);
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
       setGenererImagesActive(settings.genererImagesActive ?? false);
       setModeleImagesGratuit(settings.modeleImagesGratuit ?? false);
       setChargement(false);
+    }).catch(() => {
+      setErreurChargement(t('Impossible de lire les réglages. Réessaie après avoir déverrouillé l’appareil ou autorisé le stockage du navigateur.'));
+      setChargement(false);
     });
+  }
+
+  useEffect(() => {
+    chargerReglages();
     rafraichirEtatModeleLocal();
   }, []);
 
@@ -120,17 +135,21 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   async function sauvegarderProfil(profil: ProfilContenu, code: string | undefined) {
-    setProfilContenu(profil);
-    setCodeDeverrouillage(code);
-    const settingsActuelles = await getSettings();
-    await saveSettings({ ...settingsActuelles, profilContenu: profil, codeDeverrouillage: code });
+    try {
+      const settingsActuelles = await getSettings();
+      await saveSettings({ ...settingsActuelles, profilContenu: profil, codeDeverrouillage: code });
+      setProfilContenu(profil);
+      setCodeDeverrouillage(code);
+      setModalProfilOuvert(false);
+    } catch {
+      setErreurProfil(t('Le profil n’a pas pu être enregistré. Réessaie.'));
+    }
   }
 
   function choisirGrandPublic() {
     // Redescendre vers GRAND_PUBLIC ne demande jamais de code — seul le
     // passage vers ADULTE est protégé.
     sauvegarderProfil('grand_public', codeDeverrouillage);
-    setModalProfilOuvert(false);
   }
 
   function choisirAdulte() {
@@ -142,7 +161,6 @@ export default function SettingsScreen({ navigation }: Props) {
         return;
       }
       sauvegarderProfil('adulte', codeSaisi.trim());
-      setModalProfilOuvert(false);
       return;
     }
     if (codeSaisi.trim() !== codeDeverrouillage) {
@@ -150,7 +168,6 @@ export default function SettingsScreen({ navigation }: Props) {
       return;
     }
     sauvegarderProfil('adulte', codeDeverrouillage);
-    setModalProfilOuvert(false);
   }
 
   function ouvrirModalProfil() {
@@ -207,6 +224,7 @@ export default function SettingsScreen({ navigation }: Props) {
         infermaticApiKey: infermaticApiKey.trim() || undefined,
         infermaticModel: infermaticModel.trim() || undefined,
         embeddingsApiKey: embeddingsApiKey.trim() || undefined,
+        conserverClesWeb,
         profilContenu,
         codeDeverrouillage,
         moteurInference,
@@ -235,12 +253,48 @@ export default function SettingsScreen({ navigation }: Props) {
     );
   }
 
+  if (erreurChargement) {
+    return <View style={[styles.container, { backgroundColor: couleurs.fond }]}>
+      <Text style={styles.statut}>{erreurChargement}</Text>
+      <Bouton titre={t('Réessayer')} onPress={chargerReglages} />
+    </View>;
+  }
+
   return (
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_REGLAGES}>
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
       <Text style={styles.titre}>{t('Réglages')}</Text>
       <Separateur />
 
+      <Bouton
+        titre={t(avancesOuverts ? 'Masquer les réglages avancés' : 'Connexion et réglages avancés')}
+        variante="secondaire"
+        onPress={() => setAvancesOuverts((v) => !v)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: avancesOuverts }}
+        style={styles.boutonAction}
+      />
+      <Text style={styles.aide}>
+        {t('Narrateur')} : {moteurInference === 'local' ? t('Sur cet appareil') : moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter'}
+      </Text>
+
+      {avancesOuverts && <>
+      <Text style={styles.aide}>
+        {t(Platform.OS === 'web'
+          ? 'Par défaut, les clés restent dans cet onglet : elles survivent au rechargement mais devront être ressaisies après sa fermeture. Le navigateur ne fournit pas de coffre chiffré.'
+          : 'Les clés API sont conservées dans le coffre sécurisé de cet appareil, séparément des autres réglages.')}
+      </Text>
+      {Platform.OS === 'web' && <>
+        <Bouton
+          titre={t(conserverClesWeb ? '✓ Conserver mes clés sur ce navigateur' : 'Conserver mes clés sur ce navigateur')}
+          variante="secondaire"
+          onPress={() => setConserverClesWeb((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: conserverClesWeb }}
+          style={styles.boutonAction}
+        />
+        <Text style={styles.aide}>{t('Option non chiffrée, réservée à un appareil personnel. Le choix prend effet avec « Enregistrer ».')}</Text>
+      </>}
       <Champ
         label={t('Clé API OpenRouter')}
         value={apiKey}
@@ -365,6 +419,8 @@ export default function SettingsScreen({ navigation }: Props) {
           ) : null}
         </>
 
+      </>}
+
       <Text style={styles.label}>{t('Génération d’images')}</Text>
       <View style={styles.rangeeMoteur}>
         <Pressable
@@ -382,7 +438,7 @@ export default function SettingsScreen({ navigation }: Props) {
       </View>
       <Text style={styles.aide}>
         {t(
-          "Ajoute un bouton « Illustrer cette scène » dans la conversation, qui génère une image via le même compte OpenRouter (modèle ouvert dédié aux images, pas celui choisi pour le texte). Les images générées ne sont pas sauvegardées avec l'histoire — elles disparaissent si tu quittes l'écran.",
+          "Ajoute « Illustrer cette scène » dans le menu « Actions du récit », via ton compte OpenRouter. Les illustrations ne sont pas sauvegardées avec l'histoire — elles disparaissent si tu quittes l'écran.",
         )}
       </Text>
 

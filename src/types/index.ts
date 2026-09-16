@@ -267,7 +267,7 @@ export interface SocialState {
 }
 
 // Incrémenté à chaque changement de forme des données persistées ; voir
-// migrerHistoire dans storage.ts (esprit de l'auto-updater du brief Phase 2 :
+// migrerHistoire dans storyMigration.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
 export const VERSION_SCHEMA_HISTOIRE = 9;
 
@@ -319,6 +319,9 @@ export interface AppSettings {
   // OpenRouter n'en sert pas pour ce compte. Optionnelle : voir
   // src/engine/embeddings.ts.
   embeddingsApiKey?: string;
+  // Web seulement : opt-in de conservation non chiffrée au-delà de l'onglet.
+  // Sur Android/iOS, les clés sont toujours conservées dans SecureStore.
+  conserverClesWeb?: boolean;
   // undefined tant que non déclaré (déclaration requise avant de jouer).
   profilContenu?: ProfilContenu;
   // Fixé par l'utilisateur au premier passage en ADULTE ; requis pour

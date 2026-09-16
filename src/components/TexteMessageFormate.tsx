@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
-import { analyserMessage } from '../engine/messageFormatter';
+import { Image, Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
+import { analyserMessage, type SegmentMessage } from '../engine/messageFormatter';
+import { indexerLocuteurs } from '../engine/speakerIndex';
 import { couleurs, polices } from '../theme/theme';
 import type { EntreeLoreEmergent } from '../types';
 
@@ -9,173 +10,66 @@ export interface AvatarPnjPourTexte {
   avatarUri: string;
 }
 
-// Table nom (complet ou prénom seul) → {pnj, avatarUri}, plus le motif regex
-// qui va avec — construite une fois par rendu de bulle, pas par segment.
-// Garde le PNJ entier (pas seulement l'URI) pour pouvoir l'identifier au tap
-// (voir onPressAvatar) et ouvrir son portrait en grand.
-interface IndexAvatarsPnj {
-  regex: RegExp;
-  parNom: Map<string, AvatarPnjPourTexte>;
-}
-
-function construireIndexAvatarsPnj(avatars: AvatarPnjPourTexte[]): IndexAvatarsPnj | null {
-  const parNom = new Map<string, AvatarPnjPourTexte>();
-  for (const item of avatars) {
-    const titre = item.pnj.titre.trim();
-    if (!titre) continue;
-    parNom.set(titre.toLowerCase(), item);
-    const premierMot = titre.split(/\s+/)[0];
-    if (premierMot.length > 2) parNom.set(premierMot.toLowerCase(), item);
-  }
-  if (parNom.size === 0) return null;
-  // Les plus longs d'abord : "Lirael Sombre-Lune" doit matcher avant le
-  // simple "Lirael" quand le nom complet est présent dans le texte.
-  const cles = [...parNom.keys()].sort((a, b) => b.length - a.length);
-  const echappees = cles.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const regex = new RegExp(`\\b(${echappees.join('|')})\\b`, 'gi');
-  return { regex, parNom };
-}
-
-// "KAELEN" / "SOMBRE-LUNE" → "Kaelen" / "Sombre-Lune" : le narrateur écrit
-// le nom en MAJUSCULES (voir la consigne de format dans promptBuilder.ts,
-// pour que la détection ne confonde jamais une étiquette de personnage avec
-// une phrase de narration) mais l'afficher tel quel serait criard.
 function capitaliser(nom: string): string {
-  return nom
-    .toLowerCase()
-    .split(/(-| )/)
-    .map((partie) => (partie === '-' || partie === ' ' ? partie : partie.charAt(0).toUpperCase() + partie.slice(1)))
-    .join('');
+  return nom.toLocaleLowerCase('fr').replace(/(^|[- ])\p{L}/gu, (lettre) => lettre.toLocaleUpperCase('fr'));
 }
 
-// Découpe un segment de narration/action en insérant un petit avatar juste
-// avant chaque mention reconnue d'un PNJ — jamais dans le dialogue lui-même
-// (son propre nom n'y apparaît quasiment jamais), voir l'appelant.
-// onPress est posé sur le <Text> englobant (pas un Pressable autour de
-// l'Image) : un Pressable est une View, et une View comme enfant direct
-// d'un Text n'est pas fiable en RN — Text.onPress couvre nativement toute
-// sa zone, avatar inclus, sans casser le flux de texte en ligne.
-function segmentAvecAvatars(
-  contenu: string,
-  index: IndexAvatarsPnj,
-  clePrefixe: string,
-  onPressAvatar?: (pnj: EntreeLoreEmergent) => void,
-): React.ReactNode[] {
-  const morceaux = contenu.split(index.regex);
-  return morceaux.map((morceau, i) => {
-    if (!morceau) return null;
-    // String.split avec un groupe capturant place les correspondances aux
-    // index impairs, entrelacées avec le texte non-match aux index pairs.
-    if (i % 2 === 1) {
-      const trouve = index.parNom.get(morceau.toLowerCase());
-      if (trouve) {
-        return (
-          <Text key={`${clePrefixe}-${i}`} onPress={onPressAvatar ? () => onPressAvatar(trouve.pnj) : undefined}>
-            <Image source={{ uri: trouve.avatarUri }} style={styles.avatarInline} />
-            {' ' + morceau}
-          </Text>
-        );
-      }
-    }
-    return <Text key={`${clePrefixe}-${i}`}>{morceau}</Text>;
-  });
-}
-
-// Rend un message avec l'action/narration (*entre astérisques*) en italique,
-// le dialogue ("entre guillemets") distingué, et les répliques nommées
-// ("NOM : « ... »", voir le format demandé dans promptBuilder.ts) avec le
-// nom du PNJ mis en avant et son avatar s'il a déjà été généré — même
-// analyseur que l'export PDF/EPUB, pour que le rendu à l'écran et le
-// document restent cohérents. avatarsPnj (optionnel) : jamais utilisé pour
-// déclencher une génération depuis ici, seulement pour afficher un portrait
-// déjà en cache (voir ConversationScreen).
+// Les mentions dans la prose ne sont pas des prises de parole. Un seul
+// portrait par réplique nommée ; le texte partagé avec l'export reste intact.
 export default function TexteMessageFormate({
-  texte,
-  style,
-  avatarsPnj,
-  avatarParDefaut,
-  pnjParDefaut,
-  nomsPnjConnus,
-  onPressAvatar,
+  texte, style, avatarsPnj = [], pnjConnus, onPressAvatar,
 }: {
   texte: string;
   style?: StyleProp<TextStyle>;
   avatarsPnj?: AvatarPnjPourTexte[];
-  // Avatar à utiliser pour une réplique nommée dont l'étiquette ne
-  // correspond à AUCUN PNJ connu du tout (le narrateur écrit parfois un rôle
-  // générique — "MARCHAND" — au lieu du nom propre, même une fois ce nom
-  // établi ailleurs dans la conversation ; voir ConversationScreen, qui ne
-  // le fournit que si un seul PNJ à avatar est mentionné dans les messages
-  // récents, pour ne jamais deviner à tort entre plusieurs PNJ actifs).
-  avatarParDefaut?: string;
-  // Le PNJ correspondant à avatarParDefaut (même provenance) — pour que le
-  // tap sur cet avatar de repli ouvre lui aussi le bon portrait en grand.
-  pnjParDefaut?: EntreeLoreEmergent;
-  // Noms (complet + prénom) de TOUS les PNJ connus du lore, avatar généré ou
-  // non — sert à ne PAS appliquer avatarParDefaut à un PNJ légitimement
-  // différent dont le portrait n'est simplement pas encore prêt (seul un nom
-  // absent de cet ensemble, donc une étiquette de rôle générique, doit
-  // recevoir le repli).
-  nomsPnjConnus?: Set<string>;
-  // Appelé avec le PNJ dont l'avatar vient d'être touché — voir
-  // ConversationScreen, qui ouvre alors son portrait en grand.
+  pnjConnus?: EntreeLoreEmergent[];
   onPressAvatar?: (pnj: EntreeLoreEmergent) => void;
 }) {
-  const segments = analyserMessage(texte);
-  const index = avatarsPnj && avatarsPnj.length > 0 ? construireIndexAvatarsPnj(avatarsPnj) : null;
-  return (
-    <Text style={style}>
-      {segments.map((seg, i) => {
-        if (seg.type === 'repliquePersonnage') {
-          const locuteurMinuscule = (seg.locuteur ?? '').toLowerCase();
-          const trouve = index?.parNom.get(locuteurMinuscule);
-          const connuSansAvatar = !trouve && nomsPnjConnus?.has(locuteurMinuscule);
-          const avatarUri = trouve?.avatarUri ?? (connuSansAvatar ? undefined : avatarParDefaut);
-          const pnjPourTap = trouve?.pnj ?? (connuSansAvatar ? undefined : pnjParDefaut);
-          return (
-            <Text key={i} onPress={avatarUri && pnjPourTap && onPressAvatar ? () => onPressAvatar(pnjPourTap) : undefined}>
-              {avatarUri ? <Image source={{ uri: avatarUri }} style={styles.avatarInline} /> : null}
-              <Text style={styles.nomLocuteur}>
-                {avatarUri ? ' ' : ''}
-                {capitaliser(seg.locuteur ?? '')} :{' '}
-              </Text>
-              <Text style={styles.dialogue}>« {seg.contenu} »</Text>
-            </Text>
-          );
-        }
-        const segStyle = seg.type === 'action' ? styles.action : seg.type === 'dialogue' ? styles.dialogue : undefined;
-        if (index && seg.type !== 'dialogue') {
-          return (
-            <Text key={i} style={segStyle}>
-              {segmentAvecAvatars(seg.contenu, index, String(i), onPressAvatar)}
-            </Text>
-          );
-        }
-        return (
-          <Text key={i} style={segStyle}>
-            {seg.contenu}
-          </Text>
-        );
-      })}
-    </Text>
-  );
+  const index = indexerLocuteurs(pnjConnus ?? avatarsPnj.map((a) => a.pnj));
+  const portraits = new Map(avatarsPnj.map((a) => [a.pnj.id, a.avatarUri]));
+  const blocs: SegmentMessage[][] = [];
+  for (const segment of analyserMessage(texte)) {
+    const precedent = blocs[blocs.length - 1];
+    if (segment.type === 'repliquePersonnage' || !precedent || precedent[0].type === 'repliquePersonnage') {
+      blocs.push([segment]);
+    } else {
+      precedent.push(segment);
+    }
+  }
+
+  return <View>
+    {blocs.map((bloc, i) => {
+      const segment = bloc[0];
+      if (segment.type === 'repliquePersonnage') {
+        const pnj = index.get((segment.locuteur ?? '').toLocaleLowerCase('fr'));
+        const uri = pnj ? portraits.get(pnj.id) : undefined;
+        return <View key={i} style={styles.replique}>
+          <Pressable
+            style={styles.locuteur}
+            disabled={!uri || !pnj || !onPressAvatar}
+            onPress={() => { if (pnj) onPressAvatar?.(pnj); }}
+            accessibilityRole="button"
+            accessibilityLabel={`Portrait de ${segment.locuteur}`}
+          >
+            {uri && <Image source={{ uri }} style={styles.avatar} />}
+            <Text style={[style, styles.nomLocuteur]}>{capitaliser(segment.locuteur ?? '')}</Text>
+          </Pressable>
+          <Text style={[style, styles.dialogue]}>« {segment.contenu} »</Text>
+        </View>;
+      }
+      if (bloc.every((seg) => !seg.contenu.trim())) return null;
+      return <Text key={i} style={style}>
+        {bloc.map((seg, j) => <Text key={j} style={seg.type === 'action' ? styles.action : seg.type === 'dialogue' ? styles.dialogue : undefined}>{seg.contenu}</Text>)}
+      </Text>;
+    })}
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  action: {
-    fontStyle: 'italic',
-    color: couleurs.texteAtténué,
-  },
-  dialogue: {
-    color: couleurs.dore,
-  },
-  nomLocuteur: {
-    fontFamily: polices.corpsMedium,
-    color: couleurs.accentClair,
-  },
-  avatarInline: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-  },
+  action: { fontStyle: 'italic', color: couleurs.texteAtténué },
+  dialogue: { color: couleurs.dore },
+  replique: { marginVertical: 6 },
+  locuteur: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, minHeight: 32 },
+  nomLocuteur: { flexShrink: 1, fontFamily: polices.corpsMedium, color: couleurs.accentClair },
+  avatar: { width: 32, height: 32, borderRadius: 16 },
 });

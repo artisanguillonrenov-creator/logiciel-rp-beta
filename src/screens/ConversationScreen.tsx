@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Swipeable } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -111,6 +112,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [debugLore, setDebugLore] = useState<DebugLore | null>(null);
   const debugLoreMessageIdRef = useRef<string | null>(null);
   const [debugOuvert, setDebugOuvert] = useState(false);
+  const [actionsOuvertes, setActionsOuvertes] = useState(false);
+  const [portraitsOuverts, setPortraitsOuverts] = useState(false);
+  const [rechargement, setRechargement] = useState(0);
+  const [sauvegardeEnEchec, setSauvegardeEnEchec] = useState(false);
   const listeRef = useRef<FlatList<Message>>(null);
 
   // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
@@ -184,26 +189,60 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [messageConcepteur, setMessageConcepteur] = useState('');
 
   useEffect(() => {
+    let actif = true;
+    setStory(null);
+    setErreur('');
     Promise.all([getStory(storyId), getSettings()]).then(([s, settings]) => {
+      if (!actif) return;
       setStory(s);
       setAppSettings(settings);
+      if (!s) setErreur('Cette histoire est introuvable.');
       if (s && s.messages.length > 0 && s.memoire.resume.trim() && Date.now() - s.meta.updatedAt > SEUIL_PAUSE_MS) {
         setDerniereFoisVisible(true);
       }
-    });
-  }, [storyId]);
+    }).catch((e) => { if (actif) setErreur(messageErreur(e, 'Impossible de charger cette histoire.')); });
+    return () => { actif = false; };
+  }, [storyId, rechargement]);
+
+  useFocusEffect(useCallback(() => {
+    let actif = true;
+    getSettings().then((settings) => { if (actif) setAppSettings(settings); })
+      .catch((e) => { if (actif) setErreur(messageErreur(e, 'Impossible de lire les réglages.')); });
+    return () => { actif = false; };
+  }, []));
+
+  const enregistrerEtat = useCallback(async (histoire: StoryState): Promise<boolean> => {
+    try {
+      await saveStory(histoire);
+      setSauvegardeEnEchec(false);
+      return true;
+    } catch (e) {
+      setSauvegardeEnEchec(true);
+      setErreur(messageErreur(e, 'Sauvegarde impossible.'));
+      return false;
+    }
+  }, []);
+
+  async function reessayerSauvegarde() {
+    if (!story || enCours) return;
+    setEnCours(true);
+    if (await enregistrerEtat(story)) setErreur('');
+    setEnCours(false);
+  }
 
   // Branches de conversation (brief Phase 2) : bouton d'en-tête pour créer
   // une copie indépendante de l'histoire à partir de son état courant.
   const creerBrancheIci = useCallback(async () => {
     if (!story) return;
     const branche = creerBranche(story);
-    await saveStory(branche);
-    navigation.navigate('Conversation', { storyId: branche.meta.id });
+    try {
+      await saveStory(branche);
+      navigation.navigate('Conversation', { storyId: branche.meta.id });
+    } catch (e) { setErreur(messageErreur(e, 'Impossible de créer la branche.')); }
   }, [story, navigation]);
 
   function ouvrirConcepteur() {
-    if (!story) return;
+    if (!story || !appSettings?.modeConcepteur) return;
     setModeleOverrideEdit(story.meta.modeleOverride ?? '');
     setTemperatureOverrideEdit(story.meta.temperatureOverride !== undefined ? String(story.meta.temperatureOverride) : '');
     setPromptSysteme('');
@@ -237,20 +276,28 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story?.meta.personnageNom, creerBrancheIci, appSettings?.modeConcepteur]);
 
-  // TODO(debug): recalcule le panneau de debug pour le dernier message
-  // joueur dès qu'une histoire est ouverte, pas seulement après un envoi —
-  // sinon rouvrir une conversation existante n'affiche jamais rien.
+  // Le diagnostic à la réouverture peut déclencher des embeddings : ne le
+  // recalculer que pour le concepteur, jamais pour la lecture normale.
   useEffect(() => {
-    if (!story || !appSettings) return;
+    if (!appSettings?.modeConcepteur) {
+      setDebugLore(null);
+      setDebugOuvert(false);
+      debugLoreMessageIdRef.current = null;
+      return;
+    }
+    if (!story) return;
+    let actif = true;
     const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
     if (dernierMessageJoueur && debugLoreMessageIdRef.current !== dernierMessageJoueur.id) {
       calculerDebugLore(story, dernierMessageJoueur.content, appSettings)
         .then((debug) => {
+          if (!actif) return;
           debugLoreMessageIdRef.current = dernierMessageJoueur.id;
           setDebugLore(debug);
         })
         .catch(() => {});
     }
+    return () => { actif = false; };
   }, [story, appSettings]);
 
   const clefManquante = appSettings && appSettings.moteurInference !== 'local' &&
@@ -269,7 +316,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     if (faitForce) {
       const storyMaj: StoryState = { ...story, memoire: verrouillerFait(story.memoire, faitForce, story.messages.length) };
       setStory(storyMaj);
-      await saveStory(storyMaj);
+      if (!await enregistrerEtat(storyMaj)) return;
       setSaisie('');
       setMessageStatut(`Retenu : « ${faitForce} »`);
       setTimeout(() => setMessageStatut(''), 4000);
@@ -307,17 +354,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setStory(storyMaj);
       debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
-      try {
-        await saveStory(storyMaj);
+      // Un échec d'enregistrement ne doit jamais rejouer l'appel au modèle.
+      if (await enregistrerEtat(storyMaj)) {
         setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
-      } catch (e) {
-        // La réponse est déjà générée et affichée ci-dessus (setStory) : ne
-        // pas remettre le texte envoyé dans le champ (contrairement au catch
-        // ci-dessous) ni le traiter comme un tour raté — sinon un nouvel
-        // envoi régénérerait une deuxième réponse pour le même message. Seule
-        // la sauvegarde a échoué (ex. quota de stockage dépassé) ; le joueur
-        // doit juste le savoir.
-        setErreur(messageErreur(e, "Cette réponse n'a pas pu être sauvegardée."));
       }
     } catch (e) {
       setSaisie(texte);
@@ -325,7 +364,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     } finally {
       setEnCours(false);
     }
-  }, [saisie, story, appSettings, enCours, messageEnReponseA]);
+  }, [saisie, story, appSettings, enCours, messageEnReponseA, enregistrerEtat]);
 
   // Bouton rapide "Continuer" : jusqu'ici, faire avancer le récit sans
   // proposer d'action précise obligeait à taper "continue" à la main à
@@ -345,7 +384,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
       try {
-        await saveStory(storyMaj);
+        if (!await enregistrerEtat(storyMaj)) return;
       } catch (e) {
         setErreur(messageErreur(e, "Cette réponse n'a pas pu être sauvegardée."));
       }
@@ -426,42 +465,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings, imageEnCours, avatarJoueur, avatarsPnjPourTexte]);
 
-  // Repli pour une réplique nommée par un rôle générique ("MARCHAND :")
-  // plutôt que par le nom propre du PNJ ("KAELEN :") — constaté en usage
-  // réel : le narrateur ne bascule pas toujours sur le nom une fois établi,
-  // même après plusieurs régénérations. Plutôt que de forcer le modèle (déjà
-  // tenté, pas fiable), on retrouve le PNJ probable en cherchant qui est
-  // mentionné par son nom dans TOUTE l'histoire (pas seulement les derniers
-  // messages : le PNJ est connu du narrateur dès qu'il l'a inventé, une
-  // fenêtre récente ne fait que perdre le lien une fois son nom sorti des
-  // derniers tours, alors qu'il continue de parler via son rôle) —
-  // seulement si un SEUL PNJ à avatar est mentionné, pour ne jamais deviner
-  // à tort s'il y en a plusieurs en scène.
-  const texteHistoireEntiere = (story?.messages ?? [])
-    .map((m) => m.content)
-    .join('\n')
-    .toLowerCase();
-  const pnjMentionnesDansHistoire = avatarsPnjPourTexte.filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteHistoireEntiere));
-  const avatarParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].avatarUri : undefined;
-  const pnjParDefautLocuteur = pnjMentionnesDansHistoire.length === 1 ? pnjMentionnesDansHistoire[0].pnj : undefined;
-
-  // Noms de TOUS les PNJ connus (avatar généré ou non) — sert à distinguer,
-  // pour une réplique nommée sans avatar en cache, un PNJ légitimement
-  // différent dont le portrait n'est pas encore prêt (ne doit PAS recevoir
-  // avatarParDefautLocuteur, sous peine d'afficher le visage d'un autre PNJ
-  // sous son nom) d'une étiquette de rôle générique inconnue du lore
-  // ("MARCHAND" au lieu de "KAELEN"), seul cas où ce repli est pertinent.
-  // Constaté en usage réel : tant qu'un seul PNJ avait son portrait généré,
-  // chaque nouveau PNJ nommé affichait ce même portrait le temps que le
-  // sien soit prêt.
-  const nomsPnjConnus = new Set<string>();
-  pnjConnus.forEach((pnj) => {
-    const titre = pnj.titre.trim().toLowerCase();
-    if (!titre) return;
-    nomsPnjConnus.add(titre);
-    const premierMot = titre.split(/\s+/)[0];
-    if (premierMot.length > 2) nomsPnjConnus.add(premierMot);
-  });
 
   // Clé stable des PNJ connus — sert de dépendance d'effet.
   const clePnjConnus = pnjConnus
@@ -595,7 +598,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       const messages = story.messages.map((m) => (m.id === id ? { ...m, epingle: !m.epingle } : m));
       const storyMaj = { ...story, messages };
       setStory(storyMaj);
-      await saveStory(storyMaj);
+      if (!await enregistrerEtat(storyMaj)) return;
     },
     [story],
   );
@@ -620,7 +623,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     );
     const storyMaj = { ...story, messages };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setMessageActionsPour(null);
   }
 
@@ -640,7 +643,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const messages = story.messages.map((m) => (m.id === messageAEditer.id ? { ...m, content: texteEdition } : m));
     const storyMaj = { ...story, messages };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setMessageAEditer(null);
   }
 
@@ -681,7 +684,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const messages = [...story.messages.slice(0, index), ...story.messages.slice(index + 1)];
     const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);
   }
 
@@ -692,7 +695,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const messages = story.messages.slice(0, index);
     const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);
   }
 
@@ -738,7 +741,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       },
     };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setModalContexteOuvert(false);
   }
 
@@ -757,7 +760,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       },
     };
     setStory(storyMaj);
-    await saveStory(storyMaj);
+    if (!await enregistrerEtat(storyMaj)) return;
     setMessageConcepteur('Réglages de prompt enregistrés pour cette histoire.');
     setTimeout(() => setMessageConcepteur(''), 3000);
   }
@@ -784,7 +787,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     try {
       const storyMaj = await forcerMiseAJourEtat(story, appSettings);
       setStory(storyMaj);
-      await saveStory(storyMaj);
+      if (!await enregistrerEtat(storyMaj)) return;
       setMessageConcepteur('Mémoire, directeur, monde et social mis à jour.');
     } catch (e) {
       setMessageConcepteur(messageErreur(e, 'Mise à jour impossible pour le moment.'));
@@ -796,7 +799,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
   if (!story || !appSettings) {
     return (
       <View style={[styles.container, { justifyContent: 'center', backgroundColor: couleurs.fond }]}>
-        <ActivityIndicator color={couleurs.accent} />
+        {erreur ? <>
+          <Text style={styles.erreur}>{t(erreur)}</Text>
+          <Bouton titre={t('Réessayer')} onPress={() => setRechargement((v) => v + 1)} />
+          <Bouton titre={t('Retour aux histoires')} variante="secondaire" onPress={() => navigation.navigate('ChargerConversation')} />
+        </> : <ActivityIndicator color={couleurs.accent} />}
       </View>
     );
   }
@@ -924,17 +931,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                             ? avatarsPnjPourTexte
                             : undefined
                         }
-                        avatarParDefaut={
-                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
-                            ? avatarParDefautLocuteur
-                            : undefined
-                        }
-                        pnjParDefaut={
-                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
-                            ? pnjParDefautLocuteur
-                            : undefined
-                        }
-                        nomsPnjConnus={item.role === 'assistant' ? nomsPnjConnus : undefined}
+                        pnjConnus={item.role === 'assistant' ? pnjConnus : undefined}
                         onPressAvatar={
                           item.role === 'assistant'
                             ? (pnj) => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })
@@ -944,10 +941,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     </View>
                   </Pressable>
                   {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
-                  <Text style={styles.metaMessage}>
+                  {appSettings.modeConcepteur && <Text style={styles.metaMessage}>
                     {index + 1}/{story.messages.length}
                     {item.role === 'assistant' && item.dureeGenerationMs ? ` · ${formaterDureeGeneration(item.dureeGenerationMs)}` : ''}
-                  </Text>
+                  </Text>}
                 </View>
               );
             }}
@@ -966,15 +963,15 @@ export default function ConversationScreen({ route, navigation }: Props) {
           />
         )}
 
-        {debugLore && (
+        {appSettings.modeConcepteur && debugLore && (
           <Pressable style={styles.boutonDebug} onPress={() => setDebugOuvert((v) => !v)}>
             <Text style={styles.texteBoutonDebug}>
-              {debugOuvert ? '▾' : '▸'} Debug lore ({debugLore.metamoteurs.length} métamoteurs,{' '}
+              {debugOuvert ? '▾' : '▸'} Diagnostic narratif ({debugLore.metamoteurs.length} métamoteurs,{' '}
               {debugLore.loreElyndor.length} entrées Elyndor, {debugLore.souvenirs.length} souvenirs)
             </Text>
           </Pressable>
         )}
-        {debugOuvert && debugLore && (
+        {appSettings.modeConcepteur && debugOuvert && debugLore && (
           <ScrollView style={styles.panneauDebug}>
             <Text style={styles.titreDebug}>Métamoteurs sélectionnés</Text>
             {debugLore.metamoteurs.map((titre) => (
@@ -1000,6 +997,90 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 </Text>
               ))
             )}
+          </ScrollView>
+        )}
+
+        {erreur ? <Text style={styles.erreur}>{t(erreur)}</Text> : null}
+        {sauvegardeEnEchec && <Bouton titre={t('Réessayer la sauvegarde')} variante="secondaire" onPress={reessayerSauvegarde} desactive={enCours} />}
+        {erreurImage ? <Text style={styles.erreur}>{t(erreurImage)}</Text> : null}
+        {messageStatut ? <Text style={styles.statut}>{t(messageStatut)}</Text> : null}
+
+        <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
+          {messageEnReponseA && (
+            <View style={styles.bandeauReponseA}>
+              <Text style={styles.texteBandeauReponseA} numberOfLines={1}>
+                {t('Réponse à')} {messageEnReponseA.role === 'user' ? story.meta.personnageNom : t('Narrateur')} :{' '}
+                {t(messageEnReponseA.content)}
+              </Text>
+              <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8}>
+                <Text style={styles.boutonFermerReponseA}>✕</Text>
+              </Pressable>
+            </View>
+          )}
+          <View style={styles.rangeeActionsRapides}>
+            <Bouton
+              titre={t('Continuer')}
+              variante="secondaire"
+              onPress={continuerRecit}
+              desactive={enCours}
+              style={styles.boutonRapide}
+              texteStyle={styles.texteBoutonRapide}
+            />
+            <Bouton
+              titre={t('⋯ Actions du récit')}
+              variante="secondaire"
+              onPress={() => setActionsOuvertes(true)}
+              style={styles.boutonRapide}
+              texteStyle={styles.texteBoutonRapide}
+              accessibilityRole="button"
+              accessibilityLabel={t('Actions du récit')}
+            />
+          </View>
+          <View style={styles.rangeeSaisie}>
+            <Champ
+              value={saisie}
+              onChangeText={setSaisie}
+              placeholder={t('Ton action ou ta réplique…')}
+              multiligne
+              editable={!enCours}
+              conteneurStyle={{ flex: 1 }}
+              style={styles.champSaisie}
+            />
+            <BoutonDictee
+              desactive={enCours}
+              onTexteReconnu={(texte) => setSaisie((v) => (v.trim() ? `${v.trim()} ${texte}` : texte))}
+            />
+            <Pressable
+              style={[styles.boutonEnvoyer, (enCours || !saisie.trim()) && styles.boutonDesactive]}
+              onPress={() => envoyer()}
+              disabled={enCours || !saisie.trim()}
+            >
+              {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      <Modal visible={actionsOuvertes} animationType="fade" transparent onRequestClose={() => setActionsOuvertes(false)}>
+        <Pressable style={styles.superpositionSuppression} onPress={() => setActionsOuvertes(false)}>
+          <Pressable onPress={(e) => e.stopPropagation()} accessibilityViewIsModal>
+            <Panneau style={styles.panneauSuppression}>
+              <Text style={styles.titreModal}>{t('Actions du récit')}</Text>
+              {dernierEstAssistant && <Bouton titre={t('Régénérer')} variante="secondaire" desactive={enCours} onPress={() => { setActionsOuvertes(false); regenerer(); }} style={{ marginTop: espacement.sm }} />}
+              <Bouton titre={t('Suggérer une réplique')} variante="secondaire" desactive={enCours || suggestionEnCours} onPress={() => { setActionsOuvertes(false); suggererReplique(); }} style={{ marginTop: espacement.sm }} />
+              {appSettings.genererImagesActive && <Bouton titre={t('Illustrer cette scène')} variante="secondaire" desactive={enCours || imageEnCours} onPress={() => { setActionsOuvertes(false); illustrerScene(); }} style={{ marginTop: espacement.sm }} />}
+              <Bouton titre={t('Portraits')} variante="secondaire" onPress={() => { setActionsOuvertes(false); setPortraitsOuverts(true); }} style={{ marginTop: espacement.sm }} />
+              <Bouton titre={t('Messages épinglés')} variante="secondaire" onPress={() => { setActionsOuvertes(false); setEpinglesUniquement(true); setModalRechercheOuvert(true); }} style={{ marginTop: espacement.sm }} />
+              <Text style={styles.aideImageGeneree}>{t('Appui long sur un message : copier, épingler ou modifier. Pour fixer un souvenir, écris « retiens que… ».')}</Text>
+              <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setActionsOuvertes(false)} style={{ marginTop: espacement.sm }} />
+            </Panneau>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={portraitsOuverts} animationType="slide" onRequestClose={() => setPortraitsOuverts(false)}>
+        <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
+          <Text style={styles.titreModal}>{t('Portraits')}</Text>
             <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Mon portrait</Text>
             <Text style={styles.aideImageGeneree}>
               {appSettings?.genererImagesActive
@@ -1092,80 +1173,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
               </View>
             )}
             {erreurAvatarPnj ? <Text style={styles.erreur}>{t(erreurAvatarPnj)}</Text> : null}
-          </ScrollView>
-        )}
-
-        {erreur ? <Text style={styles.erreur}>{t(erreur)}</Text> : null}
-        {erreurImage ? <Text style={styles.erreur}>{t(erreurImage)}</Text> : null}
-        {messageStatut ? <Text style={styles.statut}>{t(messageStatut)}</Text> : null}
-
-        <View style={[styles.zoneSaisie, { paddingBottom: espacement.sm + insets.bottom }]}>
-          {messageEnReponseA && (
-            <View style={styles.bandeauReponseA}>
-              <Text style={styles.texteBandeauReponseA} numberOfLines={1}>
-                {t('Réponse à')} {messageEnReponseA.role === 'user' ? story.meta.personnageNom : t('Narrateur')} :{' '}
-                {t(messageEnReponseA.content)}
-              </Text>
-              <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8}>
-                <Text style={styles.boutonFermerReponseA}>✕</Text>
-              </Pressable>
-            </View>
-          )}
-          <View style={styles.rangeeActionsRapides}>
-            {dernierEstAssistant && (
-              <Bouton titre={t('Régénérer')} variante="secondaire" onPress={regenerer} desactive={enCours} style={styles.boutonRapide} texteStyle={styles.texteBoutonRapide} />
-            )}
-            <Bouton
-              titre={t('Continuer')}
-              variante="secondaire"
-              onPress={continuerRecit}
-              desactive={enCours}
-              style={styles.boutonRapide}
-              texteStyle={styles.texteBoutonRapide}
-            />
-            <Bouton
-              titre={suggestionEnCours ? t('Suggestion…') : t('Suggérer une réplique')}
-              variante="secondaire"
-              onPress={suggererReplique}
-              desactive={enCours || suggestionEnCours}
-              style={styles.boutonRapide}
-              texteStyle={styles.texteBoutonRapide}
-            />
-            {appSettings?.genererImagesActive && (
-              <Bouton
-                titre={imageEnCours ? t('Illustration…') : t('Illustrer cette scène')}
-                variante="secondaire"
-                onPress={illustrerScene}
-                desactive={enCours || imageEnCours}
-                style={styles.boutonRapide}
-                texteStyle={styles.texteBoutonRapide}
-              />
-            )}
-          </View>
-          <View style={styles.rangeeSaisie}>
-            <Champ
-              value={saisie}
-              onChangeText={setSaisie}
-              placeholder={t('Ton action ou ta réplique… (« retiens que … » pour forcer un fait)')}
-              multiligne
-              editable={!enCours}
-              conteneurStyle={{ flex: 1 }}
-              style={styles.champSaisie}
-            />
-            <BoutonDictee
-              desactive={enCours}
-              onTexteReconnu={(texte) => setSaisie((v) => (v.trim() ? `${v.trim()} ${texte}` : texte))}
-            />
-            <Pressable
-              style={[styles.boutonEnvoyer, (enCours || !saisie.trim()) && styles.boutonDesactive]}
-              onPress={() => envoyer()}
-              disabled={enCours || !saisie.trim()}
-            >
-              {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
-            </Pressable>
-          </View>
-        </View>
-      </View>
+          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setPortraitsOuverts(false)} style={{ marginTop: espacement.sm }} />
+        </ScrollView>
+      </Modal>
 
       <Modal visible={modalContexteOuvert} animationType="slide" onRequestClose={() => setModalContexteOuvert(false)}>
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
@@ -1317,7 +1327,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         </Pressable>
       </Modal>
 
-      <Modal visible={modalConcepteurOuvert} animationType="slide" onRequestClose={() => setModalConcepteurOuvert(false)}>
+      <Modal visible={appSettings.modeConcepteur === true && modalConcepteurOuvert} animationType="slide" onRequestClose={() => setModalConcepteurOuvert(false)}>
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
           <Text style={styles.titreModal}>Concepteur — {story.meta.personnageNom}</Text>
 
