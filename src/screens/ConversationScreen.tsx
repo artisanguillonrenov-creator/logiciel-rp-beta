@@ -18,7 +18,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import type { AppSettings, EntreeLoreEmergent, Message, StoryState } from '../types';
+import type { AppSettings, Message, StoryState } from '../types';
 import { getSettings, getStory, saveStory } from '../storage/storage';
 import {
   calculerDebugLore,
@@ -31,16 +31,7 @@ import {
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
-import {
-  obtenirPromptScene,
-  genererImageScene,
-  obtenirOuGenererAvatarPnj,
-  obtenirOuGenererAvatarJoueur,
-  obtenirPortraitReferenceJoueur,
-  pnjMentionneDansTexte,
-  ID_AVATAR_JOUEUR,
-} from '../engine/images';
-import { obtenirAvatarPnj, supprimerAvatarPnj } from '../storage/pnjAvatarsStore';
+import { useVisualAutomation } from '../automation/useVisualAutomation';
 import { ErreurOpenRouter } from '../engine/openrouter';
 import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
@@ -60,36 +51,16 @@ const IMAGE_CONVERSATION = require('../../assets/scenes/creation-point-depart.pn
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 
-// Rouvrir une histoire après une pause plus longue que ça déclenche le
-// bandeau "La dernière fois…" (Ajouts_A_Integrer.md #3).
 const SEUIL_PAUSE_MS = 6 * 60 * 60 * 1000;
 
-// Nombre max d'avatars de PNJ envoyés comme images de référence à
-// l'illustration de scène (voir illustrerScene) — même logique de plafond
-// que le reste (dilue l'attention/le payload au-delà d'un certain point).
-const MAX_PNJ_REFERENCE_SCENE = 2;
-
-// Nombre max de messages (en partant de la fin de l'histoire) qui affichent
-// des images d'avatar — joueur (en-tête) ou PNJ (dans TexteMessageFormate,
-// à chaque mention/réplique). Le texte (nom, réplique) reste affiché sur
-// TOUS les messages, sans plafond : ce sont les IMAGES (data: URL base64
-// potentiellement lourdes) répétées sur beaucoup de messages qui posent
-// problème sur une longue histoire — constaté en usage réel (74+ messages,
-// écran blanc = plantage natif côté mémoire, pas une erreur JS rattrapable).
-// D'abord limité au seul avatar du joueur (v1.27.2), élargi ici aux PNJ
-// (jamais plafonnés jusqu'ici, et potentiellement bien plus nombreux : une
-// image par mention, pas juste une par message).
+// Les images d'avatar sont limitées aux messages récents pour éviter de
+// redécoder le même PNG des dizaines de fois sur de longues histoires.
 const MAX_MESSAGES_RECENTS_AVEC_AVATARS = 20;
 
 function messageErreur(e: unknown, messageParDefaut: string): string {
   if (e instanceof ErreurOpenRouter || e instanceof ErreurEmbeddings || e instanceof ErreurMoteurLocal || e instanceof ErreurProfilContenu) {
     return e.message;
   }
-  // Repli générique historique — mais s'il s'agit bien d'une Error avec un
-  // message exploitable, on l'affiche plutôt que de le masquer : un message
-  // précis (même une trace technique) aide à diagnostiquer, un texte
-  // générique ne fait que cacher la vraie cause (voir échange support du
-  // 3 sept. : erreur générique persistante sans piste exploitable).
   if (e instanceof Error && e.message) return e.message;
   return messageParDefaut;
 }
@@ -118,8 +89,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [sauvegardeEnEchec, setSauvegardeEnEchec] = useState(false);
   const listeRef = useRef<FlatList<Message>>(null);
 
-  // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
-  // objectifs en prose, consultable et modifiable en cours de partie.
   const [modalContexteOuvert, setModalContexteOuvert] = useState(false);
   const [lieuEdit, setLieuEdit] = useState('');
   const [ambianceEdit, setAmbianceEdit] = useState('');
@@ -127,59 +96,46 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [objectifsEdit, setObjectifsEdit] = useState('');
   const [erreurContexte, setErreurContexte] = useState('');
 
-  // Recherche + épinglés (Ajouts_A_Integrer.md #1 et #2).
   const [modalRechercheOuvert, setModalRechercheOuvert] = useState(false);
   const [texteRecherche, setTexteRecherche] = useState('');
   const [epinglesUniquement, setEpinglesUniquement] = useState(false);
 
-  // Résumé "la dernière fois" (Ajouts_A_Integrer.md #3).
   const [derniereFoisVisible, setDerniereFoisVisible] = useState(false);
-
-  // Suggestion de réplique pour le joueur (Ajouts_A_Integrer.md #4).
   const [suggestionEnCours, setSuggestionEnCours] = useState(false);
 
-  // Illustration de scène à la demande — réglage désactivé par défaut (voir
-  // SettingsScreen). Jamais persistée avec l'histoire (voir images.ts).
-  const [imageEnCours, setImageEnCours] = useState(false);
-  const [imageGeneree, setImageGeneree] = useState<string | null>(null);
-  const [erreurImage, setErreurImage] = useState('');
+  // L'UI ne génère plus directement d'image. Ce hook écoute le Kernel,
+  // recharge les caches persistants et expose la même interface à l'écran.
+  const {
+    imagesDisponibles,
+    raisonImages,
+    imageEnCours,
+    imageGeneree,
+    setImageGeneree,
+    erreurImage,
+    pnjConnus,
+    avatarsPnj,
+    avatarsPnjPourTexte,
+    avatarsPnjEnCours,
+    erreurAvatarPnj,
+    avatarJoueur,
+    avatarJoueurEnCours,
+    illustrerScene,
+    genererAvatarPourPnj,
+    supprimerAvatarPourPnj,
+    genererAvatarJoueur,
+    supprimerAvatarJoueur,
+  } = useVisualAutomation(story, appSettings);
 
-  // Portraits PNJ — cache local (data: URL) alimenté depuis le stockage
-  // persistant (pnjAvatarsStore) au chargement, généré à la demande sinon.
-  const [avatarsPnj, setAvatarsPnj] = useState<Record<string, string>>({});
-  const [avatarsPnjEnCours, setAvatarsPnjEnCours] = useState<Record<string, boolean>>({});
-  const [erreurAvatarPnj, setErreurAvatarPnj] = useState('');
-  // Portrait agrandi (tap sur un avatar, dans le texte ou une galerie —
-  // PNJ ou joueur) — affiche simplement en plus grand ce qui est déjà en
-  // cache, aucun appel réseau. Forme générique (pas EntreeLoreEmergent) :
-  // le joueur n'a pas de fiche de lore émergent.
   const [portraitAgrandi, setPortraitAgrandi] = useState<{ titre: string; avatarUri: string } | null>(null);
-
-  // Avatar du joueur généré par le modèle d'image (même principe que les
-  // PNJ, voir avatarsPnj) — vient en plus du portrait peint statique choisi
-  // à la création (obtenirPortraitReferenceJoueur), ne le remplace pas.
-  const [avatarJoueur, setAvatarJoueur] = useState<string | null>(null);
-  const [avatarJoueurEnCours, setAvatarJoueurEnCours] = useState(false);
-
-  // Suppression de message(s) : bouton visible sur chaque message, choix
-  // entre supprimer ce seul message ou lui et tout ce qui suit.
   const [messageASupprimer, setMessageASupprimer] = useState<string | null>(null);
-
-  // Menu contextuel d'actions sur un message (copier, répondre, réagir,
-  // épingler, éditer, supprimer) — déclenché par appui long, à la place
-  // d'icônes séparées visibles en permanence.
   const [messageActionsPour, setMessageActionsPour] = useState<Message | null>(null);
   const [messageEnReponseA, setMessageEnReponseA] = useState<Message | null>(null);
   const [messageAEditer, setMessageAEditer] = useState<Message | null>(null);
   const [texteEdition, setTexteEdition] = useState('');
 
-  // Téléchargement de la conversation (texte / PDF / EPUB).
   const [modalExportOuvert, setModalExportOuvert] = useState(false);
   const [exportEnCours, setExportEnCours] = useState<FormatExport | null>(null);
 
-  // Réglages concepteur (Ajouts_A_Integrer.md #6, mode test) : état brut,
-  // mise à jour forcée, prompt système, overrides modèle/température —
-  // uniquement visible quand appSettings.modeConcepteur est actif.
   const [modalConcepteurOuvert, setModalConcepteurOuvert] = useState(false);
   const [modeleOverrideEdit, setModeleOverrideEdit] = useState('');
   const [temperatureOverrideEdit, setTemperatureOverrideEdit] = useState('');
@@ -230,8 +186,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(false);
   }
 
-  // Branches de conversation (brief Phase 2) : bouton d'en-tête pour créer
-  // une copie indépendante de l'histoire à partir de son état courant.
   const creerBrancheIci = useCallback(async () => {
     if (!story) return;
     const branche = creerBranche(story);
@@ -276,8 +230,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story?.meta.personnageNom, creerBrancheIci, appSettings?.modeConcepteur]);
 
-  // Le diagnostic à la réouverture peut déclencher des embeddings : ne le
-  // recalculer que pour le concepteur, jamais pour la lecture normale.
   useEffect(() => {
     if (!appSettings?.modeConcepteur) {
       setDebugLore(null);
@@ -308,10 +260,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const texte = (texteOverride ?? saisie).trim();
     if (!texte || !story || !appSettings || enCours) return;
 
-    // Commande rapide "retiens que X" (Ajouts_A_Integrer.md #5) : force un
-    // fait en mémoire canon immédiatement, sans appel modèle ni passage par
-    // le pipeline de validation du lore émergent — et sans devenir un
-    // message dans la conversation, puisque ce n'est pas une réplique.
     const faitForce = detecterCommandeRetenir(texte);
     if (faitForce) {
       const storyMaj: StoryState = { ...story, memoire: verrouillerFait(story.memoire, faitForce, story.messages.length) };
@@ -334,10 +282,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    // Filtre centralisé (audit sécurité) : un message tapé par le joueur
-    // n'était jusqu'ici jamais vérifié avant envoi — seule la réponse du
-    // narrateur l'était. Le texte reste dans le champ de saisie, à
-    // reformuler, plutôt que d'être effacé.
     const controleEntree = validerEntreeUtilisateur(texte, appSettings.profilContenu);
     if (!controleEntree.ok) {
       setErreur(controleEntree.motif);
@@ -354,7 +298,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setStory(storyMaj);
       debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
-      // Un échec d'enregistrement ne doit jamais rejouer l'appel au modèle.
       if (await enregistrerEtat(storyMaj)) {
         setTimeout(() => listeRef.current?.scrollToEnd({ animated: true }), 100);
       }
@@ -366,12 +309,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [saisie, story, appSettings, enCours, messageEnReponseA, enregistrerEtat]);
 
-  // Bouton rapide "Continuer" : jusqu'ici, faire avancer le récit sans
-  // proposer d'action précise obligeait à taper "continue" à la main à
-  // chaque fois. Même chemin que l'envoi normal (envoyer), juste avec un
-  // texte fixe au lieu de la saisie — le joueur tapait déjà "continue" avec
-  // de bons résultats, donc même mot plutôt qu'une formulation nouvelle et
-  // non éprouvée.
   const continuerRecit = useCallback(() => envoyer('continue'), [envoyer]);
 
   const regenerer = useCallback(async () => {
@@ -409,189 +346,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }, [story, appSettings, enCours, suggestionEnCours]);
 
-  // Tout PNJ nommé du lore émergent — "provisoire" (vu une seule fois)
-  // inclus. Exiger "récurrent confirmé" (statut "permanent") laissait tout
-  // début de conversation sans aucun avatar possible : la confirmation
-  // n'arrive qu'après une seconde mention, donc rien ne se déclenchait
-  // jamais tant qu'on n'était pas déjà plusieurs tours avancé. Le seul coût
-  // du choix inverse (générer dès la première mention) : un appel payant
-  // pour un PNJ qui ne reviendra peut-être jamais — acceptable, l'avatar
-  // reste en cache si le personnage revient.
-  // Filet de sécurité : le personnage joueur ne doit jamais apparaître ici
-  // — normalement déjà exclu à l'extraction (emergentLore.ts), mais une
-  // histoire dont une fiche "PNJ" au nom du joueur a été créée avant ce
-  // correctif garderait sinon cette fiche indéfiniment (la fusion sur
-  // reconfirmation ne modifie jamais un titre déjà enregistré).
-  const nomJoueurMinuscule = story?.meta.personnageNom.trim().toLowerCase();
-  const pnjConnus =
-    story?.loreEmergent.filter((e) => e.categorie === 'pnj' && e.titre.trim().toLowerCase() !== nomJoueurMinuscule) ?? [];
-
-  // PNJ dont l'avatar a déjà été généré (voir avatarsPnj) — seuls ceux-là
-  // s'affichent dans le texte des messages (voir TexteMessageFormate),
-  // jamais générés à la volée pendant la lecture.
-  const avatarsPnjPourTexte = pnjConnus
-    .filter((pnj) => avatarsPnj[pnj.id])
-    .map((pnj) => ({ pnj, avatarUri: avatarsPnj[pnj.id] }));
-
-  const illustrerScene = useCallback(async () => {
-    if (!story || !appSettings || imageEnCours) return;
-    setImageEnCours(true);
-    setErreurImage('');
-    try {
-      const prompt = await obtenirPromptScene(story, appSettings);
-      // Images de référence envoyées au modèle d'image, EN PLUS du portrait
-      // peint statique déjà utilisé (portraitReference, inchangé) : l'avatar
-      // du joueur généré par le modèle d'image (même style que la scène) et
-      // les avatars des PNJ présents dans la scène (max 2) — meilleure
-      // cohérence visuelle qu'une description texte seule. genererImageScene
-      // filtre lui-même les entrées vides (portrait pas encore généré...).
-      const portraitReference = await obtenirPortraitReferenceJoueur(story);
-      const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
-      const texteSceneMinuscule = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).toLowerCase();
-      const avatarsPnjPresents = avatarsPnjPourTexte
-        .filter(({ pnj }) => pnjMentionneDansTexte(pnj, texteSceneMinuscule))
-        .slice(0, MAX_PNJ_REFERENCE_SCENE)
-        .map(({ avatarUri }) => avatarUri);
-      const url = await genererImageScene(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit, [
-        portraitReference,
-        avatarJoueur,
-        ...avatarsPnjPresents,
-      ]);
-      setImageGeneree(url);
-    } catch (e) {
-      setErreurImage(messageErreur(e, "Impossible de générer l'illustration pour le moment."));
-    } finally {
-      setImageEnCours(false);
-    }
-  }, [story, appSettings, imageEnCours, avatarJoueur, avatarsPnjPourTexte]);
-
-
-  // Clé stable des PNJ connus — sert de dépendance d'effet.
-  const clePnjConnus = pnjConnus
-    .map((p) => p.id)
-    .sort()
-    .join(',');
-
-  // Charge le portrait déjà généré de chaque PNJ nommé (stockage persistant,
-  // aucun appel réseau) et, s'il n'existe pas encore et que la génération
-  // d'images est activée (Réglages), le génère automatiquement une seule
-  // fois puis le sauvegarde — obtenirOuGenererAvatarPnj revérifie le cache
-  // avant tout appel réseau, donc jamais régénéré ensuite pour ce PNJ. Un
-  // par un (pas en parallèle) pour ne pas envoyer une rafale d'appels
-  // payants dès que plusieurs PNJ apparaissent dans le même tour.
-  useEffect(() => {
-    if (!story) return;
-    let annule = false;
-    (async () => {
-      for (const pnj of pnjConnus) {
-        if (annule) return;
-        if (avatarsPnj[pnj.id]) continue;
-        const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
-        if (annule) return;
-        if (existant) {
-          setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: existant }));
-          continue;
-        }
-        if (!appSettings?.genererImagesActive || !appSettings.openRouterApiKey || avatarsPnjEnCours[pnj.id]) continue;
-        setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
-        try {
-          const url = await obtenirOuGenererAvatarPnj(story, pnj, appSettings);
-          if (!annule) setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
-        } catch (e) {
-          if (!annule) setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));
-        } finally {
-          setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: false }));
-        }
-      }
-    })();
-    return () => {
-      annule = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story?.meta.id, clePnjConnus, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
-
-  const genererAvatarPourPnj = useCallback(
-    async (pnj: EntreeLoreEmergent) => {
-      if (!story || !appSettings || avatarsPnjEnCours[pnj.id]) return;
-      setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: true }));
-      setErreurAvatarPnj('');
-      try {
-        const url = await obtenirOuGenererAvatarPnj(story, pnj, appSettings);
-        setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: url }));
-      } catch (e) {
-        setErreurAvatarPnj(messageErreur(e, `Impossible de générer le portrait de ${pnj.titre} pour le moment.`));
-      } finally {
-        setAvatarsPnjEnCours((prev) => ({ ...prev, [pnj.id]: false }));
-      }
-    },
-    [story, appSettings, avatarsPnjEnCours]
-  );
-
-  // Suppression manuelle d'un portrait (PNJ) — utile pour nettoyer une
-  // fiche dupliquée (voir le correctif emergentLore.ts) ou simplement un
-  // portrait qui ne convient pas, sans devoir régénérer immédiatement.
-  const supprimerAvatarPourPnj = useCallback(
-    async (pnj: EntreeLoreEmergent) => {
-      if (!story) return;
-      await supprimerAvatarPnj(story.meta.id, pnj.id);
-      setAvatarsPnj((prev) => {
-        const { [pnj.id]: _retire, ...reste } = prev;
-        return reste;
-      });
-    },
-    [story]
-  );
-
-  // Même principe que l'effet PNJ ci-dessus, mais pour le portrait du joueur
-  // (un seul, pas de liste) — charge le cache, puis génère automatiquement
-  // si la génération d'images est activée.
-  useEffect(() => {
-    if (!story) return;
-    let annule = false;
-    (async () => {
-      const existant = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
-      if (annule) return;
-      if (existant) {
-        setAvatarJoueur(existant);
-        return;
-      }
-      if (!appSettings?.genererImagesActive || !appSettings.openRouterApiKey || avatarJoueurEnCours) return;
-      setAvatarJoueurEnCours(true);
-      try {
-        const url = await obtenirOuGenererAvatarJoueur(story, appSettings);
-        if (!annule) setAvatarJoueur(url);
-      } catch (e) {
-        if (!annule) setErreurAvatarPnj(messageErreur(e, 'Impossible de générer ton portrait pour le moment.'));
-      } finally {
-        if (!annule) setAvatarJoueurEnCours(false);
-      }
-    })();
-    return () => {
-      annule = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [story?.meta.id, appSettings?.genererImagesActive, appSettings?.openRouterApiKey]);
-
-  const genererAvatarJoueur = useCallback(async () => {
-    if (!story || !appSettings || avatarJoueurEnCours) return;
-    setAvatarJoueurEnCours(true);
-    setErreurAvatarPnj('');
-    try {
-      const url = await obtenirOuGenererAvatarJoueur(story, appSettings);
-      setAvatarJoueur(url);
-    } catch (e) {
-      setErreurAvatarPnj(messageErreur(e, 'Impossible de générer ton portrait pour le moment.'));
-    } finally {
-      setAvatarJoueurEnCours(false);
-    }
-  }, [story, appSettings, avatarJoueurEnCours]);
-
-  const supprimerLAvatarJoueur = useCallback(async () => {
-    if (!story) return;
-    await supprimerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
-    setAvatarJoueur(null);
-  }, [story]);
-
   const togglerEpingle = useCallback(
     async (id: string) => {
       if (!story) return;
@@ -603,7 +357,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     [story],
   );
 
-  // Actions du menu contextuel (appui long sur un message).
   async function copierMessage(m: Message) {
     await Clipboard.setStringAsync(m.content);
     setMessageActionsPour(null);
@@ -665,11 +418,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
     }
   }
 
-  // Suppression de message(s) : les index qui gouvernent la cadence des
-  // pipelines périodiques (mémoire, directeur) sont bornés à la nouvelle
-  // longueur, comme pour la régénération (regenererDernierTour) — sinon un
-  // curseur resté au-delà de la fin des messages bloquerait silencieusement
-  // toute future mise à jour.
   function tronquerCurseurs(story: StoryState, nouvelleLongueur: number): Pick<StoryState, 'memoire' | 'directeur'> {
     return {
       memoire: { ...story.memoire, dernierMessageIndexMaj: Math.min(story.memoire.dernierMessageIndexMaj, nouvelleLongueur) },
@@ -883,22 +631,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     </View>
                   )}
                   {item.role === 'user' && (
-                    // Contrairement aux PNJ (avatar affiché en détectant leur
-                    // nom DANS le texte narré), le joueur écrit ses messages
-                    // sans jamais s'y nommer lui-même — aucune détection
-                    // possible. Son nom + avatar sont donc affichés en
-                    // en-tête de la bulle, inconditionnellement, plutôt que
-                    // par le même mécanisme que TexteMessageFormate.
-                    //
-                    // L'IMAGE (avatarJoueur, un data: URL base64 pouvant
-                    // peser plusieurs centaines de Ko à quelques Mo) n'est
-                    // affichée que sur les derniers messages — sur une
-                    // longue histoire (constaté en usage réel : 74 messages),
-                    // la décoder identique des dizaines de fois d'affilée a
-                    // fait planter l'appli (écran blanc, plantage natif côté
-                    // mémoire, pas une erreur JS rattrapable) là où avant
-                    // aucun message du joueur n'embarquait d'image. Le nom
-                    // seul (texte, négligeable) reste affiché partout.
                     <Pressable
                       style={styles.enTeteMessageJoueur}
                       onPress={
@@ -917,15 +649,6 @@ export default function ConversationScreen({ route, navigation }: Props) {
                       <TexteMessageFormate
                         texte={t(item.content)}
                         style={styles.texteBulle}
-                        // Comme pour l'en-tête du joueur : les IMAGES d'avatar
-                        // PNJ (à chaque mention/réplique, jamais plafonnées
-                        // jusqu'ici — potentiellement bien plus nombreuses
-                        // qu'une par message) ne sont fournies que pour les
-                        // messages récents, pour la même raison (plantage
-                        // natif constaté sur une longue histoire). Le texte
-                        // (nom du PNJ, réplique) n'est jamais affecté : seul
-                        // TexteMessageFormate décide, via ces props, s'il a
-                        // une image à insérer ou non.
                         avatarsPnj={
                           item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
                             ? avatarsPnjPourTexte
@@ -975,26 +698,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <ScrollView style={styles.panneauDebug}>
             <Text style={styles.titreDebug}>Métamoteurs sélectionnés</Text>
             {debugLore.metamoteurs.map((titre) => (
-              <Text key={titre} style={styles.ligneDebug}>
-                • {titre}
-              </Text>
+              <Text key={titre} style={styles.ligneDebug}>• {titre}</Text>
             ))}
             <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Lore Elyndor sélectionné</Text>
             {debugLore.loreElyndor.map((titre) => (
-              <Text key={titre} style={styles.ligneDebug}>
-                • {titre}
-              </Text>
+              <Text key={titre} style={styles.ligneDebug}>• {titre}</Text>
             ))}
-            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>
-              Souvenirs retrouvés (recherche de secours dans l'historique)
-            </Text>
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Souvenirs retrouvés (recherche de secours dans l'historique)</Text>
             {debugLore.souvenirs.length === 0 ? (
               <Text style={styles.ligneDebug}>Aucun — rien d'assez pertinent hors des échanges récents.</Text>
             ) : (
               debugLore.souvenirs.map((extrait) => (
-                <Text key={extrait} style={styles.ligneDebug}>
-                  • {extrait}
-                </Text>
+                <Text key={extrait} style={styles.ligneDebug}>• {extrait}</Text>
               ))
             )}
           </ScrollView>
@@ -1068,7 +783,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
               <Text style={styles.titreModal}>{t('Actions du récit')}</Text>
               {dernierEstAssistant && <Bouton titre={t('Régénérer')} variante="secondaire" desactive={enCours} onPress={() => { setActionsOuvertes(false); regenerer(); }} style={{ marginTop: espacement.sm }} />}
               <Bouton titre={t('Suggérer une réplique')} variante="secondaire" desactive={enCours || suggestionEnCours} onPress={() => { setActionsOuvertes(false); suggererReplique(); }} style={{ marginTop: espacement.sm }} />
-              {appSettings.genererImagesActive && <Bouton titre={t('Illustrer cette scène')} variante="secondaire" desactive={enCours || imageEnCours} onPress={() => { setActionsOuvertes(false); illustrerScene(); }} style={{ marginTop: espacement.sm }} />}
+              {imagesDisponibles && <Bouton titre={t('Illustrer cette scène')} variante="secondaire" desactive={enCours || imageEnCours} onPress={() => { setActionsOuvertes(false); void illustrerScene(); }} style={{ marginTop: espacement.sm }} />}
               <Bouton titre={t('Portraits')} variante="secondaire" onPress={() => { setActionsOuvertes(false); setPortraitsOuverts(true); }} style={{ marginTop: espacement.sm }} />
               <Bouton titre={t('Messages épinglés')} variante="secondaire" onPress={() => { setActionsOuvertes(false); setEpinglesUniquement(true); setModalRechercheOuvert(true); }} style={{ marginTop: espacement.sm }} />
               <Text style={styles.aideImageGeneree}>{t('Appui long sur un message : copier, épingler ou modifier. Pour fixer un souvenir, écris « retiens que… ».')}</Text>
@@ -1081,98 +796,94 @@ export default function ConversationScreen({ route, navigation }: Props) {
       <Modal visible={portraitsOuverts} animationType="slide" onRequestClose={() => setPortraitsOuverts(false)}>
         <ScrollView style={styles.modalContainer} contentContainerStyle={{ paddingBottom: espacement.xl }}>
           <Text style={styles.titreModal}>{t('Portraits')}</Text>
-            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Mon portrait</Text>
-            <Text style={styles.aideImageGeneree}>
-              {appSettings?.genererImagesActive
-                ? t('Généré automatiquement par le modèle d\'image, en plus du portrait choisi à la création — sert aussi de référence pour la cohérence des scènes illustrées.')
-                : t("Active la génération d'images dans Réglages pour le générer automatiquement.")}
-            </Text>
-            <View style={styles.grillePortraitsPnj}>
-              <View style={styles.cartePortraitPnj}>
-                {avatarJoueur ? (
-                  <Pressable onPress={() => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur })}>
-                    <Image source={{ uri: avatarJoueur }} style={styles.imagePortraitPnj} resizeMode="cover" />
-                  </Pressable>
-                ) : (
-                  <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
-                    {avatarJoueurEnCours ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
-                  </View>
-                )}
-                <Text style={styles.nomPortraitPnj} numberOfLines={1}>
-                  {story.meta.personnageNom}
-                </Text>
-                {appSettings?.genererImagesActive && (
-                  <Bouton
-                    titre={t(avatarJoueur ? 'Régénérer' : 'Générer')}
-                    variante="secondaire"
-                    onPress={genererAvatarJoueur}
-                    desactive={avatarJoueurEnCours}
-                    style={styles.boutonPortraitPnj}
-                    texteStyle={styles.texteBoutonPortraitPnj}
-                  />
-                )}
-                {avatarJoueur && appSettings?.genererImagesActive && (
-                  <Bouton
-                    titre={t('Supprimer')}
-                    variante="secondaire"
-                    onPress={supprimerLAvatarJoueur}
-                    desactive={avatarJoueurEnCours}
-                    style={styles.boutonPortraitPnj}
-                    texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
-                  />
-                )}
-              </View>
+          <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Mon portrait</Text>
+          <Text style={styles.aideImageGeneree}>
+            {imagesDisponibles
+              ? t("Généré automatiquement par le modèle d'image, en plus du portrait choisi à la création — sert aussi de référence pour la cohérence des scènes illustrées.")
+              : t(raisonImages ?? "Active la génération d'images dans Réglages pour le générer automatiquement.")}
+          </Text>
+          <View style={styles.grillePortraitsPnj}>
+            <View style={styles.cartePortraitPnj}>
+              {avatarJoueur ? (
+                <Pressable onPress={() => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur })}>
+                  <Image source={{ uri: avatarJoueur }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                </Pressable>
+              ) : (
+                <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
+                  {avatarJoueurEnCours ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
+                </View>
+              )}
+              <Text style={styles.nomPortraitPnj} numberOfLines={1}>{story.meta.personnageNom}</Text>
+              {imagesDisponibles && (
+                <Bouton
+                  titre={t(avatarJoueur ? 'Régénérer' : 'Générer')}
+                  variante="secondaire"
+                  onPress={() => void genererAvatarJoueur()}
+                  desactive={avatarJoueurEnCours}
+                  style={styles.boutonPortraitPnj}
+                  texteStyle={styles.texteBoutonPortraitPnj}
+                />
+              )}
+              {avatarJoueur && imagesDisponibles && (
+                <Bouton
+                  titre={t('Supprimer')}
+                  variante="secondaire"
+                  onPress={() => void supprimerAvatarJoueur()}
+                  desactive={avatarJoueurEnCours}
+                  style={styles.boutonPortraitPnj}
+                  texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
+                />
+              )}
             </View>
+          </View>
 
-            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
-            <Text style={styles.aideImageGeneree}>
-              {appSettings?.genererImagesActive
-                ? t('Générés automatiquement dès qu\'un PNJ est nommé, puis conservés.')
-                : t("Active la génération d'images dans Réglages pour les générer automatiquement.")}
-            </Text>
-            {pnjConnus.length === 0 ? (
-              <Text style={styles.ligneDebug}>Aucun PNJ nommé pour l'instant.</Text>
-            ) : (
-              <View style={styles.grillePortraitsPnj}>
-                {pnjConnus.map((pnj) => (
-                  <View key={pnj.id} style={styles.cartePortraitPnj}>
-                    {avatarsPnj[pnj.id] ? (
-                      <Pressable onPress={() => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })}>
-                        <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
-                      </Pressable>
-                    ) : (
-                      <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
-                        {avatarsPnjEnCours[pnj.id] ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
-                      </View>
-                    )}
-                    <Text style={styles.nomPortraitPnj} numberOfLines={1}>
-                      {pnj.titre}
-                    </Text>
-                    {appSettings?.genererImagesActive && (
-                      <Bouton
-                        titre={t(avatarsPnj[pnj.id] ? 'Régénérer' : 'Générer')}
-                        variante="secondaire"
-                        onPress={() => genererAvatarPourPnj(pnj)}
-                        desactive={!!avatarsPnjEnCours[pnj.id]}
-                        style={styles.boutonPortraitPnj}
-                        texteStyle={styles.texteBoutonPortraitPnj}
-                      />
-                    )}
-                    {avatarsPnj[pnj.id] && appSettings?.genererImagesActive && (
-                      <Bouton
-                        titre={t('Supprimer')}
-                        variante="secondaire"
-                        onPress={() => supprimerAvatarPourPnj(pnj)}
-                        desactive={!!avatarsPnjEnCours[pnj.id]}
-                        style={styles.boutonPortraitPnj}
-                        texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
-                      />
-                    )}
-                  </View>
-                ))}
-              </View>
-            )}
-            {erreurAvatarPnj ? <Text style={styles.erreur}>{t(erreurAvatarPnj)}</Text> : null}
+          <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Portraits des PNJ</Text>
+          <Text style={styles.aideImageGeneree}>
+            {imagesDisponibles
+              ? t("Générés automatiquement dès qu'un PNJ est nommé, puis conservés.")
+              : t(raisonImages ?? "Active la génération d'images dans Réglages pour les générer automatiquement.")}
+          </Text>
+          {pnjConnus.length === 0 ? (
+            <Text style={styles.ligneDebug}>Aucun PNJ nommé pour l'instant.</Text>
+          ) : (
+            <View style={styles.grillePortraitsPnj}>
+              {pnjConnus.map((pnj) => (
+                <View key={pnj.id} style={styles.cartePortraitPnj}>
+                  {avatarsPnj[pnj.id] ? (
+                    <Pressable onPress={() => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })}>
+                      <Image source={{ uri: avatarsPnj[pnj.id] }} style={styles.imagePortraitPnj} resizeMode="cover" />
+                    </Pressable>
+                  ) : (
+                    <View style={[styles.imagePortraitPnj, styles.imagePortraitPnjVide]}>
+                      {avatarsPnjEnCours[pnj.id] ? <ActivityIndicator size="small" color={couleurs.accentClair} /> : null}
+                    </View>
+                  )}
+                  <Text style={styles.nomPortraitPnj} numberOfLines={1}>{pnj.titre}</Text>
+                  {imagesDisponibles && (
+                    <Bouton
+                      titre={t(avatarsPnj[pnj.id] ? 'Régénérer' : 'Générer')}
+                      variante="secondaire"
+                      onPress={() => void genererAvatarPourPnj(pnj)}
+                      desactive={!!avatarsPnjEnCours[pnj.id]}
+                      style={styles.boutonPortraitPnj}
+                      texteStyle={styles.texteBoutonPortraitPnj}
+                    />
+                  )}
+                  {avatarsPnj[pnj.id] && imagesDisponibles && (
+                    <Bouton
+                      titre={t('Supprimer')}
+                      variante="secondaire"
+                      onPress={() => void supprimerAvatarPourPnj(pnj)}
+                      desactive={!!avatarsPnjEnCours[pnj.id]}
+                      style={styles.boutonPortraitPnj}
+                      texteStyle={[styles.texteBoutonPortraitPnj, { color: couleurs.danger }]}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+          {erreurAvatarPnj ? <Text style={styles.erreur}>{t(erreurAvatarPnj)}</Text> : null}
           <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setPortraitsOuverts(false)} style={{ marginTop: espacement.sm }} />
         </ScrollView>
       </Modal>
@@ -1235,9 +946,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                   {item.role === 'user' ? story.meta.personnageNom : t('Narrateur')}
                   {item.epingle ? ' 📌' : ''}
                 </Text>
-                <Text style={styles.texteResultat} numberOfLines={2}>
-                  {t(item.content)}
-                </Text>
+                <Text style={styles.texteResultat} numberOfLines={2}>{t(item.content)}</Text>
               </Pressable>
             )}
           />
