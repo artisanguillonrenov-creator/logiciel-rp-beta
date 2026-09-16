@@ -17,6 +17,7 @@ export interface NarrativeAutomationDeps {
     predicate: (story: StoryState) => boolean,
     updater: (story: StoryState) => StoryState,
   ): Promise<StoryState | null>;
+  afterNarrativeUpdate?(story: StoryState): Promise<void> | void;
 }
 
 export type NarrativeDerivedPatch = Pick<
@@ -127,11 +128,12 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
     // Double vérification dans la même opération sérialisée que l'écriture :
     // si un nouveau tour ou une édition a eu lieu pendant les appels modèle,
     // les résultats calculés sur l'ancien transcript sont simplement jetés.
-    await deps.updateStoryIf(
+    const miseAJour = await deps.updateStoryIf(
       job.storyId,
       (courante) => calculerRevisionNarrative(courante) === revision,
       (courante) => ({ ...courante, ...patch }),
     );
+    if (miseAJour) await deps.afterNarrativeUpdate?.(miseAJour);
   });
 }
 
