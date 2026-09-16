@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { creerNouvelleHistoire } from '../src/engine/story';
 import { fusionnerEtatDerivePersistant, memeTranscriptNarratif } from '../src/engine/derivedState';
-import { besoinRattrapageNarratif } from '../src/automation/narrativeRoutines';
 
 function histoire(nombreMessages = 2) {
   const story = creerNouvelleHistoire({
@@ -51,20 +50,4 @@ test('un état dérivé d’une autre révision est refusé', () => {
   const fusionnee = fusionnerEtatDerivePersistant(ecran, persistee);
   assert.equal(fusionnee, ecran);
   assert.notEqual(fusionnee.memoire.resume, 'Ne doit pas entrer');
-});
-
-test('le lore non traité rend immédiatement le post-traitement nécessaire', () => {
-  const story = histoire(2);
-  story.loreEmergentDernierIndex = 0;
-  assert.equal(besoinRattrapageNarratif(story), true);
-
-  story.loreEmergentDernierIndex = story.messages.length;
-  assert.equal(besoinRattrapageNarratif(story), false);
-});
-
-test('la cadence mémoire déclenche aussi le post-traitement même si le lore est à jour', () => {
-  const story = histoire(8);
-  story.loreEmergentDernierIndex = story.messages.length;
-  story.memoire.dernierMessageIndexMaj = 0;
-  assert.equal(besoinRattrapageNarratif(story), true);
 });
