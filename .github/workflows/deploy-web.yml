@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: github-pages-publish
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,13 +26,20 @@ jobs:
 
       - run: npx expo export -p web
 
-      - name: Publier sur gh-pages
+      - name: Publier sur gh-pages sans supprimer les prélectures PR
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages
           git worktree add gh-pages-deploy origin/gh-pages
-          rm -rf gh-pages-deploy/*
+
+          # Nettoie uniquement la version principale. Les dossiers pr-* restent
+          # disponibles tant que leur demande de fusion est ouverte.
+          find gh-pages-deploy -mindepth 1 -maxdepth 1 \
+            ! -name '.git' \
+            ! -name 'pr-*' \
+            -exec rm -rf {} +
+
           cp -r dist/. gh-pages-deploy/
           touch gh-pages-deploy/.nojekyll
           cd gh-pages-deploy

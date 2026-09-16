@@ -1,0 +1,119 @@
+name: Prélecture web PR
+
+on:
+  pull_request:
+    branches: [claude/new-session-glwy6e]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: github-pages-publish
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: npm ci
+
+      - name: Configurer le sous-chemin de prélecture
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          app.expo.experiments = app.expo.experiments || {};
+          app.expo.experiments.baseUrl = `/logiciel-rp-beta/pr-${process.env.PR_NUMBER}`;
+          fs.writeFileSync('app.json', `${JSON.stringify(app, null, 2)}\n`);
+          NODE
+
+      - run: npx expo export -p web
+
+      - name: Publier la prélecture dans gh-pages
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add gh-pages-deploy origin/gh-pages
+          PREVIEW_DIR="gh-pages-deploy/pr-${PR_NUMBER}"
+          rm -rf "$PREVIEW_DIR"
+          mkdir -p "$PREVIEW_DIR"
+          cp -r dist/. "$PREVIEW_DIR/"
+          if [ -f "$PREVIEW_DIR/index.html" ]; then
+            cp "$PREVIEW_DIR/index.html" "$PREVIEW_DIR/404.html"
+          fi
+          touch gh-pages-deploy/.nojekyll
+          cd gh-pages-deploy
+          git add -A
+          git diff --cached --quiet && echo "Prélecture déjà à jour" && exit 0
+          git commit -m "Prélecture PR #${PR_NUMBER} depuis ${{ github.event.pull_request.head.sha }}"
+          git push origin HEAD:gh-pages
+
+      - name: Ajouter le lien de prélecture à la PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- elyndor-pr-preview -->';
+            const number = context.payload.pull_request.number;
+            const url = `https://${context.repo.owner}.github.io/${context.repo.repo}/pr-${number}/`;
+            const body = `${marker}\n## Prélecture Elyndor\n\n[▶ Ouvrir la prélecture de cette PR](${url})\n\nVersion : \`${context.payload.pull_request.head.sha.slice(0, 7)}\`  \nLa publication GitHub Pages peut demander quelques secondes après la fin du workflow.`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                body,
+              });
+            }
+
+  cleanup-preview:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+          path: gh-pages-deploy
+
+      - name: Supprimer la prélecture fermée
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          cd gh-pages-deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          rm -rf "pr-${PR_NUMBER}"
+          git add -A
+          git diff --cached --quiet && echo "Aucune prélecture à supprimer" && exit 0
+          git commit -m "Supprime la prélecture PR #${PR_NUMBER}"
+          git push origin HEAD:gh-pages
