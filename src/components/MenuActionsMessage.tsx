@@ -1,15 +1,18 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Message } from '../types';
-import { couleurs, espacement, polices } from '../theme/theme';
+import { couleurs, espacement, interfaceV2, polices, stylePetitesCapitales } from '../theme/theme';
 import { useLangue } from '../i18n/LangueProvider';
 
-const EMOJIS_REACTION = ['👍', '❤️', '😮'];
+// On conserve les valeurs historiques enregistrées dans les messages pour ne
+// pas casser les anciennes histoires, mais l'interface n'affiche plus les
+// emojis système : elle utilise des glyphes monochromes de la charte Elyndor.
+const REACTIONS = [
+  { valeur: '👍', glyphe: '+', label: 'Approuver' },
+  { valeur: '❤️', glyphe: '♥', label: 'Aimer' },
+  { valeur: '😮', glyphe: '!', label: 'Surpris' },
+] as const;
 
-// Menu contextuel unique, déclenché par appui long sur un message —
-// convention standard (WhatsApp, Messages) : toutes les actions derrière un
-// seul geste déjà connu, plutôt que des icônes séparées visibles en
-// permanence sur chaque message.
 export default function MenuActionsMessage({
   message,
   onFermer,
@@ -36,14 +39,17 @@ export default function MenuActionsMessage({
         <Pressable style={styles.feuille} onPress={(e) => e.stopPropagation()}>
           {message && (
             <>
+              <Text style={styles.surtitre}>{t('Réaction')}</Text>
               <View style={styles.rangeeReactions}>
-                {EMOJIS_REACTION.map((emoji) => (
+                {REACTIONS.map((reaction) => (
                   <Pressable
-                    key={emoji}
-                    style={[styles.boutonEmoji, message.reaction === emoji && styles.boutonEmojiActif]}
-                    onPress={() => onReagir(message, emoji)}
+                    key={reaction.valeur}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(reaction.label)}
+                    style={[styles.boutonReaction, message.reaction === reaction.valeur && styles.boutonReactionActif]}
+                    onPress={() => onReagir(message, reaction.valeur)}
                   >
-                    <Text style={styles.emoji}>{emoji}</Text>
+                    <Text style={[styles.glypheReaction, message.reaction === reaction.valeur && styles.glypheReactionActif]}>{reaction.glyphe}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -53,7 +59,7 @@ export default function MenuActionsMessage({
               <LigneAction titre={t(message.epingle ? 'Désépingler' : 'Épingler')} onPress={() => onEpingler(message)} />
               <LigneAction titre={t('Éditer')} onPress={() => onEditer(message)} />
               <LigneAction titre={t('Supprimer')} onPress={() => onSupprimer(message)} danger />
-              <LigneAction titre={t('Annuler')} onPress={onFermer} />
+              <LigneAction titre={t('Annuler')} onPress={onFermer} discret />
             </>
           )}
         </Pressable>
@@ -66,10 +72,10 @@ function Separateur() {
   return <View style={styles.separateur} />;
 }
 
-function LigneAction({ titre, onPress, danger }: { titre: string; onPress: () => void; danger?: boolean }) {
+function LigneAction({ titre, onPress, danger, discret }: { titre: string; onPress: () => void; danger?: boolean; discret?: boolean }) {
   return (
-    <Pressable style={styles.ligneAction} onPress={onPress}>
-      <Text style={[styles.texteAction, danger && styles.texteActionDanger]}>{titre}</Text>
+    <Pressable style={({ pressed }) => [styles.ligneAction, pressed && styles.ligneActionPressee]} onPress={onPress}>
+      <Text style={[styles.texteAction, danger && styles.texteActionDanger, discret && styles.texteActionDiscret]}>{titre}</Text>
     </Pressable>
   );
 }
@@ -77,46 +83,63 @@ function LigneAction({ titre, onPress, danger }: { titre: string; onPress: () =>
 const styles = StyleSheet.create({
   superposition: {
     flex: 1,
-    backgroundColor: 'rgba(6, 8, 18, 0.75)',
+    backgroundColor: 'rgba(2, 7, 13, 0.82)',
     justifyContent: 'flex-end',
   },
   feuille: {
-    backgroundColor: couleurs.fondCarte,
+    backgroundColor: couleurs.fondCarteDense,
     borderTopWidth: 1,
-    borderColor: couleurs.bordure,
+    borderColor: couleurs.bordureDoree,
     paddingBottom: espacement.lg,
     paddingTop: espacement.md,
+  },
+  surtitre: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteFaible,
+    fontSize: 9,
+    textAlign: 'center',
+    marginBottom: espacement.sm,
   },
   rangeeReactions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: espacement.lg,
-    paddingBottom: espacement.sm,
+    gap: espacement.md,
+    paddingBottom: espacement.md,
   },
-  boutonEmoji: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  boutonReaction: {
+    width: interfaceV2.cibleTactileMin,
+    height: interfaceV2.cibleTactileMin,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: couleurs.bordureSubtile,
+    backgroundColor: couleurs.fondChampSaisie,
   },
-  boutonEmojiActif: {
-    borderColor: couleurs.accent,
-    backgroundColor: 'rgba(90, 172, 255, 0.10)',
+  boutonReactionActif: {
+    borderColor: couleurs.dore,
+    backgroundColor: 'rgba(216, 179, 107, 0.12)',
   },
-  emoji: {
-    fontSize: 24,
+  glypheReaction: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corpsMedium,
+    fontSize: 18,
+  },
+  glypheReactionActif: {
+    color: couleurs.doreClair,
   },
   separateur: {
     height: 1,
-    backgroundColor: couleurs.bordure,
+    backgroundColor: couleurs.bordureSubtile,
     marginHorizontal: espacement.md,
   },
   ligneAction: {
-    paddingVertical: espacement.md,
+    minHeight: interfaceV2.cibleTactileMin,
+    paddingVertical: espacement.sm,
     paddingHorizontal: espacement.lg,
+    justifyContent: 'center',
+  },
+  ligneActionPressee: {
+    backgroundColor: 'rgba(216, 179, 107, 0.06)',
   },
   texteAction: {
     color: couleurs.texte,
@@ -126,5 +149,8 @@ const styles = StyleSheet.create({
   },
   texteActionDanger: {
     color: couleurs.danger,
+  },
+  texteActionDiscret: {
+    color: couleurs.texteAtténué,
   },
 });
