@@ -7,7 +7,12 @@ import {
   obtenirPromptScene,
   pnjMentionneDansTexte,
 } from '../engine/images';
-import { obtenirAvatarPnj, supprimerAvatarPnj } from '../storage/pnjAvatarsStore';
+import {
+  enregistrerAvatarPnj,
+  obtenirAvatarPnj,
+  preparerImageReference,
+  supprimerAvatarPnj,
+} from '../storage/pnjAvatarsStore';
 import { enregistrerIllustrationScene } from '../storage/sceneImagesStore';
 import { calculerCapacites } from './capabilities';
 import { enqueueAutomation, registerAutomationHandler } from './kernel';
@@ -33,15 +38,11 @@ function verifierCapaciteImages(settings: AppSettings): void {
   if (!caps.images) throw new Error(caps.raisons.images ?? 'Génération d’images indisponible.');
 }
 
-async function genererAvatar(
+async function genererAvatarSansCache(
   story: StoryState,
   settings: AppSettings,
   assetId: string,
-  force = false,
 ): Promise<string> {
-  verifierCapaciteImages(settings);
-  if (force) await supprimerAvatarPnj(story.meta.id, assetId);
-
   if (assetId === ID_AVATAR_JOUEUR_VISUEL) {
     return obtenirOuGenererAvatarJoueur(story, settings);
   }
@@ -49,6 +50,31 @@ async function genererAvatar(
   const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
   return obtenirOuGenererAvatarPnj(story, pnj, settings);
+}
+
+async function genererAvatar(
+  story: StoryState,
+  settings: AppSettings,
+  assetId: string,
+  force = false,
+): Promise<string> {
+  verifierCapaciteImages(settings);
+  if (!force) return genererAvatarSansCache(story, settings, assetId);
+
+  // Les fonctions historiques de images.ts renvoient le cache s'il existe.
+  // Pour une vraie régénération il faut donc le retirer temporairement, mais
+  // sans perdre le portrait précédent si l'appel réseau échoue.
+  const existant = await obtenirAvatarPnj(story.meta.id, assetId);
+  const sauvegarde = existant ? await preparerImageReference(existant) : null;
+  if (existant) await supprimerAvatarPnj(story.meta.id, assetId);
+  try {
+    return await genererAvatarSansCache(story, settings, assetId);
+  } catch (error) {
+    if (sauvegarde) {
+      try { await enregistrerAvatarPnj(story.meta.id, assetId, sauvegarde); } catch { /* erreur d'origine prioritaire */ }
+    }
+    throw error;
+  }
 }
 
 async function synchroniserAvatars(story: StoryState, settings: AppSettings): Promise<void> {
