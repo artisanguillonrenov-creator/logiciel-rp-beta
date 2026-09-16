@@ -4,12 +4,20 @@ on:
   push:
     branches:
       - claude/new-session-glwy6e
+  pull_request:
+    branches:
+      - claude/new-session-glwy6e
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       message:
         description: Description du correctif publié
         required: false
         default: Mise à jour
+
+concurrency:
+  group: eas-preview
+  cancel-in-progress: true
 
 jobs:
   update:
@@ -28,5 +36,12 @@ jobs:
       - name: Publish OTA update (channel preview)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          UPDATE_MESSAGE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.message || format('Mise à jour automatique {0}', github.sha) }}
-        run: eas update --channel preview --message "$UPDATE_MESSAGE" --non-interactive
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            UPDATE_MESSAGE="Prélecture PR #${{ github.event.pull_request.number }} - $GITHUB_SHA"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            UPDATE_MESSAGE="${{ github.event.inputs.message }}"
+          else
+            UPDATE_MESSAGE="Mise à jour automatique $GITHUB_SHA"
+          fi
+          eas update --channel preview --message "$UPDATE_MESSAGE" --non-interactive
