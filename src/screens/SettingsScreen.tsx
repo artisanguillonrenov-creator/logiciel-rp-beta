@@ -1,5 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
@@ -19,7 +31,6 @@ import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
-import Separateur from '../components/Separateur';
 import { useLangue } from '../i18n/LangueProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
@@ -28,6 +39,9 @@ const IMAGE_REGLAGES = require('../../assets/scenes/creation-preferences.png');
 
 export default function SettingsScreen({ navigation }: Props) {
   const { t } = useLangue();
+  const { width } = useWindowDimensions();
+  const estTablette = width >= 900;
+
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [infermaticApiKey, setInfermaticApiKey] = useState('');
@@ -40,9 +54,6 @@ export default function SettingsScreen({ navigation }: Props) {
   const [avancesOuverts, setAvancesOuverts] = useState(false);
   const [erreurChargement, setErreurChargement] = useState('');
 
-  // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil,
-  // code de déverrouillage requis pour repasser en ADULTE ensuite —
-  // "esprit sans vraie protection" (pas de vraie sécurité, un garde-fou).
   const [profilContenu, setProfilContenu] = useState<ProfilContenu | undefined>(undefined);
   const [codeDeverrouillage, setCodeDeverrouillage] = useState<string | undefined>(undefined);
   const [modalProfilOuvert, setModalProfilOuvert] = useState(false);
@@ -57,16 +68,10 @@ export default function SettingsScreen({ navigation }: Props) {
   const [fournisseurCatalogue, setFournisseurCatalogue] = useState<'openrouter' | 'infermatic'>('openrouter');
   const requeteCatalogueRef = useRef(0);
 
-  // Auto-updater "esprit" (brief Phase 2, distribution) : vérification à la
-  // demande, pas de mise à jour automatique en arrière-plan.
   const [verificationMaj, setVerificationMaj] = useState(false);
   const [messageMaj, setMessageMaj] = useState('');
   const [urlMaj, setUrlMaj] = useState('');
 
-  // Moteur d'inférence local (demande explicite de faire tourner un modèle
-  // téléchargé sur l'appareil plutôt que de dépendre d'OpenRouter) — natif
-  // uniquement, jamais proposé sur le build web (expo-litert-lm n'existe
-  // pas côté web, voir src/engine/localInference.web.ts).
   const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
   const [genererImagesActive, setGenererImagesActive] = useState(false);
   const [modeleImagesGratuit, setModeleImagesGratuit] = useState(false);
@@ -147,15 +152,11 @@ export default function SettingsScreen({ navigation }: Props) {
   }
 
   function choisirGrandPublic() {
-    // Redescendre vers GRAND_PUBLIC ne demande jamais de code — seul le
-    // passage vers ADULTE est protégé.
     sauvegarderProfil('grand_public', codeDeverrouillage);
   }
 
   function choisirAdulte() {
     if (!codeDeverrouillage) {
-      // Premier passage en ADULTE : le code saisi devient le code de
-      // déverrouillage pour les prochaines fois.
       if (codeSaisi.trim().length < 4) {
         setErreurProfil(t('Choisis un code d’au moins 4 caractères.'));
         return;
@@ -199,6 +200,7 @@ export default function SettingsScreen({ navigation }: Props) {
     const requeteId = ++requeteCatalogueRef.current;
     setFournisseurCatalogue(fournisseur);
     setModalOuvert(true);
+    setRechercheModele('');
     setModeles([]);
     setChargementModeles(true);
     setErreurModeles('');
@@ -245,340 +247,432 @@ export default function SettingsScreen({ navigation }: Props) {
       m.id.toLowerCase().includes(rechercheModele.toLowerCase()),
   );
 
+  const fournisseurActif = moteurInference === 'local'
+    ? t('Sur cet appareil')
+    : moteurInference === 'infermatic'
+      ? 'Infermatic'
+      : 'OpenRouter';
+
+  const profilAffiche = profilContenu === 'adulte'
+    ? t('Adulte')
+    : profilContenu === 'grand_public'
+      ? t('Grand public')
+      : t('À déclarer');
+
   if (chargement) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', backgroundColor: couleurs.fond }]}>
+      <View style={[styles.container, styles.centreChargement]}>
         <ActivityIndicator color={couleurs.accent} />
       </View>
     );
   }
 
   if (erreurChargement) {
-    return <View style={[styles.container, { backgroundColor: couleurs.fond }]}>
-      <Text style={styles.statut}>{erreurChargement}</Text>
-      <Bouton titre={t('Réessayer')} onPress={chargerReglages} />
-    </View>;
+    return (
+      <View style={[styles.container, styles.centreChargement]}>
+        <Text style={styles.statut}>{erreurChargement}</Text>
+        <Bouton titre={t('Réessayer')} onPress={chargerReglages} style={styles.boutonAction} />
+      </View>
+    );
   }
 
   return (
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_REGLAGES}>
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: espacement.xl }}>
-      <Text style={styles.titre}>{t('Réglages')}</Text>
-      <Separateur />
+      <ScrollView style={styles.container} contentContainerStyle={styles.contenuPage}>
+        <View style={styles.entetePage}>
+          <Text style={styles.surtitre}>{t('PARAMÈTRES D’ELYNDOR')}</Text>
+          <Text style={styles.titre}>{t('Réglages')}</Text>
+          <Text style={styles.sousTitre}>{t('Configure l’expérience, le narrateur et les services techniques sans quitter l’univers.')}</Text>
+        </View>
 
-      <Bouton
-        titre={t(avancesOuverts ? 'Masquer les réglages avancés' : 'Connexion et réglages avancés')}
-        variante="secondaire"
-        onPress={() => setAvancesOuverts((v) => !v)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: avancesOuverts }}
-        style={styles.boutonAction}
-      />
-      <Text style={styles.aide}>
-        {t('Narrateur')} : {moteurInference === 'local' ? t('Sur cet appareil') : moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter'}
-      </Text>
+        <View style={[styles.resumeGrid, estTablette && styles.resumeGridTablette]}>
+          <Panneau style={[styles.resumeCarte, estTablette && styles.resumeCarteTablette]}>
+            <Text style={styles.resumeLabel}>{t('NARRATEUR')}</Text>
+            <Text style={styles.resumeValeur}>{fournisseurActif}</Text>
+          </Panneau>
+          <Panneau style={[styles.resumeCarte, estTablette && styles.resumeCarteTablette]}>
+            <Text style={styles.resumeLabel}>{t('PROFIL')}</Text>
+            <Text style={styles.resumeValeur}>{profilAffiche}</Text>
+          </Panneau>
+          <Panneau style={[styles.resumeCarte, estTablette && styles.resumeCarteTablette]}>
+            <Text style={styles.resumeLabel}>{t('ILLUSTRATIONS')}</Text>
+            <Text style={styles.resumeValeur}>{t(genererImagesActive ? 'Activées' : 'Désactivées')}</Text>
+          </Panneau>
+        </View>
 
-      {avancesOuverts && <>
-      <Text style={styles.aide}>
-        {t(Platform.OS === 'web'
-          ? 'Par défaut, les clés restent dans cet onglet : elles survivent au rechargement mais devront être ressaisies après sa fermeture. Le navigateur ne fournit pas de coffre chiffré.'
-          : 'Les clés API sont conservées dans le coffre sécurisé de cet appareil, séparément des autres réglages.')}
-      </Text>
-      {Platform.OS === 'web' && <>
-        <Bouton
-          titre={t(conserverClesWeb ? '✓ Conserver mes clés sur ce navigateur' : 'Conserver mes clés sur ce navigateur')}
-          variante="secondaire"
-          onPress={() => setConserverClesWeb((v) => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: conserverClesWeb }}
-          style={styles.boutonAction}
-        />
-        <Text style={styles.aide}>{t('Option non chiffrée, réservée à un appareil personnel. Le choix prend effet avec « Enregistrer ».')}</Text>
-      </>}
-      <Champ
-        label={t('Clé API OpenRouter')}
-        value={apiKey}
-        onChangeText={setApiKey}
-        placeholder="sk-or-v1-…"
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        conteneurStyle={styles.champConteneur}
-      />
-      <Text style={styles.aide}>
-        {t(
-          "Ta clé reste uniquement sur cet appareil (stockage local). Elle n'est jamais codée en dur ni transmise ailleurs qu'à OpenRouter.",
-        )}
-      </Text>
+        <View style={[styles.colonnes, estTablette && styles.colonnesTablette]}>
+          <View style={styles.colonne}>
+            <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('EXPÉRIENCE')}</Text>
+              <Text style={styles.sectionTitre}>{t('Contenu & extensions')}</Text>
+              <Text style={styles.sectionDescription}>{t('Ces réglages modifient ce que l’application autorise et les contenus disponibles, sans toucher à tes histoires existantes.')}</Text>
 
-      <Champ
-        label={t('Modèle')}
-        value={model}
-        onChangeText={setModel}
-        placeholder="ex : anthropic/claude-sonnet-4.5"
-        autoCapitalize="none"
-        autoCorrect={false}
-        conteneurStyle={styles.champConteneur}
-      />
-      <Bouton titre={t('Choisir parmi les modèles OpenRouter')} variante="secondaire" onPress={() => ouvrirSelecteurModeles('openrouter')} style={styles.boutonAction} />
+              <Pressable style={styles.ligneSelection} onPress={ouvrirModalProfil}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ligneLabel}>{t('Profil de contenu')}</Text>
+                  <Text style={styles.ligneValeur}>{profilAffiche}</Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
 
-      <Champ
-        label={t('Clé API Infermatic')}
-        value={infermaticApiKey}
-        onChangeText={setInfermaticApiKey}
-        placeholder="Clé Infermatic"
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        conteneurStyle={styles.champConteneur}
-      />
-      <Text style={styles.aide}>
-        {t("Cette clé reste sur cet appareil et n'est envoyée qu'à Infermatic lorsque ce fournisseur est sélectionné.")}
-      </Text>
-      <Champ
-        label={t('Modèle Infermatic')}
-        value={infermaticModel}
-        onChangeText={setInfermaticModel}
-        placeholder={t('Sélectionne un modèle retourné par Infermatic')}
-        autoCapitalize="none"
-        autoCorrect={false}
-        conteneurStyle={styles.champConteneur}
-      />
-      <Bouton titre={t('Choisir parmi les modèles Infermatic')} variante="secondaire" onPress={() => ouvrirSelecteurModeles('infermatic')} style={styles.boutonAction} />
-
-      <Champ
-        label={t('Clé API embeddings (secours, optionnelle)')}
-        value={embeddingsApiKey}
-        onChangeText={setEmbeddingsApiKey}
-        placeholder="sk-…"
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        conteneurStyle={styles.champConteneur}
-      />
-      <Text style={styles.aide}>
-        {t(
-          "Recherche sémantique : OpenRouter utilise ses embeddings puis cette clé OpenAI en secours ; Infermatic utilise ses propres embeddings. La génération d’images reste toujours OpenRouter-only.",
-        )}
-      </Text>
-
-      <>
-          <Text style={styles.label}>{t("Moteur d'inférence")}</Text>
-          <View style={styles.rangeeMoteur}>
-            <Pressable
-              style={[styles.optionMoteur, moteurInference === 'openrouter' && styles.optionMoteurActive]}
-              onPress={() => setMoteurInference('openrouter')}
-            >
-              <Text style={styles.texteOptionMoteur}>OpenRouter</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.optionMoteur, moteurInference === 'infermatic' && styles.optionMoteurActive]}
-              onPress={() => { setMoteurInference('infermatic'); setModeles([]); }}
-            >
-              <Text style={styles.texteOptionMoteur}>Infermatic</Text>
-            </Pressable>
-            {Platform.OS !== 'web' && (
-            <Pressable
-              style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
-              onPress={() => setMoteurInference('local')}
-            >
-              <Text style={styles.texteOptionMoteur}>{t("Local (sur l'appareil)")}</Text>
-            </Pressable>
-            )}
-          </View>
-
-          {Platform.OS !== 'web' && moteurInference === 'local' ? (
-            <Panneau style={styles.champConteneur}>
               <Text style={styles.aide}>
-                {t(
-                  "Le modèle tourne entièrement sur l'appareil, sans connexion réseau ni clé API. Sur du matériel d'entrée de gamme, la génération peut être lente ou instable — c'est un compromis assumé, pas un dysfonctionnement.",
-                )}
+                {t('En Grand public, le contenu explicite est filtré et bloqué. Le mode Adulte se réactive avec le code local que tu as choisi.')}
               </Text>
-              <Text style={[styles.texteOptionProfil, { marginTop: espacement.sm }]}>
-                {modeleLocalPresent
-                  ? `${t('Modèle importé')} (${formaterTailleOctets(tailleModeleLocal ?? 0)})`
-                  : t('Aucun modèle importé')}
-              </Text>
+
               <Bouton
-                titre={importEnCours ? t('Import…') : t('Importer un modèle (.litertlm ou .task)')}
+                titre={t('Gérer les packs de contenu')}
                 variante="secondaire"
-                onPress={importerModele}
-                desactive={importEnCours}
+                onPress={() => navigation.navigate('Plugins')}
                 style={styles.boutonAction}
               />
-              {modeleLocalPresent ? (
+            </Panneau>
+
+            <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('IA & CONNEXION')}</Text>
+              <Text style={styles.sectionTitre}>{t('Narrateur')}</Text>
+              <Text style={styles.sectionDescription}>{t('Choisis où tourne le modèle de narration puis configure uniquement le fournisseur utilisé.')}</Text>
+
+              <Text style={styles.label}>{t("Moteur d'inférence")}</Text>
+              <View style={styles.rangeeMoteur}>
+                <Pressable
+                  style={[styles.optionMoteur, moteurInference === 'openrouter' && styles.optionMoteurActive]}
+                  onPress={() => setMoteurInference('openrouter')}
+                >
+                  <Text style={[styles.texteOptionMoteur, moteurInference === 'openrouter' && styles.texteOptionMoteurActif]}>OpenRouter</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.optionMoteur, moteurInference === 'infermatic' && styles.optionMoteurActive]}
+                  onPress={() => { setMoteurInference('infermatic'); setModeles([]); }}
+                >
+                  <Text style={[styles.texteOptionMoteur, moteurInference === 'infermatic' && styles.texteOptionMoteurActif]}>Infermatic</Text>
+                </Pressable>
+                {Platform.OS !== 'web' && (
+                  <Pressable
+                    style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
+                    onPress={() => setMoteurInference('local')}
+                  >
+                    <Text style={[styles.texteOptionMoteur, moteurInference === 'local' && styles.texteOptionMoteurActif]}>{t('Local')}</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {moteurInference === 'openrouter' && (
+                <View style={styles.blocFournisseur}>
+                  <Champ
+                    label={t('Clé API OpenRouter')}
+                    value={apiKey}
+                    onChangeText={setApiKey}
+                    placeholder="sk-or-v1-…"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Champ
+                    label={t('Modèle de narration')}
+                    value={model}
+                    onChangeText={setModel}
+                    placeholder="ex : anthropic/claude-sonnet-4.5"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Bouton
+                    titre={t('Parcourir les modèles OpenRouter')}
+                    variante="arcane"
+                    onPress={() => ouvrirSelecteurModeles('openrouter')}
+                    style={styles.boutonAction}
+                  />
+                </View>
+              )}
+
+              {moteurInference === 'infermatic' && (
+                <View style={styles.blocFournisseur}>
+                  <Champ
+                    label={t('Clé API Infermatic')}
+                    value={infermaticApiKey}
+                    onChangeText={setInfermaticApiKey}
+                    placeholder={t('Clé Infermatic')}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Champ
+                    label={t('Modèle de narration')}
+                    value={infermaticModel}
+                    onChangeText={setInfermaticModel}
+                    placeholder={t('Sélectionne un modèle retourné par Infermatic')}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Bouton
+                    titre={t('Parcourir les modèles Infermatic')}
+                    variante="arcane"
+                    onPress={() => ouvrirSelecteurModeles('infermatic')}
+                    style={styles.boutonAction}
+                  />
+                </View>
+              )}
+
+              {Platform.OS !== 'web' && moteurInference === 'local' && (
+                <View style={styles.blocFournisseur}>
+                  <Text style={styles.aide}>{t("Le modèle tourne entièrement sur l'appareil, sans connexion réseau ni clé API. Les performances dépendent directement du matériel.")}</Text>
+                  <View style={styles.etatTechnique}>
+                    <Text style={styles.ligneLabel}>{t('Modèle local')}</Text>
+                    <Text style={styles.ligneValeur}>
+                      {modeleLocalPresent
+                        ? `${t('Importé')} · ${formaterTailleOctets(tailleModeleLocal ?? 0)}`
+                        : t('Aucun modèle importé')}
+                    </Text>
+                  </View>
+                  <Bouton
+                    titre={importEnCours ? t('Import…') : t('Importer un modèle (.litertlm ou .task)')}
+                    variante="arcane"
+                    onPress={importerModele}
+                    desactive={importEnCours}
+                    style={styles.boutonAction}
+                  />
+                  {modeleLocalPresent && (
+                    <Bouton
+                      titre={t('Supprimer le modèle local')}
+                      variante="secondaire"
+                      onPress={supprimerModele}
+                      style={styles.boutonAction}
+                      texteStyle={{ color: couleurs.danger }}
+                    />
+                  )}
+                  {erreurModeleLocal ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurModeleLocal}</Text> : null}
+                </View>
+              )}
+            </Panneau>
+          </View>
+
+          <View style={styles.colonne}>
+            <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('ILLUSTRATION')}</Text>
+              <Text style={styles.sectionTitre}>{t('Images de scène')}</Text>
+              <Text style={styles.sectionDescription}>{t('La génération d’images reste optionnelle et n’interrompt jamais la narration.')}</Text>
+
+              <View style={styles.rangeeMoteur}>
+                <Pressable
+                  style={[styles.optionMoteur, !genererImagesActive && styles.optionMoteurActive]}
+                  onPress={() => setGenererImagesActive(false)}
+                >
+                  <Text style={[styles.texteOptionMoteur, !genererImagesActive && styles.texteOptionMoteurActif]}>{t('Désactivée')}</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.optionMoteur, genererImagesActive && styles.optionMoteurActive]}
+                  onPress={() => setGenererImagesActive(true)}
+                >
+                  <Text style={[styles.texteOptionMoteur, genererImagesActive && styles.texteOptionMoteurActif]}>{t('Activée')}</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.aide}>{t('Quand elle est active, l’action « Illustrer cette scène » apparaît dans le récit. Les images ne sont pas enregistrées avec la sauvegarde.')}</Text>
+
+              {genererImagesActive && (
+                <View style={styles.blocFournisseur}>
+                  <Text style={styles.label}>{t("Mode d'images")}</Text>
+                  <View style={styles.rangeeMoteur}>
+                    <Pressable
+                      style={[styles.optionMoteur, !modeleImagesGratuit && styles.optionMoteurActive]}
+                      onPress={() => setModeleImagesGratuit(false)}
+                    >
+                      <Text style={[styles.texteOptionMoteur, !modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Payant · fiable')}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.optionMoteur, modeleImagesGratuit && styles.optionMoteurActive]}
+                      onPress={() => setModeleImagesGratuit(true)}
+                    >
+                      <Text style={[styles.texteOptionMoteur, modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Gratuit · limité')}</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.aide}>{t('La génération d’images utilise actuellement OpenRouter, même si le narrateur utilise Infermatic ou un modèle local.')}</Text>
+                </View>
+              )}
+            </Panneau>
+
+            <Panneau style={styles.section}>
+              <Pressable
+                onPress={() => setAvancesOuverts((v) => !v)}
+                style={styles.enteteSectionPliable}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: avancesOuverts }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionSurtitre}>{t('AVANCÉ')}</Text>
+                  <Text style={styles.sectionTitre}>{t('Options techniques')}</Text>
+                </View>
+                <Text style={styles.chevron}>{avancesOuverts ? '−' : '+'}</Text>
+              </Pressable>
+              <Text style={styles.sectionDescription}>{t('Clés de secours et stockage technique. À modifier seulement si tu en as besoin.')}</Text>
+
+              {avancesOuverts && (
+                <View style={styles.blocAvance}>
+                  {Platform.OS === 'web' && (
+                    <>
+                      <Pressable
+                        style={[styles.ligneSelection, conserverClesWeb && styles.ligneSelectionActive]}
+                        onPress={() => setConserverClesWeb((v) => !v)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: conserverClesWeb }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.ligneLabel}>{t('Conserver les clés sur ce navigateur')}</Text>
+                          <Text style={styles.ligneValeur}>{t(conserverClesWeb ? 'Activé' : 'Désactivé')}</Text>
+                        </View>
+                      </Pressable>
+                      <Text style={styles.aide}>{t('Le stockage web n’est pas chiffré. Cette option doit rester réservée à un appareil personnel.')}</Text>
+                    </>
+                  )}
+
+                  <Champ
+                    label={t('Clé API embeddings de secours')}
+                    value={embeddingsApiKey}
+                    onChangeText={setEmbeddingsApiKey}
+                    placeholder="sk-…"
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Text style={styles.aide}>{t('OpenRouter peut utiliser cette clé OpenAI en secours pour la recherche sémantique. Infermatic utilise ses propres embeddings.')}</Text>
+
+                  <Text style={styles.noteSecurite}>
+                    {t(Platform.OS === 'web'
+                      ? 'Sur le web, les clés restent normalement dans la session du navigateur.'
+                      : 'Sur Android, les clés API sont conservées dans le coffre sécurisé de l’appareil.')}
+                  </Text>
+                </View>
+              )}
+            </Panneau>
+
+            <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('APPLICATION')}</Text>
+              <Text style={styles.sectionTitre}>{t('Maintenance')}</Text>
+              <View style={styles.ligneVersion}>
+                <Text style={styles.ligneLabel}>{t('Version')}</Text>
+                <Text style={styles.ligneValeur}>{VERSION_APP}</Text>
+              </View>
+              <Bouton
+                titre={verificationMaj ? t('Vérification…') : t('Vérifier les mises à jour')}
+                variante="secondaire"
+                onPress={verifierMaj}
+                desactive={verificationMaj}
+                style={styles.boutonAction}
+              />
+              {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
+              {urlMaj ? (
                 <Bouton
-                  titre={t('Supprimer le modèle local')}
-                  variante="secondaire"
-                  onPress={supprimerModele}
+                  titre={t('Ouvrir la dernière version')}
+                  variante="arcane"
+                  onPress={() => Linking.openURL(urlMaj)}
                   style={styles.boutonAction}
                 />
               ) : null}
-              {erreurModeleLocal ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurModeleLocal}</Text> : null}
+
+              <View style={styles.separateurInterne} />
+              <Text style={styles.ligneLabel}>{t('Outils concepteur')}</Text>
+              <Text style={styles.aide}>{t('Débogage narratif, contrôles moteur et réglages de prompt avancés pour la phase de test.')}</Text>
+              <Bouton
+                titre={t('Ouvrir les réglages concepteur')}
+                variante="secondaire"
+                onPress={() => navigation.navigate('ReglagesConcepteur')}
+                style={styles.boutonAction}
+              />
             </Panneau>
-          ) : null}
-        </>
-
-      </>}
-
-      <Text style={styles.label}>{t('Génération d’images')}</Text>
-      <View style={styles.rangeeMoteur}>
-        <Pressable
-          style={[styles.optionMoteur, !genererImagesActive && styles.optionMoteurActive]}
-          onPress={() => setGenererImagesActive(false)}
-        >
-          <Text style={styles.texteOptionMoteur}>{t('Désactivée')}</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.optionMoteur, genererImagesActive && styles.optionMoteurActive]}
-          onPress={() => setGenererImagesActive(true)}
-        >
-          <Text style={styles.texteOptionMoteur}>{t('Activée')}</Text>
-        </Pressable>
-      </View>
-      <Text style={styles.aide}>
-        {t(
-          "Ajoute « Illustrer cette scène » dans le menu « Actions du récit », via ton compte OpenRouter. Les illustrations ne sont pas sauvegardées avec l'histoire — elles disparaissent si tu quittes l'écran.",
-        )}
-      </Text>
-
-      {genererImagesActive && (
-        <>
-          <Text style={styles.label}>{t("Modèle d'images")}</Text>
-          <View style={styles.rangeeMoteur}>
-            <Pressable
-              style={[styles.optionMoteur, !modeleImagesGratuit && styles.optionMoteurActive]}
-              onPress={() => setModeleImagesGratuit(false)}
-            >
-              <Text style={styles.texteOptionMoteur}>{t('Payant (fiable)')}</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.optionMoteur, modeleImagesGratuit && styles.optionMoteurActive]}
-              onPress={() => setModeleImagesGratuit(true)}
-            >
-              <Text style={styles.texteOptionMoteur}>{t('Gratuit (limité)')}</Text>
-            </Pressable>
           </View>
-          <Text style={styles.aide}>
-            {t(
-              "Payant : ~0,05-0,08 $ par image, fiable. Gratuit : même modèle, sans coût, mais limité en requêtes par minute et sans garantie de disponibilité aux heures de pointe (peut échouer, réessaie alors plus tard).",
+        </View>
+
+        {messageStatut ? <Text style={[styles.statut, styles.statutGlobal]}>{messageStatut}</Text> : null}
+
+        <View style={styles.zoneEnregistrement}>
+          <Text style={styles.zoneEnregistrementTexte}>{t('Les changements prennent effet après enregistrement.')}</Text>
+          <Bouton
+            titre={enregistrement ? t('Enregistrement…') : t('Enregistrer les réglages')}
+            onPress={enregistrer}
+            desactive={enregistrement}
+            style={styles.boutonPrincipal}
+          />
+        </View>
+
+        <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalSurtitre}>{t('CATALOGUE')}</Text>
+            <Text style={styles.titre}>{fournisseurCatalogue === 'infermatic' ? t('Modèles Infermatic') : t('Modèles OpenRouter')}</Text>
+            <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder={t('Rechercher…')} conteneurStyle={styles.champConteneur} />
+            {chargementModeles ? (
+              <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
+            ) : erreurModeles ? (
+              <Text style={styles.statut}>{erreurModeles}</Text>
+            ) : (
+              <FlatList
+                style={{ marginTop: espacement.sm }}
+                data={modelesFiltres}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.ligneModele}
+                    onPress={() => {
+                      if (fournisseurCatalogue === 'infermatic') setInfermaticModel(item.id);
+                      else setModel(item.id);
+                      setModalOuvert(false);
+                    }}
+                  >
+                    <Text style={styles.nomModele}>{item.nom}</Text>
+                    <Text style={styles.idModele}>{item.id}</Text>
+                  </Pressable>
+                )}
+              />
             )}
-          </Text>
-        </>
-      )}
+            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
+          </View>
+        </Modal>
 
-      <Text style={styles.label}>{t('Profil de contenu')}</Text>
-      <Pressable style={styles.champFactice} onPress={ouvrirModalProfil}>
-        <Text style={styles.texteChampFactice}>
-          {profilContenu === 'adulte'
-            ? t('Adulte')
-            : profilContenu === 'grand_public'
-              ? t('Grand public')
-              : t('À déclarer — appuie ici')}
-        </Text>
-      </Pressable>
-      <Text style={styles.aide}>
-        {t(
-          "En Grand public, le contenu explicite est retiré du contexte et bloqué par le contrôleur de sortie même si le modèle en produit malgré tout. Le passage en Adulte est protégé par un code que tu choisis à la première activation (pas une vraie protection anti-piratage — un garde-fou local).",
-        )}
-      </Text>
+        <Modal visible={modalProfilOuvert} animationType="slide" onRequestClose={() => setModalProfilOuvert(false)}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalSurtitre}>{t('EXPÉRIENCE')}</Text>
+            <Text style={styles.titre}>{t('Profil de contenu')}</Text>
 
-      {messageStatut ? <Text style={styles.statut}>{messageStatut}</Text> : null}
+            <Pressable onPress={choisirGrandPublic}>
+              <Panneau style={[styles.optionProfil, profilContenu === 'grand_public' && styles.optionProfilActive]}>
+                <Text style={styles.texteOptionProfil}>{t('Grand public')}</Text>
+                <Text style={styles.aide}>{t('Contenu explicite retiré et bloqué par le contrôleur de sortie.')}</Text>
+              </Panneau>
+            </Pressable>
 
-      <Bouton titre={enregistrement ? t('Enregistrement…') : t('Enregistrer')} onPress={enregistrer} desactive={enregistrement} style={styles.boutonPrincipal} />
-
-      <Separateur />
-
-      <Text style={styles.label}>{t('Packs de contenu')}</Text>
-      <Bouton titre={t('Gérer les packs de contenu (plugins)')} variante="secondaire" onPress={() => navigation.navigate('Plugins')} style={styles.boutonAction} />
-
-      <Text style={styles.label}>{t('À propos')}</Text>
-      <Text style={styles.aide}>{t('Version')} {VERSION_APP}</Text>
-      <Bouton titre={verificationMaj ? t('Vérification…') : t('Vérifier les mises à jour')} variante="secondaire" onPress={verifierMaj} desactive={verificationMaj} style={styles.boutonAction} />
-      {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
-      {urlMaj ? (
-        <Bouton titre={t('Ouvrir la dernière version')} variante="secondaire" onPress={() => Linking.openURL(urlMaj)} style={styles.boutonAction} />
-      ) : null}
-
-      <Text style={styles.label}>{t('Concepteur')}</Text>
-      <Bouton titre={t('Réglages concepteur')} variante="secondaire" onPress={() => navigation.navigate('ReglagesConcepteur')} style={styles.boutonAction} />
-      <Text style={styles.aide}>
-        {t('Débogage narratif, contrôles moteur et réglages de prompt avancés — utile pendant la phase de test.')}
-      </Text>
-
-      <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.titre}>{fournisseurCatalogue === 'infermatic' ? t('Modèles Infermatic') : t('Modèles OpenRouter')}</Text>
-          <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder={t('Rechercher…')} conteneurStyle={styles.champConteneur} />
-          {chargementModeles ? (
-            <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
-          ) : erreurModeles ? (
-            <Text style={styles.statut}>{erreurModeles}</Text>
-          ) : (
-            <FlatList
-              style={{ marginTop: espacement.sm }}
-              data={modelesFiltres}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.ligneModele}
-                  onPress={() => {
-                    if (fournisseurCatalogue === 'infermatic') setInfermaticModel(item.id);
-                    else setModel(item.id);
-                    setModalOuvert(false);
-                  }}
-                >
-                  <Text style={styles.nomModele}>{item.nom}</Text>
-                  <Text style={styles.idModele}>{item.id}</Text>
-                </Pressable>
-              )}
-            />
-          )}
-          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
-        </View>
-      </Modal>
-
-      <Modal visible={modalProfilOuvert} animationType="slide" onRequestClose={() => setModalProfilOuvert(false)}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.titre}>{t('Profil de contenu')}</Text>
-
-          <Pressable onPress={choisirGrandPublic}>
-            <Panneau style={[styles.optionProfil, profilContenu === 'grand_public' && styles.optionProfilActive]}>
-              <Text style={styles.texteOptionProfil}>{t('Grand public')}</Text>
-              <Text style={styles.aide}>{t('Contenu explicite retiré et bloqué par le contrôleur de sortie.')}</Text>
+            <Panneau style={[styles.optionProfil, profilContenu === 'adulte' && styles.optionProfilActive]}>
+              <Text style={styles.texteOptionProfil}>{t('Adulte')}</Text>
+              <Text style={styles.aide}>
+                {codeDeverrouillage
+                  ? t('Entre ton code pour activer.')
+                  : t('Choisis un code (4 caractères minimum) — il te sera redemandé pour repasser en Adulte plus tard.')}
+              </Text>
+              <Champ
+                value={codeSaisi}
+                onChangeText={setCodeSaisi}
+                placeholder={t('Code')}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                conteneurStyle={styles.champConteneur}
+              />
+              <Bouton
+                titre={codeDeverrouillage ? t('Déverrouiller') : t('Définir ce code et activer')}
+                variante="secondaire"
+                onPress={choisirAdulte}
+                style={styles.boutonAction}
+              />
             </Panneau>
-          </Pressable>
 
-          <Panneau style={[styles.optionProfil, profilContenu === 'adulte' && styles.optionProfilActive]}>
-            <Text style={styles.texteOptionProfil}>{t('Adulte')}</Text>
-            <Text style={styles.aide}>
-              {codeDeverrouillage
-                ? t('Entre ton code pour activer.')
-                : t('Choisis un code (4 caractères minimum) — il te sera redemandé pour repasser en Adulte plus tard.')}
-            </Text>
-            <Champ
-              value={codeSaisi}
-              onChangeText={setCodeSaisi}
-              placeholder={t('Code')}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              conteneurStyle={styles.champConteneur}
-            />
-            <Bouton
-              titre={codeDeverrouillage ? t('Déverrouiller') : t('Définir ce code et activer')}
-              variante="secondaire"
-              onPress={choisirAdulte}
-              style={styles.boutonAction}
-            />
-          </Panneau>
+            {erreurProfil ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurProfil}</Text> : null}
 
-          {erreurProfil ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurProfil}</Text> : null}
-
-          <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalProfilOuvert(false)} style={styles.boutonAction} />
-        </View>
-      </Modal>
-    </ScrollView>
+            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalProfilOuvert(false)} style={styles.boutonAction} />
+          </View>
+        </Modal>
+      </ScrollView>
     </FondAtmospherique>
   );
 }
@@ -586,41 +680,122 @@ export default function SettingsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: couleurs.fond,
+  },
+  centreChargement: {
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: espacement.lg,
+  },
+  contenuPage: {
+    width: '100%',
+    maxWidth: 1180,
+    alignSelf: 'center',
+    paddingHorizontal: espacement.lg,
     paddingTop: espacement.xl,
+    paddingBottom: espacement.xxl,
+  },
+  entetePage: {
+    marginBottom: espacement.lg,
+  },
+  surtitre: {
+    ...stylePetitesCapitales,
+    color: couleurs.dore,
+    fontSize: 11,
+    letterSpacing: 2.2,
+    marginBottom: 4,
   },
   titre: {
-    color: couleurs.dore,
+    color: couleurs.texte,
     fontFamily: polices.display,
-    fontSize: 26,
-    letterSpacing: 1,
+    fontSize: 30,
+    letterSpacing: 1.1,
+  },
+  sousTitre: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 16,
+    lineHeight: 21,
+    maxWidth: 720,
+    marginTop: espacement.xs,
+  },
+  resumeGrid: {
+    gap: espacement.sm,
+    marginBottom: espacement.lg,
+  },
+  resumeGridTablette: {
+    flexDirection: 'row',
+  },
+  resumeCarte: {
+    paddingVertical: espacement.sm,
+    paddingHorizontal: espacement.md,
+  },
+  resumeCarteTablette: {
+    flex: 1,
+  },
+  resumeLabel: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteFaible,
+    fontSize: 9,
+  },
+  resumeValeur: {
+    color: couleurs.doreClair,
+    fontFamily: polices.titre,
+    fontSize: 17,
+    marginTop: 2,
+  },
+  colonnes: {
+    gap: espacement.md,
+  },
+  colonnesTablette: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  colonne: {
+    flex: 1,
+    gap: espacement.md,
+  },
+  section: {
+    padding: espacement.lg,
+    backgroundColor: couleurs.fondCarteDense,
+    borderColor: couleurs.bordureSubtile,
+  },
+  sectionSurtitre: {
+    ...stylePetitesCapitales,
+    color: couleurs.dore,
+    fontSize: 9,
+    letterSpacing: 1.8,
+    marginBottom: 3,
+  },
+  sectionTitre: {
+    color: couleurs.texte,
+    fontFamily: polices.titre,
+    fontSize: 22,
+    lineHeight: 25,
+  },
+  sectionDescription: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 14,
+    lineHeight: 19,
+    marginTop: espacement.xs,
+    marginBottom: espacement.md,
   },
   label: {
     ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
-    fontSize: 12,
-    marginTop: espacement.md,
+    fontSize: 11,
+    marginTop: espacement.sm,
     marginBottom: espacement.xs,
   },
   champConteneur: {
     marginTop: espacement.md,
   },
-  champFactice: {
-    backgroundColor: couleurs.fondChampSaisie,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    paddingHorizontal: espacement.sm,
-    paddingVertical: espacement.sm,
-  },
-  texteChampFactice: {
-    color: couleurs.texte,
-    fontFamily: polices.corps,
-    fontSize: 16,
-  },
   aide: {
     color: couleurs.texteAtténué,
     fontFamily: polices.corps,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     marginTop: espacement.xs,
   },
   statut: {
@@ -628,17 +803,138 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     marginTop: espacement.md,
   },
-  boutonPrincipal: {
-    marginTop: espacement.lg,
+  statutGlobal: {
+    textAlign: 'center',
+  },
+  ligneSelection: {
+    minHeight: 58,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: couleurs.fondChampSaisie,
+    paddingHorizontal: espacement.md,
+    paddingVertical: espacement.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: espacement.sm,
+  },
+  ligneSelectionActive: {
+    borderColor: couleurs.accent,
+  },
+  ligneLabel: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteAtténué,
+    fontSize: 10,
+  },
+  ligneValeur: {
+    color: couleurs.texte,
+    fontFamily: polices.corpsMedium,
+    fontSize: 15,
+    marginTop: 2,
+  },
+  chevron: {
+    color: couleurs.dore,
+    fontFamily: polices.display,
+    fontSize: 25,
+    marginLeft: espacement.sm,
+  },
+  rangeeMoteur: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacement.sm,
+  },
+  optionMoteur: {
+    minHeight: 48,
+    flexGrow: 1,
+    flexBasis: 100,
+    paddingHorizontal: espacement.sm,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: couleurs.fondChampSaisie,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionMoteurActive: {
+    borderColor: couleurs.accent,
+    backgroundColor: 'rgba(78, 174, 248, 0.10)',
+  },
+  texteOptionMoteur: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corpsMedium,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  texteOptionMoteurActif: {
+    color: couleurs.accentClair,
+  },
+  blocFournisseur: {
+    marginTop: espacement.sm,
   },
   boutonAction: {
     marginTop: espacement.sm,
+  },
+  etatTechnique: {
+    borderLeftWidth: 2,
+    borderLeftColor: couleurs.accent,
+    paddingLeft: espacement.sm,
+    marginTop: espacement.md,
+  },
+  enteteSectionPliable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  blocAvance: {
+    marginTop: espacement.sm,
+  },
+  noteSecurite: {
+    color: couleurs.texteFaible,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: espacement.md,
+    fontStyle: 'italic',
+  },
+  ligneVersion: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 42,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordureSubtile,
+  },
+  separateurInterne: {
+    height: 1,
+    backgroundColor: couleurs.bordureSubtile,
+    marginVertical: espacement.lg,
+  },
+  zoneEnregistrement: {
+    marginTop: espacement.lg,
+    padding: espacement.md,
+    borderWidth: 1,
+    borderColor: couleurs.bordureDoree,
+    backgroundColor: 'rgba(4, 10, 18, 0.86)',
+  },
+  zoneEnregistrementTexte: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: espacement.sm,
+  },
+  boutonPrincipal: {
+    alignSelf: 'stretch',
   },
   modalContainer: {
     flex: 1,
     backgroundColor: couleurs.fond,
     padding: espacement.lg,
     paddingTop: espacement.xl,
+  },
+  modalSurtitre: {
+    ...stylePetitesCapitales,
+    color: couleurs.dore,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    marginBottom: 4,
   },
   ligneModele: {
     paddingVertical: espacement.sm,
@@ -647,35 +943,14 @@ const styles = StyleSheet.create({
   },
   nomModele: {
     color: couleurs.texte,
-    fontFamily: polices.corps,
+    fontFamily: polices.corpsMedium,
     fontSize: 16,
   },
   idModele: {
     color: couleurs.texteAtténué,
     fontFamily: polices.corps,
-    fontSize: 13,
-  },
-  rangeeMoteur: {
-    flexDirection: 'row',
-    marginTop: espacement.xs,
-    gap: espacement.sm,
-  },
-  optionMoteur: {
-    flex: 1,
-    paddingVertical: espacement.sm,
-    paddingHorizontal: espacement.sm,
-    borderWidth: 1,
-    borderColor: couleurs.bordure,
-    backgroundColor: couleurs.fondChampSaisie,
-    alignItems: 'center',
-  },
-  optionMoteurActive: {
-    borderColor: couleurs.accent,
-  },
-  texteOptionMoteur: {
-    color: couleurs.texte,
-    fontFamily: polices.corps,
-    fontSize: 14,
+    fontSize: 12,
+    marginTop: 2,
   },
   optionProfil: {
     marginTop: espacement.md,
@@ -686,7 +961,7 @@ const styles = StyleSheet.create({
   texteOptionProfil: {
     color: couleurs.texte,
     fontFamily: polices.titre,
-    fontSize: 18,
+    fontSize: 19,
     marginBottom: espacement.xs,
   },
 });
