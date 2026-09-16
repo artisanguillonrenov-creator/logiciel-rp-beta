@@ -1,20 +1,15 @@
 import { supprimerAvatarsHistoire, supprimerAvatarsOrphelins } from '../storage/pnjAvatarsStore';
 import { supprimerIllustrationsHistoire, supprimerIllustrationsOrphelines } from '../storage/sceneImagesStore';
-import type { AutomationJob } from './jobRepositoryCore';
 import {
   enqueueAutomation,
   listAutomationJobs,
   registerAutomationHandler,
   removeAutomationJobsForStory,
 } from './kernel';
+import { listerStoryIdsOrphelins } from './lifecyclePlanning';
 
 export interface LifecycleAutomationDeps {
   getStoryIds(): Promise<string[]>;
-}
-
-export function listerStoryIdsOrphelins(jobs: readonly AutomationJob[], storyIdsValides: readonly string[]): string[] {
-  const valides = new Set(storyIdsValides);
-  return [...new Set(jobs.map((job) => job.storyId).filter((id): id is string => !!id && !valides.has(id)))];
 }
 
 export async function nettoyerDonneesDeriveesHistoire(storyId: string): Promise<void> {
