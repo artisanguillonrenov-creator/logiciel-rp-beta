@@ -266,7 +266,7 @@ function ModalSynopsis({ visible, onFermer }: { visible: boolean; onFermer: () =
 const styles = StyleSheet.create({
   container: { flex: 1 },
   voile: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 8, 15, 0.18)',
   },
   voileCompact: { backgroundColor: 'rgba(2, 8, 15, 0.30)' },
