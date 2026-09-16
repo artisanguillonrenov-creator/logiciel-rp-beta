@@ -1,26 +1,42 @@
-// Direction artistique "grimoire illuminé" (Direction_Artistique_Elyndor.md) :
-// panneaux ornés semi-transparents sur fond sombre, une seule famille serif
-// dans toute l'interface, motif de séparateur ornemental récurrent. Ce
-// fichier ne fixe que les tokens ; les composants qui les appliquent (coins
-// droits, liseré fin, glow) vivent dans src/components/.
+// Direction artistique Elyndor V2 — fantasy sombre cinématique.
+//
+// Principe : le monde et les décisions utilisent l'or ; l'IA, la magie et
+// les états de focus utilisent le bleu arcane. Les surfaces restent très
+// sombres et translucides afin que l'illustration porte l'immersion sans
+// sacrifier la lisibilité.
 export const couleurs = {
-  fond: '#0A0D1A',
-  // Panneaux : semi-transparents (~88%) pour laisser deviner le fond
-  // derrière eux plutôt qu'une carte pleine façon app générique.
-  fondCarte: 'rgba(18, 23, 43, 0.88)',
-  fondChampSaisie: 'rgba(10, 13, 26, 0.6)',
-  bordure: '#2A3255',
-  texte: '#D8DCE8',
-  texteAtténué: '#8B94B0',
-  // Accent lumineux (bordures actives, icônes sélectionnées) — glow léger
-  // appliqué via ombresLueur ci-dessous, jamais un box-shadow gris.
-  accent: '#5AACFF',
-  accentClair: '#8CC6FF',
-  // Or/champagne : nom du monde, noms de personnage, éléments précieux.
-  dore: '#E4D3A0',
+  // Profondeur générale : bleu-noir, jamais noir pur.
+  fond: '#07111C',
+  fondProfond: '#040A12',
+  fondCarte: 'rgba(7, 17, 28, 0.90)',
+  fondCarteDense: 'rgba(9, 22, 36, 0.96)',
+  fondChampSaisie: 'rgba(4, 12, 22, 0.76)',
+
+  // Bordures et texte.
+  bordure: '#29445C',
+  bordureSubtile: 'rgba(141, 171, 196, 0.24)',
+  bordureDoree: 'rgba(216, 179, 107, 0.72)',
+  texte: '#E9E3D5',
+  texteAtténué: '#9CA8B4',
+  texteFaible: '#71808F',
+
+  // Bleu = magie / IA / focus / sélection technique.
+  accent: '#4EAEF8',
+  accentClair: '#86D0FF',
+  accentSombre: '#174B72',
+
+  // Or = monde / progression / action principale / décision.
+  dore: '#D8B36B',
+  doreClair: '#F0D89E',
+  doreSombre: '#8E6C32',
+
   danger: '#E3707D',
-  bulleJoueur: 'rgba(90, 172, 255, 0.14)',
-  bulleNarrateur: 'rgba(18, 23, 43, 0.88)',
+  succes: '#68A98C',
+
+  // Conversation : le narrateur devient une page de roman plutôt qu'une
+  // bulle de messagerie ; le joueur reste légèrement matérialisé.
+  bulleJoueur: 'rgba(14, 37, 55, 0.82)',
+  bulleNarrateur: 'rgba(7, 17, 28, 0.30)',
 };
 
 export const espacement = {
@@ -29,47 +45,60 @@ export const espacement = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 48,
 };
 
-// Coins droits partout (pas d'arrondi façon carte SaaS) — seul un radius
-// minime reste disponible pour des cas ponctuels (pastille, avatar...).
+// Elyndor conserve des angles presque droits : le relief vient des liserés,
+// de la lumière et de la transparence, pas des cartes SaaS arrondies.
 export const rayon = {
-  sm: 0,
-  md: 0,
-  lg: 2,
+  sm: 2,
+  md: 4,
+  lg: 6,
 };
 
-// Glow léger sur l'accent bleu, pour les éléments actifs (bordure de champ
-// en focus, cercle d'étape actif...). Rendu correctement sur web et iOS ;
-// dégradé sur Android (RN n'y colore pas les ombres nativement).
+// Glow bleu pour la magie, l'IA et les éléments en focus.
 export const ombresLueur = {
   shadowColor: couleurs.accent,
   shadowOffset: { width: 0, height: 0 },
-  shadowOpacity: 0.6,
-  shadowRadius: 6,
+  shadowOpacity: 0.48,
+  shadowRadius: 7,
   elevation: 3,
 };
 
-// Une seule famille serif dans toute l'interface — pas de repli sans-serif
-// (voir App.tsx pour le chargement). Les noms de police sont ceux exportés
-// par @expo-google-fonts ; le fallback en cas d'échec de chargement est le
-// serif système via la pile déclarée sur chaque plateforme au besoin.
+// Glow or pour les décisions et actions principales. L'opacité reste faible
+// pour éviter un rendu néon et préserver la sensation "fantasy premium".
+export const ombresOr = {
+  shadowColor: couleurs.dore,
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.34,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
 export const polices = {
-  // Grands titres d'écran / nom du monde.
+  // Titres / marque.
   display: 'Cinzel_700Bold',
   displaySemiGras: 'Cinzel_600SemiBold',
   // Titres de section, noms de personnage.
   titre: 'CormorantGaramond_600SemiBold',
-  // Texte courant.
+  // Texte courant et lecture narrative.
   corps: 'CormorantGaramond_400Regular',
   corpsMedium: 'CormorantGaramond_500Medium',
 };
 
-// Labels de champ / tags : petites capitales décoratives (RN ne supporte
-// pas font-variant: small-caps de façon fiable multiplateforme — la casse
-// forcée + letter-spacing en est l'équivalent pratique).
 export const stylePetitesCapitales = {
   fontFamily: polices.corpsMedium,
   textTransform: 'uppercase' as const,
   letterSpacing: 1.5,
+};
+
+// Mesures communes de l'interface V2. Elles n'imposent pas une mise en page
+// particulière aux écrans existants, mais garantissent une ergonomie mobile
+// cohérente et des cibles tactiles assez grandes.
+export const interfaceV2 = {
+  cibleTactileMin: 48,
+  largeurLectureMax: 860,
+  largeurPanneauMax: 620,
+  dureeTransitionCourte: 180,
+  dureeTransitionNormale: 240,
 };
