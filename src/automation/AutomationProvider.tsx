@@ -40,16 +40,20 @@ function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>):
   );
 }
 
+const visualDeps: VisualAutomationDeps = {
+  getSettings,
+  getStory,
+};
+
 const narrativeDeps: NarrativeAutomationDeps = {
   getSettings,
   getStory,
   getStoryIds: async () => (await getStoriesIndex()).map((meta) => meta.id),
   updateStoryIf,
-};
-
-const visualDeps: VisualAutomationDeps = {
-  getSettings,
-  getStory,
+  // Le lore émergent est produit par le post-traitement narratif. On ne
+  // planifie donc les portraits qu'après confirmation de cette écriture :
+  // la routine visuelle voit immédiatement les nouveaux PNJ du tour.
+  afterNarrativeUpdate: enqueueVisualAvatarSync,
 };
 
 /**
@@ -65,21 +69,14 @@ export default function AutomationProvider({ children }: { children: React.React
   useEffect(() => {
     let actif = true;
     const unregisterHandlers = registerBuiltInAutomationHandlers();
-    const unregisterNarrativeHandlers = registerNarrativeAutomationHandlers(narrativeDeps);
     const unregisterVisualHandlers = registerVisualAutomationHandlers(visualDeps);
+    const unregisterNarrativeHandlers = registerNarrativeAutomationHandlers(narrativeDeps);
     const unsubscribeSettings = abonnerReglages((settings) => {
       if (actif) recalculerCapacites(settings);
     });
     const unsubscribeStories = abonnerSauvegardesNarratives((event) => {
       if (!actif) return;
-      // Ordre volontaire : le job visuel est créé après le job narratif.
-      // La file du Kernel étant sérielle, il lira ainsi le lore émergent
-      // fraîchement produit avant de décider quels portraits manquent.
-      void (async () => {
-        await enqueueNarrativePostprocess(event);
-        if (!actif) return;
-        await enqueueVisualAvatarSync(event.story);
-      })().catch(() => {});
+      void enqueueNarrativePostprocess(event).catch(() => {});
     });
 
     const demarrer = async () => {
@@ -117,8 +114,8 @@ export default function AutomationProvider({ children }: { children: React.React
       subscription.remove();
       unsubscribeStories();
       unsubscribeSettings();
-      unregisterVisualHandlers();
       unregisterNarrativeHandlers();
+      unregisterVisualHandlers();
       unregisterHandlers();
     };
   }, []);
