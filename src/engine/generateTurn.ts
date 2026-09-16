@@ -39,7 +39,9 @@ import {
   ENTREES_ADULTE_UNIQUEMENT,
   ErreurProfilContenu,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
+  filtrerTextePourProfil,
   plafonnerCurseurs,
+  texteCompatibleAvecProfil,
   validerProfilContenuHeuristique,
 } from './contenuAdulte';
 import {
@@ -78,13 +80,8 @@ function formaterDebug(titre: string, score?: number): string {
   return score === undefined ? titre : `${titre} (${score.toFixed(2)})`;
 }
 
-// Texte embeddé pour la sélection sémantique — volontairement compact
-// (contrairement à l'ancien scan par mots-clés qui devait couvrir tout
-// l'historique pour ne rien manquer, un embedding capture le sens même
-// d'une formulation différente : le résumé et les faits clés suffisent à
-// porter ce qui a été établi plus tôt, pas besoin d'y rejouer tous les
-// messages bruts).
-function construireTexteRequete(story: StoryState, messageJoueur: string): string {
+function construireTexteRequete(story: StoryState, messageJoueur: string, appSettings: AppSettings): string {
+  const profil = appSettings.profilContenu;
   return [
     story.meta.personnageDescription,
     story.meta.pointDeDepart,
@@ -96,7 +93,7 @@ function construireTexteRequete(story: StoryState, messageJoueur: string): strin
     ...story.messages.slice(-4).map((m) => m.content),
     messageJoueur,
   ]
-    .filter(Boolean)
+    .filter((texte): texte is string => !!texte && texteCompatibleAvecProfil(texte, profil))
     .join('\n');
 }
 
@@ -107,45 +104,39 @@ interface SelectionLore {
   debugLore: DebugLore;
 }
 
-/**
- * Calcule la sélection de métamoteurs et de lore Elyndor pertinents à la
- * scène par similarité sémantique (brief Phase 2 — remplace la
- * correspondance de mots-clés). Les embeddings du lore sont mis en cache
- * localement (voir embeddingsStore) : après le premier tour, seul le texte
- * de la requête du tour en cours nécessite un appel réseau.
- */
 export async function calculerSelectionLore(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
   optionsLoreElyndor?: OptionsSelectionLore,
 ): Promise<SelectionLore> {
-  const texteRequete = construireTexteRequete(story, messageJoueur);
-  // Pipeline de lore émergent (brief Phase 2) : les entrées "permanent"
-  // (PNJ récurrents, lieux, factions... validées par reconfirmation)
-  // rejoignent le pool sélectionnable au même titre que le lorebook
-  // Elyndor statique. Les packs de contenu installés (plugins "esprit",
-  // distribution brief Phase 2) font de même.
+  const profil = appSettings.profilContenu;
+  const profilAdulte = profil === 'adulte';
+  const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
-  const poolElyndor = [
+
+  const metamoteursDisponibles = profilAdulte
+    ? METAMOTEURS
+    : METAMOTEURS.filter(
+        (e) => e.titre !== METAMOTEUR_REGISTRE && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
+      );
+
+  const poolElyndorBrut = [
     ...LORE_ELYNDOR,
     ...convertirLoreEmergentPourSelection(story.loreEmergent),
     ...convertirPluginsPourSelection(plugins),
   ];
+  const poolElyndor = profilAdulte
+    ? poolElyndorBrut
+    : poolElyndorBrut.filter(
+        (e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
+      );
 
-  // Filet de sécurité pour la continuité (brief : compenser les manques du
-  // pipeline de mémoire) : messages plus anciens que la fenêtre récente déjà
-  // envoyée brute, candidats à la recherche sémantique de secours — voir
-  // src/engine/searchHistorique.ts.
-  const messagesAnciens = story.messages.slice(0, Math.max(0, story.messages.length - NB_MESSAGES_RECENTS));
+  const messagesAnciensBruts = story.messages.slice(0, Math.max(0, story.messages.length - NB_MESSAGES_RECENTS));
+  const messagesAnciens = profilAdulte
+    ? messagesAnciensBruts
+    : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
-  // La recherche sémantique (lore + historique) dépend d'un fournisseur
-  // d'embeddings réseau (OpenRouter ou la clé de secours) — elle n'a pas
-  // d'équivalent en mode local (expo-litert-lm ne fait que de la
-  // génération de texte). Sans aucune des deux clés — le cas du joueur en
-  // mode local, entièrement hors-ligne — on ne tente même pas l'appel : on
-  // continue sans lore ni historique retrouvés plutôt que de faire
-  // échouer tout le tour pour un enrichissement optionnel.
   if (!embeddingsDisponibles(appSettings)) {
     return {
       metamoteursSelectionnes: [],
@@ -157,7 +148,7 @@ export async function calculerSelectionLore(
 
   const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
     assurerEmbeddings(
-      METAMOTEURS.map((e) => ({ id: e.id, contenu: e.contenu })),
+      metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
       appSettings,
     ),
     assurerEmbeddings(
@@ -168,8 +159,12 @@ export async function calculerSelectionLore(
     embedderMessagesAnciens(messagesAnciens, appSettings),
   ]);
 
-  let metamoteursSelectionnes = selectionnerMetamoteursSemantique(METAMOTEURS, vecteurRequete, vecteursMetamoteurs);
-  let loreElyndor = selectionnerLoreElyndorSemantique(
+  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
+    metamoteursDisponibles,
+    vecteurRequete,
+    vecteursMetamoteurs,
+  );
+  const loreElyndor = selectionnerLoreElyndorSemantique(
     poolElyndor,
     texteRequete,
     vecteurRequete,
@@ -178,14 +173,6 @@ export async function calculerSelectionLore(
     optionsLoreElyndor,
   );
   const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
-
-  // Contrôle d'âge (brief Phase 2) : retire le registre explicite et les
-  // entrées Elyndor réservées à l'adulte du contexte envoyé au modèle —
-  // le plafonnement est imposé ici, pas seulement suggéré par une consigne.
-  if (appSettings.profilContenu === 'grand_public') {
-    metamoteursSelectionnes = metamoteursSelectionnes.filter((e) => e.titre !== METAMOTEUR_REGISTRE);
-    loreElyndor = loreElyndor.filter((e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre));
-  }
 
   return {
     metamoteursSelectionnes,
@@ -199,64 +186,64 @@ export async function calculerSelectionLore(
   };
 }
 
-// TODO(debug): à retirer après la bêta.
-// Calcule la sélection de lore indépendamment de l'appel API, pour que
-// l'écran puisse l'afficher même si la génération échoue ensuite.
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
   const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
   return debugLore;
 }
 
-// Assemble le contexte envoyé au prompt builder — factorisé pour être
-// partagé entre genererTour (l'appel réel) et construirePromptDebug
-// (réglages concepteur : affiche le prompt système sans appeler le modèle).
 export function construireCtxBase(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
   selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
 ): ContexteConstruction {
+  const profil = appSettings.profilContenu;
+  const profilAdulte = profil === 'adulte';
+  const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte, profil);
+  const nomPersonnage = filtrer(story.meta.personnageNom) || 'Personnage';
+  const metaSecurisee = profilAdulte
+    ? story.meta
+    : {
+        ...story.meta,
+        personnageNom: nomPersonnage,
+        personnageDescription: filtrer(story.meta.personnageDescription),
+        pointDeDepart: filtrer(story.meta.pointDeDepart),
+        contexte: {
+          ...story.meta.contexte,
+          lieu: filtrer(story.meta.contexte.lieu),
+          ambiance: filtrer(story.meta.contexte.ambiance),
+          dateChronique: filtrer(story.meta.contexte.dateChronique),
+          objectifs: filtrer(story.meta.contexte.objectifs),
+        },
+      };
+  const faits = story.memoire.faits
+    .filter((f) => f.niveau !== 'archive')
+    .filter((f) => profilAdulte || texteCompatibleAvecProfil(f.texte, profil));
+  const messagesRecents = profilAdulte
+    ? story.messages
+    : story.messages.filter((m) => texteCompatibleAvecProfil(m.content, profil));
+  const directionNarrative = formaterDirection(
+    story.directeur,
+    detecterStagnation(story.directeur, story.messages.length),
+  );
+
   return {
-    meta: story.meta,
-    // Contrôle d'âge : violence/romance plafonnés côté logiciel quand le
-    // profil est GRAND_PUBLIC, quel que soit le réglage choisi pour
-    // l'histoire — voir src/engine/contenuAdulte.ts.
-    settings: plafonnerCurseurs(story.settings, appSettings.profilContenu),
-    resume: story.memoire.resume,
-    // Les faits archivés (L5, non reconfirmés depuis longtemps) restent
-    // stockés mais ne sont plus injectés systématiquement — voir
-    // src/engine/memory.ts.
-    faits: story.memoire.faits.filter((f) => f.niveau !== 'archive'),
+    meta: metaSecurisee,
+    settings: plafonnerCurseurs(story.settings, profil),
+    resume: filtrer(story.memoire.resume),
+    faits,
     metamoteursSelectionnes: selection.metamoteursSelectionnes,
     loreElyndor: selection.loreElyndor,
-    messagesRecents: story.messages,
+    messagesRecents,
     messageJoueur,
-    instructionRegistreOverride:
-      appSettings.profilContenu === 'grand_public' ? INSTRUCTION_REGISTRE_GRAND_PUBLIC : undefined,
-    // Story Director / Scene Director (brief Phase 2) : oriente la
-    // prochaine réponse vers l'arc en cours et relance la scène en cas de
-    // stagnation, sans jamais être visible du joueur.
-    directionNarrative: formaterDirection(
-      story.directeur,
-      detecterStagnation(story.directeur, story.messages.length),
-    ),
-    // World Simulation + State Machine (brief Phase 2) : zones actives,
-    // état établi et conséquences de déclencheurs en attente.
-    etatMonde: formaterMonde(story.monde),
-    // Engagements + dynamiques sociales (brief Phase 2) : promesses/dettes/
-    // contrats non résolus et relations notables avec les PNJ.
-    engagementsEtRelations: formaterEngagementsEtRelations(story.social),
-    // Filet de sécurité pour la continuité : messages anciens retrouvés par
-    // recherche sémantique — voir src/engine/searchHistorique.ts.
-    souvenirs: formaterSouvenirs(selection.souvenirs, story.meta.personnageNom),
+    instructionRegistreOverride: profilAdulte ? undefined : INSTRUCTION_REGISTRE_GRAND_PUBLIC,
+    directionNarrative: filtrer(directionNarrative),
+    etatMonde: filtrer(formaterMonde(story.monde)),
+    engagementsEtRelations: filtrer(formaterEngagementsEtRelations(story.social)),
+    souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
   };
 }
 
-/**
- * Réglages concepteur (Ajouts_A_Integrer.md #6) : construit le prompt
- * système exact qui serait envoyé au modèle pour ce message, sans appeler
- * l'API — pour l'inspecter tel quel plutôt que de le deviner.
- */
 export async function construirePromptDebug(
   story: StoryState,
   messageJoueur: string,
@@ -266,26 +253,32 @@ export async function construirePromptDebug(
   return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
 }
 
-// Ces fonctions restent disponibles pour la commande concepteur « mise à
-// jour forcée ». Le flux joueur normal ne les attend plus : le
-// AutomationKernel exécute désormais mémoire/directeur/monde/social/lore
-// après la sauvegarde du tour.
+function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
+  if (appSettings.profilContenu === 'adulte') return messages;
+  return messages.map((message) => ({
+    ...message,
+    content: filtrerTextePourProfil(message.content, appSettings.profilContenu) || '[Contenu antérieur masqué par le profil Grand public.]',
+  }));
+}
+
 async function executerMisesAJourPeriodiques(
   appSettings: AppSettings,
   story: StoryState,
   messages: Message[],
 ): Promise<Pick<StoryState, 'memoire' | 'directeur' | 'monde' | 'social'>> {
   const depuisIndex = story.memoire.dernierMessageIndexMaj;
+  const messagesSecurises = messagesPourProfil(messages, appSettings);
+  const personnageNom = filtrerTextePourProfil(story.meta.personnageNom, appSettings.profilContenu) || 'Personnage';
   const [memoire, directeur, monde, social] = await Promise.all([
     mettreAJourMemoire({
       appSettings,
       memoireActuelle: story.memoire,
-      messages,
-      personnageNom: story.meta.personnageNom,
+      messages: messagesSecurises,
+      personnageNom,
     }),
-    mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages, depuisIndex }),
-    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages, depuisIndex }),
-    mettreAJourSocial({ appSettings, socialActuel: story.social, messages, depuisIndex }),
+    mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages: messagesSecurises, depuisIndex }),
+    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages: messagesSecurises, depuisIndex }),
+    mettreAJourSocial({ appSettings, socialActuel: story.social, messages: messagesSecurises, depuisIndex }),
   ]);
   return { memoire, directeur, monde, social };
 }
@@ -295,21 +288,18 @@ async function mettreAJourLoreEmergentSeul(
   story: StoryState,
   messages: Message[],
 ): Promise<Pick<StoryState, 'loreEmergent' | 'loreEmergentDernierIndex'>> {
+  const messagesSecurises = messagesPourProfil(messages, appSettings);
+  const personnageNom = filtrerTextePourProfil(story.meta.personnageNom, appSettings.profilContenu) || 'Personnage';
   const loreEmergent = await mettreAJourLoreEmergent({
     appSettings,
     existants: story.loreEmergent,
-    messages,
+    messages: messagesSecurises,
     depuisIndex: story.loreEmergentDernierIndex ?? 0,
-    personnageNom: story.meta.personnageNom,
+    personnageNom,
   });
   return { loreEmergent, loreEmergentDernierIndex: messages.length };
 }
 
-/**
- * Réglages concepteur : force les pipelines dérivés immédiatement. Cette
- * action reste volontairement synchrone car l'utilisateur concepteur attend
- * précisément le résultat de cette commande de diagnostic.
- */
 export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSettings): Promise<StoryState> {
   const [maj, majLore] = await Promise.all([
     executerMisesAJourPeriodiques(appSettings, story, story.messages),
@@ -322,20 +312,10 @@ async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StorySt
   try {
     return fusionnerEtatDerivePersistant(story, await getStory(story.meta.id));
   } catch {
-    // Une lecture de synchronisation ne doit pas transformer une panne de
-    // stockage secondaire en panne de narration : la sauvegarde normale
-    // signalera l'erreur ensuite si le stockage est réellement indisponible.
     return story;
   }
 }
 
-/**
- * Flux critique d'un tour : sélection du contexte → génération → validation
- * → ajout des deux messages. Les pipelines dérivés ne sont plus exécutés ici.
- * La sauvegarde confirmée publie ensuite la révision au AutomationKernel,
- * qui traite mémoire, directeur, monde, social et lore émergent en arrière-
- * plan avec garde de révision.
- */
 export async function genererTour(
   story: StoryState,
   appSettings: AppSettings,
@@ -343,10 +323,6 @@ export async function genererTour(
   reponseAId?: string,
 ): Promise<ResultatTour> {
   const debutMs = Date.now();
-
-  // Le Kernel peut avoir terminé le post-traitement du tour précédent alors
-  // que l'écran détient encore sa copie. On récupère uniquement les champs
-  // dérivés si le transcript persisté est strictement identique.
   const storyCourante = await rafraichirEtatDeriveAvantTour(story);
 
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
@@ -378,7 +354,7 @@ export async function genererTour(
     ...configurationLLM(appSettings, modelePourAppel),
     reponse,
     faits: ctxBase.faits,
-    meta: storyCourante.meta,
+    meta: ctxBase.meta,
   });
   const rapport = fusionnerRapports(heuristique, profilContenuCheck, llm);
 
@@ -443,9 +419,6 @@ export async function genererTour(
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
 
-  // Point de bascule V3 : aucun appel mémoire/directeur/monde/social/lore
-  // après la réponse. Le résultat peut être affiché et sauvegardé tout de
-  // suite ; saveStory() déclenchera story.postprocess derrière.
   return {
     story: { ...storyCourante, messages },
     aEteCorrige,
@@ -453,11 +426,6 @@ export async function genererTour(
   };
 }
 
-/**
- * Régénère uniquement la dernière réponse du narrateur. On synchronise
- * d'abord les champs dérivés avec le stockage, puis on rembobine le dernier
- * échange et ses curseurs avant de repasser par le même flux critique.
- */
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
   const storyCourante = await rafraichirEtatDeriveAvantTour(story);
   const messages = [...storyCourante.messages];
