@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import ActivationScreen from '../screens/ActivationScreen';
 import StartScreen from '../screens/StartScreenStudio';
-import CreateScreen from '../screens/CreateScreen';
+import CreateScreen from '../screens/CreateScreenStudio';
 import ConversationScreen from '../screens/ConversationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import PluginsScreen from '../screens/PluginsScreen';
@@ -67,7 +67,7 @@ export default function RootNavigator() {
       >
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Demarrage" component={StartScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Créer votre histoire' }} />
+        <Stack.Screen name="Creation" component={CreateScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Elyndor' }} />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
