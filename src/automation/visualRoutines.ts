@@ -154,7 +154,15 @@ export function registerVisualAutomationHandlers(deps: VisualAutomationDeps): ()
     const story = await deps.getStory(job.storyId);
     if (!story) return;
     const revision = typeof job.payload?.revision === 'string' ? job.payload.revision : '';
-    if (revision && calculerRevisionNarrative(story) !== revision) return;
+    if (revision && calculerRevisionNarrative(story) !== revision) {
+      publierEvenementVisuel({
+        type: 'avatar.error',
+        storyId: story.meta.id,
+        assetId,
+        message: 'Le récit a changé avant la génération du portrait. Relance la demande.',
+      });
+      return;
+    }
     try {
       const uri = await genererAvatar(story, await deps.getSettings(), assetId, job.payload?.force === true);
       publierEvenementVisuel({ type: 'avatar.ready', storyId: story.meta.id, assetId, uri });
@@ -170,7 +178,16 @@ export function registerVisualAutomationHandlers(deps: VisualAutomationDeps): ()
     const story = await deps.getStory(job.storyId);
     if (!story) return;
     const revision = typeof job.payload?.revision === 'string' ? job.payload.revision : '';
-    if (!revision || calculerRevisionNarrative(story) !== revision) return;
+    if (!revision) return;
+    if (calculerRevisionNarrative(story) !== revision) {
+      publierEvenementVisuel({
+        type: 'scene.error',
+        storyId: story.meta.id,
+        revision,
+        message: 'La scène a changé avant la génération. Relance l’illustration sur la scène actuelle.',
+      });
+      return;
+    }
     try {
       const uri = await genererScene(story, await deps.getSettings());
       publierEvenementVisuel({ type: 'scene.ready', storyId: story.meta.id, revision, uri });
