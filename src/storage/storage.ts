@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { AppSettings, Persona, Plugin } from '../types';
+import type { AppSettings, Persona, Plugin, StoryState } from '../types';
 import { migrerHistoire } from './storyMigration';
 import { creerDepotHistoires } from './storyRepository';
 import { stockageHistoires } from './storyDatabase';
 import { creerDepotReglages } from './settingsRepository';
 import { stockageCles } from './apiKeysStore';
 import { publierReglages } from '../automation/settingsStore';
+import { publierSauvegardeNarrative } from '../automation/storyEvents';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -52,9 +53,25 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 const histoires = creerDepotHistoires(AsyncStorage, stockageHistoires, migrerHistoire);
 export const getStory = histoires.lire;
 export const getStoriesIndex = histoires.lister;
-export const saveStory = histoires.enregistrer;
 export const deleteStory = histoires.supprimer;
 export const renommerStory = histoires.renommer;
+
+/**
+ * Sauvegarde utilisateur normale : après confirmation durable, publie la
+ * révision narrative au noyau. storyEvents déduplique les sauvegardes qui ne
+ * changent que l'interface (réaction, pin, titre...).
+ */
+export async function saveStory(story: StoryState): Promise<void> {
+  await histoires.enregistrer(story);
+  publierSauvegardeNarrative(story);
+}
+
+/**
+ * Écriture de maintenance gardée : utilisée par les automatismes pour ne
+ * jamais écraser une révision narrative plus récente. Ne republie pas
+ * d'événement, afin d'éviter une boucle automation -> save -> automation.
+ */
+export const updateStoryIf = histoires.mettreAJourSi;
 
 // Bibliothèque de personas (brief Phase 2) : réutiliser {{user}} d'une
 // histoire à l'autre sans ressaisir nom/description à chaque création.
