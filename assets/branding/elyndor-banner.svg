@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="elyndorBannerTitle">
+  <title id="elyndorBannerTitle">Elyndor Premium — bannière</title>
+  <defs>
+    <linearGradient id="bannerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0A0A" />
+      <stop offset="45%" stop-color="#12181A" />
+      <stop offset="100%" stop-color="#1A0F1C" />
+    </linearGradient>
+    <radialGradient id="glowLeft" cx="15%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#1A3C34" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#1A3C34" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowRight" cx="88%" cy="60%" r="55%">
+      <stop offset="0%" stop-color="#4B2E5E" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#4B2E5E" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="titleGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C9A66B" />
+      <stop offset="50%" stop-color="#F1E4CC" />
+      <stop offset="100%" stop-color="#C9A66B" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="300" fill="url(#bannerBg)" />
+  <rect width="1200" height="300" fill="url(#glowLeft)" />
+  <rect width="1200" height="300" fill="url(#glowRight)" />
+
+  <!-- ornamental frame -->
+  <rect x="24" y="24" width="1152" height="252" fill="none" stroke="#C9A66B" stroke-width="1" opacity="0.55" />
+  <rect x="32" y="32" width="1136" height="236" fill="none" stroke="#1A3C34" stroke-width="1" opacity="0.7" />
+
+  <!-- corner flourishes -->
+  <g stroke="#C9A66B" stroke-width="1.5" opacity="0.8" fill="none">
+    <path d="M24 60 V24 H60" />
+    <path d="M1176 60 V24 H1140" />
+    <path d="M24 240 V276 H60" />
+    <path d="M1176 240 V276 H1140" />
+  </g>
+
+  <!-- small monogram left of title -->
+  <g transform="translate(120,150)">
+    <circle r="46" fill="#0A0A0A" stroke="url(#titleGold)" stroke-width="2" />
+    <g fill="none" stroke="url(#titleGold)" stroke-width="4">
+      <path d="M-16 -22 H14" />
+      <path d="M-16 -22 V22" />
+      <path d="M-16 0 H8" />
+      <path d="M-16 22 H14" />
+    </g>
+  </g>
+
+  <text x="600" y="150" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="64" letter-spacing="6" fill="url(#titleGold)">ELYNDOR</text>
+  <text x="600" y="196" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="26" letter-spacing="10" fill="#E8D5B7">P R E M I U M</text>
+  <text x="600" y="234" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="17" fill="#9A2C2C">Le logiciel porte l'autorité. Le modèle ne fournit que le langage.</text>
+</svg>

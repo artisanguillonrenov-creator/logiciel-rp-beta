@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-labelledby="iconMetamoteursTitle">
+  <title id="iconMetamoteursTitle">Icône — métamoteurs</title>
+  <circle cx="48" cy="48" r="46" fill="#0A0A0A" stroke="#4B2E5E" stroke-width="2" />
+  <g fill="none" stroke="#C9A66B" stroke-width="2.5">
+    <circle cx="48" cy="48" r="16" />
+    <path d="M48 22 v10 M48 66 v10 M22 48 h10 M66 48 h10 M31 31 l7 7 M58 58 l7 7 M65 31 l-7 7 M38 58 l-7 7" />
+  </g>
+  <circle cx="48" cy="48" r="5" fill="#E8D5B7" />
+</svg>

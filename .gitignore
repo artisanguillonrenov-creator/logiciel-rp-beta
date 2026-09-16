@@ -32,6 +32,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
@@ -40,3 +42,19 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# EAS build artifacts (builds locaux, voir eas-build-android.yml)
+*.apk
+*.aab
+/build
+
+# éditeurs
+.vscode/
+.idea/
+*.swp
+
+# logs
+*.log
+
+# Windows
+Thumbs.db
