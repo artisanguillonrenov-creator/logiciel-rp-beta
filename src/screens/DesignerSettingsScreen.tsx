@@ -30,33 +30,57 @@ function EtatLigne({ label, ok, detail }: { label: string; ok: boolean; detail?:
 export default function DesignerSettingsScreen({ navigation }: Props) {
   const [modeConcepteur, setModeConcepteur] = useState(false);
   const [chargement, setChargement] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState('');
   const [messageCache, setMessageCache] = useState('');
   const [messageJobs, setMessageJobs] = useState('');
+  const [messageMode, setMessageMode] = useState('');
   const automation = useAutomationDiagnostics();
 
-  useEffect(() => {
+  function charger() {
+    setChargement(true);
+    setErreurChargement('');
     getSettings().then((settings) => {
       setModeConcepteur(!!settings.modeConcepteur);
-      setChargement(false);
-    });
-  }, []);
+    }).catch((e) => {
+      setErreurChargement(e instanceof Error ? e.message : 'Impossible de lire les réglages concepteur.');
+    }).finally(() => setChargement(false));
+  }
+
+  useEffect(charger, []);
 
   async function basculerModeConcepteur() {
     const nouvelleValeur = !modeConcepteur;
-    setModeConcepteur(nouvelleValeur);
-    const settingsActuelles = await getSettings();
-    await saveSettings({ ...settingsActuelles, modeConcepteur: nouvelleValeur });
+    setMessageMode('');
+    try {
+      const settingsActuelles = await getSettings();
+      await saveSettings({ ...settingsActuelles, modeConcepteur: nouvelleValeur });
+      setModeConcepteur(nouvelleValeur);
+      setMessageMode(nouvelleValeur ? 'Mode concepteur activé.' : 'Mode concepteur désactivé.');
+    } catch (e) {
+      setMessageMode(e instanceof Error ? e.message : 'Impossible d’enregistrer le mode concepteur.');
+    }
+    setTimeout(() => setMessageMode(''), 4000);
   }
 
   async function viderCache() {
-    await viderCacheEmbeddings();
-    setMessageCache('Cache d’embeddings vidé — recalcul complet au prochain tour.');
+    setMessageCache('');
+    try {
+      await viderCacheEmbeddings();
+      setMessageCache('Cache d’embeddings vidé — recalcul complet au prochain tour.');
+    } catch (e) {
+      setMessageCache(e instanceof Error ? e.message : 'Impossible de vider le cache d’embeddings.');
+    }
     setTimeout(() => setMessageCache(''), 4000);
   }
 
   async function relancerJobs() {
-    const nombre = await retryFailedAutomationJobs();
-    setMessageJobs(nombre > 0 ? `${nombre} routine(s) remise(s) en attente.` : 'Aucune routine en erreur à relancer.');
+    setMessageJobs('');
+    try {
+      const nombre = await retryFailedAutomationJobs();
+      setMessageJobs(nombre > 0 ? `${nombre} routine(s) remise(s) en attente.` : 'Aucune routine en erreur à relancer.');
+    } catch (e) {
+      setMessageJobs(e instanceof Error ? e.message : 'Impossible de relancer les routines en erreur.');
+    }
     setTimeout(() => setMessageJobs(''), 4000);
   }
 
@@ -64,6 +88,16 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
     return (
       <View style={styles.chargement}>
         <ActivityIndicator color={couleurs.accent} />
+      </View>
+    );
+  }
+
+  if (erreurChargement) {
+    return (
+      <View style={styles.chargement}>
+        <Text style={styles.erreur}>{erreurChargement}</Text>
+        <Bouton titre="Réessayer" onPress={charger} style={styles.boutonAction} />
+        <Bouton titre="Retour" variante="secondaire" onPress={() => navigation.goBack()} style={styles.boutonAction} />
       </View>
     );
   }
@@ -104,6 +138,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               onPress={basculerModeConcepteur}
               style={styles.boutonAction}
             />
+            {messageMode ? <Text style={styles.statut}>{messageMode}</Text> : null}
           </Panneau>
 
           <Panneau style={styles.bloc}>
@@ -187,6 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: couleurs.fond,
+    padding: espacement.lg,
   },
   container: {
     flexGrow: 1,
@@ -285,6 +321,7 @@ const styles = StyleSheet.create({
     fontFamily: polices.corpsMedium,
     fontSize: 14,
     marginTop: espacement.sm,
+    textAlign: 'center',
   },
   resumeJobs: {
     flexDirection: 'row',
