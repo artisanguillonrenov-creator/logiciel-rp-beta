@@ -28,6 +28,7 @@ export interface AutomationJobRepository {
   retryFailed(): Promise<number>;
   recoverInterrupted(): Promise<number>;
   removeCompleted(olderThanMs?: number): Promise<number>;
+  removeByStoryId(storyId: string): Promise<number>;
 }
 
 const STORAGE_KEY = '@rp_beta/automation_jobs/v1';
@@ -169,6 +170,14 @@ export function createAutomationJobRepository(
       const jobs = await readUnsafe();
       const threshold = now() - olderThanMs;
       const kept = jobs.filter((job) => job.status !== 'completed' || (job.finishedAt ?? job.createdAt) >= threshold);
+      const removed = jobs.length - kept.length;
+      if (removed > 0) await writeUnsafe(kept);
+      return removed;
+    }),
+
+    removeByStoryId: (storyId) => serialized(async () => {
+      const jobs = await readUnsafe();
+      const kept = jobs.filter((job) => job.storyId !== storyId);
       const removed = jobs.length - kept.length;
       if (removed > 0) await writeUnsafe(kept);
       return removed;
