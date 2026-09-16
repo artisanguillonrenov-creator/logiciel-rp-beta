@@ -31,9 +31,9 @@ function histoire() {
     { id: 'a1', role: 'assistant', content: 'Sylvana apparaît.', timestamp: 2 },
   ];
   story.loreEmergent = [
-    { id: 'pnj-sylvana', categorie: 'pnj', titre: 'Sylvana', contenu: 'Elfe noire.', statut: 'provisoire' },
-    { id: 'pnj-joueur', categorie: 'pnj', titre: 'William', contenu: 'Doublon historique.', statut: 'provisoire' },
-    { id: 'lieu-paris', categorie: 'lieu', titre: 'Paris', contenu: 'Ville.', statut: 'permanent' },
+    { id: 'pnj-sylvana', categorie: 'pnj', titre: 'Sylvana', contenu: 'Elfe noire.', statut: 'provisoire', premiereMention: 1, dernierAcces: 2 },
+    { id: 'pnj-joueur', categorie: 'pnj', titre: 'William', contenu: 'Doublon historique.', statut: 'provisoire', premiereMention: 1, dernierAcces: 2 },
+    { id: 'lieu-paris', categorie: 'lieu', titre: 'Paris', contenu: 'Ville.', statut: 'permanent', premiereMention: 1, dernierAcces: 2 },
   ];
   return story;
 }
