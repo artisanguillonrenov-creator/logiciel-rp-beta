@@ -53,8 +53,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   principal: {
-    backgroundColor: 'rgba(216, 179, 107, 0.18)',
-    borderColor: couleurs.dore,
+    backgroundColor: couleurs.dore,
+    borderColor: couleurs.doreClair,
     ...ombresOr,
   },
   arcane: {
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     ...ombresLueur,
   },
   secondaire: {
-    backgroundColor: 'rgba(4, 12, 22, 0.58)',
+    backgroundColor: 'rgba(4, 12, 22, 0.72)',
     borderColor: couleurs.bordure,
   },
   presse: {
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.35,
   },
   textePrincipal: {
-    color: couleurs.doreClair,
+    color: couleurs.fondProfond,
   },
   texteArcane: {
     color: couleurs.accentClair,
