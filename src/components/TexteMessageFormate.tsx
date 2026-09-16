@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { analyserMessage, type SegmentMessage } from '../engine/messageFormatter';
 import { indexerLocuteurs } from '../engine/speakerIndex';
-import { couleurs, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, polices, rayon } from '../theme/theme';
 import type { EntreeLoreEmergent } from '../types';
 
 export interface AvatarPnjPourTexte {
@@ -14,8 +14,9 @@ function capitaliser(nom: string): string {
   return nom.toLocaleLowerCase('fr').replace(/(^|[- ])\p{L}/gu, (lettre) => lettre.toLocaleUpperCase('fr'));
 }
 
-// V2 : la prose reste une page de roman. Une vraie prise de parole d'un PNJ
-// devient un petit bloc éditorial avec portrait et nom, sans bulle de chat.
+// V2 lecteur : la prose est traitée comme un texte de roman. Les prises de
+// parole identifiées deviennent de petits blocs de personnage éditoriaux,
+// jamais des bulles de messagerie.
 export default function TexteMessageFormate({
   texte, style, avatarsPnj = [], pnjConnus, onPressAvatar,
 }: {
@@ -37,7 +38,7 @@ export default function TexteMessageFormate({
     }
   }
 
-  return <View>
+  return <View style={styles.conteneur}>
     {blocs.map((bloc, i) => {
       const segment = bloc[0];
       if (segment.type === 'repliquePersonnage') {
@@ -51,7 +52,7 @@ export default function TexteMessageFormate({
             accessibilityRole="button"
             accessibilityLabel={`Portrait de ${segment.locuteur}`}
           >
-            {uri ? <Image source={{ uri }} style={styles.avatar} /> : <View style={styles.avatarVide}><Text style={styles.avatarRune}>◇</Text></View>}
+            {uri ? <Image source={{ uri }} style={styles.avatar} /> : <View style={styles.avatarVide}><Text style={styles.avatarRune}>✦</Text></View>}
             <View style={styles.colonneDialogue}>
               <Text style={[style, styles.nomLocuteur]}>{capitaliser(segment.locuteur ?? '')}</Text>
               <Text style={[style, styles.dialogue]}>« {segment.contenu} »</Text>
@@ -68,8 +69,12 @@ export default function TexteMessageFormate({
 }
 
 const styles = StyleSheet.create({
+  conteneur: {
+    width: '100%',
+  },
   prose: {
-    lineHeight: 24,
+    lineHeight: 25,
+    marginBottom: 8,
   },
   action: {
     fontStyle: 'italic',
@@ -81,9 +86,10 @@ const styles = StyleSheet.create({
   replique: {
     marginVertical: 10,
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: couleurs.bordureSubtile,
+    paddingLeft: espacement.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: couleurs.bordureDoree,
+    backgroundColor: 'rgba(4, 12, 22, 0.24)',
   },
   locuteur: {
     flexDirection: 'row',
@@ -94,39 +100,40 @@ const styles = StyleSheet.create({
   colonneDialogue: {
     flex: 1,
     paddingTop: 1,
+    paddingRight: espacement.xs,
   },
   nomLocuteur: {
     flexShrink: 1,
     fontFamily: polices.corpsMedium,
     color: couleurs.dore,
     textTransform: 'uppercase',
-    letterSpacing: 1.1,
-    fontSize: 12,
-    marginBottom: 2,
+    letterSpacing: 1.15,
+    fontSize: 11,
+    marginBottom: 3,
   },
   dialogue: {
     color: couleurs.texte,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   avatar: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: rayon.sm,
     borderWidth: 1,
     borderColor: couleurs.bordureDoree,
   },
   avatarVide: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: rayon.sm,
     borderWidth: 1,
-    borderColor: couleurs.bordure,
+    borderColor: couleurs.bordureDoree,
     backgroundColor: couleurs.fondChampSaisie,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarRune: {
     color: couleurs.dore,
-    fontSize: 14,
+    fontSize: 12,
   },
 });
