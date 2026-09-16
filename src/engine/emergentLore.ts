@@ -63,7 +63,7 @@ ${existantsTexte}`,
         titre: String(c.titre).trim(),
         contenu: String(c.contenu ?? '').trim(),
       }))
-      .filter((c) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
+      .filter((c: CandidatLoreEmergent) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
   } catch {
     return [];
   }
