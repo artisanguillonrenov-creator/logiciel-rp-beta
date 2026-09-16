@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-labelledby="iconValidationTitle">
+  <title id="iconValidationTitle">Icône — validation de sortie</title>
+  <circle cx="48" cy="48" r="46" fill="#0A0A0A" stroke="#1A3C34" stroke-width="2" />
+  <path d="M48 20 l22 8 v20 c0 16 -10 26 -22 30 c-12 -4 -22 -14 -22 -30 v-20 z" fill="none" stroke="#C9A66B" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M38 48 l7 7 l14 -16" fill="none" stroke="#E8D5B7" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

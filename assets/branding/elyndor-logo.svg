@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-labelledby="elyndorLogoTitle">
+  <title id="elyndorLogoTitle">Elyndor Premium — emblème</title>
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#14201C" />
+      <stop offset="55%" stop-color="#0A0A0A" />
+      <stop offset="100%" stop-color="#050505" />
+    </radialGradient>
+    <linearGradient id="goldStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8D5B7" />
+      <stop offset="45%" stop-color="#C9A66B" />
+      <stop offset="100%" stop-color="#8A6C3E" />
+    </linearGradient>
+    <linearGradient id="goldFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F1E4CC" />
+      <stop offset="100%" stop-color="#C9A66B" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="120" cy="120" r="118" fill="url(#bgGlow)" stroke="url(#goldStroke)" stroke-width="2" />
+  <circle cx="120" cy="120" r="104" fill="none" stroke="#1A3C34" stroke-width="1.5" />
+  <circle cx="120" cy="120" r="98" fill="none" stroke="url(#goldStroke)" stroke-width="0.75" stroke-dasharray="1 5" />
+
+  <!-- cardinal runes -->
+  <g fill="#4B2E5E" opacity="0.9">
+    <circle cx="120" cy="26" r="3" />
+    <circle cx="120" cy="214" r="3" />
+    <circle cx="26" cy="120" r="3" />
+    <circle cx="214" cy="120" r="3" />
+  </g>
+
+  <!-- monogram E, ornate -->
+  <g fill="none" stroke="url(#goldFill)" stroke-width="6" stroke-linecap="square">
+    <path d="M96 66 H150" />
+    <path d="M96 66 V174" />
+    <path d="M96 120 H140" />
+    <path d="M96 174 H150" />
+  </g>
+  <!-- serifs -->
+  <g fill="url(#goldFill)">
+    <rect x="90" y="62" width="12" height="8" />
+    <rect x="90" y="170" width="12" height="8" />
+    <rect x="144" y="62" width="12" height="8" />
+    <rect x="144" y="170" width="12" height="8" />
+    <rect x="134" y="116" width="12" height="8" />
+  </g>
+
+  <!-- emerald underline -->
+  <path d="M78 190 Q120 200 162 190" fill="none" stroke="#1A3C34" stroke-width="3" />
+  <path d="M78 190 Q120 200 162 190" fill="none" stroke="#C9A66B" stroke-width="1" opacity="0.6" />
+
+  <text x="120" y="222" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="13" letter-spacing="4" fill="#E8D5B7">ELYNDOR</text>
+</svg>

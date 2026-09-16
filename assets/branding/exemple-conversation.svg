@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420" role="img" aria-labelledby="exempleConvTitle">
+  <title id="exempleConvTitle">Reconstitution schématique de l'écran Conversation (pas une capture d'écran réelle)</title>
+  <defs>
+    <linearGradient id="exBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0A0D1A" />
+      <stop offset="100%" stop-color="#080a14" />
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" fill="url(#exBg)" />
+  <rect x="1" y="1" width="638" height="418" fill="none" stroke="#2A3255" stroke-width="2" />
+
+  <!-- header -->
+  <rect x="0" y="0" width="640" height="52" fill="rgba(18,23,43,0.88)" />
+  <line x1="0" y1="52" x2="640" y2="52" stroke="#2A3255" stroke-width="1" />
+  <text x="24" y="32" font-family="Georgia, 'Times New Roman', serif" font-size="20" letter-spacing="2" fill="#E4D3A0">Kaelen Sombrevoile</text>
+  <text x="616" y="32" text-anchor="end" font-family="Georgia, serif" font-size="12" letter-spacing="1.5" fill="#8B94B0">ELYNDOR</text>
+
+  <!-- narrator bubble -->
+  <rect x="24" y="76" width="460" height="96" fill="rgba(18,23,43,0.88)" stroke="#2A3255" stroke-width="1" />
+  <text x="40" y="98" font-family="Georgia, serif" font-size="12" letter-spacing="1.5" fill="#8B94B0">NARRATEUR</text>
+  <text x="40" y="120" font-family="Georgia, serif" font-size="14" fill="#D8DCE8">La brume du port de Delhi s'accroche encore aux</text>
+  <text x="40" y="140" font-family="Georgia, serif" font-size="14" fill="#D8DCE8">mâts lorsque Kaelen reconnaît ta cicatrice — celle</text>
+  <text x="40" y="160" font-family="Georgia, serif" font-size="14" fill="#D8DCE8">que tu portais déjà lors de votre premier échange.</text>
+
+  <!-- player bubble -->
+  <rect x="156" y="188" width="460" height="72" fill="rgba(90,172,255,0.14)" stroke="#5AACFF" stroke-width="1" />
+  <text x="588" y="210" text-anchor="end" font-family="Georgia, serif" font-size="12" letter-spacing="1.5" fill="#8CC6FF">TOI</text>
+  <text x="180" y="232" font-family="Georgia, serif" font-size="14" fill="#D8DCE8">Je pose ma main sur la cicatrice et je lui demande</text>
+  <text x="180" y="252" font-family="Georgia, serif" font-size="14" fill="#D8DCE8">s'il se souvient de la promesse faite au phare.</text>
+
+  <!-- memory panel -->
+  <rect x="24" y="276" width="592" height="86" fill="rgba(10,13,26,0.6)" stroke="#1A3C34" stroke-width="1" />
+  <text x="40" y="298" font-family="Georgia, serif" font-size="12" letter-spacing="1.5" fill="#C9A66B">MÉMOIRE — FAITS ACTIFS</text>
+  <text x="40" y="320" font-family="Georgia, serif" font-size="13" fill="#D8DCE8">• Promesse : rendez-vous au phare de Delhi (non tenue)</text>
+  <text x="40" y="340" font-family="Georgia, serif" font-size="13" fill="#D8DCE8">• Kaelen Sombrevoile — méfiant, dette envers toi</text>
+  <text x="40" y="358" font-family="Georgia, serif" font-size="11" fill="#8B94B0">résumé glissant régénéré tous les 8 messages · similarité sémantique</text>
+
+  <!-- input -->
+  <rect x="24" y="378" width="500" height="30" fill="rgba(10,13,26,0.6)" stroke="#2A3255" stroke-width="1" />
+  <text x="36" y="398" font-family="Georgia, serif" font-size="13" fill="#8B94B0">Écris ton action…</text>
+  <rect x="536" y="378" width="80" height="30" fill="none" stroke="#5AACFF" stroke-width="1.5" />
+  <text x="576" y="398" text-anchor="middle" font-family="Georgia, serif" font-size="12" letter-spacing="1" fill="#8CC6FF">ENVOYER</text>
+</svg>
