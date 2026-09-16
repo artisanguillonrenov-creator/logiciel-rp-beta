@@ -2,11 +2,9 @@ import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message } 
 import type { ElyndorEntryChargee } from './loreLoader';
 import { configurationLLM, appellerModele } from './openrouter';
 import { obtenirEmbeddings, similariteCosinus } from './embeddings';
+import { filtrerTextePourProfil, texteCompatibleAvecProfil } from './contenuAdulte';
 
 const CATEGORIES: CategorieLoreEmergent[] = ['pnj', 'objet', 'lieu', 'faction', 'evenement'];
-
-// Même seuil que la déduplication des faits de mémoire (memory.ts), pour
-// une cohérence de comportement entre les deux pipelines.
 const SEUIL_RECONNAISSANCE = 0.86;
 
 function idEntree(): string {
@@ -25,8 +23,11 @@ async function extraireCandidats(
   existants: EntreeLoreEmergent[],
   personnageNom: string,
 ): Promise<CandidatLoreEmergent[]> {
-  const existantsTexte = existants.length
-    ? existants.map((e) => `- [${e.categorie}] ${e.titre}`).join('\n')
+  const existantsVisibles = appSettings.profilContenu === 'adulte'
+    ? existants
+    : existants.filter((e) => texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, appSettings.profilContenu));
+  const existantsTexte = existantsVisibles.length
+    ? existantsVisibles.map((e) => `- [${e.categorie}] ${e.titre}`).join('\n')
     : 'Aucun.';
 
   try {
@@ -53,10 +54,6 @@ ${existantsTexte}`,
     if (!match) return [];
     const parsed = JSON.parse(match[0]);
     if (!Array.isArray(parsed.candidats)) return [];
-    // Filet de sécurité déterministe : même si le modèle l'inclut malgré la
-    // consigne, le personnage joueur ne devient jamais une fiche PNJ (son
-    // propre avatar généré et affiché comme s'il s'agissait d'un PNJ,
-    // constaté en usage réel).
     const nomJoueurNormalise = personnageNom.trim().toLowerCase();
     return parsed.candidats
       .filter((c: any) => c && typeof c.titre === 'string' && c.titre.trim())
@@ -65,7 +62,8 @@ ${existantsTexte}`,
         categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'pnj',
         titre: String(c.titre).trim(),
         contenu: String(c.contenu ?? '').trim(),
-      }));
+      }))
+      .filter((c) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
   } catch {
     return [];
   }
@@ -75,21 +73,10 @@ export interface MiseAJourLoreEmergentOptions {
   appSettings: AppSettings;
   existants: EntreeLoreEmergent[];
   messages: Message[];
-  // Index (dans `messages`) à partir duquel scanner.
   depuisIndex: number;
-  // Nom du personnage joueur — jamais extrait comme PNJ (voir extraireCandidats).
   personnageNom: string;
 }
 
-/**
- * Pipeline de lore émergent (brief Phase 2) : extrait les candidats de la
- * période récente, puis valide chaque candidat avant tout ajout permanent
- * — une première mention reste "provisoire" (pas injectée dans le
- * contexte) ; ce n'est qu'une fois reconfirmé lors d'une mise à jour
- * ultérieure (rapproché par similarité d'embeddings, comme la
- * consolidation de la mémoire) qu'une entrée devient "permanent" et
- * rejoint le pool de lore sélectionnable.
- */
 export async function mettreAJourLoreEmergent({
   appSettings,
   existants,
@@ -109,7 +96,10 @@ export async function mettreAJourLoreEmergent({
 
   try {
     const entrees = [...existants];
-    const textesExistants = entrees.map((e) => `${e.titre} — ${e.contenu}`);
+    const textesExistants = entrees.map((e) =>
+      filtrerTextePourProfil(`${e.titre} — ${e.contenu}`, appSettings.profilContenu)
+      || `[${e.categorie}] entrée antérieure masquée par le profil Grand public`,
+    );
     const textesCandidats = candidats.map((c) => `${c.titre} — ${c.contenu}`);
     const { vecteurs } = await obtenirEmbeddings([...textesExistants, ...textesCandidats], appSettings);
     const vecteursExistants = vecteurs.slice(0, entrees.length);
@@ -127,7 +117,6 @@ export async function mettreAJourLoreEmergent({
       });
 
       if (meilleurIndex >= 0) {
-        // Reconfirmé : validé, devient (ou reste) permanent.
         const existant = entrees[meilleurIndex];
         entrees[meilleurIndex] = {
           ...existant,
@@ -136,8 +125,6 @@ export async function mettreAJourLoreEmergent({
           dernierAcces: messages.length,
         };
       } else {
-        // Première mention : provisoire, pas encore injectée dans le
-        // contexte tant qu'elle n'est pas reconfirmée.
         entrees.push({
           id: idEntree(),
           categorie: candidat.categorie,
@@ -152,28 +139,10 @@ export async function mettreAJourLoreEmergent({
 
     return entrees;
   } catch {
-    // Échec de l'appel d'embeddings servant à la déduplication (réseau,
-    // quota dépassé — plusieurs appels partent souvent en même temps à
-    // l'ouverture d'une histoire : sélection de lore, génération des
-    // avatars... — d'où un risque de collision plus élevé à ce moment-là).
-    // On NE crée PAS les candidats à l'aveugle : sans embeddings pour les
-    // comparer aux fiches existantes, impossible de savoir si un candidat
-    // est un PNJ déjà connu ou réellement nouveau. Les ajouter quand même
-    // créerait une fiche en double (un nouvel id) pour un PNJ déjà établi
-    // à chaque fois que cet appel échoue — constaté en usage réel : PNJ
-    // dupliqués avec un nouvel avatar généré à chaque réouverture, l'ancien
-    // jamais nettoyé. Mieux vaut perdre cette observation (retentée
-    // naturellement au prochain tour, depuisIndex n'avance pas) que de
-    // corrompre le lore avec des doublons.
     return existants;
   }
 }
 
-/**
- * Convertit les entrées de lore émergent "permanent" au format attendu par
- * le sélecteur sémantique du lore Elyndor, pour qu'elles rejoignent le même
- * pool de sélection que le lorebook statique.
- */
 export function convertirLoreEmergentPourSelection(entrees: EntreeLoreEmergent[]): ElyndorEntryChargee[] {
   return entrees
     .filter((e) => e.statut === 'permanent')
