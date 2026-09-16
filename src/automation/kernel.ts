@@ -47,6 +47,10 @@ function patchDiagnostics(patch: Partial<AutomationDiagnostics>): void {
   notify();
 }
 
+function recordRun(type: string, info: AutomationRunInfo): void {
+  patchDiagnostics({ lastRuns: { ...diagnostics.lastRuns, [type]: info } });
+}
+
 async function refreshJobCounts(): Promise<void> {
   const jobs = await automationJobs.list();
   patchDiagnostics({
@@ -68,12 +72,13 @@ export function setAutomationCapabilities(capabilities: AppCapabilities): void {
   patchDiagnostics({ capabilities });
 }
 
+/**
+ * useSyncExternalStore exige une référence stable tant qu'aucune mutation
+ * n'a eu lieu. diagnostics est donc remplacé immuablement par patchDiagnostics
+ * et renvoyé tel quel ici.
+ */
 export function getAutomationDiagnostics(): AutomationDiagnostics {
-  return {
-    ...diagnostics,
-    capabilities: diagnostics.capabilities ? { ...diagnostics.capabilities, raisons: { ...diagnostics.capabilities.raisons } } : null,
-    lastRuns: { ...diagnostics.lastRuns },
-  };
+  return diagnostics;
 }
 
 export function subscribeAutomationDiagnostics(listener: () => void): () => void {
@@ -123,7 +128,7 @@ export async function processAutomationQueue(): Promise<void> {
         const handler = handlers.get(next.type);
         if (!handler) {
           await automationJobs.markFailed(next.id, `Aucune routine enregistrée pour ${next.type}.`);
-          diagnostics.lastRuns[next.type] = { at: Date.now(), ok: false, error: 'Routine absente.' };
+          recordRun(next.type, { at: Date.now(), ok: false, error: 'Routine absente.' });
           await refreshJobCounts();
           continue;
         }
@@ -134,13 +139,12 @@ export async function processAutomationQueue(): Promise<void> {
           const running = (await automationJobs.list()).find((job) => job.id === next.id) ?? next;
           await handler(running);
           await automationJobs.markCompleted(next.id);
-          diagnostics.lastRuns[next.type] = { at: Date.now(), ok: true };
+          recordRun(next.type, { at: Date.now(), ok: true });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Erreur inconnue.';
           await automationJobs.markFailed(next.id, message);
-          diagnostics.lastRuns[next.type] = { at: Date.now(), ok: false, error: message };
+          recordRun(next.type, { at: Date.now(), ok: false, error: message });
         }
-        notify();
         await refreshJobCounts();
       }
     } catch (error) {
