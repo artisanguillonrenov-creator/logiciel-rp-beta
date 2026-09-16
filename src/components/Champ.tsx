@@ -10,14 +10,23 @@ interface ChampProps extends TextInputProps {
 }
 
 // Champ V2 : surface très sombre, liseré discret puis bleu arcane au focus.
-// Le label reste lisible sans prendre le dessus sur le contenu narratif.
+// Les champs narratifs sans label (saisie RP, édition de message) reçoivent
+// une variante plus compacte et plus éditoriale, avec un focus doré.
 export default function Champ({ label, multiligne, style, conteneurStyle, labelStyle, onFocus, onBlur, ...rest }: ChampProps) {
   const [focus, setFocus] = useState(false);
+  const narratif = !!multiligne && !label;
+
   return (
     <View style={conteneurStyle}>
       {label ? <Text style={[styles.label, focus && styles.labelFocus, labelStyle]}>{label}</Text> : null}
       <TextInput
-        style={[styles.champ, focus && styles.champFocus, multiligne && styles.champMultiligne, style]}
+        style={[
+          styles.champ,
+          multiligne && styles.champMultiligne,
+          narratif && styles.champNarratif,
+          focus && (narratif ? styles.champNarratifFocus : styles.champFocus),
+          style,
+        ]}
         placeholderTextColor={couleurs.texteFaible}
         multiline={multiligne}
         onFocus={(e) => { setFocus(true); onFocus?.(e); }}
@@ -57,5 +66,18 @@ const styles = StyleSheet.create({
   champMultiligne: {
     minHeight: 92,
     textAlignVertical: 'top',
+  },
+  champNarratif: {
+    minHeight: 52,
+    backgroundColor: 'rgba(3, 9, 16, 0.94)',
+    borderColor: 'rgba(216, 179, 107, 0.22)',
+    paddingHorizontal: espacement.md,
+    paddingVertical: espacement.sm + 1,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  champNarratifFocus: {
+    borderColor: couleurs.dore,
+    backgroundColor: 'rgba(6, 14, 22, 0.98)',
   },
 });

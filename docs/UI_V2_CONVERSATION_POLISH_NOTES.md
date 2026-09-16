@@ -1,0 +1,1 @@
+Cette branche est volontairement limitée à la finition du lecteur narratif. Ne pas y introduire de changement de moteur, de modèle, de mémoire ou de stockage.
