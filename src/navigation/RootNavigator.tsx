@@ -5,7 +5,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import ActivationScreen from '../screens/ActivationScreen';
-import StartScreen from '../screens/StartScreen';
+import StartScreen from '../screens/StartScreenStudio';
 import CreateScreen from '../screens/CreateScreen';
 import ConversationScreen from '../screens/ConversationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -22,17 +22,14 @@ const theme = {
   colors: {
     ...DarkTheme.colors,
     background: couleurs.fond,
-    card: couleurs.fond,
+    card: couleurs.fondProfond,
     text: couleurs.texte,
-    border: couleurs.bordure,
-    primary: couleurs.accent,
+    border: couleurs.bordureSubtile,
+    primary: couleurs.dore,
   },
 };
 
 export default function RootNavigator() {
-  // Distribution "esprit" (brief Phase 2) : activation (acceptation des
-  // conditions de la bêta) requise une fois par appareil avant d'accéder à
-  // l'app — d'où l'attente du réglage avant de fixer l'écran de départ.
   const [pret, setPret] = useState(false);
   const [betaAcceptee, setBetaAcceptee] = useState(false);
   const [erreurChargement, setErreurChargement] = useState(false);
@@ -60,20 +57,22 @@ export default function RootNavigator() {
       <Stack.Navigator
         initialRouteName={betaAcceptee ? 'Demarrage' : 'Activation'}
         screenOptions={{
-          headerStyle: { backgroundColor: couleurs.fond },
-          headerTintColor: couleurs.accentClair,
-          headerTitleStyle: { fontFamily: polices.titre, color: couleurs.dore, fontSize: 20 },
+          headerStyle: { backgroundColor: couleurs.fondProfond },
+          headerTintColor: couleurs.doreClair,
+          headerTitleStyle: { fontFamily: polices.titre, color: couleurs.doreClair, fontSize: 20 },
           headerShadowVisible: false,
+          headerBackTitle: 'Retour',
+          contentStyle: { backgroundColor: couleurs.fond },
         }}
       >
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Demarrage" component={StartScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Nouvelle histoire' }} />
-        <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Histoire' }} />
+        <Stack.Screen name="Creation" component={CreateScreen} options={{ title: 'Créer votre histoire' }} />
+        <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Elyndor' }} />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
         <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
-        <Stack.Screen name="ChargerConversation" component={LoadConversationScreen} options={{ title: 'Charger conversation' }} />
+        <Stack.Screen name="ChargerConversation" component={LoadConversationScreen} options={{ title: 'Histoires' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

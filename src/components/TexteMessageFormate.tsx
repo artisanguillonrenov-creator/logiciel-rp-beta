@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { analyserMessage, type SegmentMessage } from '../engine/messageFormatter';
 import { indexerLocuteurs } from '../engine/speakerIndex';
-import { couleurs, polices } from '../theme/theme';
+import { couleurs, polices, rayon } from '../theme/theme';
 import type { EntreeLoreEmergent } from '../types';
 
 export interface AvatarPnjPourTexte {
@@ -14,8 +14,8 @@ function capitaliser(nom: string): string {
   return nom.toLocaleLowerCase('fr').replace(/(^|[- ])\p{L}/gu, (lettre) => lettre.toLocaleUpperCase('fr'));
 }
 
-// Les mentions dans la prose ne sont pas des prises de parole. Un seul
-// portrait par réplique nommée ; le texte partagé avec l'export reste intact.
+// V2 : la prose reste une page de roman. Une vraie prise de parole d'un PNJ
+// devient un petit bloc éditorial avec portrait et nom, sans bulle de chat.
 export default function TexteMessageFormate({
   texte, style, avatarsPnj = [], pnjConnus, onPressAvatar,
 }: {
@@ -51,25 +51,82 @@ export default function TexteMessageFormate({
             accessibilityRole="button"
             accessibilityLabel={`Portrait de ${segment.locuteur}`}
           >
-            {uri && <Image source={{ uri }} style={styles.avatar} />}
-            <Text style={[style, styles.nomLocuteur]}>{capitaliser(segment.locuteur ?? '')}</Text>
+            {uri ? <Image source={{ uri }} style={styles.avatar} /> : <View style={styles.avatarVide}><Text style={styles.avatarRune}>◇</Text></View>}
+            <View style={styles.colonneDialogue}>
+              <Text style={[style, styles.nomLocuteur]}>{capitaliser(segment.locuteur ?? '')}</Text>
+              <Text style={[style, styles.dialogue]}>« {segment.contenu} »</Text>
+            </View>
           </Pressable>
-          <Text style={[style, styles.dialogue]}>« {segment.contenu} »</Text>
         </View>;
       }
       if (bloc.every((seg) => !seg.contenu.trim())) return null;
-      return <Text key={i} style={style}>
-        {bloc.map((seg, j) => <Text key={j} style={seg.type === 'action' ? styles.action : seg.type === 'dialogue' ? styles.dialogue : undefined}>{seg.contenu}</Text>)}
+      return <Text key={i} style={[style, styles.prose]}>
+        {bloc.map((seg, j) => <Text key={j} style={seg.type === 'action' ? styles.action : seg.type === 'dialogue' ? styles.dialogueInline : undefined}>{seg.contenu}</Text>)}
       </Text>;
     })}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  action: { fontStyle: 'italic', color: couleurs.texteAtténué },
-  dialogue: { color: couleurs.dore },
-  replique: { marginVertical: 6 },
-  locuteur: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, minHeight: 32 },
-  nomLocuteur: { flexShrink: 1, fontFamily: polices.corpsMedium, color: couleurs.accentClair },
-  avatar: { width: 32, height: 32, borderRadius: 16 },
+  prose: {
+    lineHeight: 24,
+  },
+  action: {
+    fontStyle: 'italic',
+    color: couleurs.texteAtténué,
+  },
+  dialogueInline: {
+    color: couleurs.doreClair,
+  },
+  replique: {
+    marginVertical: 10,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: couleurs.bordureSubtile,
+  },
+  locuteur: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    minHeight: 48,
+  },
+  colonneDialogue: {
+    flex: 1,
+    paddingTop: 1,
+  },
+  nomLocuteur: {
+    flexShrink: 1,
+    fontFamily: polices.corpsMedium,
+    color: couleurs.dore,
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  dialogue: {
+    color: couleurs.texte,
+    lineHeight: 22,
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: rayon.sm,
+    borderWidth: 1,
+    borderColor: couleurs.bordureDoree,
+  },
+  avatarVide: {
+    width: 42,
+    height: 42,
+    borderRadius: rayon.sm,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    backgroundColor: couleurs.fondChampSaisie,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarRune: {
+    color: couleurs.dore,
+    fontSize: 14,
+  },
 });
