@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { PanResponder, StyleSheet, Text, View } from 'react-native';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
-import { couleurs, espacement, polices } from '../theme/theme';
+import { couleurs, espacement, interfaceV2, polices, rayon, stylePetitesCapitales } from '../theme/theme';
 
 // Dictée vocale — même modèle que WhatsApp : appui (bref délai pour éviter
 // un tap accidentel) démarre l'écoute, glisser vers le haut annule,
@@ -104,6 +104,9 @@ export default function BoutonDictee({
       )}
       <View
         {...panResponder.panHandlers}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Dictée vocale"
         style={[
           styles.bouton,
           enregistrement && styles.boutonActif,
@@ -111,7 +114,9 @@ export default function BoutonDictee({
           desactive && styles.boutonDesactive,
         ]}
       >
-        <Text style={styles.icone}>{enregistrement ? '●' : '🎙'}</Text>
+        <Text style={[styles.icone, enregistrement && styles.iconeActive]}>
+          {enregistrement ? '●' : 'VOIX'}
+        </Text>
       </View>
     </View>
   );
@@ -123,37 +128,45 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bouton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: interfaceV2.cibleTactileMin,
+    height: interfaceV2.cibleTactileMin,
+    borderRadius: rayon.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: couleurs.fondCarte,
+    backgroundColor: 'rgba(4, 12, 22, 0.78)',
     borderWidth: 1,
-    borderColor: couleurs.bordure,
+    borderColor: couleurs.accentSombre,
   },
   boutonActif: {
-    backgroundColor: couleurs.accent,
+    backgroundColor: 'rgba(78, 174, 248, 0.16)',
     borderColor: couleurs.accent,
   },
   boutonAnnulation: {
-    backgroundColor: couleurs.danger,
+    backgroundColor: 'rgba(227, 112, 125, 0.14)',
     borderColor: couleurs.danger,
   },
   boutonDesactive: {
     opacity: 0.4,
   },
   icone: {
-    fontSize: 18,
+    ...stylePetitesCapitales,
+    color: couleurs.accentClair,
+    fontFamily: polices.corpsMedium,
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+  iconeActive: {
+    color: couleurs.accentClair,
+    fontSize: 13,
   },
   indication: {
     position: 'absolute',
-    bottom: 52,
+    bottom: 56,
     right: 0,
-    backgroundColor: couleurs.fondCarte,
+    backgroundColor: couleurs.fondCarteDense,
     borderWidth: 1,
-    borderColor: couleurs.bordure,
-    borderRadius: 8,
+    borderColor: couleurs.bordureSubtile,
+    borderRadius: rayon.sm,
     paddingVertical: espacement.xs,
     paddingHorizontal: espacement.sm,
     color: couleurs.texteAtténué,

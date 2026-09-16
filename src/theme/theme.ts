@@ -12,8 +12,9 @@ export const couleurs = {
   fondCarteDense: 'rgba(9, 22, 36, 0.96)',
   fondChampSaisie: 'rgba(4, 12, 22, 0.76)',
 
-  // Bordures et texte.
-  bordure: '#29445C',
+  // Bordures et texte. La bordure principale reste volontairement discrète :
+  // les écrans narratifs doivent lire comme une page, pas comme une grille de cartes.
+  bordure: '#223A50',
   bordureSubtile: 'rgba(141, 171, 196, 0.24)',
   bordureDoree: 'rgba(216, 179, 107, 0.72)',
   texte: '#E9E3D5',
@@ -33,10 +34,11 @@ export const couleurs = {
   danger: '#E3707D',
   succes: '#68A98C',
 
-  // Conversation : le narrateur devient une page de roman plutôt qu'une
-  // bulle de messagerie ; le joueur reste légèrement matérialisé.
-  bulleJoueur: 'rgba(14, 37, 55, 0.82)',
-  bulleNarrateur: 'rgba(7, 17, 28, 0.30)',
+  // Conversation : le narrateur doit presque disparaître en tant que
+  // contenant. Le joueur garde juste assez de matière pour distinguer sa
+  // propre action de la prose du monde.
+  bulleJoueur: 'rgba(14, 37, 55, 0.64)',
+  bulleNarrateur: 'rgba(7, 17, 28, 0.06)',
 };
 
 export const espacement = {
