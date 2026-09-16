@@ -1,18 +1,19 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
-// Stockage persistant des avatars PNJ générés — hors AsyncStorage
-// (quota web ~5-10 Mo déjà dépassé une fois cette session par du contenu
-// bien plus petit que des images). Un dossier dédié dans le répertoire
-// documents de l'app, un fichier PNG par PNJ.
 const DOSSIER_AVATARS = 'pnj-avatars';
 
-function nomFichier(storyId: string, pnjId: string): string {
-  const cle = `${storyId}_${pnjId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-  return `${cle}.png`;
+function nettoyerSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-/** Retire le préfixe data URL (`data:image/png;base64,`) : le natif
- * n'écrit que la partie base64 pure. */
+function prefixeHistoire(storyId: string): string {
+  return `${nettoyerSegment(storyId)}_`;
+}
+
+function nomFichier(storyId: string, pnjId: string): string {
+  return `${nettoyerSegment(`${storyId}_${pnjId}`)}.png`;
+}
+
 function extraireBase64(dataUrl: string): string {
   const virgule = dataUrl.indexOf(',');
   return virgule === -1 ? dataUrl : dataUrl.slice(virgule + 1);
@@ -33,17 +34,12 @@ export async function enregistrerAvatarPnj(storyId: string, pnjId: string, dataU
   return fichier.uri;
 }
 
-// Le base64 n'est nécessaire que pour envoyer une référence au fournisseur,
-// jamais pour afficher les portraits dans l'historique ou les agrandir.
 export async function preparerImageReference(uri: string): Promise<string> {
   if (!uri.startsWith('file:')) return uri;
   const fichier = new File(uri);
   return `data:image/png;base64,${await fichier.base64()}`;
 }
 
-/** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR
- * dans images.ts) — pour un nettoyage manuel, ex. une fiche dupliquée, sans
- * attendre de vider toute l'histoire (supprimerAvatarsHistoire). */
 export async function supprimerAvatarPnj(storyId: string, pnjId: string): Promise<void> {
   const fichier = new File(Paths.document, DOSSIER_AVATARS, nomFichier(storyId, pnjId));
   if (fichier.exists) fichier.delete();
@@ -52,10 +48,22 @@ export async function supprimerAvatarPnj(storyId: string, pnjId: string): Promis
 export async function supprimerAvatarsHistoire(storyId: string): Promise<void> {
   const dossier = new Directory(Paths.document, DOSSIER_AVATARS);
   if (!dossier.exists) return;
-  const prefixe = `${storyId.replace(/[^a-zA-Z0-9_-]/g, '_')}_`;
+  const prefixe = prefixeHistoire(storyId);
   for (const entree of dossier.list()) {
-    if (entree instanceof File && entree.name.startsWith(prefixe)) {
-      entree.delete();
-    }
+    if (entree instanceof File && entree.name.startsWith(prefixe)) entree.delete();
   }
+}
+
+export async function supprimerAvatarsOrphelins(storyIdsValides: readonly string[]): Promise<number> {
+  const dossier = new Directory(Paths.document, DOSSIER_AVATARS);
+  if (!dossier.exists) return 0;
+  const prefixesValides = storyIdsValides.map(prefixeHistoire);
+  let supprimes = 0;
+  for (const entree of dossier.list()) {
+    if (!(entree instanceof File)) continue;
+    if (prefixesValides.some((prefixe) => entree.name.startsWith(prefixe))) continue;
+    entree.delete();
+    supprimes++;
+  }
+  return supprimes;
 }
