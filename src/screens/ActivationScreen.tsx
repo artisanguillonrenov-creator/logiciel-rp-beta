@@ -14,17 +14,23 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Activation'>;
 
 const IMAGE_ACTIVATION = require('../../assets/scenes/accueil.png');
 
-// Écran d'activation de la bêta. Il conserve exactement la même persistance :
-// seule la présentation est alignée sur la direction artistique Elyndor V2.
 export default function ActivationScreen({ navigation }: Props) {
   const [enregistrement, setEnregistrement] = useState(false);
+  const [erreur, setErreur] = useState('');
 
   async function accepter() {
     if (enregistrement) return;
     setEnregistrement(true);
-    const settingsActuelles = await getSettings();
-    await saveSettings({ ...settingsActuelles, betaAcceptee: true });
-    navigation.replace('Demarrage');
+    setErreur('');
+    try {
+      const settingsActuelles = await getSettings();
+      await saveSettings({ ...settingsActuelles, betaAcceptee: true });
+      navigation.replace('Demarrage');
+    } catch {
+      setErreur("Impossible d'enregistrer l'activation. Vérifie que le stockage de l'appareil ou du navigateur est disponible, puis réessaie.");
+    } finally {
+      setEnregistrement(false);
+    }
   }
 
   return (
@@ -78,6 +84,8 @@ export default function ActivationScreen({ navigation }: Props) {
               </Text>
             </View>
           </View>
+
+          {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
 
           <Bouton
             titre={enregistrement ? 'Ouverture…' : 'Entrer dans Elyndor'}
@@ -182,6 +190,13 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 15,
     lineHeight: 21,
+  },
+  erreur: {
+    color: couleurs.danger,
+    fontFamily: polices.corps,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: espacement.sm,
   },
   bouton: {
     marginTop: espacement.md,
