@@ -1,9 +1,10 @@
-import type { AppSettings, StoryState } from '../types';
+import type { AppSettings, Message, StoryState } from '../types';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from '../engine/memory';
 import { mettreAJourDirecteur } from '../engine/storyDirector';
 import { mettreAJourMonde } from '../engine/worldSimulation';
 import { mettreAJourSocial } from '../engine/socialDynamics';
 import { mettreAJourLoreEmergent } from '../engine/emergentLore';
+import { filtrerTextePourProfil } from '../engine/contenuAdulte';
 import { enqueueAutomation, registerAutomationHandler } from './kernel';
 import { calculerRevisionNarrative } from './storyRevision';
 import type { NarrativeStorySavedEvent } from './storyEvents';
@@ -32,13 +33,15 @@ export function besoinRattrapageNarratif(story: StoryState): boolean {
   );
 }
 
-/**
- * Exécute les pipelines dérivés après la sauvegarde du tour. Ils sont donc
- * hors du chemin critique de génération : le joueur peut voir la réponse
- * avant mémoire/directeur/monde/social/lore. La garde de révision empêche
- * ensuite tout résultat calculé sur un transcript ancien d'écraser un tour
- * plus récent.
- */
+function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
+  if (appSettings.profilContenu === 'adulte') return messages;
+  return messages.map((message) => ({
+    ...message,
+    content: filtrerTextePourProfil(message.content, appSettings.profilContenu)
+      || '[Contenu antérieur masqué par le profil Grand public.]',
+  }));
+}
+
 export async function calculerRattrapageNarratif(
   story: StoryState,
   appSettings: AppSettings,
@@ -55,30 +58,33 @@ export async function calculerRattrapageNarratif(
   let loreEmergent = story.loreEmergent;
   let loreEmergentDernierIndex = loreDepuisIndex;
 
+  const messagesSecurises = messagesPourProfil(story.messages, appSettings);
+  const personnageNom = filtrerTextePourProfil(story.meta.personnageNom, appSettings.profilContenu) || 'Personnage';
+
   const periodicPromise = periodicDue
     ? Promise.all([
         mettreAJourMemoire({
           appSettings,
           memoireActuelle: story.memoire,
-          messages: story.messages,
-          personnageNom: story.meta.personnageNom,
+          messages: messagesSecurises,
+          personnageNom,
         }),
         mettreAJourDirecteur({
           appSettings,
           directeurActuel: story.directeur,
-          messages: story.messages,
+          messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         }),
         mettreAJourMonde({
           appSettings,
           mondeActuel: story.monde,
-          messages: story.messages,
+          messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         }),
         mettreAJourSocial({
           appSettings,
           socialActuel: story.social,
-          messages: story.messages,
+          messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         }),
       ])
@@ -88,9 +94,9 @@ export async function calculerRattrapageNarratif(
     ? mettreAJourLoreEmergent({
         appSettings,
         existants: story.loreEmergent,
-        messages: story.messages,
+        messages: messagesSecurises,
         depuisIndex: loreDepuisIndex,
-        personnageNom: story.meta.personnageNom,
+        personnageNom,
       })
     : null;
 
@@ -125,9 +131,6 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
     const patch = await calculerRattrapageNarratif(snapshot, await deps.getSettings());
     if (!patch) return;
 
-    // Double vérification dans la même opération sérialisée que l'écriture :
-    // si un nouveau tour ou une édition a eu lieu pendant les appels modèle,
-    // les résultats calculés sur l'ancien transcript sont simplement jetés.
     const miseAJour = await deps.updateStoryIf(
       job.storyId,
       (courante) => calculerRevisionNarrative(courante) === revision,
@@ -137,7 +140,6 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
   });
 }
 
-/** Rattrape au démarrage les histoires qui auraient été fermées avant la fin d'un cycle. */
 export async function enqueueNarrativeCatchupOnStartup(deps: NarrativeAutomationDeps): Promise<number> {
   const ids = await deps.getStoryIds();
   let enqueued = 0;
