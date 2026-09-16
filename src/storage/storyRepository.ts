@@ -59,6 +59,31 @@ export function creerDepotHistoires(ancien: AncienStockage, stockage: StockageHi
       const capture = serialiserHistoire(histoire);
       return operation(() => stockage.ecrire(capture));
     },
+    /**
+     * Lecture + garde + écriture dans la même file série du dépôt. Sert aux
+     * automatismes : un résultat calculé sur une ancienne révision ne peut
+     * jamais écraser un tour ou une édition sauvegardés entre-temps.
+     *
+     * Contrairement à enregistrer(), cette maintenance ne modifie pas
+     * updatedAt : une consolidation mémoire en arrière-plan n'est pas une
+     * nouvelle session utilisateur.
+     */
+    mettreAJourSi(
+      id: string,
+      predicat: (histoire: StoryState) => boolean,
+      transformation: (histoire: StoryState) => StoryState,
+    ) {
+      return operation(async () => {
+        const sauvegarde = await stockage.lire(id);
+        if (!sauvegarde) return null;
+        const histoire = migrer(reconstituerHistoire(sauvegarde));
+        if (!predicat(histoire)) return null;
+        const miseAJour = transformation(histoire);
+        if (miseAJour.meta.id !== id) throw new Error('Une mise à jour gardée ne peut pas changer l’identité de l’histoire.');
+        await stockage.ecrire(serialiserHistoire(miseAJour));
+        return miseAJour;
+      });
+    },
     supprimer: (id: string) => operation(() => stockage.supprimer(id)),
     renommer: (id: string, titre: string) => operation(async () => {
       const sauvegarde = await stockage.lire(id);
