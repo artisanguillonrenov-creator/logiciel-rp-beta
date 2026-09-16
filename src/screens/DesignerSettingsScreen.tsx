@@ -8,15 +8,31 @@ import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/t
 import Bouton from '../components/Bouton';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
+import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
+import { retryFailedAutomationJobs } from '../automation/kernel';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur'>;
 
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 
+function EtatLigne({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) {
+  return (
+    <View style={styles.ligneEtat}>
+      <Text style={styles.nomEtat}>{label}</Text>
+      <View style={styles.etatTexteBloc}>
+        <Text style={[styles.valeurEtat, ok ? styles.valeurEtatOk : styles.valeurEtatKo]}>{ok ? 'PRÊT' : 'INDISPONIBLE'}</Text>
+        {detail ? <Text style={styles.detailEtat}>{detail}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 export default function DesignerSettingsScreen({ navigation }: Props) {
   const [modeConcepteur, setModeConcepteur] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [messageCache, setMessageCache] = useState('');
+  const [messageJobs, setMessageJobs] = useState('');
+  const automation = useAutomationDiagnostics();
 
   useEffect(() => {
     getSettings().then((settings) => {
@@ -38,6 +54,12 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
     setTimeout(() => setMessageCache(''), 4000);
   }
 
+  async function relancerJobs() {
+    const nombre = await retryFailedAutomationJobs();
+    setMessageJobs(nombre > 0 ? `${nombre} routine(s) remise(s) en attente.` : 'Aucune routine en erreur à relancer.');
+    setTimeout(() => setMessageJobs(''), 4000);
+  }
+
   if (chargement) {
     return (
       <View style={styles.chargement}>
@@ -45,6 +67,8 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
       </View>
     );
   }
+
+  const caps = automation.capabilities;
 
   return (
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CONCEPTEUR}>
@@ -80,6 +104,45 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               onPress={basculerModeConcepteur}
               style={styles.boutonAction}
             />
+          </Panneau>
+
+          <Panneau style={styles.bloc}>
+            <Text style={styles.label}>AUTOMATISMES</Text>
+            <Text style={styles.titreBloc}>État du noyau</Text>
+            <Text style={styles.texteBloc}>
+              Une source unique de réglages alimente maintenant les capacités et la file persistante de routines.
+              Les tâches interrompues sont restaurées au prochain démarrage au lieu d’être perdues silencieusement.
+            </Text>
+
+            <View style={styles.resumeJobs}>
+              <Text style={styles.compteurJobs}>En attente {automation.pendingJobs}</Text>
+              <Text style={styles.compteurJobs}>En cours {automation.runningJobs}</Text>
+              <Text style={[styles.compteurJobs, automation.failedJobs > 0 && styles.compteurErreur]}>Erreurs {automation.failedJobs}</Text>
+              <Text style={styles.compteurJobs}>Terminées {automation.completedJobs}</Text>
+            </View>
+            {automation.recoveredJobs > 0 ? (
+              <Text style={styles.statut}>{automation.recoveredJobs} routine(s) interrompue(s) restaurée(s) au démarrage.</Text>
+            ) : null}
+            {automation.lastKernelError ? <Text style={styles.erreur}>{automation.lastKernelError}</Text> : null}
+
+            {caps ? (
+              <View style={styles.capacites}>
+                <EtatLigne label="Narration" ok={caps.narration} detail={caps.raisons.narration} />
+                <EtatLigne label="Embeddings" ok={caps.embeddings} detail={caps.raisons.embeddings} />
+                <EtatLigne label="Images & portraits" ok={caps.images} detail={caps.raisons.images} />
+                <EtatLigne label="Traduction" ok={caps.traduction} detail={caps.raisons.traduction} />
+                {caps.fournisseur === 'local' ? (
+                  <EtatLigne label="Modèle local" ok={caps.inferenceLocale} detail={caps.raisons.inferenceLocale} />
+                ) : null}
+              </View>
+            ) : (
+              <Text style={styles.statut}>Capacités en cours d’initialisation…</Text>
+            )}
+
+            {automation.failedJobs > 0 ? (
+              <Bouton titre="Relancer les routines en erreur" variante="secondaire" onPress={relancerJobs} style={styles.boutonAction} />
+            ) : null}
+            {messageJobs ? <Text style={styles.statut}>{messageJobs}</Text> : null}
           </Panneau>
 
           <Panneau style={styles.bloc}>
@@ -216,6 +279,72 @@ const styles = StyleSheet.create({
     fontFamily: polices.corpsMedium,
     fontSize: 14,
     marginTop: espacement.sm,
+  },
+  erreur: {
+    color: couleurs.danger,
+    fontFamily: polices.corpsMedium,
+    fontSize: 14,
+    marginTop: espacement.sm,
+  },
+  resumeJobs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacement.sm,
+    marginTop: espacement.md,
+  },
+  compteurJobs: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteAtténué,
+    borderWidth: 1,
+    borderColor: couleurs.bordureSubtile,
+    paddingHorizontal: espacement.sm,
+    paddingVertical: 5,
+    fontSize: 9,
+  },
+  compteurErreur: {
+    color: couleurs.danger,
+    borderColor: couleurs.danger,
+  },
+  capacites: {
+    marginTop: espacement.md,
+    borderTopWidth: 1,
+    borderTopColor: couleurs.bordureSubtile,
+  },
+  ligneEtat: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: espacement.md,
+    paddingVertical: espacement.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordureSubtile,
+  },
+  nomEtat: {
+    color: couleurs.texte,
+    fontFamily: polices.corpsMedium,
+    fontSize: 14,
+    flex: 1,
+  },
+  etatTexteBloc: {
+    flex: 1.5,
+    alignItems: 'flex-end',
+  },
+  valeurEtat: {
+    ...stylePetitesCapitales,
+    fontSize: 9,
+  },
+  valeurEtatOk: {
+    color: couleurs.succes,
+  },
+  valeurEtatKo: {
+    color: couleurs.danger,
+  },
+  detailEtat: {
+    color: couleurs.texteFaible,
+    fontFamily: polices.corps,
+    fontSize: 12,
+    textAlign: 'right',
+    marginTop: 2,
   },
   note: {
     marginBottom: espacement.md,

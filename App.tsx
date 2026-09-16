@@ -11,6 +11,7 @@ import {
 import RootNavigator from './src/navigation/RootNavigator';
 import { couleurs } from './src/theme/theme';
 import { LangueProvider } from './src/i18n/LangueProvider';
+import AutomationProvider from './src/automation/AutomationProvider';
 
 export default function App() {
   // Direction artistique (grimoire illuminé) : une seule famille serif dans
@@ -35,10 +36,12 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <LangueProvider>
-          <RootNavigator />
-          <StatusBar style="light" />
-        </LangueProvider>
+        <AutomationProvider>
+          <LangueProvider>
+            <RootNavigator />
+            <StatusBar style="light" />
+          </LangueProvider>
+        </AutomationProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

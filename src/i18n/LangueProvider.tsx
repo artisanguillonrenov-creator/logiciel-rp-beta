@@ -3,6 +3,7 @@ import { fusionnerCatalogueTraduction, getCatalogueTraduction, getSettings, save
 import { traduireLot } from './traduction';
 import type { AppSettings } from '../types';
 import { configurationLLM } from '../engine/llmProvider';
+import { abonnerReglages } from '../automation/settingsStore';
 
 export interface LangueOption {
   code: string;
@@ -51,12 +52,27 @@ export function LangueProvider({ children }: { children: React.ReactNode }) {
   const appSettingsRef = useRef<AppSettings | null>(null);
 
   useEffect(() => {
-    getSettings().then((s) => {
-      appSettingsRef.current = s;
-      const l = s.langueInterface || 'fr';
-      langueRef.current = l;
-      setLangue(l);
-    }).catch(() => {}); // Le navigateur racine affiche l'erreur et propose de réessayer.
+    let actif = true;
+    const appliquer = (settings: AppSettings) => {
+      if (!actif) return;
+      appSettingsRef.current = settings;
+      const prochaineLangue = settings.langueInterface || 'fr';
+      if (prochaineLangue !== langueRef.current) {
+        langueRef.current = prochaineLangue;
+        setLangue(prochaineLangue);
+      }
+    };
+
+    // Toute sauvegarde de réglages (fournisseur, clé, modèle, langue...)
+    // rafraîchit immédiatement la configuration utilisée par la traduction.
+    // Avant ce store réactif, appSettingsRef restait figé au démarrage.
+    const unsubscribe = abonnerReglages(appliquer);
+    getSettings().then(appliquer).catch(() => {}); // Le navigateur racine affiche l'erreur et propose de réessayer.
+
+    return () => {
+      actif = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

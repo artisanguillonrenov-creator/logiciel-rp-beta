@@ -5,6 +5,7 @@ import { creerDepotHistoires } from './storyRepository';
 import { stockageHistoires } from './storyDatabase';
 import { creerDepotReglages } from './settingsRepository';
 import { stockageCles } from './apiKeysStore';
+import { publierReglages } from '../automation/settingsStore';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -32,9 +33,21 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS);
-export const getSettings = reglages.lire;
-export const saveSettings = reglages.enregistrer;
 
+/**
+ * Toutes les lectures/écritures de réglages passent ici afin de publier la
+ * configuration réellement persistée au SettingsStore réactif. Les anciens
+ * appels à getSettings/saveSettings restent compatibles sans modification.
+ */
+export async function getSettings(): Promise<AppSettings> {
+  const settings = await reglages.lire();
+  return publierReglages(settings);
+}
+
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  await reglages.enregistrer(settings);
+  publierReglages(settings);
+}
 
 const histoires = creerDepotHistoires(AsyncStorage, stockageHistoires, migrerHistoire);
 export const getStory = histoires.lire;
