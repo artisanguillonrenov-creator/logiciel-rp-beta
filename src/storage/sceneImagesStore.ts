@@ -24,11 +24,6 @@ export async function obtenirIllustrationScene(storyId: string, revision: string
   return fichier.exists ? fichier.uri : null;
 }
 
-/**
- * Conserve seulement l'illustration de la révision courante de l'histoire.
- * Les images restent hors du JSON de sauvegarde et ne gonflent donc ni
- * SQLite/IndexedDB ni le contexte narratif.
- */
 export async function enregistrerIllustrationScene(
   storyId: string,
   revision: string,
@@ -40,9 +35,7 @@ export async function enregistrerIllustrationScene(
   const prefixe = prefixeHistoire(storyId);
   const cible = nomFichier(storyId, revision);
   for (const entree of dossier.list()) {
-    if (entree instanceof File && entree.name.startsWith(prefixe) && entree.name !== cible) {
-      entree.delete();
-    }
+    if (entree instanceof File && entree.name.startsWith(prefixe) && entree.name !== cible) entree.delete();
   }
 
   const fichier = new File(dossier, cible);
@@ -58,4 +51,18 @@ export async function supprimerIllustrationsHistoire(storyId: string): Promise<v
   for (const entree of dossier.list()) {
     if (entree instanceof File && entree.name.startsWith(prefixe)) entree.delete();
   }
+}
+
+export async function supprimerIllustrationsOrphelines(storyIdsValides: readonly string[]): Promise<number> {
+  const dossier = new Directory(Paths.document, DOSSIER_SCENES);
+  if (!dossier.exists) return 0;
+  const prefixesValides = storyIdsValides.map(prefixeHistoire);
+  let supprimees = 0;
+  for (const entree of dossier.list()) {
+    if (!(entree instanceof File)) continue;
+    if (prefixesValides.some((prefixe) => entree.name.startsWith(prefixe))) continue;
+    entree.delete();
+    supprimees++;
+  }
+  return supprimees;
 }

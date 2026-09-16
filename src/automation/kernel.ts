@@ -72,11 +72,6 @@ export function setAutomationCapabilities(capabilities: AppCapabilities): void {
   patchDiagnostics({ capabilities });
 }
 
-/**
- * useSyncExternalStore exige une référence stable tant qu'aucune mutation
- * n'a eu lieu. diagnostics est donc remplacé immuablement par patchDiagnostics
- * et renvoyé tel quel ici.
- */
 export function getAutomationDiagnostics(): AutomationDiagnostics {
   return diagnostics;
 }
@@ -112,6 +107,16 @@ export async function enqueueAutomation(
   await refreshJobCounts();
   void processAutomationQueue();
   return job;
+}
+
+export async function removeAutomationJobsForStory(storyId: string): Promise<number> {
+  const count = await automationJobs.removeByStoryId(storyId);
+  await refreshJobCounts();
+  return count;
+}
+
+export async function listAutomationJobs(): Promise<AutomationJob[]> {
+  return automationJobs.list();
 }
 
 export async function processAutomationQueue(): Promise<void> {
