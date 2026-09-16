@@ -25,6 +25,7 @@ export interface AutomationJobRepository {
   markRunning(id: string): Promise<AutomationJob | null>;
   markCompleted(id: string): Promise<AutomationJob | null>;
   markFailed(id: string, error: string): Promise<AutomationJob | null>;
+  retryFailed(): Promise<number>;
   recoverInterrupted(): Promise<number>;
   removeCompleted(olderThanMs?: number): Promise<number>;
 }
@@ -127,6 +128,24 @@ export function createAutomationJobRepository(
       }));
       if (updated) await writeUnsafe(jobs);
       return updated;
+    }),
+
+    retryFailed: () => serialized(async () => {
+      const jobs = await readUnsafe();
+      let count = 0;
+      const retried = jobs.map((job) => {
+        if (job.status !== 'failed') return job;
+        count++;
+        return {
+          ...job,
+          status: 'pending' as const,
+          startedAt: undefined,
+          finishedAt: undefined,
+          lastError: undefined,
+        };
+      });
+      if (count > 0) await writeUnsafe(retried);
+      return count;
     }),
 
     recoverInterrupted: () => serialized(async () => {
