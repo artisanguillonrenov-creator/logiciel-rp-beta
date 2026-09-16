@@ -1,7 +1,3 @@
-// Variante web de pnjAvatarsStore.ts (résolue automatiquement par le
-// bundler Metro/Expo à la place du fichier natif). IndexedDB plutôt que
-// localStorage/AsyncStorage : pas de petit quota ~5-10 Mo (déjà dépassé une
-// fois cette session par du contenu plus léger que des images base64).
 const DB_NOM = 'elyndor-pnj-avatars';
 const MAGASIN = 'avatars';
 
@@ -22,6 +18,10 @@ function cle(storyId: string, pnjId: string): string {
   return `${storyId}_${pnjId}`;
 }
 
+function prefixeHistoire(storyId: string): string {
+  return `${storyId}_`;
+}
+
 export async function obtenirAvatarPnj(storyId: string, pnjId: string): Promise<string | null> {
   const db = await ouvrirDB();
   return new Promise((resolve, reject) => {
@@ -29,6 +29,7 @@ export async function obtenirAvatarPnj(storyId: string, pnjId: string): Promise<
     const requete = tx.objectStore(MAGASIN).get(cle(storyId, pnjId));
     requete.onsuccess = () => resolve((requete.result as string | undefined) ?? null);
     requete.onerror = () => reject(requete.error);
+    tx.oncomplete = () => db.close();
   });
 }
 
@@ -49,35 +50,56 @@ export async function preparerImageReference(uri: string): Promise<string> {
   return uri;
 }
 
-/** Supprime le portrait d'un seul PNJ (ou du joueur, voir ID_AVATAR_JOUEUR
- * dans images.ts) — pour un nettoyage manuel, ex. une fiche dupliquée, sans
- * attendre de vider toute l'histoire (supprimerAvatarsHistoire). */
 export async function supprimerAvatarPnj(storyId: string, pnjId: string): Promise<void> {
   const db = await ouvrirDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(MAGASIN, 'readwrite');
     tx.objectStore(MAGASIN).delete(cle(storyId, pnjId));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
 }
 
 export async function supprimerAvatarsHistoire(storyId: string): Promise<void> {
   const db = await ouvrirDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(MAGASIN, 'readwrite');
     const magasin = tx.objectStore(MAGASIN);
     const requete = magasin.openCursor();
-    const prefixe = `${storyId}_`;
+    const prefixe = prefixeHistoire(storyId);
     requete.onsuccess = () => {
       const curseur = requete.result;
       if (!curseur) return;
-      if (typeof curseur.key === 'string' && curseur.key.startsWith(prefixe)) {
+      if (typeof curseur.key === 'string' && curseur.key.startsWith(prefixe)) curseur.delete();
+      curseur.continue();
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function supprimerAvatarsOrphelins(storyIdsValides: readonly string[]): Promise<number> {
+  const db = await ouvrirDB();
+  const prefixesValides = storyIdsValides.map(prefixeHistoire);
+  let supprimes = 0;
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(MAGASIN, 'readwrite');
+    const requete = tx.objectStore(MAGASIN).openCursor();
+    requete.onsuccess = () => {
+      const curseur = requete.result;
+      if (!curseur) return;
+      const key = curseur.key;
+      if (typeof key === 'string' && !prefixesValides.some((prefixe) => key.startsWith(prefixe))) {
         curseur.delete();
+        supprimes++;
       }
       curseur.continue();
     };
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
+  return supprimes;
 }
