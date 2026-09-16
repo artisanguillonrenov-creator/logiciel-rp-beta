@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getSettings, saveSettings } from '../storage/storage';
@@ -7,16 +7,15 @@ import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/t
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
 import FondAtmospherique from '../components/FondAtmospherique';
+import Panneau from '../components/Panneau';
 import Separateur from '../components/Separateur';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Activation'>;
 
 const IMAGE_ACTIVATION = require('../../assets/scenes/accueil.png');
 
-// Écran d'activation (distribution "esprit", brief Phase 2) : accepter les
-// conditions de la bêta une fois par appareil avant d'entrer dans l'app.
-// Ce n'est pas une clé de licence vérifiée côté serveur — juste la marche à
-// suivre d'une activation, honnête sur ce qu'elle est.
+// Écran d'activation de la bêta. Il conserve exactement la même persistance :
+// seule la présentation est alignée sur la direction artistique Elyndor V2.
 export default function ActivationScreen({ navigation }: Props) {
   const [enregistrement, setEnregistrement] = useState(false);
 
@@ -30,27 +29,64 @@ export default function ActivationScreen({ navigation }: Props) {
 
   return (
     <FondAtmospherique style={{ flex: 1 }} imageFond={IMAGE_ACTIVATION}>
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.titre}>ELYNDOR</Text>
-      <Text style={styles.sousTitre}>Narrative Roleplay Engine</Text>
-      <Text style={styles.version}>Version {VERSION_APP}</Text>
-      <Separateur style={styles.separateur} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.marque}>
+          <Text style={styles.surtitre}>ENTREZ DANS LE MONDE</Text>
+          <Text style={styles.titre}>ELYNDOR</Text>
+          <Text style={styles.sousTitre}>Vos décisions laissent des traces.</Text>
+          <Text style={styles.version}>Version {VERSION_APP} · Bêta</Text>
+        </View>
 
-      <Text style={styles.paragraphe}>
-        Cette application est une bêta gratuite. Elle utilise ta propre clé API OpenRouter (configurée dans
-        Réglages) : les messages échangés sont envoyés au modèle que tu choisis, sous ta responsabilité.
-      </Text>
-      <Text style={styles.paragraphe}>
-        Un profil de contenu (Grand public / Adulte) te sera demandé avant de commencer une histoire. Le passage
-        en Adulte est protégé par un code que tu choisis toi-même — un garde-fou local, pas une vérification
-        d'âge réelle.
-      </Text>
-      <Text style={styles.paragraphe}>
-        Tes histoires, réglages et personnages restent stockés uniquement sur cet appareil.
-      </Text>
+        <Panneau style={styles.carte}>
+          <Text style={styles.titreCarte}>Avant de commencer</Text>
+          <Text style={styles.introduction}>
+            Elyndor construit un récit persistant autour de vos décisions. Cette version est encore en bêta :
+            voici les trois points à connaître avant d’entrer dans le monde.
+          </Text>
 
-      <Bouton titre="J'ai compris, commencer" onPress={accepter} desactive={enregistrement} style={styles.bouton} />
-    </ScrollView>
+          <Separateur style={styles.separateur} />
+
+          <View style={styles.point}>
+            <Text style={styles.numero}>I</Text>
+            <View style={styles.pointTexte}>
+              <Text style={styles.pointTitre}>Votre narrateur</Text>
+              <Text style={styles.paragraphe}>
+                L’application utilise le fournisseur IA que vous configurez dans Réglages. Les messages sont
+                envoyés au modèle choisi afin de produire la narration.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.point}>
+            <Text style={styles.numero}>II</Text>
+            <View style={styles.pointTexte}>
+              <Text style={styles.pointTitre}>Votre profil de contenu</Text>
+              <Text style={styles.paragraphe}>
+                Vous pourrez choisir Grand public ou Adulte. Le code du mode Adulte est un garde-fou local ; il
+                ne constitue pas une vérification d’âge.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.point}>
+            <Text style={styles.numero}>III</Text>
+            <View style={styles.pointTexte}>
+              <Text style={styles.pointTitre}>Vos histoires restent à vous</Text>
+              <Text style={styles.paragraphe}>
+                Histoires, personnages et réglages sont enregistrés localement sur l’appareil selon le mode de
+                stockage disponible.
+              </Text>
+            </View>
+          </View>
+
+          <Bouton
+            titre={enregistrement ? 'Ouverture…' : 'Entrer dans Elyndor'}
+            onPress={accepter}
+            desactive={enregistrement}
+            style={styles.bouton}
+          />
+        </Panneau>
+      </ScrollView>
     </FondAtmospherique>
   );
 }
@@ -58,45 +94,96 @@ export default function ActivationScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    padding: espacement.lg,
-    paddingTop: espacement.xl * 2,
+    paddingHorizontal: espacement.lg,
+    paddingVertical: espacement.xxl,
     justifyContent: 'center',
   },
-  titre: {
+  marque: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    alignItems: 'center',
+    marginBottom: espacement.lg,
+  },
+  surtitre: {
+    ...stylePetitesCapitales,
     color: couleurs.dore,
+    fontSize: 10,
+    letterSpacing: 2.6,
+    marginBottom: espacement.xs,
+  },
+  titre: {
+    color: couleurs.doreClair,
     fontFamily: polices.display,
-    fontSize: 36,
-    letterSpacing: 3,
+    fontSize: 40,
+    letterSpacing: 4,
     textAlign: 'center',
   },
   sousTitre: {
-    ...stylePetitesCapitales,
-    color: couleurs.texteAtténué,
-    fontSize: 12,
+    color: couleurs.texte,
+    fontFamily: polices.titre,
+    fontSize: 19,
     textAlign: 'center',
     marginTop: espacement.xs,
   },
   version: {
+    ...stylePetitesCapitales,
+    color: couleurs.texteFaible,
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: espacement.sm,
+  },
+  carte: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    padding: espacement.lg,
+    backgroundColor: couleurs.fondCarteDense,
+    borderColor: couleurs.bordureDoree,
+  },
+  titreCarte: {
+    color: couleurs.doreClair,
+    fontFamily: polices.titre,
+    fontSize: 24,
+  },
+  introduction: {
     color: couleurs.texteAtténué,
     fontFamily: polices.corps,
-    fontSize: 13,
-    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 22,
     marginTop: espacement.xs,
   },
   separateur: {
-    width: 160,
-    alignSelf: 'center',
-    marginTop: espacement.md,
-    marginBottom: espacement.lg,
+    marginVertical: espacement.md,
   },
-  paragraphe: {
-    color: couleurs.texte,
-    fontFamily: polices.corps,
-    fontSize: 16,
-    lineHeight: 23,
+  point: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: espacement.md,
   },
+  numero: {
+    color: couleurs.dore,
+    fontFamily: polices.displaySemiGras,
+    fontSize: 14,
+    width: 36,
+    paddingTop: 2,
+  },
+  pointTexte: {
+    flex: 1,
+  },
+  pointTitre: {
+    color: couleurs.texte,
+    fontFamily: polices.titre,
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  paragraphe: {
+    color: couleurs.texteAtténué,
+    fontFamily: polices.corps,
+    fontSize: 15,
+    lineHeight: 21,
+  },
   bouton: {
-    marginTop: espacement.lg,
+    marginTop: espacement.md,
   },
 });
