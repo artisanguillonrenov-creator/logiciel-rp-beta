@@ -5,9 +5,9 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import ActivationScreen from '../screens/ActivationScreen';
-import StartScreen from '../screens/StartScreenStudio';
-import CreateScreen from '../screens/CreateScreenStudio';
-import ConversationScreen from '../screens/ConversationScreenStudio';
+import StartScreenStudio from '../screens/StartScreenStudio';
+import CreateScreenStudio from '../screens/CreateScreenStudio';
+import ConversationScreenStudio from '../screens/ConversationScreenStudio';
 import SettingsScreen from '../screens/SettingsScreen';
 import PluginsScreen from '../screens/PluginsScreen';
 import DesignerSettingsScreen from '../screens/DesignerSettingsScreen';
@@ -66,9 +66,9 @@ export default function RootNavigator() {
         }}
       >
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Demarrage" component={StartScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Creation" component={CreateScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Conversation" component={ConversationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Demarrage" component={StartScreenStudio} options={{ headerShown: false }} />
+        <Stack.Screen name="Creation" component={CreateScreenStudio} options={{ headerShown: false }} />
+        <Stack.Screen name="Conversation" component={ConversationScreenStudio} options={{ headerShown: false }} />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
         <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
