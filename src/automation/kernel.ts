@@ -157,18 +157,7 @@ export async function processAutomationQueue(): Promise<void> {
 }
 
 export async function retryFailedAutomationJobs(): Promise<number> {
-  const jobs = await automationJobs.list();
-  const failed = jobs.filter((job) => job.status === 'failed');
-  let count = 0;
-  for (const job of failed) {
-    await automationJobs.enqueue({
-      type: job.type,
-      dedupeKey: job.dedupeKey ? `${job.dedupeKey}:retry:${Date.now()}:${count}` : undefined,
-      storyId: job.storyId,
-      payload: job.payload,
-    });
-    count++;
-  }
+  const count = await automationJobs.retryFailed();
   await refreshJobCounts();
   void processAutomationQueue();
   return count;
