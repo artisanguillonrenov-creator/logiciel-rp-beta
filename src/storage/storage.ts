@@ -6,7 +6,7 @@ import { stockageHistoires } from './storyDatabase';
 import { creerDepotReglages } from './settingsRepository';
 import { stockageCles } from './apiKeysStore';
 import { publierReglages } from '../automation/settingsStore';
-import { publierSauvegardeNarrative } from '../automation/storyEvents';
+import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
 
@@ -68,6 +68,7 @@ export async function deleteStory(id: string): Promise<void> {
 
 export async function saveStory(story: StoryState): Promise<void> {
   await histoires.enregistrer(story);
+  publierSauvegardeStory(story);
   publierSauvegardeNarrative(story);
 }
 

@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { StoryState } from '../types';
 import { getStory } from '../storage/storage';
+import { abonnerSauvegardesStory } from '../automation/storyEvents';
 import ConversationScreen from './ConversationScreen';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 
@@ -26,15 +27,22 @@ export default function ConversationScreenStudio(props: Props) {
 
   useEffect(() => {
     let actif = true;
-    getStory(route.params.storyId)
+    const storyId = route.params.storyId;
+    const unsubscribe = abonnerSauvegardesStory((event) => {
+      if (actif && event.storyId === storyId) setStory(event.story);
+    });
+
+    getStory(storyId)
       .then((s) => {
         if (actif) setStory(s);
       })
       .catch(() => {
         // ConversationScreen conserve son propre traitement d'erreur.
       });
+
     return () => {
       actif = false;
+      unsubscribe();
     };
   }, [route.params.storyId]);
 

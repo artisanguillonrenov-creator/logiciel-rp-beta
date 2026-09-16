@@ -68,10 +68,16 @@ export default function RootNavigator() {
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Demarrage" component={StartScreenStudio} options={{ headerShown: false }} />
         <Stack.Screen name="Creation" component={CreateScreenStudio} options={{ headerShown: false }} />
-        {/* ConversationScreen configure son titre et ses actions (recherche, export,
-            concepteur, branche) via navigation.setOptions. Le header doit donc
-            rester monté : le masquer rendait ces commandes inaccessibles. */}
-        <Stack.Screen name="Conversation" component={ConversationScreenStudio} options={{ title: 'Récit' }} />
+        {/* ConversationScreen monte ses actions (recherche, export, concepteur,
+            branche) dans le header. Le titre visuel de la scène est déjà rendu
+            juste dessous par ConversationScreenStudio : on laisse donc le
+            centre du header vide pour préserver la place des commandes sur
+            téléphone. */}
+        <Stack.Screen
+          name="Conversation"
+          component={ConversationScreenStudio}
+          options={{ headerTitle: () => null }}
+        />
         <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
         <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
