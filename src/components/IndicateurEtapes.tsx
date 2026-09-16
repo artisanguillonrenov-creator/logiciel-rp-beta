@@ -1,37 +1,32 @@
 import React, { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { couleurs, ombresLueur } from '../theme/theme';
+import { couleurs, ombresLueur, polices } from '../theme/theme';
 
 interface IndicateurEtapesProps {
   total: number;
-  // Index (0-based) de l'étape active — les étapes d'index inférieur sont
-  // marquées complétées (coche), celle-ci reçoit le glow bleu.
   actif: number;
 }
 
-// Cercles reliés par une ligne fine ; complété = coche + liseré or, actif =
-// liseré bleu avec glow — remplace la barre de progression plate.
+// Ligne de progression V2 : plus fine, plus éditoriale. Les étapes passées
+// sont dorées (progression dans le monde), l'étape active reste bleu arcane.
 export default function IndicateurEtapes({ total, actif }: IndicateurEtapesProps) {
   return (
-    <View style={styles.rangee}>
+    <View style={styles.rangee} accessibilityRole="progressbar">
       {Array.from({ length: total }).map((_, i) => {
         const complete = i < actif;
         const estActif = i === actif;
         return (
           <Fragment key={i}>
-            <View
-              style={[
-                styles.cercle,
-                complete && styles.cercleComplete,
-                estActif && styles.cercleActif,
-                estActif && ombresLueur,
-              ]}
-            >
-              <Text style={[styles.texteCercle, (complete || estActif) && styles.texteCercleActif]}>
+            <View style={[styles.point, complete && styles.pointComplete, estActif && styles.pointActif, estActif && ombresLueur]}>
+              <Text style={[styles.texte, complete && styles.texteComplete, estActif && styles.texteActif]}>
                 {complete ? '✓' : i + 1}
               </Text>
             </View>
-            {i < total - 1 && <View style={styles.ligne} />}
+            {i < total - 1 && (
+              <View style={styles.rail}>
+                <View style={[styles.railRempli, { width: i < actif ? '100%' : '0%' }]} />
+              </View>
+            )}
           </Fragment>
         );
       })}
@@ -44,33 +39,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
-  cercle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  point: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: couleurs.bordure,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: couleurs.fond,
+    backgroundColor: couleurs.fondProfond,
   },
-  cercleComplete: {
+  pointComplete: {
     borderColor: couleurs.dore,
+    backgroundColor: 'rgba(216, 179, 107, 0.12)',
   },
-  cercleActif: {
+  pointActif: {
     borderColor: couleurs.accent,
+    backgroundColor: 'rgba(78, 174, 248, 0.16)',
   },
-  texteCercle: {
-    color: couleurs.texteAtténué,
-    fontSize: 12,
+  texte: {
+    color: couleurs.texteFaible,
+    fontFamily: polices.corpsMedium,
+    fontSize: 10,
   },
-  texteCercleActif: {
-    color: couleurs.texte,
+  texteComplete: {
+    color: couleurs.doreClair,
   },
-  ligne: {
-    width: 20,
+  texteActif: {
+    color: couleurs.accentClair,
+  },
+  rail: {
+    width: 34,
     height: 1,
     backgroundColor: couleurs.bordure,
+    overflow: 'hidden',
+  },
+  railRempli: {
+    height: 1,
+    backgroundColor: couleurs.dore,
   },
 });
