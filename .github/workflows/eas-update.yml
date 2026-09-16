@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - claude/new-session-glwy6e
-  pull_request:
-    branches:
-      - claude/new-session-glwy6e
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       message:
@@ -37,9 +33,7 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            UPDATE_MESSAGE="Prélecture PR #${{ github.event.pull_request.number }} - $GITHUB_SHA"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             UPDATE_MESSAGE="${{ github.event.inputs.message }}"
           else
             UPDATE_MESSAGE="Mise à jour automatique $GITHUB_SHA"
