@@ -17,6 +17,11 @@ import {
   registerNarrativeAutomationHandlers,
   type NarrativeAutomationDeps,
 } from './narrativeRoutines';
+import {
+  enqueueVisualAvatarSync,
+  registerVisualAutomationHandlers,
+  type VisualAutomationDeps,
+} from './visualRoutines';
 
 function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>): void {
   let modeleLocalPresent = false;
@@ -42,11 +47,17 @@ const narrativeDeps: NarrativeAutomationDeps = {
   updateStoryIf,
 };
 
+const visualDeps: VisualAutomationDeps = {
+  getSettings,
+  getStory,
+};
+
 /**
  * Monte une seule fois le noyau d'automatismes au niveau racine :
  * - restaure les jobs interrompus après fermeture/crash ;
  * - garde les capacités synchronisées avec chaque sauvegarde de réglages ;
- * - relie chaque nouvelle révision narrative aux routines de rattrapage ;
+ * - relie chaque nouvelle révision narrative aux routines de post-traitement ;
+ * - orchestre les automatismes visuels après le post-traitement narratif ;
  * - traite les jobs persistants en attente ;
  * - vérifie les mises à jour au retour au premier plan, avec TTL.
  */
@@ -55,12 +66,20 @@ export default function AutomationProvider({ children }: { children: React.React
     let actif = true;
     const unregisterHandlers = registerBuiltInAutomationHandlers();
     const unregisterNarrativeHandlers = registerNarrativeAutomationHandlers(narrativeDeps);
+    const unregisterVisualHandlers = registerVisualAutomationHandlers(visualDeps);
     const unsubscribeSettings = abonnerReglages((settings) => {
       if (actif) recalculerCapacites(settings);
     });
     const unsubscribeStories = abonnerSauvegardesNarratives((event) => {
       if (!actif) return;
-      void enqueueNarrativePostprocess(event).catch(() => {});
+      // Ordre volontaire : le job visuel est créé après le job narratif.
+      // La file du Kernel étant sérielle, il lira ainsi le lore émergent
+      // fraîchement produit avant de décider quels portraits manquent.
+      void (async () => {
+        await enqueueNarrativePostprocess(event);
+        if (!actif) return;
+        await enqueueVisualAvatarSync(event.story);
+      })().catch(() => {});
     });
 
     const demarrer = async () => {
@@ -75,7 +94,7 @@ export default function AutomationProvider({ children }: { children: React.React
       if (!actif) return;
       // Une fermeture a pu survenir après la sauvegarde d'un tour mais avant
       // l'enqueue du job. Le scan de démarrage ne retient que les histoires
-      // dont au moins un pipeline est réellement en retard.
+      // dont au moins un pipeline narratif est réellement en retard.
       await enqueueNarrativeCatchupOnStartup(narrativeDeps).catch(() => 0);
       await enqueueUpdateCheckIfDue().catch(() => false);
       void processAutomationQueue();
@@ -98,6 +117,7 @@ export default function AutomationProvider({ children }: { children: React.React
       subscription.remove();
       unsubscribeStories();
       unsubscribeSettings();
+      unregisterVisualHandlers();
       unregisterNarrativeHandlers();
       unregisterHandlers();
     };
