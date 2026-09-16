@@ -32,10 +32,11 @@ export function besoinRattrapageNarratif(story: StoryState): boolean {
 }
 
 /**
- * Rejoue uniquement les pipelines en retard. La génération normale continue
- * de faire son post-traitement historique ; cette routine sert de filet de
- * reprise après interruption et prépare leur déplacement progressif dans le
- * Kernel sans doubler les appels réseau quand l'état est déjà à jour.
+ * Exécute les pipelines dérivés après la sauvegarde du tour. Ils sont donc
+ * hors du chemin critique de génération : le joueur peut voir la réponse
+ * avant mémoire/directeur/monde/social/lore. La garde de révision empêche
+ * ensuite tout résultat calculé sur un transcript ancien d'écraser un tour
+ * plus récent.
  */
 export async function calculerRattrapageNarratif(
   story: StoryState,
@@ -97,8 +98,6 @@ export async function calculerRattrapageNarratif(
   }
   if (lorePromise) {
     loreEmergent = await lorePromise;
-    // Même invariant que generateTurn : le curseur avance après le passage
-    // de la routine, même si l'extracteur a choisi de conserver l'état.
     loreEmergentDernierIndex = story.messages.length;
   }
 
