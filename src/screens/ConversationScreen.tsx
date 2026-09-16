@@ -210,25 +210,53 @@ export default function ConversationScreen({ route, navigation }: Props) {
         title: story.meta.personnageNom,
         headerRight: () => (
           <View style={styles.rangeeEntete}>
-            <Pressable onPress={() => setModalRechercheOuvert(true)} hitSlop={8}>
-              <Text style={styles.iconeEntete}>🔍</Text>
+            <Pressable
+              style={styles.boutonEntete}
+              onPress={() => setModalRechercheOuvert(true)}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={t('Rechercher dans la conversation')}
+              accessibilityHint={t('Ouvre la recherche dans le récit.')}
+            >
+              <Text style={styles.iconeEntete}>⌕</Text>
             </Pressable>
-            <Pressable onPress={() => setModalExportOuvert(true)} hitSlop={8}>
-              <Text style={styles.iconeEntete}>⬇️</Text>
+            <Pressable
+              style={styles.boutonEntete}
+              onPress={() => setModalExportOuvert(true)}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={t('Exporter la conversation')}
+              accessibilityHint={t('Ouvre les formats d’export du récit.')}
+            >
+              <Text style={styles.iconeEntete}>↓</Text>
             </Pressable>
             {appSettings?.modeConcepteur && (
-              <Pressable onPress={ouvrirConcepteur} hitSlop={8}>
-                <Text style={styles.iconeEntete}>🛠</Text>
+              <Pressable
+                style={styles.boutonEntete}
+                onPress={ouvrirConcepteur}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={t('Outils concepteur')}
+                accessibilityHint={t('Ouvre les contrôles avancés de cette histoire.')}
+              >
+                <Text style={styles.iconeEntete}>◇</Text>
               </Pressable>
             )}
-            <Pressable onPress={creerBrancheIci} hitSlop={8}>
-              <Text style={styles.iconeEntete}>🌿</Text>
+            <Pressable
+              style={styles.boutonEntete}
+              onPress={creerBrancheIci}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={t('Créer une branche de l’histoire')}
+              accessibilityHint={t('Crée une nouvelle histoire à partir de cet état.')}
+            >
+              <Text style={styles.iconeEntete}>↗</Text>
             </Pressable>
           </View>
         ),
       });
     }
-  }, [story?.meta.personnageNom, creerBrancheIci, appSettings?.modeConcepteur]);
+  }, [story?.meta.personnageNom, creerBrancheIci, appSettings?.modeConcepteur, t]);
 
   useEffect(() => {
     if (!appSettings?.modeConcepteur) {
@@ -676,8 +704,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 ? () => (
                     <Panneau style={styles.panneauImageGeneree}>
                       <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
-                      <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" />
-                      <Text style={styles.aideImageGeneree}>{t("Appuie longuement sur l'image pour l'enregistrer.")}</Text>
+                      <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" accessibilityLabel={t('Illustration générée pour cette scène')} />
+                      <Text style={styles.aideImageGeneree}>{t('Cette illustration est conservée localement pour cette histoire et sera supprimée avec elle.')}</Text>
                       <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setImageGeneree(null)} style={{ marginTop: espacement.sm }} />
                     </Panneau>
                   )
@@ -727,7 +755,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 {t('Réponse à')} {messageEnReponseA.role === 'user' ? story.meta.personnageNom : t('Narrateur')} :{' '}
                 {t(messageEnReponseA.content)}
               </Text>
-              <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8}>
+              <Pressable onPress={() => setMessageEnReponseA(null)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('Annuler la réponse')}>
                 <Text style={styles.boutonFermerReponseA}>✕</Text>
               </Pressable>
             </View>
@@ -769,6 +797,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
               style={[styles.boutonEnvoyer, (enCours || !saisie.trim()) && styles.boutonDesactive]}
               onPress={() => envoyer()}
               disabled={enCours || !saisie.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={t('Envoyer')}
+              accessibilityState={{ disabled: enCours || !saisie.trim() }}
             >
               {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
             </Pressable>
@@ -1109,10 +1140,23 @@ const styles = StyleSheet.create({
   rangeeEntete: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: espacement.md,
+    gap: 4,
+  },
+  boutonEntete: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: couleurs.bordureSubtile,
+    backgroundColor: 'rgba(4, 12, 22, 0.72)',
+    borderRadius: 4,
   },
   iconeEntete: {
-    fontSize: 18,
+    color: couleurs.doreClair,
+    fontFamily: polices.corpsMedium,
+    fontSize: 17,
+    lineHeight: 20,
   },
   centreVide: {
     flex: 1,
