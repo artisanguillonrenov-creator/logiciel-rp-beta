@@ -55,6 +55,19 @@ test('OpenRouter conserve son endpoint et ses en-têtes', async () => {
   assert.equal(headers['X-Title'], 'Logiciel RP Beta');
 });
 
+test('les requêtes fournisseur reçoivent un signal d’annulation', async () => {
+  let signal: AbortSignal | null | undefined;
+  globalThis.fetch = async (_url, init) => {
+    signal = init?.signal;
+    return Response.json({ choices: [{ message: { content: 'ok' } }] });
+  };
+  await appelerChatDistant({
+    fournisseur: 'openrouter', apiKey: 'or-key', model: 'modele/or', messages: [], temperature: 1, maxTokens: 5,
+  });
+  assert.ok(signal instanceof AbortSignal);
+  assert.equal(signal?.aborted, false);
+});
+
 test('401/403 ne révèle jamais la clé Infermatic', async () => {
   for (const statut of [401, 403]) {
     globalThis.fetch = async () => Response.json({ error: { message: 'secret-test refusé' } }, { status: statut });

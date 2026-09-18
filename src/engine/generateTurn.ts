@@ -14,6 +14,8 @@ import {
   maxTokensPourLongueur,
   temperaturePourCreativite,
   NB_MESSAGES_RECENTS,
+  BUDGET_SYSTEM_LOCAL,
+  BUDGET_SYSTEM_DISTANT,
   type ContexteConstruction,
 } from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
@@ -340,10 +342,11 @@ export async function genererTour(
   ) || configurationLLM(appSettings).model;
   const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
+  const budgetPrompt = appSettings.moteurInference === 'local' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
 
   let reponse = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase),
+    messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
     temperature,
     maxTokens,
   });
@@ -382,7 +385,7 @@ export async function genererTour(
     try {
       reponse = await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
-        messages: construireMessages({ ...ctxBase, noteCorrection }),
+        messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt }),
         temperature,
         maxTokens,
       });

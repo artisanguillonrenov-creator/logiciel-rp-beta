@@ -1,6 +1,12 @@
 import type { AppSettings, Message, StoryState } from '../types';
 import { calculerSelectionLore, construireCtxBase } from './generateTurn';
-import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite } from './promptBuilder';
+import {
+  construireMessages,
+  maxTokensPourLongueur,
+  temperaturePourCreativite,
+  BUDGET_SYSTEM_LOCAL,
+  BUDGET_SYSTEM_DISTANT,
+} from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
@@ -52,7 +58,9 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
 
   const contenu = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase),
+    messages: construireMessages(ctxBase, {
+      budgetSysteme: appSettings.moteurInference === 'local' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT,
+    }),
     temperature,
     maxTokens,
   });

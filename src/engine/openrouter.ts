@@ -14,18 +14,12 @@ export interface AppelModeleOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
-  // Bascule vers le modèle local (expo-litert-lm) au lieu d'OpenRouter —
-  // voir MoteurInference. apiKey/model sont ignorés dans ce cas.
   moteurInference?: MoteurInference;
+  signal?: AbortSignal;
 }
 
 export { ErreurFournisseurLLM as ErreurOpenRouter };
 
-/**
- * Appelle l'API de complétion de chat d'OpenRouter, ou le modèle local si
- * moteurInference === 'local'. La clé API n'est jamais codée en dur : elle
- * vient toujours des réglages saisis par l'utilisateur.
- */
 export async function appellerModele({
   apiKey,
   model,
@@ -33,26 +27,20 @@ export async function appellerModele({
   temperature = 0.9,
   maxTokens = 700,
   moteurInference,
+  signal,
 }: AppelModeleOptions): Promise<string> {
   if (moteurInference === 'local') return genererTexteLocal(messages);
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   const TENTATIVES_MAX = 3;
   for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
-    const data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens });
+    const data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens, signal });
     const contenu = data?.choices?.[0]?.message?.content;
     if (typeof contenu === 'string' && contenu.trim()) return contenu.trim();
-    if (tentative === TENTATIVES_MAX) {
-      throw new ErreurFournisseurLLM('Réponse vide reçue du modèle.', fournisseur);
-    }
+    if (tentative === TENTATIVES_MAX) throw new ErreurFournisseurLLM('Réponse vide reçue du modèle.', fournisseur);
   }
   throw new ErreurFournisseurLLM('Réponse vide reçue du modèle.', fournisseur);
 }
 
-// Tool calling (brief Phase 2) : définition d'un outil au format function
-// calling d'OpenRouter/OpenAI. "composant" sert au cloisonnement des
-// permissions — chaque pipeline (monde, social...) ne reçoit que ses
-// propres outils, jamais l'ensemble (voir outilsPourComposant dans
-// src/engine/tools.ts).
 export interface ParametreOutil {
   type: 'string' | 'number' | 'boolean';
   description?: string;
@@ -72,6 +60,17 @@ export interface AppelOutil {
   arguments: Record<string, unknown>;
 }
 
+function versSchemaOutil(outil: ToolDefinition) {
+  return {
+    type: 'function',
+    function: {
+      name: outil.nom,
+      description: outil.description,
+      parameters: { type: 'object', properties: outil.parametres, required: outil.requis },
+    },
+  };
+}
+
 export interface AppelModeleAvecOutilsOptions {
   apiKey: string;
   model: string;
@@ -80,32 +79,9 @@ export interface AppelModeleAvecOutilsOptions {
   temperature?: number;
   maxTokens?: number;
   moteurInference?: MoteurInference;
+  signal?: AbortSignal;
 }
 
-function versSchemaOutil(outil: ToolDefinition) {
-  return {
-    type: 'function',
-    function: {
-      name: outil.nom,
-      description: outil.description,
-      parameters: {
-        type: 'object',
-        properties: outil.parametres,
-        required: outil.requis,
-      },
-    },
-  };
-}
-
-/**
- * Variante d'appellerModele qui expose des outils (function calling
- * OpenRouter) au lieu de demander un JSON en prose : les mutations d'état
- * structurées (brief Phase 2 — monde, social) passent par de vrais appels
- * d'outils plutôt que par une extraction regex sur le texte de réponse.
- * Un appel dont les arguments ne sont pas un JSON exploitable est écarté
- * silencieusement (réparation minimale : le reste des appels reste valide)
- * — la validation/réparation par schéma se fait ensuite dans tools.ts.
- */
 export async function appellerModeleAvecOutils({
   apiKey,
   model,
@@ -114,11 +90,12 @@ export async function appellerModeleAvecOutils({
   temperature = 0.2,
   maxTokens = 600,
   moteurInference,
+  signal,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   return appelerChatDistantAvecOutils(
-    { fournisseur, apiKey, model, messages, temperature, maxTokens },
+    { fournisseur, apiKey, model, messages, temperature, maxTokens, signal },
     outils,
     outils.map(versSchemaOutil),
   );
@@ -126,11 +103,6 @@ export async function appellerModeleAvecOutils({
 
 export type ModeleOpenRouter = ModeleDistant;
 
-/**
- * Liste les modèles disponibles sur OpenRouter (endpoint public, sans clé).
- * Permet à l'utilisateur de choisir parmi les options OpenRouter plutôt
- * qu'un modèle unique imposé (brief section 3).
- */
 export async function listerModeles(): Promise<ModeleOpenRouter[]> {
   return listerModelesDistants('openrouter');
 }

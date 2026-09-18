@@ -28,6 +28,7 @@
 - [Identité visuelle](#identité-visuelle)
 - [Roadmap](#roadmap)
 - [Contribuer](#contribuer)
+- [Données et sécurité](#données-et-sécurité)
 - [Licence](#licence)
 
 ---
@@ -304,6 +305,13 @@ ci-dessus, conservé pour l'historique.
 Voir [`CONTRIBUTING.md`](CONTRIBUTING.md). Chaque pull request passe la
 [validation CI](.github/workflows/pr-validation.yml) : tests, vérification
 des types, export web.
+
+## Données et sécurité
+
+Les histoires et les informations nécessaires à la génération peuvent être
+envoyées au fournisseur LLM configuré. Le stockage web durable est optionnel
+et non chiffré. Consulte [`PRIVACY.md`](PRIVACY.md) pour le détail des flux de
+données et [`SECURITY.md`](SECURITY.md) pour signaler une vulnérabilité.
 
 ## Licence
 

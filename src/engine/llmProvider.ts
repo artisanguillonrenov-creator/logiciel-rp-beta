@@ -65,6 +65,28 @@ export interface RequeteChatDistante {
   temperature: number;
   maxTokens: number;
   tools?: unknown[];
+  signal?: AbortSignal;
+}
+
+const DELAI_MAX_REQUETE_MS = 45_000;
+
+async function fetchAvecDelai(
+  effectuerFetch: typeof fetch,
+  url: string,
+  init: RequestInit,
+  signalExterne?: AbortSignal,
+): Promise<Response> {
+  const controleur = new AbortController();
+  const relayerAnnulation = () => controleur.abort(signalExterne?.reason);
+  if (signalExterne?.aborted) relayerAnnulation();
+  else signalExterne?.addEventListener('abort', relayerAnnulation, { once: true });
+  const timer = setTimeout(() => controleur.abort(new Error('Délai de réponse dépassé.')), DELAI_MAX_REQUETE_MS);
+  try {
+    return await effectuerFetch(url, { ...init, signal: controleur.signal });
+  } finally {
+    clearTimeout(timer);
+    signalExterne?.removeEventListener('abort', relayerAnnulation);
+  }
 }
 
 function nomFournisseur(fournisseur: Exclude<FournisseurLLM, 'local'>): string {
@@ -83,7 +105,7 @@ async function detailErreur(response: Response, apiKey: string): Promise<string>
 }
 
 export async function appelerChatDistant(options: RequeteChatDistante): Promise<any> {
-  const { fournisseur, apiKey, model, messages, temperature, maxTokens, tools } = options;
+  const { fournisseur, apiKey, model, messages, temperature, maxTokens, tools, signal } = options;
   const nom = nomFournisseur(fournisseur);
   if (!apiKey) throw new ErreurFournisseurLLM(`Aucune clé API ${nom} renseignée. Configure-la dans Réglages.`, fournisseur);
   if (!model) throw new ErreurFournisseurLLM(`Aucun modèle ${nom} sélectionné. Choisis-en un dans Réglages.`, fournisseur);
@@ -104,16 +126,22 @@ export async function appelerChatDistant(options: RequeteChatDistante): Promise<
   let response: Response;
   try {
     const effectuerFetch = fournisseur === 'infermatic' ? fetchInfermatic : fetch;
-    response = await effectuerFetch(`${URLS_FOURNISSEURS[fournisseur]}/chat/completions`, {
-      method: 'POST',
+      response = await fetchAvecDelai(effectuerFetch, `${URLS_FOURNISSEURS[fournisseur]}/chat/completions`, {
+        method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         ...(fournisseur === 'openrouter' ? { 'X-Title': 'Logiciel RP Beta' } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-  } catch {
+        },
+        body: JSON.stringify(body),
+      }, signal);
+  } catch (cause) {
+    if (signal?.aborted) {
+      throw new ErreurFournisseurLLM(`Génération ${nom} annulée.`, fournisseur);
+    }
+    if (cause instanceof Error && cause.name === 'AbortError') {
+      throw new ErreurFournisseurLLM(`Délai dépassé pour ${nom}. Réessaie avec un modèle plus rapide.`, fournisseur);
+    }
     throw new ErreurFournisseurLLM(`Impossible de contacter ${nom}. Vérifie ta connexion.`, fournisseur);
   }
 
@@ -184,9 +212,9 @@ export async function listerModelesDistants(
   let response: Response;
   try {
     const effectuerFetch = fournisseur === 'infermatic' ? fetchInfermatic : fetch;
-    response = await effectuerFetch(`${URLS_FOURNISSEURS[fournisseur]}/models`, {
-      headers: fournisseur === 'infermatic' ? { Authorization: `Bearer ${apiKey}` } : undefined,
-    });
+      response = await fetchAvecDelai(effectuerFetch, `${URLS_FOURNISSEURS[fournisseur]}/models`, {
+        headers: fournisseur === 'infermatic' ? { Authorization: `Bearer ${apiKey}` } : undefined,
+      });
   } catch {
     throw new ErreurFournisseurLLM(`Impossible de récupérer la liste des modèles ${nom}.`, fournisseur);
   }
