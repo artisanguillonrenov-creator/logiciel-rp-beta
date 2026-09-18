@@ -18,7 +18,7 @@ export const MONDES: Monde[] = [
     id: 'elyndor',
     nom: 'Elyndor',
     genre: 'Dark fantasy politique et aventure',
-    image: require('../../assets/scenes/creation-histoire.png'),
+    image: require('../../assets/scenes/cour-des-serments.png'),
     description:
       "Un monde de royaumes, de guildes et de tensions anciennes où chaque décision peut laisser une trace durable.",
     tags: ['Fantasy', 'Politique', 'Aventure', 'Sombre'],
