@@ -55,7 +55,7 @@ export interface StoryMeta {
   // Réglages. Optionnels, ignorés tant qu'absents.
   modeleOverride?: string;
   // Absent sur les anciennes histoires : leur override est OpenRouter-only.
-  modeleOverrideFournisseur?: 'openrouter' | 'infermatic';
+  modeleOverrideFournisseur?: 'openrouter' | 'infermatic' | 'codex';
   temperatureOverride?: number;
   // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
   // affiché à la place de personnageNom quand présent.
@@ -305,7 +305,10 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // reste le mode par défaut, 'local' bascule sur expo-litert-lm — voir
 // src/engine/localInference.ts et src/storage/modeleLocalStore.ts.
 // Natif uniquement : jamais proposé/activable sur le build web.
-export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local';
+// 'codex' passe par un Codex App Server / Gateway externe en JSON-RPC via
+// WebSocket (compte ChatGPT/Codex de l'utilisateur, pas de clé API OpenAI) —
+// voir src/engine/codexAppServerClient.ts et docs/CODEX_GATEWAY.md.
+export type FournisseurLLM = 'openrouter' | 'infermatic' | 'codex' | 'local';
 export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
@@ -356,6 +359,19 @@ export interface AppSettings {
   // coût négligeable ~0,05-0,08 $/image) ; true = gratuite mais limitée en
   // requêtes/minute et sans garantie de disponibilité, voir images.ts.
   modeleImagesGratuit?: boolean;
+  // Fournisseur Codex (ChatGPT/Codex via Codex App Server, voir
+  // src/engine/codexAppServerClient.ts) — authentification par compte
+  // ChatGPT, jamais par clé API OpenAI. codexGatewayToken est un SECRET
+  // (stocké comme les clés API, jamais en AsyncStorage — voir
+  // settingsRepository.ts) : il donne accès au gateway, pas au compte
+  // ChatGPT lui-même (les tokens OAuth restent gérés par Codex App Server,
+  // hors de cette application). codexModel ne doit jamais être une valeur
+  // codée en dur : uniquement un ID renvoyé par model/list pour le compte
+  // connecté.
+  codexGatewayUrl?: string;
+  codexGatewayToken?: string;
+  codexModel?: string;
+  codexReasoningEffort?: string;
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :

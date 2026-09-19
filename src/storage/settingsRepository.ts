@@ -2,7 +2,12 @@ import type { AppSettings } from '../types';
 import { creerFileSerie } from './serialQueue';
 
 const CLE_REGLAGES = '@rp_beta/settings';
-const CLES_API = ['openRouterApiKey', 'infermaticApiKey', 'embeddingsApiKey'] as const;
+// codexGatewayToken donne accès au Codex App Server / Gateway — même
+// statut de secret qu'une clé API, jamais laissé dans le JSON de réglages
+// en clair (voir apiKeysStore.ts / apiKeysStore.web.ts, SecureStore sur
+// Android/iOS). Les tokens OAuth ChatGPT eux-mêmes ne transitent jamais par
+// cette application — Codex App Server les gère de son côté.
+const CLES_API = ['openRouterApiKey', 'infermaticApiKey', 'embeddingsApiKey', 'codexGatewayToken'] as const;
 export type ClesApi = Pick<AppSettings, typeof CLES_API[number]>;
 export interface StockageCles {
   lire(): Promise<ClesApi | null>;
@@ -14,8 +19,14 @@ interface StockageReglages {
 }
 
 function separerCles(settings: AppSettings) {
-  const { openRouterApiKey, infermaticApiKey, embeddingsApiKey, ...publics } = settings;
-  return { publics, cles: { openRouterApiKey: openRouterApiKey ?? '', infermaticApiKey, embeddingsApiKey } };
+  const { openRouterApiKey, infermaticApiKey, embeddingsApiKey, codexGatewayToken, ...publics } = settings;
+  const cles: ClesApi = { openRouterApiKey: openRouterApiKey ?? '', infermaticApiKey, embeddingsApiKey };
+  // N'ajoute la clé que si elle est réellement définie : un objet réglages
+  // qui n'a jamais connu Codex ne doit pas se retrouver avec une propriété
+  // `codexGatewayToken: undefined` explicite après lecture/écriture (casse
+  // sinon toute comparaison stricte d'objet ailleurs dans l'app).
+  if (codexGatewayToken !== undefined) cles.codexGatewayToken = codexGatewayToken;
+  return { publics, cles };
 }
 
 export function creerDepotReglages(stockage: StockageReglages, secrets: StockageCles, defauts: AppSettings) {

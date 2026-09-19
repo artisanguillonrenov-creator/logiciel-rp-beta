@@ -1,6 +1,8 @@
 import type { MoteurInference } from '../types';
 import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
 import { appelerChatDistant, appelerChatDistantAvecOutils, ErreurFournisseurLLM, listerModelesDistants, type ModeleDistant } from './llmProvider';
+import { genererTexteCodex } from './codexAppServerClient';
+import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 export { configurationLLM } from './llmProvider';
 
 export interface ChatMessage {
@@ -16,6 +18,11 @@ export interface AppelModeleOptions {
   maxTokens?: number;
   moteurInference?: MoteurInference;
   signal?: AbortSignal;
+  // Fournisseur Codex uniquement (voir llmProvider.ts, configurationLLM) —
+  // ignorés par les autres fournisseurs.
+  gatewayUrl?: string;
+  gatewayToken?: string;
+  reasoningEffort?: string;
 }
 
 export { ErreurFournisseurLLM as ErreurOpenRouter };
@@ -28,8 +35,18 @@ export async function appellerModele({
   maxTokens = 700,
   moteurInference,
   signal,
+  gatewayUrl,
+  gatewayToken,
+  reasoningEffort,
 }: AppelModeleOptions): Promise<string> {
+  // Dispatcher de providers (chantier Codex, section 8) : le reste du
+  // moteur RP ne connaît que cette fonction, jamais la différence de
+  // transport REST (OpenRouter/Infermatic) vs JSON-RPC/WebSocket (Codex)
+  // vs sur l'appareil (local).
   if (moteurInference === 'local') return genererTexteLocal(messages);
+  if (moteurInference === 'codex') {
+    return genererTexteCodex({ gatewayUrl: gatewayUrl ?? '', gatewayToken: gatewayToken ?? '', model, reasoningEffort, messages, signal });
+  }
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   const TENTATIVES_MAX = 3;
   for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
@@ -80,6 +97,30 @@ export interface AppelModeleAvecOutilsOptions {
   maxTokens?: number;
   moteurInference?: MoteurInference;
   signal?: AbortSignal;
+  gatewayUrl?: string;
+  gatewayToken?: string;
+  reasoningEffort?: string;
+}
+
+/**
+ * Codex n'a pas de function calling natif activé côté RP (V1 sans outils
+ * agentiques, voir section 13 du chantier) : même repli JSON-en-prose que le
+ * moteur local, réutilisant le parsing existant plutôt qu'un second système
+ * d'outils.
+ */
+async function appellerCodexAvecOutilsJson(
+  options: AppelModeleAvecOutilsOptions,
+): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
+  const messagesAvecInstructions = ajouterInstructionsOutilsJson(options.messages, options.outils);
+  const brut = await genererTexteCodex({
+    gatewayUrl: options.gatewayUrl ?? '',
+    gatewayToken: options.gatewayToken ?? '',
+    model: options.model,
+    reasoningEffort: options.reasoningEffort,
+    messages: messagesAvecInstructions,
+    signal: options.signal,
+  });
+  return extraireAppelsOutilsJson(brut);
 }
 
 export async function appellerModeleAvecOutils({
@@ -91,8 +132,14 @@ export async function appellerModeleAvecOutils({
   maxTokens = 600,
   moteurInference,
   signal,
+  gatewayUrl,
+  gatewayToken,
+  reasoningEffort,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
+  if (moteurInference === 'codex') {
+    return appellerCodexAvecOutilsJson({ apiKey, model, messages, outils, moteurInference, signal, gatewayUrl, gatewayToken, reasoningEffort });
+  }
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   return appelerChatDistantAvecOutils(
     { fournisseur, apiKey, model, messages, temperature, maxTokens, signal },

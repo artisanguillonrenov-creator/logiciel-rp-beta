@@ -530,7 +530,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
         ...story.meta,
         modeleOverride: modeleOverrideEdit.trim() || undefined,
         modeleOverrideFournisseur: modeleOverrideEdit.trim()
-          ? (appSettings?.moteurInference === 'infermatic' ? 'infermatic' : 'openrouter')
+          ? (appSettings?.moteurInference === 'infermatic'
+              ? 'infermatic'
+              : appSettings?.moteurInference === 'codex'
+                ? 'codex'
+                : 'openrouter')
           : undefined,
         temperatureOverride: temperature !== undefined && !Number.isNaN(temperature) ? temperature : undefined,
       },

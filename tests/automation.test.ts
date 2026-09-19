@@ -71,6 +71,22 @@ test('le mode local exige un modèle réellement présent sur une plateforme nat
   assert.equal(calculerCapacites(settings, { plateforme: 'native', modeleLocalPresent: true }).narration, true);
 });
 
+test('Codex exige gateway (URL + token) ET modèle choisi, jamais une clé OpenRouter', () => {
+  const incomplet = calculerCapacites({ ...baseSettings, moteurInference: 'codex', openRouterApiKey: '' }, { plateforme: 'native' });
+  assert.equal(incomplet.narration, false);
+  assert.match(incomplet.raisons.narration ?? '', /ChatGPT\/Codex/);
+
+  const pret = calculerCapacites({
+    ...baseSettings,
+    moteurInference: 'codex',
+    openRouterApiKey: '',
+    codexGatewayUrl: 'wss://gateway.example/codex',
+    codexGatewayToken: 'gw-token',
+    codexModel: 'gpt-5.6-sol',
+  }, { plateforme: 'native' });
+  assert.equal(pret.narration, true);
+});
+
 function memoryStorage() {
   const data = new Map<string, string>();
   return {

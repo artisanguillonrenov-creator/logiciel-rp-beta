@@ -37,12 +37,18 @@ export function calculerCapacites(
   const modeleOpenRouter = nonVide(settings.model);
   const modeleInfermatic = nonVide(settings.infermaticModel);
   const modeleLocalPresent = env.plateforme === 'native' && env.modeleLocalPresent === true;
+  // Codex n'a ni clé API OpenAI ni modèle codé en dur : la narration n'est
+  // prête que si le gateway (URL + token) ET un modèle choisi via
+  // model/list sont tous deux renseignés — voir docs/CODEX_GATEWAY.md.
+  const codexPret = nonVide(settings.codexGatewayUrl) && nonVide(settings.codexGatewayToken) && nonVide(settings.codexModel);
 
   const narration = fournisseur === 'local'
     ? modeleLocalPresent
     : fournisseur === 'infermatic'
       ? cleInfermatic && modeleInfermatic
-      : cleOpenRouter && modeleOpenRouter;
+      : fournisseur === 'codex'
+        ? codexPret
+        : cleOpenRouter && modeleOpenRouter;
 
   // Le pipeline embeddings sait utiliser Infermatic quand il est le
   // fournisseur actif, OpenRouter sinon, ou la clé embeddings de secours.
@@ -62,7 +68,9 @@ export function calculerCapacites(
       ? 'Aucun modèle local prêt sur cet appareil.'
       : fournisseur === 'infermatic'
         ? 'Clé ou modèle Infermatic manquant.'
-        : 'Clé ou modèle OpenRouter manquant.';
+        : fournisseur === 'codex'
+          ? 'Connexion ChatGPT/Codex ou modèle manquant.'
+          : 'Clé ou modèle OpenRouter manquant.';
   }
   if (!embeddings) raisons.embeddings = 'Aucun fournisseur d’embeddings disponible.';
   if (!images) raisons.images = settings.genererImagesActive

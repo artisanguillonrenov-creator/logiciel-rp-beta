@@ -12,12 +12,21 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
 import { listerModelesDistants } from '../engine/llmProvider';
+import {
+  ErreurCodexGateway,
+  obtenirClientCodex,
+  reinitialiserClientsCodex,
+  type CodexAccountInfo,
+  type CodexLoginStart,
+  type CodexModelInfo,
+} from '../engine/codexAppServerClient';
 import { verifierMiseAJour } from '../engine/updater';
 import {
   importerModeleLocal,
@@ -73,6 +82,23 @@ export default function SettingsScreen({ navigation }: Props) {
   const [urlMaj, setUrlMaj] = useState('');
 
   const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
+
+  // ChatGPT / Codex (chantier Codex) — codexGatewayUrl/Token restent dans
+  // Paramètres avancés (section 14 du chantier) ; le reste vit ici.
+  const [codexGatewayUrl, setCodexGatewayUrl] = useState('');
+  const [codexGatewayToken, setCodexGatewayToken] = useState('');
+  const [codexModel, setCodexModel] = useState('');
+  const [codexReasoningEffort, setCodexReasoningEffort] = useState('');
+  const [codexCompte, setCodexCompte] = useState<CodexAccountInfo | null>(null);
+  const [codexConnexionEnCours, setCodexConnexionEnCours] = useState(false);
+  const [codexErreur, setCodexErreur] = useState('');
+  const [codexLogin, setCodexLogin] = useState<CodexLoginStart | null>(null);
+  const [codexModaleLoginOuverte, setCodexModaleLoginOuverte] = useState(false);
+  const [codexModeles, setCodexModeles] = useState<CodexModelInfo[]>([]);
+  const [codexChargementModeles, setCodexChargementModeles] = useState(false);
+  const [codexModalModelesOuverte, setCodexModalModelesOuverte] = useState(false);
+  const controleurLoginCodexRef = useRef<AbortController | null>(null);
+
   const [genererImagesActive, setGenererImagesActive] = useState(false);
   const [modeleImagesGratuit, setModeleImagesGratuit] = useState(false);
   const [modeleLocalPresent, setModeleLocalPresent] = useState(false);
@@ -95,9 +121,16 @@ export default function SettingsScreen({ navigation }: Props) {
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
+      setCodexGatewayUrl(settings.codexGatewayUrl ?? '');
+      setCodexGatewayToken(settings.codexGatewayToken ?? '');
+      setCodexModel(settings.codexModel ?? '');
+      setCodexReasoningEffort(settings.codexReasoningEffort ?? '');
       setGenererImagesActive(settings.genererImagesActive ?? false);
       setModeleImagesGratuit(settings.modeleImagesGratuit ?? false);
       setChargement(false);
+      if (settings.moteurInference === 'codex' && settings.codexGatewayUrl && settings.codexGatewayToken) {
+        rafraichirCompteCodex(settings.codexGatewayUrl, settings.codexGatewayToken);
+      }
     }).catch(() => {
       setErreurChargement(t('Impossible de lire les réglages. Réessaie après avoir déverrouillé l’appareil ou autorisé le stockage du navigateur.'));
       setChargement(false);
@@ -138,6 +171,110 @@ export default function SettingsScreen({ navigation }: Props) {
     if (go >= 1) return `${go.toFixed(2)} Go`;
     return `${(octets / (1024 * 1024)).toFixed(0)} Mo`;
   }
+
+  // --- ChatGPT / Codex ---------------------------------------------------
+  // account/read fait TOUJOURS autorité (jamais un booléen sauvegardé) —
+  // voir section 6 du chantier Codex.
+
+  function clientCodex(gatewayUrl: string, gatewayToken: string) {
+    return obtenirClientCodex(gatewayUrl.trim(), gatewayToken.trim());
+  }
+
+  async function rafraichirCompteCodex(gatewayUrl: string, gatewayToken: string) {
+    if (!gatewayUrl.trim() || !gatewayToken.trim()) {
+      setCodexCompte(null);
+      return;
+    }
+    setCodexConnexionEnCours(true);
+    setCodexErreur('');
+    try {
+      const compte = await clientCodex(gatewayUrl, gatewayToken).accountRead();
+      setCodexCompte(compte);
+    } catch (e) {
+      // Panne du gateway : on ne touche ni aux réglages ni au modèle choisi,
+      // on signale seulement l'erreur (section 15 du chantier).
+      setCodexErreur(e instanceof ErreurCodexGateway ? e.message : t('Connexion à ChatGPT/Codex impossible.'));
+    } finally {
+      setCodexConnexionEnCours(false);
+    }
+  }
+
+  async function demarrerConnexionCodex() {
+    if (!codexGatewayUrl.trim() || !codexGatewayToken.trim()) {
+      setCodexErreur(t('Renseigne l’URL et le token du gateway Codex dans Paramètres avancés avant de te connecter.'));
+      return;
+    }
+    setCodexErreur('');
+    setCodexConnexionEnCours(true);
+    try {
+      const client = clientCodex(codexGatewayUrl, codexGatewayToken);
+      const login = await client.accountLoginStart();
+      setCodexLogin(login);
+      setCodexModaleLoginOuverte(true);
+      const controleur = new AbortController();
+      controleurLoginCodexRef.current = controleur;
+      const compte = await client.waitForLoginOutcome(login.loginId, { signal: controleur.signal });
+      setCodexCompte(compte);
+      setCodexModaleLoginOuverte(false);
+      setCodexLogin(null);
+    } catch (e) {
+      setCodexErreur(e instanceof ErreurCodexGateway ? e.message : t('Connexion à ChatGPT/Codex impossible.'));
+      setCodexModaleLoginOuverte(false);
+      setCodexLogin(null);
+    } finally {
+      setCodexConnexionEnCours(false);
+      controleurLoginCodexRef.current = null;
+    }
+  }
+
+  function annulerConnexionCodex() {
+    const login = codexLogin;
+    controleurLoginCodexRef.current?.abort();
+    setCodexModaleLoginOuverte(false);
+    setCodexLogin(null);
+    if (login) {
+      clientCodex(codexGatewayUrl, codexGatewayToken).accountLoginCancel(login.loginId).catch(() => {});
+    }
+  }
+
+  async function copierCodeCodex() {
+    if (codexLogin) await Clipboard.setStringAsync(codexLogin.userCode);
+  }
+
+  async function deconnecterCodex() {
+    setCodexConnexionEnCours(true);
+    setCodexErreur('');
+    try {
+      await clientCodex(codexGatewayUrl, codexGatewayToken).accountLogout();
+    } catch (e) {
+      setCodexErreur(e instanceof ErreurCodexGateway ? e.message : t('Connexion à ChatGPT/Codex impossible.'));
+    } finally {
+      reinitialiserClientsCodex();
+      setCodexCompte({ connected: false });
+      setCodexModeles([]);
+      setCodexConnexionEnCours(false);
+    }
+  }
+
+  async function ouvrirSelecteurModelesCodex() {
+    setCodexModalModelesOuverte(true);
+    setCodexChargementModeles(true);
+    setCodexErreur('');
+    try {
+      const modeles = await clientCodex(codexGatewayUrl, codexGatewayToken).modelList();
+      setCodexModeles(modeles);
+    } catch (e) {
+      // Le modèle déjà sauvegardé n'est jamais effacé par un échec de
+      // model/list (section 15 du chantier) — on signale seulement l'erreur.
+      setCodexErreur(e instanceof ErreurCodexGateway ? e.message : t('Connexion à ChatGPT/Codex impossible.'));
+    } finally {
+      setCodexChargementModeles(false);
+    }
+  }
+
+  const modeleCodexSelectionne = codexModeles.find((m) => m.id === codexModel);
+  const codexModeleIntrouvable = !!codexModel && codexModeles.length > 0 && !modeleCodexSelectionne;
+  const effortsCodexDisponibles = modeleCodexSelectionne?.supportedReasoningEfforts ?? [];
 
   async function sauvegarderProfil(profil: ProfilContenu, code: string | undefined) {
     try {
@@ -230,6 +367,10 @@ export default function SettingsScreen({ navigation }: Props) {
         profilContenu,
         codeDeverrouillage,
         moteurInference,
+        codexGatewayUrl: codexGatewayUrl.trim() || undefined,
+        codexGatewayToken: codexGatewayToken.trim() || undefined,
+        codexModel: codexModel.trim() || undefined,
+        codexReasoningEffort: codexReasoningEffort.trim() || undefined,
         genererImagesActive,
         modeleImagesGratuit,
       });
@@ -251,7 +392,15 @@ export default function SettingsScreen({ navigation }: Props) {
     ? t('Sur cet appareil')
     : moteurInference === 'infermatic'
       ? 'Infermatic'
-      : 'OpenRouter';
+      : moteurInference === 'codex'
+        ? 'ChatGPT / Codex'
+        : 'OpenRouter';
+
+  const etatCodexAffiche = codexConnexionEnCours
+    ? t('Connexion…')
+    : codexCompte?.connected
+      ? t('Connecté')
+      : t('Non connecté');
 
   const profilAffiche = profilContenu === 'adulte'
     ? t('Adulte')
@@ -353,6 +502,16 @@ export default function SettingsScreen({ navigation }: Props) {
                 >
                   <Text style={[styles.texteOptionMoteur, moteurInference === 'infermatic' && styles.texteOptionMoteurActif]}>Infermatic</Text>
                 </Pressable>
+                <Pressable
+                  style={[styles.optionMoteur, moteurInference === 'codex' && styles.optionMoteurActive]}
+                  onPress={() => {
+                    setMoteurInference('codex');
+                    setCodexErreur('');
+                    if (codexGatewayUrl.trim() && codexGatewayToken.trim()) rafraichirCompteCodex(codexGatewayUrl, codexGatewayToken);
+                  }}
+                >
+                  <Text style={[styles.texteOptionMoteur, moteurInference === 'codex' && styles.texteOptionMoteurActif]}>{t('ChatGPT / Codex')}</Text>
+                </Pressable>
                 {Platform.OS !== 'web' && (
                   <Pressable
                     style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
@@ -420,6 +579,85 @@ export default function SettingsScreen({ navigation }: Props) {
                     onPress={() => ouvrirSelecteurModeles('infermatic')}
                     style={styles.boutonAction}
                   />
+                </View>
+              )}
+
+              {moteurInference === 'codex' && (
+                <View style={styles.blocFournisseur}>
+                  <View style={styles.etatTechnique}>
+                    <Text style={styles.ligneLabel}>{t('CHATGPT / CODEX')}</Text>
+                    <Text style={styles.ligneValeur}>{t('État')} : {etatCodexAffiche}</Text>
+                    {codexCompte?.connected && (
+                      <>
+                        {codexCompte.email ? <Text style={styles.aide}>{t('Compte')} : {codexCompte.email}</Text> : null}
+                        {codexCompte.plan ? <Text style={styles.aide}>{t('Abonnement')} : {codexCompte.plan}</Text> : null}
+                      </>
+                    )}
+                  </View>
+
+                  {!codexCompte?.connected && (
+                    <Bouton
+                      titre={codexConnexionEnCours ? t('Connexion…') : t('Se connecter avec ChatGPT')}
+                      variante="arcane"
+                      onPress={demarrerConnexionCodex}
+                      desactive={codexConnexionEnCours}
+                      style={styles.boutonAction}
+                    />
+                  )}
+
+                  {codexCompte?.connected && (
+                    <>
+                      <Pressable style={styles.ligneSelection} onPress={ouvrirSelecteurModelesCodex}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.ligneLabel}>{t('Modèle')}</Text>
+                          <Text style={styles.ligneValeur}>{codexModel || t('Choisir un modèle…')}</Text>
+                        </View>
+                        <Text style={styles.chevron}>›</Text>
+                      </Pressable>
+                      {codexModeleIntrouvable && (
+                        <Text style={[styles.aide, { color: couleurs.danger }]}>
+                          {t('Le modèle précédemment sélectionné n’est plus disponible. Choisis-en un nouveau.')}
+                        </Text>
+                      )}
+
+                      {effortsCodexDisponibles.length > 0 && (
+                        <>
+                          <Text style={styles.label}>{t('Effort de raisonnement')}</Text>
+                          <View style={styles.rangeeMoteur}>
+                            {effortsCodexDisponibles.map((effort) => (
+                              <Pressable
+                                key={effort}
+                                style={[styles.optionMoteur, codexReasoningEffort === effort && styles.optionMoteurActive]}
+                                onPress={() => setCodexReasoningEffort(effort)}
+                              >
+                                <Text style={[styles.texteOptionMoteur, codexReasoningEffort === effort && styles.texteOptionMoteurActif]}>{effort}</Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        </>
+                      )}
+
+                      <Bouton
+                        titre={t('Actualiser les modèles')}
+                        variante="secondaire"
+                        onPress={ouvrirSelecteurModelesCodex}
+                        style={styles.boutonAction}
+                      />
+                      <Bouton
+                        titre={t('Se déconnecter')}
+                        variante="secondaire"
+                        onPress={deconnecterCodex}
+                        desactive={codexConnexionEnCours}
+                        style={styles.boutonAction}
+                        texteStyle={{ color: couleurs.danger }}
+                      />
+                    </>
+                  )}
+
+                  {codexErreur ? <Text style={[styles.statut, { color: couleurs.danger }]}>{codexErreur}</Text> : null}
+                  <Text style={styles.aide}>
+                    {t('Connexion par compte ChatGPT (pas de clé API OpenAI). L’adresse et le token du gateway Codex se règlent dans Paramètres avancés, ci-dessous.')}
+                  </Text>
                 </View>
               )}
 
@@ -562,6 +800,31 @@ export default function SettingsScreen({ navigation }: Props) {
                   />
                   <Text style={styles.aide}>{t('OpenRouter peut utiliser cette clé OpenAI en secours pour la recherche sémantique. Infermatic utilise ses propres embeddings.')}</Text>
 
+                  <View style={styles.separateurInterne} />
+                  <Text style={styles.label}>{t('Gateway ChatGPT / Codex')}</Text>
+                  <Champ
+                    label={t('URL du gateway (wss://…)')}
+                    value={codexGatewayUrl}
+                    onChangeText={setCodexGatewayUrl}
+                    placeholder="wss://mon-gateway.example/codex"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Champ
+                    label={t('Token du gateway')}
+                    value={codexGatewayToken}
+                    onChangeText={setCodexGatewayToken}
+                    placeholder={t('Token d’accès au gateway')}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Text style={styles.aide}>
+                    {t('Ce token donne accès au gateway Codex App Server, pas directement à ton compte ChatGPT — il est conservé comme une clé API (coffre sécurisé). Voir docs/CODEX_GATEWAY.md pour installer et sécuriser le gateway.')}
+                  </Text>
+
                   <Text style={styles.noteSecurite}>
                     {t(Platform.OS === 'web'
                       ? 'Sur le web, les clés restent normalement dans la session du navigateur.'
@@ -650,6 +913,62 @@ export default function SettingsScreen({ navigation }: Props) {
               />
             )}
             <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setModalOuvert(false)} style={styles.boutonAction} />
+          </View>
+        </Modal>
+
+        <Modal visible={codexModaleLoginOuverte} animationType="slide" onRequestClose={annulerConnexionCodex} transparent>
+          <View style={styles.fondModalCentre}>
+            <Panneau style={styles.carteLoginCodex}>
+              <Text style={styles.modalSurtitre}>{t('CHATGPT')}</Text>
+              {codexLogin ? (
+                <>
+                  <Text style={styles.label}>{t('Code')}</Text>
+                  <Text style={styles.codeCodex}>{codexLogin.userCode}</Text>
+                  <Bouton titre={t('Copier le code')} variante="secondaire" onPress={copierCodeCodex} style={styles.boutonAction} />
+                  <Bouton
+                    titre={t('Ouvrir la page de connexion')}
+                    variante="arcane"
+                    onPress={() => Linking.openURL(codexLogin.verificationUrl)}
+                    style={styles.boutonAction}
+                  />
+                </>
+              ) : (
+                <ActivityIndicator color={couleurs.accent} style={{ marginVertical: espacement.lg }} />
+              )}
+              <Bouton titre={t('Annuler')} variante="secondaire" onPress={annulerConnexionCodex} style={styles.boutonAction} />
+            </Panneau>
+          </View>
+        </Modal>
+
+        <Modal visible={codexModalModelesOuverte} animationType="slide" onRequestClose={() => setCodexModalModelesOuverte(false)}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalSurtitre}>{t('CATALOGUE')}</Text>
+            <Text style={styles.titre}>{t('Modèles ChatGPT / Codex')}</Text>
+            {codexChargementModeles ? (
+              <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
+            ) : codexErreur ? (
+              <Text style={styles.statut}>{codexErreur}</Text>
+            ) : (
+              <FlatList
+                style={{ marginTop: espacement.sm }}
+                data={codexModeles}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.ligneModele}
+                    onPress={() => {
+                      setCodexModel(item.id);
+                      setCodexReasoningEffort('');
+                      setCodexModalModelesOuverte(false);
+                    }}
+                  >
+                    <Text style={styles.nomModele}>{item.displayName || item.id}</Text>
+                    <Text style={styles.idModele}>{item.id}</Text>
+                  </Pressable>
+                )}
+              />
+            )}
+            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setCodexModalModelesOuverte(false)} style={styles.boutonAction} />
           </View>
         </Modal>
 
@@ -973,6 +1292,26 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 12,
     marginTop: 2,
+  },
+  fondModalCentre: {
+    flex: 1,
+    backgroundColor: 'rgba(4, 10, 18, 0.86)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: espacement.lg,
+  },
+  carteLoginCodex: {
+    width: '100%',
+    maxWidth: 420,
+    padding: espacement.lg,
+  },
+  codeCodex: {
+    color: couleurs.doreClair,
+    fontFamily: polices.display,
+    fontSize: 32,
+    letterSpacing: 3,
+    textAlign: 'center',
+    marginVertical: espacement.md,
   },
   optionProfil: {
     marginTop: espacement.md,

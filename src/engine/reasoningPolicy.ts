@@ -67,6 +67,22 @@ export function resoudreProfilRaisonnement(
   fournisseur: Exclude<FournisseurLLM, 'local'>,
   model: string,
 ): ProfilRaisonnementModele {
+  if (fournisseur === 'codex') {
+    // Codex App Server n'expose pas ce raisonnement via le corps d'une
+    // requête REST (transport JSON-RPC/WebSocket, voir
+    // codexAppServerClient.ts) : la protection se joue en deux temps,
+    // toujours côté client — le transport ignore purement et simplement
+    // toute notification dont la méthode évoque un canal de raisonnement
+    // (reasoning/analysis/thinking), puis le texte final passe quand même
+    // ici par le même filtrage de repli que les autres fournisseurs, au cas
+    // où le modèle l'injecterait malgré tout dans le texte visible. Toute
+    // la famille de modèles Codex/GPT descend de familles connues pour
+    // raisonner en interne : supportsReasoning est donc toujours vrai,
+    // indépendamment de l'ID de modèle choisi par l'utilisateur (jamais
+    // codé en dur ici, voir section 7 du chantier).
+    return { supportsReasoning: true, reasoningPolicy: 'hidden', balisesRaisonnement: BALISES_PAR_DEFAUT };
+  }
+
   const { supportsReasoning, balises } = estConnuPourRaisonner(model);
 
   if (fournisseur === 'openrouter') {

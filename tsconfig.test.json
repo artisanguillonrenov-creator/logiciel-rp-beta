@@ -8,5 +8,5 @@
     "outDir": ".test-dist",
     "noEmit": false
   },
-  "include": ["tests/**/*.ts", "src/engine/llmProvider.ts", "src/engine/embeddings.ts", "src/engine/toolCallingJson.ts", "src/engine/infermaticScheduler.ts", "src/engine/responseSanitizer.ts", "src/storage/embeddingsCacheMutex.ts"]
+  "include": ["tests/**/*.ts", "src/engine/llmProvider.ts", "src/engine/embeddings.ts", "src/engine/toolCallingJson.ts", "src/engine/infermaticScheduler.ts", "src/engine/responseSanitizer.ts", "src/engine/reasoningPolicy.ts", "src/engine/codexAppServerClient.ts", "src/storage/embeddingsCacheMutex.ts", "src/storage/settingsRepository.ts"]
 }
