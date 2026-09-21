@@ -52,7 +52,7 @@ jobs:
       - name: Validate ChatGPT image gateway runtime
         run: |
           cd server/chatgpt-gateway
-          node build-v9-runtime.mjs
+          node build-v9-runtime-fixed.mjs
           node --check server-v9-runtime.js
 
       - name: Configure root base URL for Netlify
