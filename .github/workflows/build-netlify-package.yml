@@ -46,6 +46,15 @@ jobs:
       - name: Apply V8 local-first token economy
         run: node scripts/apply-token-economy-v8.mjs
 
+      - name: Apply V9 visual identity pipeline
+        run: node scripts/apply-visual-pipeline-v9.mjs
+
+      - name: Validate ChatGPT image gateway runtime
+        run: |
+          cd server/chatgpt-gateway
+          node build-v9-runtime.mjs
+          node --check server-v9-runtime.js
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
@@ -77,7 +86,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V8-TOKEN-ECONOMY
+          name: ELYNDOR-RP-NETLIFY-V9-VISUAL-IDENTITY
           path: dist/
           if-no-files-found: error
           compression-level: 6
