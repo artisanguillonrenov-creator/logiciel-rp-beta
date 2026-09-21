@@ -89,7 +89,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V9-VISUAL-IDENTITY
+          name: ELYNDOR-RP-NETLIFY-V9-1-PERSISTENT-CHATGPT-SESSION
           path: dist/
           if-no-files-found: error
           compression-level: 6
