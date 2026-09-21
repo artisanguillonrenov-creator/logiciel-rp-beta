@@ -80,8 +80,8 @@ async function generateImageWithCodex({ prompt, references = [] }) {
   if (texte.length > 12_000) throw new Error('Prompt image trop long.');
   const refs = Array.isArray(references) ? references.slice(0, 4) : [];
 
-  // IMPORTANT : les fichiers image doivent vivre dans le workspace courant de Codex.
-  // /tmp est visible par Node mais peut être hors du montage écrivable du sandbox imagegen.
+  // Render fournit déjà l'isolation du service. Le job image vit dans un
+  // sous-dossier éphémère du workspace du gateway pour éviter /tmp.
   const racineImages = path.join(process.cwd(), '.elyndor-image-jobs');
   await fsPromises.mkdir(racineImages, { recursive: true });
   const dossier = await fsPromises.mkdtemp(path.join(racineImages, 'job-'));
@@ -91,7 +91,6 @@ async function generateImageWithCodex({ prompt, references = [] }) {
     for (let i = 0; i < refs.length; i++) {
       fichiersReference.push(await ecrireReferenceImage(refs[i], dossier, i + 1));
     }
-    const sortieVoulue = path.join(dossier, 'elyndor-output.png');
     const started = await codex.request('thread/start', { serviceName: 'elyndor_rp_image' }, 30_000);
     threadId = started?.thread?.id;
     if (!threadId) throw new Error('Codex n’a pas renvoyé de threadId pour l’image.');
@@ -128,10 +127,9 @@ async function generateImageWithCodex({ prompt, references = [] }) {
           ? 'Les images jointes sont des références CANONIQUES de personnages : conserve strictement identité du visage, race, carnation, cheveux, silhouette et signes distinctifs. Adapte seulement pose, expression, vêtements visibles et éclairage à la scène.'
           : '',
         'Ne crée aucun texte, logo, watermark ou interface dans l’image.',
-        'Le dossier de travail courant est déjà le dossier de sortie autorisé.',
-        'Enregistre le fichier final DANS CE DOSSIER, sous le nom exact : elyndor-output.png',
-        'Utilise un chemin relatif (./elyndor-output.png), pas /tmp ni un autre chemin absolu.',
-        'Ne produis pas de variante supplémentaire. Ne modifie et ne lis aucun autre fichier que les références jointes et le fichier de sortie demandé.',
+        'Le dossier de travail courant est le seul dossier de sortie autorisé.',
+        'Enregistre le fichier final sous le nom exact ./elyndor-output.png.',
+        'Ne produis pas de variante supplémentaire et ne lis aucun fichier extérieur aux références jointes.',
         '',
         '[DESCRIPTION VISUELLE ELYNDOR]',
         texte,
@@ -147,10 +145,11 @@ async function generateImageWithCodex({ prompt, references = [] }) {
         cwd: dossier,
         effort: 'low',
         approvalPolicy: 'never',
+        // App Server recommande externalSandbox quand l'hôte est déjà isolé.
+        // Cela évite de lancer un second bubblewrap, interdit par Render.
         sandboxPolicy: {
-          type: 'workspaceWrite',
-          writableRoots: [racineImages, dossier],
-          networkAccess: true,
+          type: 'externalSandbox',
+          networkAccess: 'enabled',
         },
       }, 30_000);
       turnId = turn?.turn?.id || null;
