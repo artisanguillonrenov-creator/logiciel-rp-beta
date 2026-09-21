@@ -64,7 +64,7 @@ function remplacer(contenu, ancien, nouveau, etiquette) {
   ecrire(path, s);
 }
 
-// 4) Un tour RP ouvre un compteur avant la narration et le ferme seulement après validation/réparation.
+// 4) Un tour RP ouvre un compteur avant la narration et le ferme après validation/réparation.
 {
   const path = 'src/engine/generateTurn.ts';
   let s = lire(path);
@@ -105,34 +105,21 @@ function remplacer(contenu, ancien, nouveau, etiquette) {
 {
   const path = 'src/engine/conversationExport.ts';
   let s = lire(path);
+
+  const originalTexte = `function genererTexteBrut(story: StoryState): string {\n  const lignes: string[] = [];\n  const titre = story.meta.titre || story.meta.personnageNom;\n  lignes.push(titre, '='.repeat(titre.length), '');\n  for (const m of story.messages) {\n    lignes.push(\`\${nomAuteur(story, m.role)} :\`);\n    lignes.push(m.content);\n    lignes.push('');\n  }\n  return lignes.join('\\n');\n}`;
+
+  const nouveauTexte = `function nombre(n: number): string {\n  return Math.max(0, Math.floor(n || 0)).toLocaleString('fr-FR');\n}\n\nfunction usageTexte(m: Message): string[] {\n  const u = m.usageTokens;\n  if (!u) return [];\n  return [\n    '[CONSOMMATION DU TOUR]',\n    \`Entrée : \${nombre(u.inputTokens)} tokens\`,\n    \`Cache : \${nombre(u.cachedInputTokens)} tokens\`,\n    \`Sortie : \${nombre(u.outputTokens)} tokens\`,\n    \`Raisonnement : \${nombre(u.reasoningTokens)} tokens\`,\n    \`Total : \${nombre(u.totalTokens)} tokens\`,\n    \`Appels IA : \${u.apiCalls}\${u.complete ? '' : ' · données partielles'}\`,\n  ];\n}\n\nfunction usageTotal(story: StoryState) {\n  const usages = story.messages.map((m) => m.usageTokens).filter((u): u is NonNullable<Message['usageTokens']> => !!u);\n  return usages.reduce((a, u) => ({\n    inputTokens: a.inputTokens + u.inputTokens,\n    cachedInputTokens: a.cachedInputTokens + u.cachedInputTokens,\n    outputTokens: a.outputTokens + u.outputTokens,\n    reasoningTokens: a.reasoningTokens + u.reasoningTokens,\n    totalTokens: a.totalTokens + u.totalTokens,\n    apiCalls: a.apiCalls + u.apiCalls,\n    incomplete: a.incomplete + (u.complete ? 0 : 1),\n  }), { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, apiCalls: 0, incomplete: 0 });\n}\n\nfunction genererTexteBrut(story: StoryState): string {\n  const lignes: string[] = [];\n  const titre = story.meta.titre || story.meta.personnageNom;\n  lignes.push(titre, '='.repeat(titre.length), '');\n  for (const m of story.messages) {\n    lignes.push(\`\${nomAuteur(story, m.role)} :\`);\n    lignes.push(m.content);\n    if (m.role === 'assistant' && m.usageTokens) lignes.push('', ...usageTexte(m));\n    lignes.push('');\n  }\n  const total = usageTotal(story);\n  if (total.apiCalls > 0) {\n    lignes.push('==============================');\n    lignes.push('STATISTIQUES DE LA CONVERSATION');\n    lignes.push(\`Appels IA : \${total.apiCalls}\`);\n    lignes.push(\`Tokens entrée : \${nombre(total.inputTokens)}\`);\n    lignes.push(\`Tokens cache : \${nombre(total.cachedInputTokens)}\`);\n    lignes.push(\`Tokens sortie : \${nombre(total.outputTokens)}\`);\n    lignes.push(\`Tokens raisonnement : \${nombre(total.reasoningTokens)}\`);\n    lignes.push(\`CONSOMMATION TOTALE : \${nombre(total.totalTokens)} tokens\`);\n    if (total.incomplete) lignes.push(\`Attention : \${total.incomplete} tour(s) ont des données partielles.\`);\n    lignes.push('==============================', '');\n  }\n  return lignes.join('\\n');\n}`;
+  s = remplacer(s, originalTexte, nouveauTexte, 'export texte');
+
+  const originalHtml = `function genererCorpsHtml(story: StoryState): { titre: string; messages: string } {\n  const titre = echapperHtml(story.meta.titre || story.meta.personnageNom);\n  const messages = story.messages\n    .map((m) => {\n      const auteur = echapperHtml(nomAuteur(story, m.role));\n      const classe = m.role === 'user' ? 'joueur' : 'narrateur';\n      return \`<p class="message \${classe}"><span class="auteur">\${auteur}</span><br/>\${segmentsVersHtml(m.content)}</p>\`;\n    })\n    .join('\\n');\n  return { titre, messages };\n}`;
+
+  const nouveauHtml = `function genererCorpsHtml(story: StoryState): { titre: string; messages: string } {\n  const titre = echapperHtml(story.meta.titre || story.meta.personnageNom);\n  const messages = story.messages\n    .map((m) => {\n      const auteur = echapperHtml(nomAuteur(story, m.role));\n      const classe = m.role === 'user' ? 'joueur' : 'narrateur';\n      const usage = m.role === 'assistant' && m.usageTokens\n        ? \`<div class="usage"><strong>Consommation du tour</strong> · Entrée \${nombre(m.usageTokens.inputTokens)} · Cache \${nombre(m.usageTokens.cachedInputTokens)} · Sortie \${nombre(m.usageTokens.outputTokens)} · Raisonnement \${nombre(m.usageTokens.reasoningTokens)} · <strong>Total \${nombre(m.usageTokens.totalTokens)} tokens</strong> · \${m.usageTokens.apiCalls} appel(s) IA\${m.usageTokens.complete ? '' : ' · données partielles'}</div>\`\n        : '';\n      return \`<div class="bloc-message"><p class="message \${classe}"><span class="auteur">\${auteur}</span><br/>\${segmentsVersHtml(m.content)}</p>\${usage}</div>\`;\n    })\n    .join('\\n');\n  const total = usageTotal(story);\n  const resumeUsage = total.apiCalls > 0\n    ? \`<section class="usage-total"><h2>Statistiques de la conversation</h2><p>Appels IA : \${total.apiCalls}<br/>Entrée : \${nombre(total.inputTokens)} tokens<br/>Cache : \${nombre(total.cachedInputTokens)} tokens<br/>Sortie : \${nombre(total.outputTokens)} tokens<br/>Raisonnement : \${nombre(total.reasoningTokens)} tokens<br/><strong>Consommation totale : \${nombre(total.totalTokens)} tokens</strong>\${total.incomplete ? \`<br/>Données partielles sur \${total.incomplete} tour(s).\` : ''}</p></section>\`\n    : '';\n  return { titre, messages: messages + resumeUsage };\n}`;
+  s = remplacer(s, originalHtml, nouveauHtml, 'export HTML');
+
   s = remplacer(
     s,
-    `function genererTexteBrut(story: StoryState): string {`,
-    `function nombre(n: number): string {\n  return Math.max(0, Math.floor(n || 0)).toLocaleString('fr-FR');\n}\n\nfunction usageTexte(m: Message): string[] {\n  const u = m.usageTokens;\n  if (!u) return [];\n  return [\n    '[CONSOMMATION DU TOUR]',\n    \`Entrée : \${nombre(u.inputTokens)} tokens\`,\n    \`Cache : \${nombre(u.cachedInputTokens)} tokens\`,\n    \`Sortie : \${nombre(u.outputTokens)} tokens\`,\n    \`Raisonnement : \${nombre(u.reasoningTokens)} tokens\`,\n    \`Total : \${nombre(u.totalTokens)} tokens\`,\n    \`Appels IA : \${u.apiCalls}\${u.complete ? '' : ' · données partielles'}\`,\n  ];\n}\n\nfunction usageTotal(story: StoryState) {\n  const usages = story.messages.map((m) => m.usageTokens).filter((u): u is NonNullable<Message['usageTokens']> => !!u);\n  return usages.reduce((a, u) => ({\n    inputTokens: a.inputTokens + u.inputTokens,\n    cachedInputTokens: a.cachedInputTokens + u.cachedInputTokens,\n    outputTokens: a.outputTokens + u.outputTokens,\n    reasoningTokens: a.reasoningTokens + u.reasoningTokens,\n    totalTokens: a.totalTokens + u.totalTokens,\n    apiCalls: a.apiCalls + u.apiCalls,\n    incomplete: a.incomplete + (u.complete ? 0 : 1),\n  }), { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, apiCalls: 0, incomplete: 0 });\n}\n\nfunction genererTexteBrut(story: StoryState): string {`,
-    'helpers export tokens',
-  );
-  s = remplacer(
-    s,
-    `    lignes.push(m.content);\n    lignes.push('');\n  }\n  return lignes.join('\\n');`,
-    `    lignes.push(m.content);\n    if (m.role === 'assistant' && m.usageTokens) {\n      lignes.push('', ...usageTexte(m));\n    }\n    lignes.push('');\n  }\n  const total = usageTotal(story);\n  if (total.apiCalls > 0) {\n    lignes.push('==============================');\n    lignes.push('STATISTIQUES DE LA CONVERSATION');\n    lignes.push(\`Appels IA : \${total.apiCalls}\`);\n    lignes.push(\`Tokens entrée : \${nombre(total.inputTokens)}\`);\n    lignes.push(\`Tokens cache : \${nombre(total.cachedInputTokens)}\`);\n    lignes.push(\`Tokens sortie : \${nombre(total.outputTokens)}\`);\n    lignes.push(\`Tokens raisonnement : \${nombre(total.reasoningTokens)}\`);\n    lignes.push(\`CONSOMMATION TOTALE : \${nombre(total.totalTokens)} tokens\`);\n    if (total.incomplete) lignes.push(\`Attention : \${total.incomplete} tour(s) ont des données partielles.\`);\n    lignes.push('==============================', '');\n  }\n  return lignes.join('\\n');`,
-    'export texte par tour + total',
-  );
-  s = remplacer(
-    s,
-    `      return \`<p class="message \${classe}"><span class="auteur">\${auteur}</span><br/>\${segmentsVersHtml(m.content)}</p>\`;`,
-    `      const usage = m.role === 'assistant' && m.usageTokens\n        ? \`<div class="usage"><strong>Consommation du tour</strong> · Entrée \${nombre(m.usageTokens.inputTokens)} · Cache \${nombre(m.usageTokens.cachedInputTokens)} · Sortie \${nombre(m.usageTokens.outputTokens)} · Raisonnement \${nombre(m.usageTokens.reasoningTokens)} · <strong>Total \${nombre(m.usageTokens.totalTokens)} tokens</strong> · \${m.usageTokens.apiCalls} appel(s) IA\${m.usageTokens.complete ? '' : ' · données partielles'}</div>\`\n        : '';\n      return \`<div class="bloc-message"><p class="message \${classe}"><span class="auteur">\${auteur}</span><br/>\${segmentsVersHtml(m.content)}</p>\${usage}</div>\`;`,
-    'usage html par message',
-  );
-  s = remplacer(
-    s,
-    `    .join('\\n');\n  return { titre, messages };`,
-    `    .join('\\n');\n  const total = usageTotal(story);\n  const resumeUsage = total.apiCalls > 0\n    ? \`<section class="usage-total"><h2>Statistiques de la conversation</h2><p>Appels IA : \${total.apiCalls}<br/>Entrée : \${nombre(total.inputTokens)} tokens<br/>Cache : \${nombre(total.cachedInputTokens)} tokens<br/>Sortie : \${nombre(total.outputTokens)} tokens<br/>Raisonnement : \${nombre(total.reasoningTokens)} tokens<br/><strong>Consommation totale : \${nombre(total.totalTokens)} tokens</strong>\${total.incomplete ? \`<br/>Données partielles sur \${total.incomplete} tour(s).\` : ''}</p></section>\`\n    : '';\n  return { titre, messages: messages + resumeUsage };`,
-    'résumé usage html',
-  );
-  s = remplacer(
-    s,
-    `  .locuteur { color: #1a1a1a; }\n`;,
-    `  .locuteur { color: #1a1a1a; }\n  .bloc-message { margin-bottom: 18px; }\n  .bloc-message p.message { margin-bottom: 5px; }\n  .usage { font-family: Arial, sans-serif; font-size: 10px; color: #666; border-left: 2px solid #c8a45d; padding: 4px 8px; margin: 0 0 12px 0; }\n  .usage-total { margin-top: 32px; padding-top: 14px; border-top: 1px solid #bbb; font-family: Arial, sans-serif; font-size: 11px; }\n  .usage-total h2 { font-size: 15px; }\n`;,
+    `  .locuteur { color: #1a1a1a; }\n` ,
+    `  .locuteur { color: #1a1a1a; }\n  .bloc-message { margin-bottom: 18px; }\n  .bloc-message p.message { margin-bottom: 5px; }\n  .usage { font-family: Arial, sans-serif; font-size: 10px; color: #666; border-left: 2px solid #c8a45d; padding: 4px 8px; margin: 0 0 12px 0; }\n  .usage-total { margin-top: 32px; padding-top: 14px; border-top: 1px solid #bbb; font-family: Arial, sans-serif; font-size: 11px; }\n  .usage-total h2 { font-size: 15px; }\n`,
     'styles usage html',
   );
   ecrire(path, s);
