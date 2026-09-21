@@ -84,12 +84,22 @@ export default function StartScreenStudio({ navigation }: Props) {
     <FondAtmospherique style={styles.container} imageFond={IMAGE_ACCUEIL}>
       <View style={[styles.voile, compact && styles.voileCompact]} pointerEvents="none" />
 
-      <View style={[styles.page, { paddingTop: Math.max(insets.top, espacement.md), paddingBottom: Math.max(insets.bottom, espacement.md) }]}>
-        <Pressable style={styles.langue} onPress={() => setModalLangueOuvert(true)} hitSlop={8}>
-          <Text style={styles.langueSymbole}>◎</Text>
-          <Text style={styles.langueTexte}>{LANGUES_SUGGEREES.find((l) => l.code === langue)?.label ?? langue.toUpperCase()}</Text>
-        </Pressable>
+      <Pressable style={styles.langue} onPress={() => setModalLangueOuvert(true)} hitSlop={8}>
+        <Text style={styles.langueSymbole}>◎</Text>
+        <Text style={styles.langueTexte}>{LANGUES_SUGGEREES.find((l) => l.code === langue)?.label ?? langue.toUpperCase()}</Text>
+      </Pressable>
 
+      <ScrollView
+        style={styles.page}
+        contentContainerStyle={[
+          styles.pageContenu,
+          {
+            paddingTop: Math.max(insets.top, espacement.md),
+            paddingBottom: Math.max(insets.bottom, espacement.md) + 120,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.marque, compact && styles.marqueCompact]}>
           <View style={styles.rangeeTitre}>
             <Text style={styles.sceau}>✦</Text>
@@ -98,8 +108,6 @@ export default function StartScreenStudio({ navigation }: Props) {
           <Text style={styles.sousTitre}>{t('Vos décisions laissent des traces.')}</Text>
           <Separateur style={styles.separateurTitre} />
         </View>
-
-        <View style={styles.espaceCentral} />
 
         <View style={[styles.actions, compact && styles.actionsCompact]}>
           {derniereHistoire ? (
@@ -148,7 +156,7 @@ export default function StartScreenStudio({ navigation }: Props) {
         </View>
 
         <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>
-      </View>
+      </ScrollView>
 
       <SelecteurLangue visible={modalLangueOuvert} onFermer={() => setModalLangueOuvert(false)} />
       <ModalGuide visible={modalGuideOuvert} onFermer={() => setModalGuideOuvert(false)} />
@@ -272,6 +280,10 @@ const styles = StyleSheet.create({
   voileCompact: { backgroundColor: 'rgba(2, 8, 15, 0.30)' },
   page: {
     flex: 1,
+  },
+  pageContenu: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: espacement.lg,
   },
   langue: {
@@ -310,7 +322,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   separateurTitre: { width: 150, marginTop: espacement.sm },
-  espaceCentral: { flex: 1, minHeight: 12 },
   actions: {
     width: '100%',
     maxWidth: 520,
@@ -320,24 +331,25 @@ const styles = StyleSheet.create({
   },
   actionsCompact: { maxWidth: 460 },
   carteContinuer: {
-    minHeight: 88,
+    height: 84,
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     backgroundColor: couleurs.fondCarte,
     borderWidth: 1,
     borderColor: couleurs.bordure,
     borderRadius: rayon.lg,
-    overflow: 'hidden',
+    paddingHorizontal: espacement.md,
+    gap: espacement.md,
     marginBottom: espacement.xs,
   },
-  miniatureSauvegarde: { width: 88, minHeight: 88 },
-  miniatureVide: { width: 88, alignItems: 'center', justifyContent: 'center', backgroundColor: couleurs.fondCarteDense },
-  runeMiniature: { color: couleurs.dore, fontSize: 24 },
-  contenuContinuer: { flex: 1, justifyContent: 'center', paddingHorizontal: espacement.md, paddingVertical: espacement.sm },
+  miniatureSauvegarde: { width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: couleurs.bordureSubtile },
+  miniatureVide: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: couleurs.fondCarteDense },
+  runeMiniature: { color: couleurs.dore, fontSize: 20 },
+  contenuContinuer: { flex: 1, minWidth: 0, justifyContent: 'center' },
   labelContinuer: { fontFamily: polices.displaySemiGras, textTransform: 'uppercase', letterSpacing: interlettrage.labelSection, color: couleurs.dore, fontSize: 11 },
   nomHistoire: { color: couleurs.texte, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.nomPersonnage, fontSize: 13, marginTop: 3 },
   metaHistoire: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 15, marginTop: 3 },
-  flecheContinuer: { color: couleurs.dore, fontFamily: polices.titre, fontSize: 32, alignSelf: 'center', paddingRight: espacement.md },
+  flecheContinuer: { color: couleurs.dore, fontFamily: polices.titre, fontSize: 32, alignSelf: 'center' },
   invitationPremiere: {
     backgroundColor: couleurs.fondCarte,
     borderWidth: 1,
@@ -370,9 +382,8 @@ const styles = StyleSheet.create({
   texteLien: { color: couleurs.texteAtténué, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.pilule, fontSize: 11 },
   presse: { opacity: 0.72 },
   version: {
-    position: 'absolute',
-    left: espacement.sm,
-    bottom: 2,
+    alignSelf: 'center',
+    marginTop: espacement.xs,
     color: couleurs.texteFaible,
     fontFamily: polices.corps,
     fontSize: 10,

@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   contenu: {
     paddingHorizontal: espacement.lg,
     paddingTop: espacement.lg,
-    paddingBottom: espacement.xxl,
+    paddingBottom: 120,
   },
   largeur: {
     width: '100%',

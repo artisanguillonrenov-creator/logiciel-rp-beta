@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: espacement.lg,
     paddingTop: espacement.lg,
-    paddingBottom: espacement.xxl,
+    paddingBottom: 120,
   },
   largeur: {
     width: '100%',

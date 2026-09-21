@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 1100,
     alignSelf: 'center',
-    paddingBottom: espacement.xl,
+    paddingBottom: 120,
     gap: espacement.md,
   },
   rangeeColonnes: {

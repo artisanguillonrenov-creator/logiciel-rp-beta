@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: espacement.lg,
     paddingTop: espacement.xl,
-    paddingBottom: espacement.xxl,
+    paddingBottom: 120,
   },
   entetePage: {
     marginBottom: espacement.lg,

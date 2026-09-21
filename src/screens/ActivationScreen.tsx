@@ -103,7 +103,8 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingHorizontal: espacement.lg,
-    paddingVertical: espacement.xxl,
+    paddingTop: espacement.xxl,
+    paddingBottom: 120,
     justifyContent: 'center',
   },
   marque: {

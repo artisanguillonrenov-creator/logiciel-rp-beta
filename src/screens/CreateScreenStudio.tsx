@@ -187,7 +187,7 @@ function TitreEtape({ index, titre, sousTitre }: { index: number; titre: string;
 export default function CreateScreenStudio({ navigation }: Props) {
   const { t } = useLangue();
   const { width } = useWindowDimensions();
-  const tablette = width >= 760;
+  const tablette = width >= 900;
 
   const [etape, setEtape] = useState(0);
   const [profilContenu, setProfilContenu] = useState<ProfilContenu | undefined>(undefined);
@@ -657,7 +657,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
       <Modal visible={modalPersonasOuvert} animationType="slide" onRequestClose={() => setModalPersonasOuvert(false)}>
         <View style={styles.modalPersonas}>
           <Text style={styles.titreModal}>{t('Mes personnages')}</Text>
-          <ScrollView contentContainerStyle={{ paddingBottom: espacement.xl }}>
+          <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
             {personas.map((persona) => (
               <Pressable key={persona.id} onPress={() => choisirPersona(persona)} style={styles.personaLigne}>
                 <Text style={styles.personaNom}>{persona.nom}</Text>
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   libellesEtapes: { flexDirection: 'row', justifyContent: 'space-between', maxWidth: 560, width: '100%', alignSelf: 'center', marginTop: 6 },
   libelleEtape: { ...stylePetitesCapitales, color: couleurs.texteFaible, fontSize: 9 },
   libelleEtapeActif: { color: couleurs.doreClair },
-  contenu: { width: '100%', maxWidth: 1180, alignSelf: 'center', padding: espacement.md, paddingBottom: espacement.xxl },
+  contenu: { width: '100%', maxWidth: 1180, alignSelf: 'center', padding: espacement.md, paddingBottom: 120 },
   contenuTablette: { paddingHorizontal: espacement.xl },
   enteteEtape: { marginBottom: espacement.lg },
   ligneTitreEtape: { flexDirection: 'row', alignItems: 'center', gap: espacement.sm },
@@ -709,12 +709,12 @@ const styles = StyleSheet.create({
   titreEtape: { flex: 1, color: couleurs.doreClair, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.titreEcran, fontSize: 22 },
   numeroEtape: { ...stylePetitesCapitales, color: couleurs.texteAtténué, fontSize: 10 },
   sousTitreEtape: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 15, marginTop: 4, marginLeft: 28 },
-  deuxColonnes: { flexDirection: 'row', alignItems: 'stretch', gap: espacement.lg },
+  deuxColonnes: { flexDirection: 'row', alignItems: 'flex-start', gap: espacement.lg },
   colonneUnique: { flexDirection: 'column' },
-  colonneIllustration: { flex: 0.85, minHeight: 420, borderWidth: 1, borderColor: couleurs.bordureDoree, backgroundColor: couleurs.fondCarteDense, overflow: 'hidden', borderRadius: rayon.lg },
-  colonnePortrait: { flex: 0.72, minWidth: 0 },
+  colonneIllustration: { flex: 0.85, alignSelf: 'flex-start', borderWidth: 1, borderColor: couleurs.bordureDoree, backgroundColor: couleurs.fondCarteDense, overflow: 'hidden', borderRadius: rayon.lg },
+  colonnePortrait: { flex: 0.72, minWidth: 0, alignSelf: 'flex-start' },
   colonneChoix: { flex: 1.28, minWidth: 0 },
-  imageHero: { width: '100%', flex: 1, minHeight: 360 },
+  imageHero: { width: '100%', aspectRatio: 3 / 4, maxHeight: 420 },
   cartoucheHero: { padding: espacement.md, backgroundColor: couleurs.fondCarteDense },
   nomHero: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.nomPersonnage, fontSize: 16 },
   metaHero: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 13, marginTop: 2 },
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   descriptionCarteLarge: { color: couleurs.texte, fontFamily: polices.corps, fontSize: 15, lineHeight: 21, marginTop: 4 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: espacement.sm },
   tag: { ...stylePetitesCapitales, color: couleurs.texteAtténué, fontSize: 9, borderWidth: 1, borderColor: couleurs.bordureSubtile, borderRadius: rayon.pilule, paddingHorizontal: 7, paddingVertical: 3 },
-  portrait: { width: '100%', aspectRatio: 3 / 4, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg, backgroundColor: couleurs.fondCarteDense },
+  portrait: { width: '100%', aspectRatio: 3 / 4, maxHeight: 420, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg, backgroundColor: couleurs.fondCarteDense },
   portraitVide: { alignItems: 'center', justifyContent: 'center' },
   runePortrait: { color: couleurs.dore, fontSize: 42 },
   cartouchePortrait: { marginTop: espacement.sm, padding: espacement.md, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, borderRadius: rayon.lg },
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
   deuxPetitsChamps: { flexDirection: 'row', gap: espacement.sm },
   petitChamp: { flex: 1, marginTop: espacement.sm },
   aide: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12, lineHeight: 17, marginTop: 3 },
-  banniereDepart: { width: '100%', height: 230, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg, marginBottom: espacement.sm, overflow: 'hidden' },
+  banniereDepart: { width: '100%', aspectRatio: 16 / 9, maxHeight: 230, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg, marginBottom: espacement.sm, overflow: 'hidden' },
   lieuxHorizontaux: { gap: espacement.sm, paddingBottom: 2 },
   carteLieu: { width: 180, minHeight: 130, padding: espacement.md, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, borderRadius: rayon.lg },
   carteLieuActive: { borderColor: couleurs.dore, backgroundColor: 'rgba(201,164,92,0.08)' },
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
   titreAvance: { color: couleurs.dore, fontFamily: polices.titre, fontSize: 18 },
   chevronAvance: { color: couleurs.dore, fontSize: 20 },
   blocAvance: { padding: espacement.md, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, borderRadius: rayon.lg, marginTop: espacement.sm },
-  portraitRecap: { width: '100%', aspectRatio: 3 / 4, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg },
+  portraitRecap: { width: '100%', aspectRatio: 3 / 4, maxHeight: 420, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg },
   ficheRecap: { flex: 1.28, padding: espacement.lg, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarteDense, borderRadius: rayon.lg },
   recapNom: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.nomPersonnage, fontSize: 22 },
   recapMeta: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 14, marginTop: 2 },
