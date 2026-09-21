@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "prepare:v9": "node build-v9-runtime-fixed.mjs",
+    "prepare:v9": "node build-v9-runtime-final.mjs",
     "start": "npm run prepare:v9 && node server-v9-runtime.js"
   },
   "dependencies": {
