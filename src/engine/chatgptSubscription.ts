@@ -24,14 +24,40 @@ export interface ModeleChatGPT {
   nom: string;
 }
 
-function stockageSession(): Storage | null {
+function stockagePersistant(): Storage | null {
   if (typeof window === 'undefined') return null;
-  return window.sessionStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function stockageSessionLegacy(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 export function lireSessionChatGPT(): string {
   try {
-    return stockageSession()?.getItem(CLE_SESSION) ?? '';
+    const persistant = stockagePersistant()?.getItem(CLE_SESSION) ?? '';
+    if (persistant) return persistant;
+
+    // Migration transparente des anciennes versions qui utilisaient
+    // sessionStorage : on conserve la connexion existante au premier chargement.
+    const legacy = stockageSessionLegacy()?.getItem(CLE_SESSION) ?? '';
+    if (legacy) {
+      try {
+        stockagePersistant()?.setItem(CLE_SESSION, legacy);
+        stockageSessionLegacy()?.removeItem(CLE_SESSION);
+      } catch {}
+      return legacy;
+    }
+    return '';
   } catch {
     return '';
   }
@@ -39,17 +65,26 @@ export function lireSessionChatGPT(): string {
 
 function enregistrerSessionChatGPT(token: string): void {
   try {
-    stockageSession()?.setItem(CLE_SESSION, token);
+    const persistant = stockagePersistant();
+    if (persistant) {
+      persistant.setItem(CLE_SESSION, token);
+      stockageSessionLegacy()?.removeItem(CLE_SESSION);
+      return;
+    }
+  } catch {}
+
+  // Repli pour les navigateurs qui bloquent localStorage.
+  try {
+    stockageSessionLegacy()?.setItem(CLE_SESSION, token);
   } catch {
-    // Session navigateur indisponible : le jeton reste seulement utilisable
-    // pendant l'action courante. Le prochain appel demandera une reconnexion.
+    // Aucun stockage navigateur disponible : une reconnexion sera nécessaire
+    // au prochain chargement complet de l'application.
   }
 }
 
 function effacerSessionChatGPT(): void {
-  try {
-    stockageSession()?.removeItem(CLE_SESSION);
-  } catch {}
+  try { stockagePersistant()?.removeItem(CLE_SESSION); } catch {}
+  try { stockageSessionLegacy()?.removeItem(CLE_SESSION); } catch {}
 }
 
 async function lireJson(response: Response): Promise<any> {
