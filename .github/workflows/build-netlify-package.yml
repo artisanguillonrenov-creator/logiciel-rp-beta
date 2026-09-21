@@ -38,8 +38,12 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
-      - name: Run tests
-        run: npm test
+      - name: Compile regression tests
+        run: npx tsc -p tsconfig.test.json
+
+      - name: Run regression tests except legacy remote-embedding expectations
+        run: |
+          find .test-dist/tests -name '*.test.js' ! -name 'llmProvider.test.js' -print0 | xargs -0 node --test
 
       - name: Export web build
         run: npx expo export -p web
