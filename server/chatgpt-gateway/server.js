@@ -105,7 +105,7 @@ class CodexRpc {
           clientInfo: {
             name: 'elyndor_rp_gateway',
             title: 'Elyndor RP',
-            version: '0.1.0',
+            version: '0.2.0',
           },
           capabilities: { experimentalApi: true },
         }, 20_000);
@@ -218,6 +218,33 @@ function flattenMessages(messages) {
     .join('\n\n');
 }
 
+function entierUsage(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+// Codex app-server émet l'usage séparément via thread/tokenUsage/updated.
+// La passerelle le convertit au format OpenAI-compatible déjà compris par
+// les autres fournisseurs d'Elyndor. cached/reasoning sont des sous-totaux,
+// pas des tokens à ajouter une seconde fois au total.
+function normaliserUsageCodex(tokenUsage) {
+  const brut = tokenUsage?.last || tokenUsage?.total || tokenUsage;
+  if (!brut || typeof brut !== 'object') return null;
+  const input = entierUsage(brut.inputTokens ?? brut.input_tokens);
+  const cached = entierUsage(brut.cachedInputTokens ?? brut.cached_input_tokens);
+  const output = entierUsage(brut.outputTokens ?? brut.output_tokens);
+  const reasoning = entierUsage(brut.reasoningOutputTokens ?? brut.reasoning_output_tokens);
+  const total = entierUsage(brut.totalTokens ?? brut.total_tokens) || input + output;
+  if (!input && !output && !total && !cached && !reasoning) return null;
+  return {
+    prompt_tokens: input,
+    completion_tokens: output,
+    total_tokens: total,
+    prompt_tokens_details: { cached_tokens: cached },
+    completion_tokens_details: { reasoning_tokens: reasoning },
+  };
+}
+
 async function generateNarration({ messages, model, effort = 'low' }) {
   const prompt = `${flattenMessages(messages)}\n\n[CONSIGNE PASSERELLE]\nRespecte strictement les instructions et le format de sortie demandés ci-dessus. N'utilise aucun outil, n'exécute aucune commande et n'expose pas ton raisonnement interne. Retourne uniquement le contenu final demandé.`;
 
@@ -231,6 +258,7 @@ async function generateNarration({ messages, model, effort = 'low' }) {
   let text = '';
   let fallbackText = '';
   let turnId = null;
+  let usage = null;
   let finishResolve;
   let finishReject;
   const finished = new Promise((resolve, reject) => {
@@ -261,9 +289,20 @@ async function generateNarration({ messages, model, effort = 'low' }) {
       }
     }
 
+    if (msg.method === 'thread/tokenUsage/updated') {
+      const usageTurnId = params.turnId;
+      if (!turnId || !usageTurnId || usageTurnId === turnId) {
+        usage = normaliserUsageCodex(params.tokenUsage) || usage;
+      }
+    }
+
     if (msg.method === 'turn/completed') {
       const id = params.turn?.id || params.turnId;
-      if (!turnId || !id || id === turnId) finishResolve();
+      if (!turnId || !id || id === turnId) {
+        // L'usage est une notification distincte. Une très courte grâce évite
+        // de supprimer le thread avant une mise à jour d'usage adjacente.
+        setTimeout(finishResolve, 30);
+      }
     }
   });
 
@@ -280,7 +319,7 @@ async function generateNarration({ messages, model, effort = 'low' }) {
     await finished;
     const finalText = (text || fallbackText).trim();
     if (!finalText) throw new Error('GPT a terminé sans réponse exploitable.');
-    return { content: finalText, threadId, turnId };
+    return { content: finalText, threadId, turnId, usage };
   } finally {
     clearTimeout(timeout);
     off();
@@ -367,6 +406,15 @@ app.get('/limits', requireSession, async (_req, res) => {
   }
 });
 
+app.get('/usage', requireSession, async (_req, res) => {
+  try {
+    const result = await codex.request('account/usage/read', {}, 15_000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/models', requireSession, async (_req, res) => {
   try {
     const result = await codex.request('model/list', { limit: 50, includeHidden: false }, 20_000);
@@ -387,7 +435,7 @@ app.post('/chat', requireSession, async (req, res) => {
     res.json({
       choices: [{ message: { role: 'assistant', content: result.content } }],
       model: model || null,
-      usage: null,
+      usage: result.usage,
     });
   } catch (error) {
     console.error('[chat]', error);
