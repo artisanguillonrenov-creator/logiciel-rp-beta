@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  LayoutChangeEvent,
   Modal,
   Platform,
   Pressable,
@@ -10,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type {
@@ -133,6 +135,13 @@ function genererIdPersona(): string {
   return `persona-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Contrôle segmenté — modèle unique réutilisé pour tout choix à 2-4 options
+// courtes (sexe, créativité, longueur, rythme, liberté, violence, romance,
+// humour). Parts égales en flex: 1, jamais de largeur libre ni de défilement
+// horizontal : sous 320px de large, les parts s'empilent verticalement
+// plutôt que de risquer un débordement.
+const SEUIL_EMPILEMENT_SEGMENTE = 320;
+
 function GroupeOptions<T extends string>({
   options,
   valeur,
@@ -145,8 +154,15 @@ function GroupeOptions<T extends string>({
   autorisees?: T[];
 }) {
   const { t } = useLangue();
+  const [largeur, setLargeur] = useState(0);
+  const empile = largeur > 0 && largeur < SEUIL_EMPILEMENT_SEGMENTE;
+
+  function onLayout(e: LayoutChangeEvent) {
+    setLargeur(e.nativeEvent.layout.width);
+  }
+
   return (
-    <View style={styles.groupeOptions}>
+    <View style={[styles.groupeOptions, empile && styles.groupeOptionsEmpile]} onLayout={onLayout}>
       {options.map((option) => {
         const bloque = !!autorisees && !autorisees.includes(option.valeur);
         const actif = valeur === option.valeur && !bloque;
@@ -162,7 +178,9 @@ function GroupeOptions<T extends string>({
               pressed && !bloque && styles.presse,
             ]}
           >
-            <Text style={[styles.textePuceOption, actif && styles.textePuceOptionActif]}>{t(option.label)}</Text>
+            <Text style={[styles.textePuceOption, actif && styles.textePuceOptionActif]} numberOfLines={1}>
+              {t(option.label)}
+            </Text>
           </Pressable>
         );
       })}
@@ -475,25 +493,31 @@ export default function CreateScreenStudio({ navigation }: Props) {
                   <GroupeOptions options={OPTIONS_SEXE} valeur={sexe} onChange={setSexe} />
 
                   <Text style={styles.label}>{t('Race / origine')}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.racesHorizontales}>
-                    {RACES_ELYNDOR.map((race) => {
-                      const miniature = obtenirPortrait(race.id, sexe || 'Femme');
-                      const actif = race.nom === raceOrigine;
-                      return (
-                        <Pressable key={race.id} onPress={() => setRaceOrigine(race.nom)} style={[styles.carteRace, actif && styles.carteRaceActive]}>
-                          {miniature ? <Image source={miniature} style={styles.imageRace} resizeMode="cover" /> : <View style={styles.imageRaceVide} />}
-                          <Text style={styles.nomRace} numberOfLines={1}>{t(race.nom)}</Text>
-                          <Text style={styles.sousTitreRace} numberOfLines={1}>{t(race.sousTitre)}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                  <View style={styles.zoneCarrousel}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.racesHorizontales}>
+                      {RACES_ELYNDOR.map((race) => {
+                        const miniature = obtenirPortrait(race.id, sexe || 'Femme');
+                        const actif = race.nom === raceOrigine;
+                        return (
+                          <Pressable key={race.id} onPress={() => setRaceOrigine(race.nom)} style={[styles.carteRace, actif && styles.carteRaceActive]}>
+                            {miniature ? <Image source={miniature} style={styles.imageRace} resizeMode="cover" /> : <View style={styles.imageRaceVide} />}
+                            <Text style={styles.nomRace} numberOfLines={2}>{t(race.nom)}</Text>
+                            <Text style={styles.sousTitreRace} numberOfLines={2}>{t(race.sousTitre)}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                    <LinearGradient
+                      colors={['rgba(7,11,24,0)', couleurs.fond]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.fondubordCarrousel}
+                      pointerEvents="none"
+                    />
+                  </View>
 
                   <Champ label={t('Nom du personnage')} value={nom} onChangeText={setNom} placeholder={t('Ex : Aelis Corvenn')} conteneurStyle={styles.espaceChamp} />
-                  <View style={styles.deuxPetitsChamps}>
-                    <Champ label={t('Âge')} value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={t('Ex : 29')} conteneurStyle={styles.petitChamp} />
-                    <View style={styles.petitChamp} />
-                  </View>
+                  <Champ label={t('Âge')} value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={t('Ex : 29')} conteneurStyle={styles.espaceChamp} />
                   <Champ label={t('Apparence')} value={apparence} onChangeText={setApparence} multiligne placeholder={t('Silhouette, visage, tenue, signes distinctifs…')} conteneurStyle={styles.espaceChamp} />
                   <Champ label={t('Personnalité et passé')} value={description} onChangeText={setDescription} multiligne placeholder={t('Ce qui définit ton personnage et ce qui le pousse à avancer…')} conteneurStyle={styles.espaceChamp} />
                   <Bouton
@@ -732,23 +756,47 @@ const styles = StyleSheet.create({
   cartouchePortrait: { marginTop: espacement.sm, padding: espacement.md, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, borderRadius: rayon.lg },
   label: { ...stylePetitesCapitales, color: couleurs.texteAtténué, fontSize: 10, marginTop: espacement.md, marginBottom: 6 },
   labelSansMarge: { ...stylePetitesCapitales, color: couleurs.texteAtténué, fontSize: 10 },
-  groupeOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  puceOption: { minHeight: 42, minWidth: 92, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: espacement.sm, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondChampSaisie, borderRadius: rayon.sm },
-  puceOptionActive: { borderColor: couleurs.dore, backgroundColor: 'rgba(201, 164, 92, 0.12)' },
+  groupeOptions: { flexDirection: 'row', width: '100%', gap: 8 },
+  groupeOptionsEmpile: { flexDirection: 'column' },
+  puceOption: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: espacement.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 164, 92, 0.18)',
+    backgroundColor: 'transparent',
+    borderRadius: 6,
+  },
+  puceOptionActive: { borderColor: 'rgba(201, 164, 92, 0.55)', backgroundColor: 'rgba(201, 164, 92, 0.14)' },
   puceOptionBloquee: { opacity: 0.32 },
-  textePuceOption: { color: couleurs.texteAtténué, fontFamily: polices.corpsMedium, fontSize: 13 },
+  textePuceOption: {
+    color: '#8E9AB8',
+    fontFamily: polices.displaySemiGras,
+    textTransform: 'uppercase',
+    letterSpacing: 1.54,
+    fontSize: 11,
+    textAlign: 'center',
+  },
   textePuceOptionActif: { color: couleurs.doreClair },
   presse: { opacity: 0.75 },
-  racesHorizontales: { gap: espacement.sm, paddingBottom: 2 },
-  carteRace: { width: 126, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, overflow: 'hidden', borderRadius: rayon.lg },
+  zoneCarrousel: { position: 'relative' },
+  fondubordCarrousel: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: 32,
+  },
+  racesHorizontales: { gap: espacement.sm, paddingHorizontal: 22, paddingBottom: 2 },
+  carteRace: { width: 148, borderWidth: 1, borderColor: couleurs.bordureSubtile, backgroundColor: couleurs.fondCarte, overflow: 'hidden', borderRadius: rayon.lg },
   carteRaceActive: { borderColor: couleurs.dore, backgroundColor: 'rgba(201,164,92,0.08)' },
-  imageRace: { width: '100%', height: 108 },
-  imageRaceVide: { width: '100%', height: 108, backgroundColor: couleurs.fondCarteDense },
-  nomRace: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.nomPersonnage, fontSize: 12, paddingHorizontal: 8, paddingTop: 8 },
-  sousTitreRace: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12, paddingHorizontal: 8, paddingBottom: 7 },
+  imageRace: { width: '100%', aspectRatio: 3 / 4 },
+  imageRaceVide: { width: '100%', aspectRatio: 3 / 4, backgroundColor: couleurs.fondCarteDense },
+  nomRace: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, letterSpacing: interlettrage.nomPersonnage, fontSize: 12, lineHeight: 15, paddingHorizontal: 8, paddingTop: 8 },
+  sousTitreRace: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12, lineHeight: 15, paddingHorizontal: 8, paddingBottom: 7 },
   espaceChamp: { marginTop: espacement.sm },
-  deuxPetitsChamps: { flexDirection: 'row', gap: espacement.sm },
-  petitChamp: { flex: 1, marginTop: espacement.sm },
   aide: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12, lineHeight: 17, marginTop: 3 },
   banniereDepart: { width: '100%', aspectRatio: 16 / 9, maxHeight: 230, borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.lg, marginBottom: espacement.sm, overflow: 'hidden' },
   lieuxHorizontaux: { gap: espacement.sm, paddingBottom: 2 },
