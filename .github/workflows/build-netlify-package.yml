@@ -40,6 +40,9 @@ jobs:
       - name: Add per-turn token telemetry and export
         run: node scripts/apply-token-usage-export.mjs
 
+      - name: Track automatic opening message usage
+        run: node scripts/apply-opening-token-usage.mjs
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
