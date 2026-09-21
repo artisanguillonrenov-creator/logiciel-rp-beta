@@ -34,6 +34,9 @@ jobs:
       - name: Apply ChatGPT playability and tablet fixes
         run: node scripts/apply-chatgpt-playability-fixes.mjs
 
+      - name: Wire local History/Lore retrieval
+        run: node scripts/apply-local-retrieval-wiring.mjs
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
@@ -65,7 +68,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V5-CHATGPT-FIXES
+          name: ELYNDOR-RP-NETLIFY-V6-LOCAL-RETRIEVAL
           path: dist/
           if-no-files-found: error
           compression-level: 6
