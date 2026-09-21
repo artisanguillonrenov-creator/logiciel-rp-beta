@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chatgpt/narrative-os-netlify-v2-20260921
+      - chatgpt/elyndor-v10-persistent-memory-20260921
   workflow_dispatch:
 
 permissions:
@@ -58,6 +59,9 @@ jobs:
           node build-v9-runtime-final.mjs
           node --check server-v9-runtime.js
 
+      - name: Apply V10 persistent narrative memory
+        run: node scripts/apply-v10-persistent-memory.mjs
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
@@ -89,7 +93,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V9-1-PERSISTENT-CHATGPT-SESSION
+          name: ELYNDOR-RP-NETLIFY-V10-PERSISTENT-NARRATIVE-MEMORY
           path: dist/
           if-no-files-found: error
           compression-level: 6
