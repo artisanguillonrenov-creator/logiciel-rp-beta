@@ -49,6 +49,9 @@ jobs:
       - name: Apply V9 visual identity pipeline
         run: node scripts/apply-visual-pipeline-v9.mjs
 
+      - name: Preserve existing avatar identities
+        run: node scripts/apply-visual-pipeline-v9-compat.mjs
+
       - name: Validate ChatGPT image gateway runtime
         run: |
           cd server/chatgpt-gateway
