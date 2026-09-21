@@ -219,7 +219,7 @@ function flattenMessages(messages) {
 }
 
 async function generateNarration({ messages, model, effort = 'low' }) {
-  const prompt = `${flattenMessages(messages)}\n\n[CONSIGNE DE SORTIE]\nRéponds uniquement avec la réponse narrative finale destinée au joueur. N'utilise aucun outil, n'exécute aucune commande, n'explique pas ton raisonnement et n'ajoute aucun commentaire technique.`;
+  const prompt = `${flattenMessages(messages)}\n\n[CONSIGNE PASSERELLE]\nRespecte strictement les instructions et le format de sortie demandés ci-dessus. N'utilise aucun outil, n'exécute aucune commande et n'expose pas ton raisonnement interne. Retourne uniquement le contenu final demandé.`;
 
   const started = await codex.request('thread/start', {
     ...(model ? { model } : {}),
@@ -279,7 +279,7 @@ async function generateNarration({ messages, model, effort = 'low' }) {
     turnId = turn?.turn?.id || null;
     await finished;
     const finalText = (text || fallbackText).trim();
-    if (!finalText) throw new Error('GPT a terminé sans réponse narrative exploitable.');
+    if (!finalText) throw new Error('GPT a terminé sans réponse exploitable.');
     return { content: finalText, threadId, turnId };
   } finally {
     clearTimeout(timeout);
