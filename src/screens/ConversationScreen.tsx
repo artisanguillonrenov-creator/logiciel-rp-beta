@@ -37,7 +37,8 @@ import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
 import { ErreurProfilContenu, validerEntreeUtilisateur } from '../engine/contenuAdulte';
 import { exporterConversation, type FormatExport } from '../engine/conversationExport';
-import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { couleurs, espacement, interfaceV2, interlettrage, polices, rayon, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
@@ -665,31 +666,35 @@ export default function ConversationScreen({ route, navigation }: Props) {
                         avatarJoueur ? () => setPortraitAgrandi({ titre: story.meta.personnageNom, avatarUri: avatarJoueur }) : undefined
                       }
                     >
+                      <Text style={styles.nomMessageJoueur}>{story.meta.personnageNom}</Text>
                       {avatarJoueur && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS ? (
                         <Image source={{ uri: avatarJoueur }} style={styles.avatarInlineJoueur} />
                       ) : null}
-                      <Text style={styles.nomMessageJoueur}>{story.meta.personnageNom}</Text>
                     </Pressable>
                   )}
                   <Pressable onLongPress={() => setMessageActionsPour(item)} delayLongPress={400}>
-                    <View style={[styles.bulle, item.role === 'user' ? styles.bulleJoueur : styles.bulleNarrateur]}>
-                      {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
-                      <TexteMessageFormate
-                        texte={t(item.content)}
-                        style={styles.texteBulle}
-                        avatarsPnj={
-                          item.role === 'assistant' && story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS
-                            ? avatarsPnjPourTexte
-                            : undefined
-                        }
-                        pnjConnus={item.role === 'assistant' ? pnjConnus : undefined}
-                        onPressAvatar={
-                          item.role === 'assistant'
-                            ? (pnj) => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })
-                            : undefined
-                        }
-                      />
-                    </View>
+                    {item.role === 'user' ? (
+                      <LinearGradient
+                        colors={[couleurs.bulleJoueur, couleurs.bulleJoueurDegrade]}
+                        style={[styles.bulle, styles.bulleJoueur]}
+                      >
+                        {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
+                        <TexteMessageFormate texte={t(item.content)} style={styles.texteBulleJoueur} />
+                      </LinearGradient>
+                    ) : (
+                      <View style={[styles.bulle, styles.bulleNarrateur]}>
+                        {item.epingle ? <Text style={styles.epingleIndicateur}>📌</Text> : null}
+                        <TexteMessageFormate
+                          texte={t(item.content)}
+                          style={styles.texteBulleNarrateur}
+                          avatarsPnj={
+                            story.messages.length - index <= MAX_MESSAGES_RECENTS_AVEC_AVATARS ? avatarsPnjPourTexte : undefined
+                          }
+                          pnjConnus={pnjConnus}
+                          onPressAvatar={(pnj) => setPortraitAgrandi({ titre: pnj.titre, avatarUri: avatarsPnj[pnj.id] })}
+                        />
+                      </View>
+                    )}
                   </Pressable>
                   {item.reaction ? <Text style={styles.reactionIndicateur}>{item.reaction}</Text> : null}
                   {appSettings.modeConcepteur && <Text style={styles.metaMessage}>
@@ -801,7 +806,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
               accessibilityLabel={t('Envoyer')}
               accessibilityState={{ disabled: enCours || !saisie.trim() }}
             >
-              {enCours ? <ActivityIndicator color={couleurs.accentClair} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
+              {enCours ? <ActivityIndicator color={couleurs.fondProfond} /> : <Text style={styles.texteEnvoyer}>{t('Envoyer')}</Text>}
             </Pressable>
           </View>
         </View>
@@ -1143,14 +1148,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   boutonEntete: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: couleurs.bordureSubtile,
-    backgroundColor: 'rgba(4, 12, 22, 0.72)',
-    borderRadius: 4,
+    backgroundColor: 'rgba(9, 13, 26, 0.6)',
+    borderRadius: rayon.sm,
   },
   iconeEntete: {
     color: couleurs.doreClair,
@@ -1178,51 +1183,68 @@ const styles = StyleSheet.create({
     marginTop: espacement.sm,
   },
   groupeMessage: {
-    maxWidth: '85%',
+    maxWidth: '100%',
   },
   groupeMessageJoueur: {
     alignSelf: 'flex-end',
     alignItems: 'flex-end',
+    maxWidth: interfaceV2.largeurBulleJoueurMax,
   },
   groupeMessageNarrateur: {
-    alignSelf: 'flex-start',
-    alignItems: 'flex-start',
+    alignSelf: 'stretch',
+    alignItems: 'stretch',
   },
   enTeteMessageJoueur: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 8,
+    marginBottom: 6,
   },
   avatarInlineJoueur: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: couleurs.bordureSubtile,
   },
   nomMessageJoueur: {
-    fontFamily: polices.corpsMedium,
-    color: couleurs.accentClair,
-    fontSize: 12,
+    fontFamily: polices.displaySemiGras,
+    textTransform: 'uppercase',
+    letterSpacing: interlettrage.nomPersonnage,
+    color: couleurs.texteFaible,
+    fontSize: 11,
   },
   bulle: {
     borderWidth: 1,
     borderColor: 'transparent',
-    paddingHorizontal: espacement.sm,
-    paddingVertical: espacement.sm,
+    paddingHorizontal: espacement.md,
+    paddingVertical: espacement.sm + 2,
   },
   bulleJoueur: {
     backgroundColor: couleurs.bulleJoueur,
-    borderColor: 'rgba(90, 172, 255, 0.35)',
+    borderColor: couleurs.bulleJoueurBordure,
+    borderTopLeftRadius: rayon.lg,
+    borderTopRightRadius: rayon.lg,
+    borderBottomLeftRadius: rayon.lg,
+    borderBottomRightRadius: 4,
   },
   bulleNarrateur: {
     backgroundColor: couleurs.bulleNarrateur,
-    borderColor: couleurs.bordure,
+    borderColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
-  texteBulle: {
-    color: couleurs.texte,
+  texteBulleJoueur: {
+    color: '#EDF0F8',
     fontFamily: polices.corps,
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 33,
+  },
+  texteBulleNarrateur: {
+    color: couleurs.texteNarration,
+    fontFamily: polices.corps,
+    fontSize: 21,
+    lineHeight: 38,
   },
   epingleIndicateur: {
     position: 'absolute',
@@ -1256,7 +1278,7 @@ const styles = StyleSheet.create({
   },
   superpositionSuppression: {
     flex: 1,
-    backgroundColor: 'rgba(6, 8, 18, 0.75)',
+    backgroundColor: 'rgba(3, 5, 11, 0.72)',
     justifyContent: 'center',
     padding: espacement.lg,
   },
@@ -1270,7 +1292,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 3 / 4,
     marginTop: espacement.sm,
-    borderRadius: 4,
+    borderRadius: rayon.md,
   },
   aideImageGeneree: {
     color: couleurs.texteAtténué,
@@ -1414,10 +1436,10 @@ const styles = StyleSheet.create({
     paddingTop: espacement.xl,
   },
   titreModal: {
-    color: couleurs.dore,
+    color: couleurs.doreClair,
     fontFamily: polices.display,
     fontSize: 22,
-    letterSpacing: 1,
+    letterSpacing: interlettrage.titreEcran,
     marginBottom: espacement.md,
   },
   champConteneur: {
@@ -1485,6 +1507,7 @@ const styles = StyleSheet.create({
   zoneSaisie: {
     borderTopWidth: 1,
     borderTopColor: couleurs.bordure,
+    backgroundColor: couleurs.fondBarre,
     padding: espacement.sm,
   },
   bandeauReponseA: {
@@ -1512,16 +1535,19 @@ const styles = StyleSheet.create({
   },
   rangeeActionsRapides: {
     flexDirection: 'row',
-    gap: espacement.xs,
-    marginBottom: espacement.xs,
+    gap: interfaceV2.espacementCiblesMin,
+    marginBottom: espacement.sm,
   },
   boutonRapide: {
-    paddingVertical: espacement.xs,
-    paddingHorizontal: espacement.sm,
+    minHeight: interfaceV2.cibleTactileRail,
+    paddingVertical: espacement.xs + 2,
+    paddingHorizontal: espacement.md,
+    borderRadius: rayon.pilule,
     alignSelf: 'flex-start',
   },
   texteBoutonRapide: {
     fontSize: 11,
+    letterSpacing: interlettrage.pilule,
   },
   rangeeSaisie: {
     flexDirection: 'row',
@@ -1532,22 +1558,25 @@ const styles = StyleSheet.create({
     maxHeight: 120,
   },
   boutonEnvoyer: {
-    backgroundColor: 'rgba(90, 172, 255, 0.10)',
+    backgroundColor: couleurs.dore,
     borderWidth: 1,
-    borderColor: couleurs.accent,
-    paddingHorizontal: espacement.md,
+    borderColor: couleurs.doreClair,
+    borderRadius: rayon.md,
+    paddingHorizontal: espacement.lg,
     paddingVertical: espacement.sm,
     justifyContent: 'center',
     alignItems: 'center',
     minWidth: 84,
+    minHeight: interfaceV2.cibleTactileMin,
   },
   boutonDesactive: {
     opacity: 0.5,
   },
   texteEnvoyer: {
-    color: couleurs.accentClair,
-    fontFamily: polices.corpsMedium,
+    color: couleurs.fondProfond,
+    fontFamily: polices.displaySemiGras,
+    fontSize: 12,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: interlettrage.bouton,
   },
 });

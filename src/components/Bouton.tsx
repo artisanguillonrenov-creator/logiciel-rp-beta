@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, PressableProps, StyleProp, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
-import { couleurs, espacement, interfaceV2, ombresLueur, ombresOr, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, interfaceV2, interlettrage, ombresLueur, ombresOr, polices, rayon } from '../theme/theme';
 
 interface BoutonProps extends Omit<PressableProps, 'style'> {
   titre: string;
@@ -46,9 +46,9 @@ const styles = StyleSheet.create({
   base: {
     minHeight: interfaceV2.cibleTactileMin,
     borderWidth: 1,
-    borderRadius: rayon.sm,
-    paddingVertical: espacement.sm + 3,
-    paddingHorizontal: espacement.md,
+    borderRadius: rayon.md,
+    paddingVertical: espacement.sm + 4,
+    paddingHorizontal: espacement.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -58,13 +58,13 @@ const styles = StyleSheet.create({
     ...ombresOr,
   },
   arcane: {
-    backgroundColor: 'rgba(78, 174, 248, 0.10)',
+    backgroundColor: 'rgba(147, 169, 224, 0.10)',
     borderColor: couleurs.accent,
     ...ombresLueur,
   },
   secondaire: {
-    backgroundColor: 'rgba(4, 12, 22, 0.72)',
-    borderColor: couleurs.bordure,
+    backgroundColor: 'rgba(9, 13, 26, 0.5)',
+    borderColor: couleurs.bordureDoree,
   },
   presse: {
     opacity: 0.78,
@@ -74,10 +74,10 @@ const styles = StyleSheet.create({
     opacity: 0.38,
   },
   texte: {
-    fontFamily: polices.corpsMedium,
-    fontSize: 15,
+    fontFamily: polices.displaySemiGras,
+    fontSize: 13,
     textTransform: 'uppercase',
-    letterSpacing: 1.35,
+    letterSpacing: interlettrage.bouton,
   },
   textePrincipal: {
     color: couleurs.fondProfond,
@@ -86,6 +86,6 @@ const styles = StyleSheet.create({
     color: couleurs.accentClair,
   },
   texteSecondaire: {
-    color: couleurs.texte,
+    color: couleurs.doreClair,
   },
 });

@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   },
   optionMoteurActive: {
     borderColor: couleurs.accent,
-    backgroundColor: 'rgba(78, 174, 248, 0.10)',
+    backgroundColor: 'rgba(147, 169, 224, 0.10)',
   },
   texteOptionMoteur: {
     color: couleurs.texteAtténué,

@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleProp, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { analyserMessage, type SegmentMessage } from '../engine/messageFormatter';
 import { indexerLocuteurs } from '../engine/speakerIndex';
-import { couleurs, espacement, polices, rayon } from '../theme/theme';
+import { couleurs, espacement, interlettrage, polices } from '../theme/theme';
 import type { EntreeLoreEmergent } from '../types';
 
 export interface AvatarPnjPourTexte {
@@ -86,48 +86,51 @@ const styles = StyleSheet.create({
   replique: {
     marginVertical: 10,
     paddingVertical: 8,
-    paddingLeft: espacement.sm,
-    borderLeftWidth: 1,
+    paddingLeft: 2,
+    borderLeftWidth: 2,
     borderLeftColor: couleurs.bordureDoree,
-    backgroundColor: 'rgba(4, 12, 22, 0.24)',
   },
   locuteur: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 14,
+    marginLeft: 14,
     minHeight: 48,
   },
   colonneDialogue: {
     flex: 1,
-    paddingTop: 1,
+    paddingTop: 2,
     paddingRight: espacement.xs,
   },
   nomLocuteur: {
     flexShrink: 1,
-    fontFamily: polices.corpsMedium,
+    fontFamily: polices.displaySemiGras,
     color: couleurs.dore,
     textTransform: 'uppercase',
-    letterSpacing: 1.15,
-    fontSize: 11,
-    marginBottom: 3,
+    letterSpacing: interlettrage.nomPersonnage,
+    fontSize: 12,
+    marginBottom: 5,
   },
   dialogue: {
     color: couleurs.texte,
-    lineHeight: 23,
+    fontFamily: polices.corpsItalique,
+    fontStyle: 'italic',
+    fontSize: 21,
+    lineHeight: 37,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: rayon.sm,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1,
-    borderColor: couleurs.bordureDoree,
+    borderColor: 'rgba(201, 164, 92, 0.35)',
   },
   avatarVide: {
-    width: 44,
-    height: 44,
-    borderRadius: rayon.sm,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1,
-    borderColor: couleurs.bordureDoree,
+    borderColor: 'rgba(201, 164, 92, 0.35)',
     backgroundColor: couleurs.fondChampSaisie,
     alignItems: 'center',
     justifyContent: 'center',

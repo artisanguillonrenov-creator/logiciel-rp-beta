@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Message } from '../types';
-import { couleurs, espacement, interfaceV2, polices, stylePetitesCapitales } from '../theme/theme';
+import { couleurs, espacement, interfaceV2, polices, rayon, stylePetitesCapitales } from '../theme/theme';
 import { useLangue } from '../i18n/LangueProvider';
 
 // On conserve les valeurs historiques enregistrées dans les messages pour ne
@@ -90,6 +90,8 @@ const styles = StyleSheet.create({
     backgroundColor: couleurs.fondCarteDense,
     borderTopWidth: 1,
     borderColor: couleurs.bordureDoree,
+    borderTopLeftRadius: rayon.xl,
+    borderTopRightRadius: rayon.xl,
     paddingBottom: espacement.lg,
     paddingTop: espacement.md,
   },
@@ -109,6 +111,7 @@ const styles = StyleSheet.create({
   boutonReaction: {
     width: interfaceV2.cibleTactileMin,
     height: interfaceV2.cibleTactileMin,
+    borderRadius: interfaceV2.cibleTactileMin / 2,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -117,7 +120,7 @@ const styles = StyleSheet.create({
   },
   boutonReactionActif: {
     borderColor: couleurs.dore,
-    backgroundColor: 'rgba(216, 179, 107, 0.12)',
+    backgroundColor: 'rgba(201, 164, 92, 0.12)',
   },
   glypheReaction: {
     color: couleurs.texteAtténué,
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ligneActionPressee: {
-    backgroundColor: 'rgba(216, 179, 107, 0.06)',
+    backgroundColor: 'rgba(201, 164, 92, 0.06)',
   },
   texteAction: {
     color: couleurs.texte,

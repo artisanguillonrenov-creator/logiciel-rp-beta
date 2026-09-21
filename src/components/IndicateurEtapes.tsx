@@ -55,11 +55,11 @@ const styles = StyleSheet.create({
   },
   pointComplete: {
     borderColor: couleurs.dore,
-    backgroundColor: 'rgba(216, 179, 107, 0.12)',
+    backgroundColor: 'rgba(201, 164, 92, 0.12)',
   },
   pointActif: {
     borderColor: couleurs.accent,
-    backgroundColor: 'rgba(78, 174, 248, 0.16)',
+    backgroundColor: 'rgba(147, 169, 224, 0.16)',
   },
   texte: {
     color: couleurs.texteFaible,

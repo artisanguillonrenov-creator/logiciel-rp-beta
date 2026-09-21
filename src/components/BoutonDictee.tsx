@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   bouton: {
     width: interfaceV2.cibleTactileMin,
     height: interfaceV2.cibleTactileMin,
-    borderRadius: rayon.sm,
+    borderRadius: rayon.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(4, 12, 22, 0.78)',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     borderColor: couleurs.accentSombre,
   },
   boutonActif: {
-    backgroundColor: 'rgba(78, 174, 248, 0.16)',
+    backgroundColor: 'rgba(147, 169, 224, 0.16)',
     borderColor: couleurs.accent,
   },
   boutonAnnulation: {
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: couleurs.fondCarteDense,
     borderWidth: 1,
     borderColor: couleurs.bordureSubtile,
-    borderRadius: rayon.sm,
+    borderRadius: rayon.md,
     paddingVertical: espacement.xs,
     paddingHorizontal: espacement.sm,
     color: couleurs.texteAtténué,

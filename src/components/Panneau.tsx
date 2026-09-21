@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
     backgroundColor: couleurs.fondCarte,
     borderWidth: 1,
     borderColor: couleurs.bordureSubtile,
-    borderRadius: rayon.sm,
+    borderRadius: rayon.lg,
     padding: espacement.md,
   },
 });

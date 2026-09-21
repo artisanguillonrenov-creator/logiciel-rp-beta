@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     backgroundColor: couleurs.fondChampSaisie,
     borderWidth: 1,
     borderColor: couleurs.bordure,
-    borderRadius: rayon.sm,
+    borderRadius: rayon.md,
     color: couleurs.texte,
     paddingHorizontal: espacement.md,
     paddingVertical: espacement.sm + 2,
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   champFocus: {
     borderColor: couleurs.accent,
-    backgroundColor: 'rgba(5, 18, 31, 0.88)',
+    backgroundColor: 'rgba(12, 18, 34, 0.92)',
   },
   champMultiligne: {
     minHeight: 92,
@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
   },
   champNarratif: {
     minHeight: 52,
-    backgroundColor: 'rgba(3, 9, 16, 0.94)',
-    borderColor: 'rgba(216, 179, 107, 0.22)',
+    backgroundColor: 'rgba(12, 18, 34, 0.8)',
+    borderColor: 'rgba(201, 164, 92, 0.22)',
     paddingHorizontal: espacement.md,
     paddingVertical: espacement.sm + 1,
     fontSize: 17,
@@ -78,6 +78,6 @@ const styles = StyleSheet.create({
   },
   champNarratifFocus: {
     borderColor: couleurs.dore,
-    backgroundColor: 'rgba(6, 14, 22, 0.98)',
+    backgroundColor: 'rgba(12, 18, 34, 0.94)',
   },
 });

@@ -6,7 +6,7 @@ import type { StoryState } from '../types';
 import { getStory } from '../storage/storage';
 import { abonnerSauvegardesStory } from '../automation/storyEvents';
 import ConversationScreen from './ConversationScreen';
-import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import { couleurs, espacement, interfaceV2, interlettrage, polices, stylePetitesCapitales } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
     paddingVertical: 7,
     paddingHorizontal: espacement.md,
-    backgroundColor: 'rgba(3, 8, 14, 0.985)',
+    backgroundColor: couleurs.fondBarre,
   },
   enteteInterieur: {
     width: '100%',
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   enteteInterieurTablette: {
-    maxWidth: 980,
+    maxWidth: interfaceV2.largeurLectureMax,
     alignSelf: 'center',
   },
   identiteScene: {
@@ -118,15 +118,16 @@ const styles = StyleSheet.create({
   },
   lieu: {
     color: couleurs.doreClair,
-    fontFamily: polices.titre,
-    fontSize: 18,
-    lineHeight: 20,
+    fontFamily: polices.displaySemiGras,
+    letterSpacing: interlettrage.nomPersonnage,
+    fontSize: 13,
+    lineHeight: 18,
   },
   sousTitre: {
-    color: couleurs.texteAtténué,
+    color: couleurs.texteFaible,
     fontFamily: polices.corps,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 13,
+    lineHeight: 16,
     marginTop: 1,
   },
   marqueRecit: {
@@ -146,8 +147,7 @@ const styles = StyleSheet.create({
   },
   filet: {
     height: 1,
-    backgroundColor: couleurs.bordureDoree,
-    opacity: 0.58,
+    backgroundColor: couleurs.bordure,
   },
   zoneLecture: {
     flex: 1,
@@ -161,10 +161,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cadreLectureTablette: {
-    maxWidth: 980,
+    maxWidth: interfaceV2.largeurLectureMax,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(216, 179, 107, 0.14)',
+    borderColor: couleurs.bordure,
   },
   railGauche: {
     position: 'absolute',
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     top: 34,
     bottom: 34,
     width: 1,
-    backgroundColor: 'rgba(216, 179, 107, 0.10)',
+    backgroundColor: couleurs.bordure,
   },
   railDroit: {
     position: 'absolute',
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     top: 34,
     bottom: 34,
     width: 1,
-    backgroundColor: 'rgba(216, 179, 107, 0.10)',
+    backgroundColor: couleurs.bordure,
   },
   lueurBasse: {
     position: 'absolute',
@@ -188,6 +188,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 1,
-    backgroundColor: 'rgba(216, 179, 107, 0.28)',
+    backgroundColor: couleurs.bordureDoree,
   },
 });
