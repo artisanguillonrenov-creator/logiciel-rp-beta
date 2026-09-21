@@ -1,11 +1,12 @@
 {
   "name": "elyndor-chatgpt-gateway",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "start": "node server.js"
+    "prepare:v9": "node build-v9-runtime.mjs",
+    "start": "npm run prepare:v9 && node server-v9-runtime.js"
   },
   "dependencies": {
     "@openai/codex": "^0.155.0",
