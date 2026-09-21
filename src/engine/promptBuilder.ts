@@ -1,28 +1,30 @@
 import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
+import { NARRATIVE_IDENTITY } from './narrative/behaviorKernel';
 
-// Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
-// aussi de frontière pour la recherche sémantique de secours dans
-// l'historique (src/engine/searchHistorique.ts).
-export const NB_MESSAGES_RECENTS = 10;
+// Narrative OS V1 : fenêtre immédiate courte. L'historique ancien reste
+// récupérable via la mémoire/recherche, au lieu d'être renvoyé brut à chaque tour.
+export const NB_MESSAGES_RECENTS = 4;
 
-// Les modèles locaux ont une fenêtre plus étroite que les modèles distants.
-// Ces plafonds sont exprimés en caractères, volontairement conservateurs :
-// ils laissent de la place à la réponse et évitent de dépasser la fenêtre
-// après tokenisation, qui varie selon le fournisseur.
-export const BUDGET_SYSTEM_DISTANT = 24000;
-export const BUDGET_SYSTEM_LOCAL = 12000;
-export const BUDGET_MESSAGE_RECENT = 900;
+// Budgets stricts pour que le coût dépende de la scène courante et non de la
+// longueur totale de l'histoire. Exprimés en caractères pour rester indépendants
+// du tokenizer et du fournisseur.
+export const BUDGET_SYSTEM_DISTANT = 7000;
+export const BUDGET_SYSTEM_LOCAL = 5000;
+export const BUDGET_MESSAGE_RECENT = 520;
 
 function tronquer(texte: string, longueur: number): string {
   if (texte.length <= longueur) return texte;
-  return `${texte.slice(0, Math.max(0, longueur - 34)).trimEnd()}\n[… contexte tronqué …]`;
+  return `${texte.slice(0, Math.max(0, longueur - 22)).trimEnd()}\n[… tronqué …]`;
 }
 
-function formaterFaits(faits: Fact[], budget = 3200): string {
+function formaterFaits(faits: Fact[], budget: number): string {
   if (faits.length === 0) return 'Aucun fait clé enregistré pour l’instant.';
-  return tronquer(faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'), budget);
+  return tronquer(
+    faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'),
+    budget,
+  );
 }
 
 function formaterLore(entries: LoreEntry[], titre: string, budget: number, longueurEntree: number): string {
@@ -87,7 +89,7 @@ function libelleRythme(niveau: StorySettings['rythme']): string {
   switch (niveau) {
     case 'lent': return "prends ton temps : détails, ambiance, scènes qui respirent avant que l'intrigue n'avance";
     case 'rapide': return "avance vite : va à l'essentiel, enchaîne les événements sans t'attarder sur les transitions";
-    default: return "un rythme équilibré, ni précipité ni étiré";
+    default: return 'un rythme équilibré, ni précipité ni étiré';
   }
 }
 
@@ -95,14 +97,19 @@ function libelleTon(ton: StorySettings['ton']): string {
   switch (ton) {
     case 'heroique_epique': return 'Héroïque et épique — aventures grandioses, enjeux qui dépassent le personnage, souffle inspirant.';
     case 'mysterieux_intrigant': return 'Mystérieux et intrigant — secrets, complots, révélations dosées, tension permanente.';
-    case 'leger_aventureux': return "Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.";
+    case 'leger_aventureux': return 'Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.';
     default: return 'Sombre et réaliste — ambiance immersive, dure et crédible.';
   }
 }
 
 function formaterContexte(meta: StoryMeta): string {
   const { lieu, ambiance, dateChronique, objectifs } = meta.contexte;
-  const lignes = [lieu && `Lieu : ${lieu}`, ambiance && `Ambiance : ${ambiance}`, dateChronique && `Période : ${dateChronique}`, objectifs && `Objectifs du personnage : ${objectifs}`].filter(Boolean);
+  const lignes = [
+    lieu && `Lieu : ${lieu}`,
+    ambiance && `Ambiance : ${ambiance}`,
+    dateChronique && `Période : ${dateChronique}`,
+    objectifs && `Objectifs du personnage : ${objectifs}`,
+  ].filter(Boolean);
   return lignes.length ? `\n\n[CONTEXTE DE L'HISTOIRE]\n${lignes.join('\n')}` : '';
 }
 
@@ -129,41 +136,32 @@ export interface OptionsPrompt {
 
 export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
-  const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.36), 900);
-  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.22), 650);
-  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.16));
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.08));
-  const fixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
-${REGLES_IMMUABLES}
+  // Les 15 métamoteurs restent calculés par le moteur pour compatibilité/debug,
+  // mais ne sont plus recopiés dans le prompt. Le noyau compact + les règles
+  // immuables portent le contrat comportemental ; le logiciel porte l'état.
+  const lore = formaterLore(
+    ctx.loreElyndor,
+    'LORE PERTINENT POUR CETTE SCÈNE',
+    Math.floor(budget * 0.22),
+    520,
+  );
+  const etat = tronquer(
+    [ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'),
+    Math.floor(budget * 0.14),
+  );
+  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.10));
+  const resume = tronquer(
+    ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.",
+    Math.floor(budget * 0.10),
+  );
+  const faits = formaterFaits(ctx.faits, Math.floor(budget * 0.12));
 
-[PERSONNAGE DE {{user}}]
-Nom : ${tronquer(ctx.meta.personnageNom, 300)}
-Description : ${tronquer(ctx.meta.personnageDescription, 1200)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 1200)}
-${formaterContexte(ctx.meta)}
+  const fixe = `${NARRATIVE_IDENTITY}\n\n${REGLES_IMMUABLES}\n\n[PERSONNAGE DE {{user}}]\nNom : ${tronquer(ctx.meta.personnageNom, 180)}\nDescription : ${tronquer(ctx.meta.personnageDescription, 750)}\nPoint de départ : ${tronquer(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}\n\n[RÉSUMÉ UTILE]\n${resume}\n\n[FAITS CLÉS ÉTABLIS]\n${faits}`;
 
-[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]
-${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(budget * 0.08))}
+  const style = `\n\n[STYLE]\nTon : ${libelleTon(ctx.settings.ton)}\n${instructionLongueur(ctx.settings.longueur)}\nRythme : ${libelleRythme(ctx.settings.rythme)}.\nLiberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.\nViolence : ${libelleViolence(ctx.settings.violence)}.\nRomance : ${libelleRomance(ctx.settings.romance)}.\nHumour : ${libelleHumour(ctx.settings.humour)}.\n\nDialogues PNJ : NOM EN MAJUSCULES : « réplique ». Narration/action hors de ces lignes. Ne jamais utiliser cette étiquette pour {{user}}.\n${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-[FAITS CLÉS ÉTABLIS]
-${formaterFaits(ctx.faits, Math.floor(budget * 0.10))}`;
-  const style = `
-
-[STYLE]
-Ton : ${libelleTon(ctx.settings.ton)}
-${instructionLongueur(ctx.settings.longueur)}
-Rythme : ${libelleRythme(ctx.settings.rythme)}.
-Liberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.
-Violence : ${libelleViolence(ctx.settings.violence)}.
-Romance : ${libelleRomance(ctx.settings.romance)}.
-Humour : ${libelleHumour(ctx.settings.humour)}.
-
-Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
-KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
-Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
-${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 1800)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
-  return tronquer(`${fixe}${socle}${lore}${etat}${souvenirs}${style}`, budget);
+  return tronquer(`${fixe}${lore}${etat ? `\n\n[ÉTAT / CONSÉQUENCES]\n${etat}` : ''}${souvenirs}${style}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
@@ -172,13 +170,25 @@ export function construireMessages(ctx: ContexteConstruction, options: OptionsPr
     role: m.role,
     content: tronquer(m.content, BUDGET_MESSAGE_RECENT),
   } as ChatMessage));
-  return [{ role: 'system', content: systemPrompt }, ...recents, { role: 'user', content: tronquer(ctx.messageJoueur, 2000) }];
+  return [
+    { role: 'system', content: systemPrompt },
+    ...recents,
+    { role: 'user', content: tronquer(ctx.messageJoueur, 1600) },
+  ];
 }
 
 export function temperaturePourCreativite(creativite: StorySettings['creativite']): number {
-  switch (creativite) { case 'faible': return 0.5; case 'elevee': return 1.1; default: return 0.85; }
+  switch (creativite) {
+    case 'faible': return 0.5;
+    case 'elevee': return 1.1;
+    default: return 0.85;
+  }
 }
 
 export function maxTokensPourLongueur(longueur: StorySettings['longueur']): number {
-  switch (longueur) { case 'courte': return 350; case 'longue': return 1100; default: return 650; }
+  switch (longueur) {
+    case 'courte': return 350;
+    case 'longue': return 1100;
+    default: return 650;
+  }
 }
