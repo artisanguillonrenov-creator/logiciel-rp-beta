@@ -44,7 +44,7 @@ function remplacer(contenu, ancien, nouveau, etiquette) {
   s = remplacer(
     s,
     champChatGPT,
-    `${champChatGPT}\n                    <Bouton\n                      titre={t('Parcourir les modèles ChatGPT')}\n                      variante="arcane"\n                      onPress={() => ouvrirSelecteurModeles('chatgpt')}\n                      style={styles.boutonAction}\n                    />`,
+    `                    <View>\n${champChatGPT}\n                      <Bouton\n                        titre={t('Parcourir les modèles ChatGPT')}\n                        variante="arcane"\n                        onPress={() => ouvrirSelecteurModeles('chatgpt')}\n                        style={styles.boutonAction}\n                      />\n                    </View>`,
     'bouton catalogue ChatGPT',
   );
 
