@@ -28,6 +28,9 @@ jobs:
       - name: Apply ChatGPT Plus integration
         run: node scripts/apply-chatgpt-plus-integration.mjs
 
+      - name: Apply ChatGPT model picker
+        run: node scripts/apply-chatgpt-model-picker.mjs
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
@@ -59,7 +62,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V3-CHATGPT
+          name: ELYNDOR-RP-NETLIFY-V4-CHATGPT-MODELS
           path: dist/
           if-no-files-found: error
           compression-level: 6
