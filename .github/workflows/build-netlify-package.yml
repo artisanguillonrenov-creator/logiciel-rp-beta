@@ -1,0 +1,59 @@
+name: Build Netlify package
+
+on:
+  push:
+    branches:
+      - chatgpt/narrative-os-netlify-v2-20260921
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-netlify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure root base URL for Netlify
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          p.expo = p.expo || {};
+          p.expo.experiments = { ...(p.expo.experiments || {}), baseUrl: '/' };
+          fs.writeFileSync('app.json', JSON.stringify(p, null, 2) + '\n');
+          NODE
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
+      - name: Export web build
+        run: npx expo export -p web
+
+      - name: Add Netlify SPA redirects
+        run: |
+          printf '/* /index.html 200\n' > dist/_redirects
+          touch dist/.nojekyll
+
+      - name: Upload Netlify-ready package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ELYNDOR-RP-NETLIFY-V2
+          path: dist/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 30
