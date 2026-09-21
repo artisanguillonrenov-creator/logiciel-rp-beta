@@ -11,7 +11,7 @@ function remplacer(ancien, nouveau, etiquette) {
 
 remplacer(
   "import crypto from 'node:crypto';",
-  "import crypto from 'node:crypto';\nimport fsPromises from 'node:fs/promises';\nimport os from 'node:os';\nimport path from 'node:path';",
+  "import crypto from 'node:crypto';\nimport fsPromises from 'node:fs/promises';\nimport path from 'node:path';",
   'imports image',
 );
 
@@ -79,7 +79,12 @@ async function generateImageWithCodex({ prompt, references = [] }) {
   if (!texte) throw new Error('Prompt image vide.');
   if (texte.length > 12_000) throw new Error('Prompt image trop long.');
   const refs = Array.isArray(references) ? references.slice(0, 4) : [];
-  const dossier = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'elyndor-image-'));
+
+  // IMPORTANT : les fichiers image doivent vivre dans le workspace courant de Codex.
+  // /tmp est visible par Node mais peut être hors du montage écrivable du sandbox imagegen.
+  const racineImages = path.join(process.cwd(), '.elyndor-image-jobs');
+  await fsPromises.mkdir(racineImages, { recursive: true });
+  const dossier = await fsPromises.mkdtemp(path.join(racineImages, 'job-'));
   let threadId = null;
   try {
     const fichiersReference = [];
@@ -123,7 +128,9 @@ async function generateImageWithCodex({ prompt, references = [] }) {
           ? 'Les images jointes sont des références CANONIQUES de personnages : conserve strictement identité du visage, race, carnation, cheveux, silhouette et signes distinctifs. Adapte seulement pose, expression, vêtements visibles et éclairage à la scène.'
           : '',
         'Ne crée aucun texte, logo, watermark ou interface dans l’image.',
-        \`Enregistre le fichier final dans ce chemin exact : \${sortieVoulue}\`,
+        'Le dossier de travail courant est déjà le dossier de sortie autorisé.',
+        'Enregistre le fichier final DANS CE DOSSIER, sous le nom exact : elyndor-output.png',
+        'Utilise un chemin relatif (./elyndor-output.png), pas /tmp ni un autre chemin absolu.',
         'Ne produis pas de variante supplémentaire. Ne modifie et ne lis aucun autre fichier que les références jointes et le fichier de sortie demandé.',
         '',
         '[DESCRIPTION VISUELLE ELYNDOR]',
@@ -142,7 +149,7 @@ async function generateImageWithCodex({ prompt, references = [] }) {
         approvalPolicy: 'never',
         sandboxPolicy: {
           type: 'workspaceWrite',
-          writableRoots: [dossier],
+          writableRoots: [racineImages, dossier],
           networkAccess: true,
         },
       }, 30_000);
@@ -156,7 +163,7 @@ async function generateImageWithCodex({ prompt, references = [] }) {
     const images = await listerImagesRecursif(dossier);
     const choisie = images.find((image) => path.basename(image.path).toLowerCase().startsWith('elyndor-output')) || images[0];
     if (!choisie) {
-      throw new Error('ChatGPT a terminé sans fichier image exploitable.' + (texteAgent.trim() ? ' Détail : ' + texteAgent.trim().slice(0, 300) : ''));
+      throw new Error('ChatGPT a terminé sans fichier image exploitable.' + (texteAgent.trim() ? ' Détail : ' + texteAgent.trim().slice(0, 500) : ''));
     }
     if (choisie.size > 12 * 1024 * 1024) throw new Error('Image générée trop volumineuse pour être renvoyée.');
     const buffer = await fsPromises.readFile(choisie.path);
