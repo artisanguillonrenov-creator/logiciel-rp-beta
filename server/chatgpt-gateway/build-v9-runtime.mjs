@@ -156,7 +156,7 @@ async function generateImageWithCodex({ prompt, references = [] }) {
     const images = await listerImagesRecursif(dossier);
     const choisie = images.find((image) => path.basename(image.path).toLowerCase().startsWith('elyndor-output')) || images[0];
     if (!choisie) {
-      throw new Error(\`ChatGPT a terminé sans fichier image exploitable.\${texteAgent.trim() ? ` Détail : ${texteAgent.trim().slice(0, 300)}` : ''}\`);
+      throw new Error('ChatGPT a terminé sans fichier image exploitable.' + (texteAgent.trim() ? ' Détail : ' + texteAgent.trim().slice(0, 300) : ''));
     }
     if (choisie.size > 12 * 1024 * 1024) throw new Error('Image générée trop volumineuse pour être renvoyée.');
     const buffer = await fsPromises.readFile(choisie.path);
