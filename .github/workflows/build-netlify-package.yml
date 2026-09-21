@@ -43,6 +43,9 @@ jobs:
       - name: Track automatic opening message usage
         run: node scripts/apply-opening-token-usage.mjs
 
+      - name: Apply V8 local-first token economy
+        run: node scripts/apply-token-economy-v8.mjs
+
       - name: Configure root base URL for Netlify
         run: |
           node - <<'NODE'
@@ -74,7 +77,7 @@ jobs:
       - name: Upload Netlify-ready package
         uses: actions/upload-artifact@v4
         with:
-          name: ELYNDOR-RP-NETLIFY-V7-TOKEN-USAGE
+          name: ELYNDOR-RP-NETLIFY-V8-TOKEN-ECONOMY
           path: dist/
           if-no-files-found: error
           compression-level: 6
