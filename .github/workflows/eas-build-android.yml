@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - claude/new-session-glwy6e
+      - chatgpt/android-gguf-local-model
     paths:
       - app.json
       - eas.json
       - package.json
       - package-lock.json
       - plugins/**
+      - src/engine/localInference.ts
+      - src/storage/modeleLocalStore.ts
       - .github/workflows/eas-build-android.yml
   workflow_dispatch:
 
@@ -23,7 +26,10 @@ jobs:
         with:
           node-version: 24
 
-      - run: npm ci
+      # npm install garde package-lock.json synchronisé avec package.json dans
+      # l'espace de travail avant le build EAS local. C'est nécessaire pour les
+      # dépendances natives ajoutées sur cette branche de test Android.
+      - run: npm install --no-audit --no-fund
 
       - run: npm install --global eas-cli
 
