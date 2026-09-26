@@ -7,6 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -29,6 +30,15 @@
     "plugins": [
       "expo-font",
       "./plugins/withLitertKotlinSkipVersionCheck.js",
+      [
+        "llama.rn",
+        {
+          "enableEntitlements": true,
+          "entitlementsProfile": "production",
+          "forceCxx20": true,
+          "enableOpenCL": false
+        }
+      ],
       [
         "expo-speech-recognition",
         {
