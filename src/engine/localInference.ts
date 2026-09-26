@@ -4,54 +4,81 @@ import {
   loadLiteRtModel,
   unloadLiteRtModel,
 } from 'expo-litert-lm';
+import { initLlama } from 'llama.rn';
 import { cheminModeleLocal } from '../storage/modeleLocalStore';
 import type { AppelOutil, ChatMessage, ToolDefinition } from './openrouter';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 
-// Moteur local (expo-litert-lm, natif uniquement — voir localInference.web.ts
-// pour le web, jamais bundlé ensemble grâce à la résolution de plateforme de
-// Metro). Ce fichier est le SEUL endroit du projet qui importe
-// expo-litert-lm : le garder isolé ici évite qu'une dépendance native
-// casse le build web existant.
+// Moteur local natif Android.
+// - .gguf   -> llama.rn / llama.cpp
+// - .litertlm / .task -> ancien moteur LiteRT-LM conservé pour compatibilité
+// Le web continue d'utiliser localInference.web.ts et n'embarque aucun de ces
+// runtimes natifs grâce à la résolution de plateforme de Metro.
 export class ErreurMoteurLocal extends Error {}
 
-// Le pont natif (Kotlin) peut lever ses propres exceptions (mémoire
-// insuffisante, échec d'initialisation du GPU, format de modèle invalide,
-// etc.) qui arrivent en JS comme des erreurs génériques, pas des
-// ErreurMoteurLocal — sans ce filet, leur message se perdait et l'écran de
-// conversation retombait sur un texte générique ne disant rien de la
-// cause réelle.
 function convertirErreurNative(e: unknown, contexte: string): ErreurMoteurLocal {
   const detail = e instanceof Error ? e.message : String(e);
   return new ErreurMoteurLocal(`${contexte} : ${detail}`);
 }
 
-// L'API d'expo-litert-lm fixe température/topK/maxTokens au CHARGEMENT du
-// modèle, pas par appel (contrairement à OpenRouter où chaque pipeline
-// module sa température) — limitation de la lib, pas un choix : on charge
-// une fois avec des valeurs raisonnables pour de la narration et on vit
-// avec la perte de réglage fin par appel en mode local.
-//
-// maxTokens est un plafond combiné prefill + decode (défaut de la lib :
-// 2048), pas juste la longueur de la réponse générée : le prompt système
-// (règles, personnage, style) plus la fenêtre de messages récents dépasse
-// à lui seul ce défaut dès le premier message d'une scène un peu développée
-// (observé : 2481 tokens rien qu'en prefill), d'où l'erreur native "Input
-// token ids are too long". 4096 laisse de la marge sans doubler encore le
-// coût mémoire d'un modèle déjà volumineux sur un appareil à 4 Go de RAM.
 const MAX_TOKENS_LOCAL = 4096;
 const TOP_K_LOCAL = 40;
 const TEMPERATURE_LOCAL = 0.8;
+const N_PREDICT_GGUF = 700;
+const STOP_GGUF = [
+  '</s>',
+  '<|end|>',
+  '<|eot_id|>',
+  '<|end_of_text|>',
+  '<|im_end|>',
+  '<|EOT|>',
+  '<|END_OF_TURN_TOKEN|>',
+  '<|end_of_turn|>',
+  '<|endoftext|>',
+];
 
 let modeleCharge: string | null = null;
+let backendCharge: 'gguf' | 'litert' | null = null;
 let chargementEnCours: Promise<void> | null = null;
+let contexteGGUF: Awaited<ReturnType<typeof initLlama>> | null = null;
+
+function estGGUF(chemin: string): boolean {
+  return chemin.toLowerCase().endsWith('.gguf');
+}
 
 export async function estDisponibleLocal(): Promise<boolean> {
+  const chemin = cheminModeleLocal();
+  if (chemin && estGGUF(chemin)) {
+    // Si ce fichier natif est chargé, l'import de llama.rn a déjà réussi.
+    return true;
+  }
   try {
     return await isLiteRtAvailable();
   } catch {
     return false;
   }
+}
+
+async function dechargerRuntimeActif(): Promise<void> {
+  if (backendCharge === 'gguf' && contexteGGUF) {
+    try {
+      await contexteGGUF.release();
+    } catch {
+      // On tente quand même le prochain chargement.
+    }
+    contexteGGUF = null;
+  }
+
+  if (backendCharge === 'litert') {
+    try {
+      await unloadLiteRtModel();
+    } catch {
+      // On tente quand même le prochain chargement.
+    }
+  }
+
+  backendCharge = null;
+  modeleCharge = null;
 }
 
 async function assurerModeleCharge(): Promise<void> {
@@ -67,16 +94,35 @@ async function assurerModeleCharge(): Promise<void> {
   }
 
   chargementEnCours = (async () => {
-    if (modeleCharge !== null) {
-      try {
-        await unloadLiteRtModel();
-      } catch {
-        // On recharge quand même : mieux vaut tenter le nouveau chargement
-        // que rester bloqué sur un déchargement raté.
-      }
-      modeleCharge = null;
+    if (modeleCharge !== null || backendCharge !== null) {
+      await dechargerRuntimeActif();
     }
+
+    if (estGGUF(chemin)) {
+      try {
+        // Réglage volontairement conservateur pour tablette : 4K de contexte
+        // et CPU uniquement. Cela évite de dépendre d'un GPU Android précis et
+        // garde la consommation mémoire compatible avec davantage d'appareils.
+        contexteGGUF = await initLlama({
+          model: chemin,
+          n_ctx: MAX_TOKENS_LOCAL,
+          n_batch: 256,
+          n_threads: 4,
+          n_gpu_layers: 0,
+          use_mlock: false,
+        });
+      } catch (e) {
+        contexteGGUF = null;
+        throw convertirErreurNative(e, 'Échec du chargement du modèle GGUF');
+      }
+      backendCharge = 'gguf';
+      modeleCharge = chemin;
+      return;
+    }
+
     try {
+      // Compatibilité avec les anciens petits modèles Android déjà utilisés
+      // par Elyndor (.litertlm / .task).
       await loadLiteRtModel(chemin, {
         maxTokens: MAX_TOKENS_LOCAL,
         topK: TOP_K_LOCAL,
@@ -84,8 +130,9 @@ async function assurerModeleCharge(): Promise<void> {
         preferredBackend: 'gpu',
       });
     } catch (e) {
-      throw convertirErreurNative(e, 'Échec du chargement du modèle local');
+      throw convertirErreurNative(e, 'Échec du chargement du modèle LiteRT local');
     }
+    backendCharge = 'litert';
     modeleCharge = chemin;
   })();
 
@@ -97,9 +144,10 @@ async function assurerModeleCharge(): Promise<void> {
 }
 
 /**
- * Gemma n'a pas de rôle système distinct : son chat template attend une
- * alternance stricte user/model. On fusionne chaque message système dans
- * le tour utilisateur qui suit.
+ * Gemma LiteRT n'a pas de rôle système distinct : son chat template attend
+ * une alternance stricte user/model. Cette fonction reste uniquement pour
+ * l'ancien backend LiteRT. llama.rn utilise directement le chat template
+ * inclus dans le GGUF.
  */
 function formaterPromptGemma(messages: ChatMessage[]): string {
   const tours: { role: 'user' | 'model'; contenu: string }[] = [];
@@ -126,17 +174,49 @@ function formaterPromptGemma(messages: ChatMessage[]): string {
   return `${corps}<start_of_turn>model\n`;
 }
 
+function messagesPourLlama(messages: ChatMessage[]) {
+  return messages.map((m) => ({
+    role: m.role === 'assistant' ? 'assistant' : m.role === 'system' ? 'system' : 'user',
+    content: m.content,
+  }));
+}
+
 export async function genererTexteLocal(messages: ChatMessage[]): Promise<string> {
-  if (!(await estDisponibleLocal())) {
-    throw new ErreurMoteurLocal("Le moteur local n'est pas disponible sur cet appareil (Android 12+ requis).");
-  }
   await assurerModeleCharge();
+
+  if (backendCharge === 'gguf') {
+    if (!contexteGGUF) {
+      throw new ErreurMoteurLocal('Le contexte GGUF local n’est pas initialisé.');
+    }
+    try {
+      const resultat = await contexteGGUF.completion({
+        messages: messagesPourLlama(messages) as any,
+        n_predict: N_PREDICT_GGUF,
+        temperature: TEMPERATURE_LOCAL,
+        top_k: TOP_K_LOCAL,
+        top_p: 0.95,
+        stop: STOP_GGUF,
+      });
+      const nettoyee = (resultat.text ?? '').trim();
+      if (!nettoyee) {
+        throw new ErreurMoteurLocal('Réponse vide reçue du modèle GGUF local.');
+      }
+      return nettoyee;
+    } catch (e) {
+      if (e instanceof ErreurMoteurLocal) throw e;
+      throw convertirErreurNative(e, 'Échec de la génération GGUF locale');
+    }
+  }
+
+  if (!(await estDisponibleLocal())) {
+    throw new ErreurMoteurLocal("Le moteur local LiteRT n'est pas disponible sur cet appareil (Android 12+ requis).");
+  }
 
   let reponse: string;
   try {
     reponse = await generateLiteRtResponse(formaterPromptGemma(messages));
   } catch (e) {
-    throw convertirErreurNative(e, 'Échec de la génération locale');
+    throw convertirErreurNative(e, 'Échec de la génération LiteRT locale');
   }
   const nettoyee = reponse.replace(/<end_of_turn>\s*$/i, '').trim();
   if (!nettoyee) {
@@ -146,11 +226,9 @@ export async function genererTexteLocal(messages: ChatMessage[]): Promise<string
 }
 
 /**
- * Fallback JSON-en-prose pour le tool calling en mode local (l'API
- * d'expo-litert-lm ne connaît que du texte, pas de function calling natif).
- * Renvoie la même forme {contenu, appelsOutils} qu'appellerModeleAvecOutils
- * pour qu'aucun appelant (worldSimulation.ts, socialDynamics.ts, qui
- * valident déjà chaque appel via tools.ts) n'ait à changer.
+ * Fallback JSON-en-prose pour le tool calling en mode local. Il garde la
+ * même forme {contenu, appelsOutils} qu'appellerModeleAvecOutils afin que les
+ * moteurs narratifs existants n'aient rien à changer.
  */
 export async function appellerModeleLocalAvecOutilsJson(
   messages: ChatMessage[],
@@ -162,7 +240,6 @@ export async function appellerModeleLocalAvecOutilsJson(
 }
 
 export async function dechargerModeleLocal(): Promise<void> {
-  if (modeleCharge === null) return;
-  await unloadLiteRtModel();
-  modeleCharge = null;
+  if (modeleCharge === null && backendCharge === null) return;
+  await dechargerRuntimeActif();
 }
