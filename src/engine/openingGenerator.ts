@@ -59,7 +59,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   const contenu = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, {
-      budgetSysteme: appSettings.moteurInference === 'local' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT,
+      budgetSysteme: appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT,
     }),
     temperature,
     maxTokens,

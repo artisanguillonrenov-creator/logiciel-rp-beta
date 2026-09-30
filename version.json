@@ -1,7 +1,7 @@
 {
-  "version": "1.28.2",
+  "version": "1.29.0",
   "url": "https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/",
   "urlAndroid": "https://expo.dev/accounts/williamguillon/projects/logiciel-rp-beta/builds/fe8eb8af-a1e5-4b0e-9539-75267700dd6d",
   "versionAndroid": "1.12.0",
-  "notes": "Corrige la duplication de portraits de PNJ (et du tien) à chaque réouverture d'une conversation. Ajoute aussi un bouton \"Supprimer\" pour nettoyer manuellement un portrait, PNJ ou le tien."
+  "notes": "Nouveau moteur « Serveur local » (repris d'Elyndor V13.2.6) : utilise un modèle qui tourne sur ton PC dans LM Studio ou Ollama. Tape le nom du fichier GGUF puis Entrée ; fonctionne aussi depuis un téléphone ou une tablette sur le même réseau. Attente jusqu'à 10 minutes pour les modèles lents."
 }

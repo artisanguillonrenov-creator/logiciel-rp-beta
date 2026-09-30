@@ -90,3 +90,15 @@ test('web : session par défaut, conservation durable explicite, retrait effecti
     Reflect.deleteProperty(globalThis, 'localStorage');
   }
 });
+
+test('la clé du serveur local est rangée dans le coffre, jamais dans les réglages en clair', async () => {
+  const e = environnement();
+  const settings = { ...defauts, moteurInference: 'serveur' as const, serveurLocalUrl: 'http://192.168.1.25:1234/v1', serveurLocalModele: 'qwen3.5-9b', serveurLocalApiKey: 'cle-lan' };
+  await e.depot.enregistrer(settings);
+  assert.ok(!e.raw()!.includes('cle-lan'));
+  assert.ok(e.raw()!.includes('qwen3.5-9b'));
+  const relu = await e.depot.lire();
+  assert.equal(relu.serveurLocalApiKey, 'cle-lan');
+  assert.equal(relu.serveurLocalModele, 'qwen3.5-9b');
+  assert.equal(relu.moteurInference, 'serveur');
+});

@@ -342,7 +342,7 @@ export async function genererTour(
   ) || configurationLLM(appSettings).model;
   const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
-  const budgetPrompt = appSettings.moteurInference === 'local' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
 
   let reponse = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),

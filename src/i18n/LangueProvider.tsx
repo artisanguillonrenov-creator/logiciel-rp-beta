@@ -104,7 +104,8 @@ export function LangueProvider({ children }: { children: React.ReactNode }) {
       const lot = Array.from(pendingRef.current);
       pendingRef.current.clear();
       if (!settings || langueCourante === 'fr' || lot.length === 0) return;
-      if (!configurationLLM(settings).apiKey && settings.moteurInference !== 'local') return;
+      const sansCle = settings.moteurInference === 'local' || settings.moteurInference === 'serveur';
+      if (!configurationLLM(settings).apiKey && !sansCle) return;
       const libelleLangue = LANGUES_SUGGEREES.find((l) => l.code === langueCourante)?.label ?? langueCourante;
       const traductions = await traduireLot(lot, libelleLangue, settings).catch(() => lot);
       const ajout: Record<string, string> = {};

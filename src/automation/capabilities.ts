@@ -38,11 +38,15 @@ export function calculerCapacites(
   const modeleInfermatic = nonVide(settings.infermaticModel);
   const modeleLocalPresent = env.plateforme === 'native' && env.modeleLocalPresent === true;
 
+  const serveurConfigure = nonVide(settings.serveurLocalModele);
+
   const narration = fournisseur === 'local'
     ? modeleLocalPresent
-    : fournisseur === 'infermatic'
-      ? cleInfermatic && modeleInfermatic
-      : cleOpenRouter && modeleOpenRouter;
+    : fournisseur === 'serveur'
+      ? serveurConfigure
+      : fournisseur === 'infermatic'
+        ? cleInfermatic && modeleInfermatic
+        : cleOpenRouter && modeleOpenRouter;
 
   // Le pipeline embeddings sait utiliser Infermatic quand il est le
   // fournisseur actif, OpenRouter sinon, ou la clé embeddings de secours.
@@ -60,9 +64,11 @@ export function calculerCapacites(
   if (!narration) {
     raisons.narration = fournisseur === 'local'
       ? 'Aucun modèle local prêt sur cet appareil.'
-      : fournisseur === 'infermatic'
-        ? 'Clé ou modèle Infermatic manquant.'
-        : 'Clé ou modèle OpenRouter manquant.';
+      : fournisseur === 'serveur'
+        ? 'Aucun modèle choisi pour le serveur local.'
+        : fournisseur === 'infermatic'
+          ? 'Clé ou modèle Infermatic manquant.'
+          : 'Clé ou modèle OpenRouter manquant.';
   }
   if (!embeddings) raisons.embeddings = 'Aucun fournisseur d’embeddings disponible.';
   if (!images) raisons.images = settings.genererImagesActive
