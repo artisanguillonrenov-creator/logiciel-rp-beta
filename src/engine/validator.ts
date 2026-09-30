@@ -255,6 +255,10 @@ export function determinerStrategie(rapport: RapportValidation): StrategieRepara
   const patchable = echecs.every((c) => c.gravite === 'mineur' && c.nomIncorrect && c.nomCorrect);
   if (patchable) return 'patch_local';
 
+  // Entité majeure inventée (V13) : la réécrire partiellement laisserait
+  // des traces du faux royaume ailleurs dans la scène.
+  if (echecs.some((c) => c.nom === 'canon' && c.gravite === 'grave')) return 'regeneration_complete';
+
   const pireGravite = echecs.reduce<Gravite>(
     (pire, c) => (ORDRE_GRAVITE[c.gravite] > ORDRE_GRAVITE[pire] ? c.gravite : pire),
     'mineur',

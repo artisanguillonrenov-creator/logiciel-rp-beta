@@ -33,6 +33,7 @@ import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
+import { contradictionProbable, corpusCanon, validerRepetitionHeuristique, verifierEntitesCanoniques } from './verificationCanon';
 import {
   construireBlocsContexte,
   debugBlocsContexte,
@@ -60,6 +61,7 @@ import {
   appliquerPatchLocal,
   determinerStrategie,
   fusionnerRapports,
+  rapportOk,
   reparerReponse,
   reponseFaitParlerLeJoueur,
   retirerRepliqueDuJoueur,
@@ -382,15 +384,25 @@ export async function genererTour(
     maxTokens,
   });
 
-  const heuristique = validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom);
-  const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
-  const llm = await validerReponseLLM({
-    ...configurationLLM(appSettings, modelePourAppel),
-    reponse,
-    faits: ctxBase.faits,
-    meta: ctxBase.meta,
-  });
-  const rapport = fusionnerRapports(heuristique, profilContenuCheck, llm);
+  const canon = corpusCanon(storyCourante, messageJoueur, LORE_ELYNDOR);
+  const controlesLocaux = fusionnerRapports(
+    validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
+    validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
+    validerRepetitionHeuristique(reponse, storyCourante),
+    verifierEntitesCanoniques(reponse, canon),
+  );
+  // V13 : l'appel de validation au modèle (un second appel complet, très
+  // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
+  // passés et que la réponse semble défaire un fait établi.
+  const llm = controlesLocaux.ok && contradictionProbable(reponse, storyCourante)
+    ? await validerReponseLLM({
+        ...configurationLLM(appSettings, modelePourAppel),
+        reponse,
+        faits: ctxBase.faits,
+        meta: ctxBase.meta,
+      })
+    : rapportOk();
+  const rapport = fusionnerRapports(controlesLocaux, llm);
 
   const strategie = determinerStrategie(rapport);
   let aEteCorrige = strategie !== 'aucune';
@@ -423,6 +435,14 @@ export async function genererTour(
     } catch {
       aEteCorrige = false;
     }
+  }
+
+  // Dernier filet : une entité inventée qui a survécu à la correction est
+  // remplacée par un terme générique plutôt que d'entrer dans l'histoire.
+  const canonFinal = verifierEntitesCanoniques(reponse, canon);
+  if (!canonFinal.ok) {
+    reponse = appliquerPatchLocal(reponse, canonFinal);
+    aEteCorrige = true;
   }
 
   if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
