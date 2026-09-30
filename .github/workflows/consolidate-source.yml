@@ -1,0 +1,75 @@
+name: Consolidate Elyndor source
+
+on:
+  push:
+    branches:
+      - rebuild/elyndor-v13-source-20260930
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[source-consolidated]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consolidation branch
+        uses: actions/checkout@v4
+        with:
+          ref: rebuild/elyndor-v13-source-20260930
+          fetch-depth: 0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply ChatGPT Plus integration
+        run: node scripts/apply-chatgpt-plus-integration.mjs
+
+      - name: Apply ChatGPT model picker
+        run: node scripts/apply-chatgpt-model-picker.mjs
+
+      - name: Apply tablet/playability fixes
+        run: node scripts/apply-chatgpt-playability-fixes.mjs
+
+      - name: Wire local history/lore retrieval
+        run: node scripts/apply-local-retrieval-wiring.mjs
+
+      - name: Add token usage telemetry
+        run: node scripts/apply-token-usage-export.mjs
+
+      - name: Track opening-scene usage
+        run: node scripts/apply-opening-token-usage.mjs
+
+      - name: Apply V8 token economy
+        run: node scripts/apply-token-economy-v8.mjs
+
+      - name: Apply V9 visual pipeline
+        run: node scripts/apply-visual-pipeline-v9.mjs
+
+      - name: Preserve existing avatar identities
+        run: node scripts/apply-visual-pipeline-v9-compat.mjs
+
+      - name: Apply V10 persistent narrative memory
+        run: node scripts/apply-v10-persistent-memory.mjs
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Commit the generated source instead of keeping build-time patches
+        run: |
+          git config user.name "Elyndor source consolidation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src server app.json package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit -m "refactor: materialize Narrative OS V10 into source [source-consolidated]"
+          git push origin HEAD:rebuild/elyndor-v13-source-20260930
