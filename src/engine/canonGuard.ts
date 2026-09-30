@@ -1,7 +1,7 @@
 import elyndorRaw from '../data/elyndorLore.json';
 import type { LoreEntry, StoryState } from '../types';
 import { chargerLoreElyndor } from './loreLoader';
-import { rapportOk, type RapportValidation, type ResultatCheck } from './validator';
+import type { RapportValidation, ResultatCheck } from './validator';
 
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
@@ -118,5 +118,5 @@ export function verifierEntitesCanoniques(
     }
   }
 
-  return checks.length ? { ok: false, checks } : rapportOk();
+  return checks.length ? { ok: false, checks } : { ok: true, checks: [] };
 }
