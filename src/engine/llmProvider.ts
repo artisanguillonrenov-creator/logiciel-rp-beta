@@ -4,6 +4,7 @@ import type { ToolDefinition } from './openrouter';
 import { fetchInfermatic } from './infermaticScheduler';
 import { normaliserUrlServeur } from './serveurUrl';
 import { masquerSecrets } from './responseSanitizer';
+import { enregistrerUsageAppel } from './mesureTokens';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 
 type FournisseurDistant = Exclude<FournisseurLLM, 'local' | 'serveur'>;
@@ -167,6 +168,7 @@ export async function appelerChatDistant(options: RequeteChatDistante): Promise<
     throw new ErreurFournisseurLLM(`Erreur ${nom} (${response.status})${detail ? ` : ${detail}` : ''}`, fournisseur, response.status);
   }
   const data = await response.json();
+  enregistrerUsageAppel(data?.usage);
   appliquerPolitiqueRaisonnement(data?.choices?.[0]?.message, profilRaisonnement);
   return data;
 }

@@ -2,6 +2,7 @@ import type { AppSettings } from '../types';
 import type { ChatMessage, ToolDefinition } from './openrouter';
 import { parserAppelsOutils, type AppelOutilDistant, type ModeleDistant } from './llmProvider';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
+import { enregistrerUsageAppel } from './mesureTokens';
 import { masquerSecrets } from './responseSanitizer';
 import { normaliserUrlServeur } from './serveurUrl';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
@@ -235,6 +236,7 @@ async function appelerChat(options: RequeteServeurLocal, tools?: unknown[]): Pro
   }, DELAI_GENERATION_MS, signal);
   await verifierReponse(response, config);
   const data = await response.json();
+  enregistrerUsageAppel(data?.usage);
   const message = data?.choices?.[0]?.message ?? data?.message ?? {};
   const raisonnementSeul = !(typeof message.content === 'string' && message.content.trim()) &&
     ['reasoning_content', 'reasoning'].some((champ) => typeof message[champ] === 'string' && message[champ].trim());

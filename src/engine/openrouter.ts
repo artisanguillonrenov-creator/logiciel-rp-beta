@@ -2,6 +2,7 @@ import type { MoteurInference } from '../types';
 import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
 import { appelerChatDistant, appelerChatDistantAvecOutils, ErreurFournisseurLLM, listerModelesDistants, type ModeleDistant } from './llmProvider';
 import { appelerServeurAvecOutils, genererTexteServeur, normaliserUrlServeur } from './serveurLocal';
+import { enregistrerAppelSansUsage } from './mesureTokens';
 export { configurationLLM } from './llmProvider';
 
 export interface ChatMessage {
@@ -33,7 +34,11 @@ export async function appellerModele({
   baseUrl,
   signal,
 }: AppelModeleOptions): Promise<string> {
-  if (moteurInference === 'local') return genererTexteLocal(messages);
+  if (moteurInference === 'local') {
+    // LiteRT ne rapporte aucun usage : l'appel est compté, sans tokens.
+    enregistrerAppelSansUsage();
+    return genererTexteLocal(messages);
+  }
   if (moteurInference === 'serveur') {
     return genererTexteServeur({
       config: { baseUrl: normaliserUrlServeur(baseUrl), model, apiKey: apiKey || undefined },
@@ -105,7 +110,10 @@ export async function appellerModeleAvecOutils({
   baseUrl,
   signal,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
-  if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
+  if (moteurInference === 'local') {
+    enregistrerAppelSansUsage();
+    return appellerModeleLocalAvecOutilsJson(messages, outils);
+  }
   if (moteurInference === 'serveur') {
     return appelerServeurAvecOutils(
       { config: { baseUrl: normaliserUrlServeur(baseUrl), model, apiKey: apiKey || undefined }, messages, temperature, maxTokens, signal },

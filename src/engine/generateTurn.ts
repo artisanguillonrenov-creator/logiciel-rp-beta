@@ -32,6 +32,7 @@ import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './s
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
+import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
   embedderMessagesAnciens,
   formaterSouvenirs,
@@ -351,6 +352,7 @@ export async function genererTour(
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
   const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
 
+  commencerMesureTokens();
   let reponse = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
@@ -407,6 +409,7 @@ export async function genererTour(
   }
 
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
+    annulerMesureTokens();
     throw new ErreurProfilContenu(
       "Cette réponse ne respecte pas les limites du profil Grand public et n'a pas pu être corrigée automatiquement. Réessaie avec une formulation différente.",
     );
@@ -425,6 +428,7 @@ export async function genererTour(
     content: reponse,
     timestamp: Date.now(),
     dureeGenerationMs: Date.now() - debutMs,
+    usageTokens: terminerMesureTokens(),
   };
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];

@@ -8,6 +8,7 @@ import {
   BUDGET_SYSTEM_DISTANT,
 } from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
+import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
 
@@ -56,6 +57,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
 
+  commencerMesureTokens();
   const contenu = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, {
@@ -72,6 +74,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   // dégrade déjà silencieusement vers l'écran vide habituel si cette
   // fonction échoue, ce qui est le comportement voulu ici aussi.
   if (!validerProfilContenuHeuristique(contenu, appSettings.profilContenu).ok) {
+    annulerMesureTokens();
     throw new ErreurProfilContenu("Scène d'ouverture générée hors des limites du profil Grand public.");
   }
 
@@ -81,5 +84,6 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     content: contenu.trim(),
     timestamp: Date.now(),
     dureeGenerationMs: Date.now() - debutMs,
+    usageTokens: terminerMesureTokens(),
   };
 }

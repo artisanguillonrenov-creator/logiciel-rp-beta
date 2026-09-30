@@ -107,6 +107,21 @@ export interface Message {
   // "assistant" uniquement. Affichage/diagnostic seulement, jamais transmis
   // au moteur. Absent sur les messages écrits avant l'ajout de cette mesure.
   dureeGenerationMs?: number;
+  // Tokens consommés par tous les appels du tour qui a produit ce message
+  // (V13) — affichés dans les exports, jamais transmis au moteur.
+  usageTokens?: UsageTokens;
+}
+
+export interface UsageTokens {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+  apiCalls: number;
+  // false si au moins un appel n'a renvoyé aucun usage (runtime local,
+  // fournisseur muet) : les totaux sont alors des minima.
+  complete: boolean;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
