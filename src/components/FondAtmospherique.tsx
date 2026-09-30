@@ -3,6 +3,7 @@ import { Animated, Image, ImageSourcePropType, Platform, StyleSheet, View, ViewS
 import { LinearGradient } from 'expo-linear-gradient';
 import { couleurs } from '../theme/theme';
 import SceneChateau from './SceneChateau';
+import { CoinFiligrane } from './Ornements';
 
 interface FondAtmospheriqueProps {
   children: React.ReactNode;
@@ -82,16 +83,15 @@ function Etoile({ etoile }: { etoile: Etoile }) {
   );
 }
 
-// Fioriture d'angle : simple cadre ouvert (deux traits) dans chaque coin de
-// l'écran — reprend le vocabulaire déjà établi (traits fins + losange, voir
-// Separateur) plutôt que d'introduire de la vraie illustration vectorielle.
+// Fioriture d'angle de l'écran : les coins filigranés des cadres du
+// grimoire, en plus grand et plus discrets.
 function FiorituresAngles() {
   return (
     <>
-      <View style={[styles.coin, styles.coinHautGauche]} />
-      <View style={[styles.coin, styles.coinHautDroit]} />
-      <View style={[styles.coin, styles.coinBasGauche]} />
-      <View style={[styles.coin, styles.coinBasDroit]} />
+      <CoinFiligrane angle="hautGauche" taille={TAILLE_COIN} style={[styles.coin, styles.coinHautGauche]} />
+      <CoinFiligrane angle="hautDroit" taille={TAILLE_COIN} style={[styles.coin, styles.coinHautDroit]} />
+      <CoinFiligrane angle="basGauche" taille={TAILLE_COIN} style={[styles.coin, styles.coinBasGauche]} />
+      <CoinFiligrane angle="basDroit" taille={TAILLE_COIN} style={[styles.coin, styles.coinBasDroit]} />
     </>
   );
 }
@@ -126,7 +126,13 @@ export default function FondAtmospherique({ children, style, densiteEtoiles = 'n
         {imageFond ? (
           <>
             <Image source={imageFond} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            <View style={styles.scrimImage} />
+            {/* Voile V13.2 : l'illustration reste lisible en haut, le bas
+                s'assombrit pour porter le texte et les actions. */}
+            <LinearGradient
+              colors={['rgba(1, 4, 12, 0.10)', 'rgba(1, 4, 12, 0.48)', 'rgba(0, 2, 8, 0.88)']}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
           </>
         ) : (
           <SceneChateau />
@@ -172,14 +178,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: couleurs.fond,
   },
-  scrimImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(5, 7, 18, 0.42)',
-  },
   vignetteBord: {
     position: 'absolute',
   },
@@ -189,12 +187,10 @@ const styles = StyleSheet.create({
   vignetteDroite: { top: 0, bottom: 0, right: 0, width: 90 },
   coin: {
     position: 'absolute',
-    width: TAILLE_COIN,
-    height: TAILLE_COIN,
-    borderColor: 'rgba(228, 211, 160, 0.35)',
+    opacity: 0.55,
   },
-  coinHautGauche: { top: 18, left: 18, borderTopWidth: 1, borderLeftWidth: 1 },
-  coinHautDroit: { top: 18, right: 18, borderTopWidth: 1, borderRightWidth: 1 },
-  coinBasGauche: { bottom: 18, left: 18, borderBottomWidth: 1, borderLeftWidth: 1 },
-  coinBasDroit: { bottom: 18, right: 18, borderBottomWidth: 1, borderRightWidth: 1 },
+  coinHautGauche: { top: 14, left: 14 },
+  coinHautDroit: { top: 14, right: 14 },
+  coinBasGauche: { bottom: 14, left: 14 },
+  coinBasDroit: { bottom: 14, right: 14 },
 });

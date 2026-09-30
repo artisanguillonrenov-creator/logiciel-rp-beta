@@ -57,9 +57,9 @@ export default function RootNavigator() {
       <Stack.Navigator
         initialRouteName={betaAcceptee ? 'Demarrage' : 'Activation'}
         screenOptions={{
-          headerStyle: { backgroundColor: couleurs.fondProfond },
+          headerStyle: { backgroundColor: '#030814' },
           headerTintColor: couleurs.doreClair,
-          headerTitleStyle: { fontFamily: polices.titre, color: couleurs.doreClair, fontSize: 20 },
+          headerTitleStyle: { fontFamily: polices.display, color: couleurs.doreClair, fontSize: 17 },
           headerShadowVisible: false,
           headerBackTitle: 'Retour',
           contentStyle: { backgroundColor: couleurs.fond },

@@ -143,10 +143,9 @@ export default function PluginsScreen({}: Props) {
               </View>
               <Bouton
                 titre="Retirer"
-                variante="secondaire"
+                variante="danger"
                 onPress={() => void retirer(item.id)}
                 style={styles.boutonRetirer}
-                texteStyle={{ color: couleurs.danger }}
               />
             </Panneau>
           </View>

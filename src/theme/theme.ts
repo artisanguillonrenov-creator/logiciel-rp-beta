@@ -1,25 +1,26 @@
-// Direction artistique Elyndor V2 — fantasy sombre cinématique.
+// Direction artistique Elyndor — thème « grimoire nocturne » (V13.2) :
+// bleu nuit profond, or ciselé, cadres ornés de coins filigranés.
 //
-// Principe : le monde et les décisions utilisent l'or ; l'IA, la magie et
-// les états de focus utilisent le bleu arcane. Les surfaces restent très
-// sombres et translucides afin que l'illustration porte l'immersion sans
-// sacrifier la lisibilité.
+// Principe : le monde, les décisions et la sélection utilisent l'or ; le
+// bleu arcane reste réservé à l'IA, à la magie et à la voix du joueur. Les
+// surfaces restent très sombres et translucides afin que l'illustration
+// porte l'immersion sans sacrifier la lisibilité.
 export const couleurs = {
-  // Profondeur générale : bleu-noir, jamais noir pur.
-  fond: '#07111C',
-  fondProfond: '#040A12',
-  fondCarte: 'rgba(7, 17, 28, 0.90)',
-  fondCarteDense: 'rgba(9, 22, 36, 0.96)',
-  fondChampSaisie: 'rgba(4, 12, 22, 0.76)',
+  // Profondeur générale : bleu nuit, jamais noir pur.
+  fond: '#030817',
+  fondProfond: '#01040B',
+  fondCarte: 'rgba(9, 20, 44, 0.92)',
+  fondCarteDense: 'rgba(3, 9, 22, 0.96)',
+  fondChampSaisie: 'rgba(5, 14, 32, 0.97)',
 
-  // Bordures et texte. La bordure principale reste volontairement discrète :
-  // les écrans narratifs doivent lire comme une page, pas comme une grille de cartes.
-  bordure: '#223A50',
-  bordureSubtile: 'rgba(141, 171, 196, 0.24)',
-  bordureDoree: 'rgba(216, 179, 107, 0.72)',
-  texte: '#E9E3D5',
-  texteAtténué: '#9CA8B4',
-  texteFaible: '#71808F',
+  // Bordures et texte. La bordure froide reste discrète ; le liseré or
+  // encadre les panneaux et les actions.
+  bordure: 'rgba(128, 160, 215, 0.30)',
+  bordureSubtile: 'rgba(216, 177, 95, 0.16)',
+  bordureDoree: 'rgba(216, 177, 95, 0.46)',
+  texte: '#F3ECDC',
+  texteAtténué: '#B5BFD3',
+  texteFaible: '#7F8CA8',
 
   // Bleu = magie / IA / focus / sélection technique.
   accent: '#4EAEF8',
@@ -27,9 +28,12 @@ export const couleurs = {
   accentSombre: '#174B72',
 
   // Or = monde / progression / action principale / décision.
-  dore: '#D8B36B',
-  doreClair: '#F0D89E',
-  doreSombre: '#8E6C32',
+  dore: '#D6AE63',
+  doreClair: '#F2D38C',
+  doreSombre: '#8D6328',
+  doreEclat: '#FBE8B4',
+  // Texte posé sur l'or (boutons principaux).
+  encre: '#1C1206',
 
   danger: '#E3707D',
   succes: '#68A98C',
@@ -37,7 +41,7 @@ export const couleurs = {
   // Conversation : le narrateur doit presque disparaître en tant que
   // contenant. Le joueur garde juste assez de matière pour distinguer sa
   // propre action de la prose du monde.
-  bulleJoueur: 'rgba(14, 37, 55, 0.64)',
+  bulleJoueur: 'rgba(28, 64, 150, 0.94)',
   bulleNarrateur: 'rgba(7, 17, 28, 0.06)',
 };
 
@@ -50,12 +54,12 @@ export const espacement = {
   xxl: 48,
 };
 
-// Elyndor conserve des angles presque droits : le relief vient des liserés,
-// de la lumière et de la transparence, pas des cartes SaaS arrondies.
+// Grimoire V13.2 : angles adoucis, comme des plats de reliure — boutons et
+// champs à 10, panneaux à 14, fenêtres à 16.
 export const rayon = {
-  sm: 2,
-  md: 4,
-  lg: 6,
+  sm: 10,
+  md: 14,
+  lg: 16,
 };
 
 // Glow bleu pour la magie, l'IA et les éléments en focus.
@@ -74,6 +78,55 @@ export const ombresOr = {
   shadowOffset: { width: 0, height: 0 },
   shadowOpacity: 0.34,
   shadowRadius: 8,
+  elevation: 3,
+};
+
+// Ombre portée des cadres : détache un panneau de l'illustration de fond.
+export const ombreProfonde = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.42,
+  shadowRadius: 24,
+  elevation: 6,
+};
+
+// Dégradés du grimoire (expo-linear-gradient), repris des maquettes V13.2.
+export const degrades = {
+  or: {
+    couleurs: ['#F9E3A6', '#E8C577', '#CF9F4C', '#E3BD6F'] as const,
+    positions: [0, 0.36, 0.64, 1] as const,
+  },
+  // Reflet diagonal sur l'or.
+  reflet: {
+    couleurs: ['rgba(255, 255, 255, 0)', 'rgba(255, 250, 228, 0.34)', 'rgba(255, 255, 255, 0)'] as const,
+    positions: [0.18, 0.36, 0.52] as const,
+  },
+  nuit: { couleurs: ['rgba(14, 30, 62, 0.96)', 'rgba(4, 10, 24, 0.98)'] as const },
+  danger: { couleurs: ['rgba(40, 12, 20, 0.92)', 'rgba(14, 5, 9, 0.98)'] as const },
+  panneau: { couleurs: ['rgba(9, 20, 44, 0.92)', 'rgba(3, 9, 22, 0.96)'] as const },
+  champ: { couleurs: ['rgba(5, 14, 32, 0.97)', 'rgba(2, 8, 20, 0.99)'] as const },
+  joueur: { couleurs: ['rgba(28, 64, 150, 0.98)', 'rgba(38, 92, 205, 0.96)'] as const },
+};
+
+// Option sélectionnée (carte, race, lieu, moteur…) : liseré or lumineux et
+// fond ambré — une seule définition pour tous les écrans.
+export const styleOptionSelectionnee = {
+  borderColor: '#ECC97F',
+  backgroundColor: 'rgba(46, 34, 14, 0.62)',
+  shadowColor: '#D6AE63',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.3,
+  shadowRadius: 12,
+  elevation: 3,
+};
+export const texteOptionSelectionnee = { color: '#F6DEA0' };
+// Carte illustrée sélectionnée : seul le cadre s'allume, l'image reste nette.
+export const styleCarteImageSelectionnee = {
+  borderColor: '#ECC97F',
+  shadowColor: '#D6AE63',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.3,
+  shadowRadius: 12,
   elevation: 3,
 };
 

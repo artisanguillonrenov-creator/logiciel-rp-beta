@@ -1,14 +1,14 @@
 import React, { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { couleurs, ombresLueur, polices } from '../theme/theme';
+import { couleurs, ombresOr, polices } from '../theme/theme';
 
 interface IndicateurEtapesProps {
   total: number;
   actif: number;
 }
 
-// Ligne de progression V2 : plus fine, plus éditoriale. Les étapes passées
-// sont dorées (progression dans le monde), l'étape active reste bleu arcane.
+// Ligne de progression « grimoire » : médaillons bleu nuit cerclés d'or ;
+// les étapes passées sont ambrées, l'étape active s'illumine.
 export default function IndicateurEtapes({ total, actif }: IndicateurEtapesProps) {
   return (
     <View style={styles.rangee} accessibilityRole="progressbar">
@@ -17,7 +17,7 @@ export default function IndicateurEtapes({ total, actif }: IndicateurEtapesProps
         const estActif = i === actif;
         return (
           <Fragment key={i}>
-            <View style={[styles.point, complete && styles.pointComplete, estActif && styles.pointActif, estActif && ombresLueur]}>
+            <View style={[styles.point, complete && styles.pointComplete, estActif && styles.pointActif, estActif && ombresOr]}>
               <Text style={[styles.texte, complete && styles.texteComplete, estActif && styles.texteActif]}>
                 {complete ? '✓' : i + 1}
               </Text>
@@ -44,42 +44,44 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   point: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: couleurs.bordure,
+    borderColor: 'rgba(216, 177, 95, 0.34)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: couleurs.fondProfond,
+    backgroundColor: '#0A152C',
   },
   pointComplete: {
     borderColor: couleurs.dore,
-    backgroundColor: 'rgba(216, 179, 107, 0.12)',
+    backgroundColor: '#2A1E0C',
   },
   pointActif: {
-    borderColor: couleurs.accent,
-    backgroundColor: 'rgba(78, 174, 248, 0.16)',
+    borderColor: '#F3D997',
+    backgroundColor: '#3A2A10',
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
   },
   texte: {
     color: couleurs.texteFaible,
-    fontFamily: polices.corpsMedium,
-    fontSize: 10,
+    fontFamily: polices.displaySemiGras,
+    fontSize: 11,
   },
   texteComplete: {
     color: couleurs.doreClair,
   },
   texteActif: {
-    color: couleurs.accentClair,
+    color: couleurs.doreEclat,
   },
   rail: {
     width: 34,
     height: 1,
-    backgroundColor: couleurs.bordure,
+    backgroundColor: 'rgba(216, 177, 95, 0.18)',
     overflow: 'hidden',
   },
   railRempli: {
     height: 1,
-    backgroundColor: couleurs.dore,
+    backgroundColor: 'rgba(216, 177, 95, 0.55)',
   },
 });

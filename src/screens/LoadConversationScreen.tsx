@@ -171,10 +171,9 @@ export default function LoadConversationScreen({ navigation }: Props) {
                         <View style={styles.rangeeActions}>
                           <Bouton
                             titre={t('Supprimer')}
-                            variante="secondaire"
+                            variante="danger"
                             onPress={() => confirmerSuppression(item.id)}
                             style={styles.boutonAction}
-                            texteStyle={{ color: couleurs.danger }}
                           />
                           <Bouton titre={t('Conserver')} onPress={() => setSuppressionId(null)} style={styles.boutonAction} />
                         </View>
@@ -216,6 +215,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
                         <View style={styles.barreActions}>
                           <Bouton
                             titre={t('Reprendre')}
+                            icone="lecture"
                             onPress={() => navigation.navigate('Conversation', { storyId: item.id })}
                             style={styles.boutonReprendre}
                           />
