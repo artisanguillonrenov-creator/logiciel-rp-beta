@@ -61,6 +61,7 @@ import {
   type RapportValidation,
 } from './validator';
 import { construireContextBlocks, debugContextBlocks, formaterContextBlocks, synchroniserMemoireNarrative } from './narrative/persistentMemory';
+import { prioriserLoreCanon, verifierEntitesCanoniques } from './canonGuard';
 import {
   assurerNarrativeCoreV12,
   committerTourNarratifV12,
@@ -68,6 +69,7 @@ import {
   debugNarrativeCoreV12,
   extraireEnveloppeNarrativeV12,
   reconstruireNarrativeCoreDepuisTranscript,
+  reconcilierNarrativeCoreV12,
 } from './narrative/narrativeCoreV12';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './tokenUsageTelemetry';
 
@@ -161,7 +163,7 @@ export async function calculerSelectionLore(
     // puis on n'injecte que quelques extraits courts et pertinents.
     const loreHits = searchLoreLocal(poolElyndor, texteRequete);
     const historyHits = searchHistoryLocal(messagesAnciens, texteRequete, 0);
-    const loreElyndor = loreHitsAsEntries(loreHits);
+    const loreElyndor = prioriserLoreCanon(texteRequete, loreHitsAsEntries(loreHits));
     const souvenirs: Souvenir[] = historyHits.map((hit) => ({
       message: hit.message as Message,
       score: hit.score,
@@ -197,14 +199,14 @@ export async function calculerSelectionLore(
     vecteurRequete,
     vecteursMetamoteurs,
   );
-  const loreElyndor = selectionnerLoreElyndorSemantique(
+  const loreElyndor = prioriserLoreCanon(texteRequete, selectionnerLoreElyndorSemantique(
     poolElyndor,
     texteRequete,
     vecteurRequete,
     vecteursElyndor,
     undefined,
     optionsLoreElyndor,
-  );
+  ));
   const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
   return {
@@ -349,7 +351,8 @@ export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSet
     mettreAJourLoreEmergentSeul(appSettings, story, story.messages),
   ]);
   const storyMaj: StoryState = { ...story, ...maj, ...majLore };
-  return { ...storyMaj, memoireNarrative: synchroniserMemoireNarrative(storyMaj) };
+  const avecMemoire: StoryState = { ...storyMaj, memoireNarrative: synchroniserMemoireNarrative(storyMaj) };
+  return reconcilierNarrativeCoreV12(avecMemoire);
 }
 
 async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StoryState> {
@@ -495,7 +498,8 @@ export async function genererTour(
   const heuristique = validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
   const repetitionLocale = validerRepetitionLocale(reponse, storyCourante);
-  const rapportLocal = fusionnerRapports(heuristique, profilContenuCheck, repetitionLocale);
+  const canonLocal = verifierEntitesCanoniques(reponse, storyCourante, messageJoueur);
+  const rapportLocal = fusionnerRapports(heuristique, profilContenuCheck, repetitionLocale, canonLocal);
 
   // V8 : 1 seul appel IA par tour dans le cas normal. Le second appel de
   // validation n'est lancé que pour un signal sémantique rare que les
@@ -552,6 +556,15 @@ export async function genererTour(
   if (enveloppeFinaleV12.found) {
     reponse = enveloppeFinaleV12.text;
     if (enveloppeFinaleV12.delta) deltaV12 = enveloppeFinaleV12.delta;
+  }
+
+  // Dernier garde-fou déterministe : une réparation/régénération peut
+  // réintroduire une macro-entité inventée. On la neutralise localement
+  // avant affichage et avant commit dans l'Event Ledger.
+  const canonFinal = verifierEntitesCanoniques(reponse, storyCourante, messageJoueur);
+  if (!canonFinal.ok) {
+    reponse = appliquerPatchLocal(reponse, canonFinal);
+    aEteCorrige = true;
   }
 
   if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
