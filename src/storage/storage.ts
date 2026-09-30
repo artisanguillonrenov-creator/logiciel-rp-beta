@@ -73,6 +73,8 @@ export async function saveStory(story: StoryState): Promise<void> {
 }
 
 export const updateStoryIf = histoires.mettreAJourSi;
+export const lireHistoireBrute = histoires.lireBrut;
+export const importerHistoireBrute = histoires.importerBrut;
 
 export async function getPersonas(): Promise<Persona[]> {
   const raw = await AsyncStorage.getItem(KEYS.personas);
@@ -89,6 +91,10 @@ export async function savePersona(persona: Persona): Promise<void> {
   const existingPos = personas.findIndex((p) => p.id === persona.id);
   if (existingPos >= 0) personas[existingPos] = persona;
   else personas.push(persona);
+  await AsyncStorage.setItem(KEYS.personas, JSON.stringify(personas));
+}
+
+export async function remplacerPersonas(personas: Persona[]): Promise<void> {
   await AsyncStorage.setItem(KEYS.personas, JSON.stringify(personas));
 }
 

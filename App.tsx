@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,8 +13,14 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { couleurs } from './src/theme/theme';
 import { LangueProvider } from './src/i18n/LangueProvider';
 import AutomationProvider from './src/automation/AutomationProvider';
+import { demarrerCloud } from './src/cloud/serviceCloud';
 
 export default function App() {
+  // Compte Elyndor : reprend la session et synchronise dès l'ouverture.
+  useEffect(() => {
+    void demarrerCloud();
+  }, []);
+
   // Direction artistique (grimoire illuminé) : une seule famille serif dans
   // toute l'interface, pas de repli sans-serif — voir src/theme/theme.ts.
   // Si le chargement échoue (police non embarquée sur la plateforme), la

@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { StoryMeta } from '../types';
 import { deleteStory, getStoriesIndex, renommerStory } from '../storage/storage';
+import { useEtatCloud } from '../cloud/useEtatCloud';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { obtenirPortrait } from '../data/portraits';
 import Bouton from '../components/Bouton';
@@ -45,6 +46,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
   const [renommageValeur, setRenommageValeur] = useState('');
   const [suppressionId, setSuppressionId] = useState<string | null>(null);
   const swipeablesRef = useRef<Map<string, Swipeable>>(new Map());
+  const { revision } = useEtatCloud();
 
   const recharger = useCallback(() => {
     setChargement(true);
@@ -66,7 +68,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
       return () => {
         actif = false;
       };
-    }, []),
+    }, [revision]),
   );
 
   function ouvrirRenommage(meta: StoryMeta) {

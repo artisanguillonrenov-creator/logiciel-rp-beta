@@ -33,6 +33,7 @@ import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import { useLangue } from '../i18n/LangueProvider';
+import { useEtatCloud } from '../cloud/useEtatCloud';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 
@@ -41,6 +42,7 @@ const IMAGE_REGLAGES = require('../../assets/scenes/creation-preferences.png');
 export default function SettingsScreen({ navigation }: Props) {
   const { t } = useLangue();
   const { width } = useWindowDimensions();
+  const cloud = useEtatCloud();
   const estTablette = width >= 900;
 
   const [apiKey, setApiKey] = useState('');
@@ -633,6 +635,23 @@ export default function SettingsScreen({ navigation }: Props) {
                   <Text style={styles.aide}>{t('La génération d’images utilise actuellement OpenRouter, indépendamment du fournisseur choisi pour le narrateur.')}</Text>
                 </View>
               )}
+            </Panneau>
+
+            <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('COMPTE')}</Text>
+              <Text style={styles.sectionTitre}>{t('Compte & synchronisation')}</Text>
+              <Text style={styles.sectionDescription}>
+                {cloud.utilisateur
+                  ? `${t('Connecté')} · ${cloud.utilisateur.email ?? cloud.utilisateur.nom ?? ''}`
+                  : t('Connecte-toi pour retrouver tes histoires, personnages et réglages sur tous tes appareils. Sans compte, tout reste sur cet appareil.')}
+              </Text>
+              <Bouton
+                titre={cloud.utilisateur ? t('Gérer mon compte') : t('Se connecter')}
+                variante="secondaire"
+                icone="sceau"
+                onPress={() => navigation.navigate('Compte')}
+                style={styles.boutonAction}
+              />
             </Panneau>
 
             <Panneau style={styles.section}>

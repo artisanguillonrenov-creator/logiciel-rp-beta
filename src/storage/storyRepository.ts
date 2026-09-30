@@ -1,6 +1,6 @@
 import type { StoryState } from '../types';
 import { creerFileSerie } from './serialQueue';
-import { reconstituerHistoire, serialiserHistoire, type StockageHistoires } from './storySerialization';
+import { reconstituerHistoire, serialiserHistoire, type HistoireStockee, type StockageHistoires } from './storySerialization';
 
 interface AncienStockage {
   getAllKeys(): Promise<readonly string[]>;
@@ -85,6 +85,17 @@ export function creerDepotHistoires(ancien: AncienStockage, stockage: StockageHi
       });
     },
     supprimer: (id: string) => operation(() => stockage.supprimer(id)),
+    /** Format de stockage tel quel : c'est aussi le format du cloud (V13). */
+    lireBrut: (id: string) => operation(() => stockage.lire(id)),
+    /**
+     * Histoire reçue du cloud : validée et migrée avant d'être écrite, sans
+     * toucher à updatedAt (sinon elle repartirait aussitôt vers le cloud).
+     */
+    importerBrut: (histoire: HistoireStockee) => operation(async () => {
+      const migree = migrer(reconstituerHistoire(histoire));
+      if (migree.meta.id !== histoire.id) throw new Error('Identité de sauvegarde incohérente.');
+      await stockage.ecrire(serialiserHistoire(migree));
+    }),
     renommer: (id: string, titre: string) => operation(async () => {
       const sauvegarde = await stockage.lire(id);
       if (!sauvegarde) return;

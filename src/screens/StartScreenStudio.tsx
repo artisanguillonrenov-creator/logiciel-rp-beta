@@ -26,6 +26,7 @@ import Bouton from '../components/Bouton';
 import Separateur from '../components/Separateur';
 import Panneau from '../components/Panneau';
 import { BoussoleOrnement } from '../components/Ornements';
+import { useEtatCloud } from '../cloud/useEtatCloud';
 import { couleurs, espacement, interfaceV2, polices, rayon, styleOptionSelectionnee, stylePetitesCapitales, texteOptionSelectionnee } from '../theme/theme';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
@@ -59,7 +60,10 @@ export default function StartScreenStudio({ navigation }: Props) {
   const [modalLangueOuvert, setModalLangueOuvert] = useState(false);
   const [modalGuideOuvert, setModalGuideOuvert] = useState(false);
   const [modalSynopsisOuvert, setModalSynopsisOuvert] = useState(false);
+  const cloud = useEtatCloud();
+  const compteCloud = !!cloud.utilisateur;
 
+  // La révision change quand la synchronisation a rapatrié des histoires.
   useFocusEffect(
     useCallback(() => {
       let actif = true;
@@ -73,7 +77,7 @@ export default function StartScreenStudio({ navigation }: Props) {
           if (actif) setErreurHistoires('Impossible de lire tes histoires.');
         });
       return () => { actif = false; };
-    }, []),
+    }, [cloud.revision]),
   );
 
   const derniereHistoire = histoires[0];
@@ -144,6 +148,7 @@ export default function StartScreenStudio({ navigation }: Props) {
 
         <View style={styles.pied}>
           <LienBas titre={t('Paramètres')} symbole="⚙" onPress={() => navigation.navigate('Reglages')} />
+          <LienBas titre={compteCloud ? t('Compte') : t('Se connecter')} symbole="✦" onPress={() => navigation.navigate('Compte')} />
           <LienBas titre={t('Guide')} symbole="◇" onPress={() => setModalGuideOuvert(true)} />
           <LienBas titre={t("Monde d'Elyndor")} symbole="✧" onPress={() => setModalSynopsisOuvert(true)} />
         </View>
