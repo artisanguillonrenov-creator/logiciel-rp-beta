@@ -1,0 +1,64 @@
+name: Consolidate V12 authoritative narrative core
+
+on:
+  push:
+    branches:
+      - rebuild/elyndor-v13-source-20260930
+    paths:
+      - scripts/consolidate-v12-authoritative-core.mjs
+      - src/engine/narrative/narrativeCoreV12.ts
+      - src/engine/narrative/narrativeCoreV12.runtime.js
+      - .github/workflows/consolidate-v12-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate-v12:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consolidation branch
+        uses: actions/checkout@v4
+        with:
+          ref: rebuild/elyndor-v13-source-20260930
+          fetch-depth: 0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Wire V12 runtime into TypeScript source
+        run: node scripts/consolidate-v12-authoritative-core.mjs
+
+      - name: Narrative Core V12 runtime self-test
+        run: |
+          node - <<'NODE'
+          require('./src/engine/narrative/narrativeCoreV12.runtime.js');
+          const result = globalThis.ElyndorNarrativeCoreV12.selfTest();
+          console.log(result);
+          if (!result.ok) process.exit(1);
+          NODE
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Existing automated tests
+        run: npm test
+
+      - name: Commit V12 source integration
+        run: |
+          git config user.name "Elyndor V12 consolidation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/types/index.ts src/storage/storyMigration.ts src/engine/story.ts src/engine/promptBuilder.ts src/engine/generateTurn.ts
+          if git diff --cached --quiet; then
+            echo "No V12 source changes to commit."
+            exit 0
+          fi
+          git commit -m "feat(narrative): integrate authoritative V12 core transactionally"
+          git push origin HEAD:rebuild/elyndor-v13-source-20260930
