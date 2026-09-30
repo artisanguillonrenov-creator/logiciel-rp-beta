@@ -9,15 +9,36 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://celadon-duckanoo-3
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const TURN_TIMEOUT_MS = 180_000;
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (
+    origin === ALLOWED_ORIGIN ||
+    origin === 'http://localhost:8081' ||
+    origin === 'http://localhost:19006'
+  ) return true;
+
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname.endsWith('.vercel.app') &&
+      /^elyndor(?:-|$)/i.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '2mb' }));
 app.use(cors({
   origin(origin, cb) {
-    if (!origin || origin === ALLOWED_ORIGIN || origin === 'http://localhost:8081' || origin === 'http://localhost:19006') {
+    if (isAllowedOrigin(origin)) {
       cb(null, true);
       return;
     }
+    console.warn('[cors] Origin refusée:', origin);
     cb(new Error('Origin non autorisée'));
   },
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -105,7 +126,7 @@ class CodexRpc {
           clientInfo: {
             name: 'elyndor_rp_gateway',
             title: 'Elyndor RP',
-            version: '0.2.0',
+            version: '0.2.1',
           },
           capabilities: { experimentalApi: true },
         }, 20_000);
@@ -223,10 +244,6 @@ function entierUsage(value) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
-// Codex app-server émet l'usage séparément via thread/tokenUsage/updated.
-// La passerelle le convertit au format OpenAI-compatible déjà compris par
-// les autres fournisseurs d'Elyndor. cached/reasoning sont des sous-totaux,
-// pas des tokens à ajouter une seconde fois au total.
 function normaliserUsageCodex(tokenUsage) {
   const brut = tokenUsage?.last || tokenUsage?.total || tokenUsage;
   if (!brut || typeof brut !== 'object') return null;
@@ -298,11 +315,7 @@ async function generateNarration({ messages, model, effort = 'low' }) {
 
     if (msg.method === 'turn/completed') {
       const id = params.turn?.id || params.turnId;
-      if (!turnId || !id || id === turnId) {
-        // L'usage est une notification distincte. Une très courte grâce évite
-        // de supprimer le thread avant une mise à jour d'usage adjacente.
-        setTimeout(finishResolve, 30);
-      }
+      if (!turnId || !id || id === turnId) setTimeout(finishResolve, 30);
     }
   });
 
