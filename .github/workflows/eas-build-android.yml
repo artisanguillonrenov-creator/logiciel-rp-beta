@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/new-session-glwy6e
+      - claude/focused-carson-wgfz3x
     paths:
       - app.json
       - eas.json
