@@ -1,14 +1,12 @@
 import { File, Paths } from 'expo-file-system';
 
-// Stockage du modèle local (Gemma, .litertlm ou .task — voir
-// src/engine/localInference.ts) : l'utilisateur l'a déjà téléchargé
-// lui-même (Hugging Face, etc.) et l'importe depuis le sélecteur de
-// fichiers système plutôt que de faire deviner une URL de téléchargement
-// direct à l'application (souvent protégée par une connexion Hugging
-// Face). Le fichier importé est copié dans le répertoire document de
-// l'app (persistant, non purgé par l'OS sous pression de stockage,
-// contrairement au cache) sous un nom fixe.
-const EXTENSIONS_SUPPORTEES = ['.litertlm', '.task'] as const;
+// Stockage du modèle local Android.
+// - .gguf : chargé directement avec llama.rn / llama.cpp
+// - .litertlm / .task : anciens modèles LiteRT conservés pour compatibilité
+// Le fichier choisi par l'utilisateur est copié dans le répertoire document
+// persistant de l'application sous un nom fixe afin qu'Elyndor puisse le
+// retrouver au prochain lancement sans redemander le fichier.
+const EXTENSIONS_SUPPORTEES = ['.gguf', '.litertlm', '.task'] as const;
 const NOM_BASE = 'modele-local';
 
 function candidatsFichierModele(): File[] {
@@ -26,12 +24,12 @@ export function modeleLocalTelecharge(): boolean {
 export function cheminModeleLocal(): string | null {
   const fichier = fichierModeleExistant();
   if (!fichier) return null;
-  // File.uri renvoie une URI préfixée "file://" (ex.
-  // "file:///data/user/0/.../modele-local.litertlm"), mais le chargeur
-  // natif expo-litert-lm (LiteRtLmJniException: Model file not found)
-  // attend un chemin brut du système de fichiers, sans ce préfixe — confirmé
-  // par l'exemple officiel de la bibliothèque et par le message d'erreur qui
-  // recopiait littéralement le préfixe dans le chemin recherché.
+
+  // llama.rn accepte directement les URI file:// pour les GGUF. LiteRT-LM
+  // attend au contraire un chemin brut sans le préfixe file://.
+  if (fichier.uri.toLowerCase().endsWith('.gguf')) {
+    return fichier.uri;
+  }
   return fichier.uri.replace(/^file:\/\//, '');
 }
 
@@ -49,22 +47,33 @@ export function espaceDisponibleOctets(): number {
 
 /**
  * Ouvre le sélecteur de fichiers système pour importer un modèle déjà
- * téléchargé par l'utilisateur. Remplace tout modèle local précédent.
+ * téléchargé. Remplace tout modèle local précédent.
+ *
+ * Le format privilégié est désormais GGUF : c'est celui utilisé par
+ * llama.cpp/llama.rn et il permet de prendre directement un fichier comme
+ * Gemma-3-it-4B-Uncensored-D_AU-Q4_k_m.gguf depuis Téléchargements.
  */
 export async function importerModeleLocal(): Promise<void> {
   const resultat = await File.pickFileAsync({ mimeTypes: '*/*' });
   if (resultat.canceled) return;
 
   const source = resultat.result;
-  // Pour certains fournisseurs (ex. le fournisseur "Téléchargements"
-  // d'Android), le sélecteur système renvoie un identifiant opaque en guise
-  // de nom (ex. "msf:6722") plutôt que le vrai nom du fichier — on ne peut
-  // alors pas déterminer l'extension. Dans ce cas on ne rejette pas le
-  // fichier : on part sur .litertlm par défaut (le format le plus courant
-  // des modèles Gemma pour LiteRT-LM), plutôt que de bloquer un import
-  // valide sur un nom qu'on n'a simplement pas réussi à lire.
-  const extensionDetectee = EXTENSIONS_SUPPORTEES.find((ext) => source.name.toLowerCase().endsWith(ext));
-  const extension = extensionDetectee ?? '.litertlm';
+  const nom = source.name.toLowerCase();
+  const extensionDetectee = EXTENSIONS_SUPPORTEES.find((ext) => nom.endsWith(ext));
+
+  // Certains fournisseurs Android renvoient un identifiant opaque en guise
+  // de nom (ex. "msf:6722"). Pour les nouveaux imports on privilégie GGUF,
+  // qui est maintenant le format local principal d'Elyndor.
+  const extension = extensionDetectee ?? '.gguf';
+
+  const tailleSource = source.size ?? 0;
+  if (tailleSource > 0) {
+    // Garde une marge pour le fichier temporaire et les écritures Android.
+    const minimum = Math.ceil(tailleSource * 1.15);
+    if (Paths.availableDiskSpace < minimum) {
+      throw new Error("Espace insuffisant pour importer ce modèle. Libère de la place puis réessaie.");
+    }
+  }
 
   fichierModeleExistant()?.delete();
   const destination = new File(Paths.document, `${NOM_BASE}${extension}`);

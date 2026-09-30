@@ -28,6 +28,15 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "llama.rn",
+        {
+          "enableEntitlements": true,
+          "entitlementsProfile": "production",
+          "forceCxx20": true,
+          "enableOpenCL": false
+        }
+      ],
       "./plugins/withLitertKotlinSkipVersionCheck.js",
       [
         "expo-speech-recognition",
@@ -50,6 +59,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/fea55d59-f59b-43ff-8d72-d3ecb83b3181"
-    }
+    },
+    "newArchEnabled": true
   }
 }
