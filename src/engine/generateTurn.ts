@@ -4,6 +4,7 @@ import type { AppSettings, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
   chargerMetamoteurs,
+  prioriserLoreCanon,
   selectionnerLoreElyndorSemantique,
   selectionnerMetamoteursSemantique,
   type OptionsSelectionLore,
@@ -30,6 +31,7 @@ import { fusionnerEtatDerivePersistant } from './derivedState';
 import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './storyDirector';
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
+import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
 import {
   embedderMessagesAnciens,
   formaterSouvenirs,
@@ -140,11 +142,19 @@ export async function calculerSelectionLore(
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
   if (!embeddingsDisponibles(appSettings)) {
+    // Repli lexical (V13) : sans fournisseur d'embeddings, on classe le lore
+    // et l'historique par mots communs plutôt que de partir sans rien.
+    const loreElyndor = prioriserLoreCanon(texteRequete, rechercherLoreLexical(poolElyndor, texteRequete), LORE_ELYNDOR);
+    const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
     return {
       metamoteursSelectionnes: [],
-      loreElyndor: [],
-      souvenirs: [],
-      debugLore: { metamoteurs: [], loreElyndor: [], souvenirs: [] },
+      loreElyndor,
+      souvenirs,
+      debugLore: {
+        metamoteurs: [],
+        loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+        souvenirs: formaterSouvenirsDebug(souvenirs),
+      },
     };
   }
 
@@ -166,13 +176,10 @@ export async function calculerSelectionLore(
     vecteurRequete,
     vecteursMetamoteurs,
   );
-  const loreElyndor = selectionnerLoreElyndorSemantique(
-    poolElyndor,
+  const loreElyndor = prioriserLoreCanon(
     texteRequete,
-    vecteurRequete,
-    vecteursElyndor,
-    undefined,
-    optionsLoreElyndor,
+    selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
+    LORE_ELYNDOR,
   );
   const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
