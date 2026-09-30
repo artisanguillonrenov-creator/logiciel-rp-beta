@@ -1,9 +1,9 @@
 name: Consolidate Elyndor source
 
+# Le chantier V10 a déjà été matérialisé dans les vraies sources.
+# On conserve ce workflow comme procédure de reprise manuelle, mais il ne doit
+# plus rejouer tous les scripts à chaque commit de la branche de consolidation.
 on:
-  push:
-    branches:
-      - rebuild/elyndor-v13-source-20260930
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,6 @@ permissions:
 
 jobs:
   consolidate:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[source-consolidated]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout consolidation branch
@@ -61,15 +60,3 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
-
-      - name: Commit the generated source instead of keeping build-time patches
-        run: |
-          git config user.name "Elyndor source consolidation"
-          git config user.email "actions@users.noreply.github.com"
-          git add src server app.json package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "No source changes to commit."
-            exit 0
-          fi
-          git commit -m "refactor: materialize Narrative OS V10 into source [source-consolidated]"
-          git push origin HEAD:rebuild/elyndor-v13-source-20260930
