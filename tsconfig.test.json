@@ -8,5 +8,5 @@
     "outDir": ".test-dist",
     "noEmit": false
   },
-  "include": ["tests/**/*.ts", "src/engine/llmProvider.ts", "src/engine/serveurLocal.ts", "src/engine/rechercheLexicale.ts", "src/engine/mesureTokens.ts", "src/engine/memoireNarrative.ts", "src/engine/verificationCanon.ts", "src/engine/loreLoader.ts", "src/engine/embeddings.ts", "src/engine/toolCallingJson.ts", "src/engine/infermaticScheduler.ts", "src/engine/responseSanitizer.ts", "src/storage/embeddingsCacheMutex.ts"]
+  "include": ["tests/**/*.ts", "src/engine/llmProvider.ts", "src/engine/serveurLocal.ts", "src/engine/rechercheLexicale.ts", "src/engine/mesureTokens.ts", "src/engine/memoireNarrative.ts", "src/engine/verificationCanon.ts", "src/engine/controleOuverture.ts", "src/engine/loreLoader.ts", "src/engine/embeddings.ts", "src/engine/toolCallingJson.ts", "src/engine/infermaticScheduler.ts", "src/engine/responseSanitizer.ts", "src/storage/embeddingsCacheMutex.ts"]
 }

@@ -1,5 +1,5 @@
 import type { AppSettings, Message, StoryState } from '../types';
-import { calculerSelectionLore, construireCtxBase } from './generateTurn';
+import { calculerSelectionLore, construireCtxBase, corpusCanonHistoire } from './generateTurn';
 import {
   construireMessages,
   maxTokensPourLongueur,
@@ -11,42 +11,37 @@ import { configurationLLM, appellerModele } from './openrouter';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
+import { INSTRUCTION_OUVERTURE, ecartsContratOuverture, requeteLoreOuverture } from './controleOuverture';
+import { verifierEntitesCanoniques } from './verificationCanon';
+import {
+  appliquerPatchLocal,
+  reponseFaitParlerLeJoueur,
+  retirerRepliqueDuJoueur,
+  validerAgentiviteHeuristique,
+  type RapportValidation,
+} from './validator';
+
+function raisonsEchec(rapport: RapportValidation): string[] {
+  return rapport.checks.filter((c) => !c.ok).map((c) => c.raison);
+}
 
 function genererId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// Texte de requête pour la recherche sémantique de lore — centré sur le lieu
-// de départ choisi par le joueur, puisque c'est lui qui doit déterminer
-// quels éléments piochés (PNJ mineur, rumeur, événement récent, détail
-// d'ambiance) enrichissent la scène d'ouverture.
-function construireTexteRequeteOuverture(story: StoryState): string {
-  return [story.meta.contexte.lieu, story.meta.pointDeDepart, story.meta.personnageDescription]
-    .filter(Boolean)
-    .join('\n');
-}
-
-const INSTRUCTION_OUVERTURE =
-  "Écris la toute première scène de l'histoire, avant que {{user}} n'ait dit ou fait quoi que ce soit. Installe le lieu, l'ambiance et la situation de départ telle que décrite, en intégrant naturellement les éléments du lore ci-dessus quand ils sont pertinents à la scène (sans les énumérer comme une liste). Termine sur un moment qui appelle une première réaction ou décision de {{user}}, sans jamais parler ni agir à sa place.";
-
 /**
- * Enrichissement automatique et invisible de l'ouverture (chantier 3) :
- * avant que le joueur ne voie le premier message, pioche 2-3 éléments de
- * lore liés au lieu de départ — en réutilisant la même recherche sémantique
- * que le reste de la partie (selectionnerLoreElyndorSemantique), mais en
- * mode aléatoire parmi les entrées pertinentes plutôt que déterministe — et
- * les intègre au prompt qui génère la scène d'ouverture. Deux joueurs avec
- * le même monde, un personnage similaire et le même lieu de départ
- * obtiennent ainsi des débuts différents.
+ * Moteur d'ouverture v11.5 (V13) : la scène d'ouverture suit un contrat
+ * explicite (lieu ancré, situation déjà en cours, un PNJ qui interpelle le
+ * joueur) avec le lore du lieu en priorité canon — la sélection est donc
+ * déterministe, le lieu et ses pouvoirs d'abord. Si la première tentative
+ * s'écarte du contrat, une seconde passe réécrit toute la scène avec la
+ * liste des écarts ; une entité majeure inventée qui subsiste est
+ * remplacée par un terme générique.
  */
 export async function genererMessageOuverture(story: StoryState, appSettings: AppSettings): Promise<Message> {
   const debutMs = Date.now();
-  const texteRequete = construireTexteRequeteOuverture(story);
-  const selection = await calculerSelectionLore(story, texteRequete, appSettings, {
-    aleatoire: true,
-    tailleBassinAleatoire: 10,
-  });
-
+  const texteRequete = requeteLoreOuverture(story.meta);
+  const selection = await calculerSelectionLore(story, texteRequete, appSettings, { aleatoire: false });
   const ctxBase = construireCtxBase(story, INSTRUCTION_OUVERTURE, appSettings, selection);
 
   const modelePourAppel = modeleOverridePourFournisseur(
@@ -56,23 +51,48 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   ) || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
+  const budgetSysteme = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const canon = corpusCanonHistoire(story, texteRequete);
+  const ecarts = (texte: string) => [...new Set([
+    ...raisonsEchec(validerAgentiviteHeuristique(texte, story.meta.personnageNom)),
+    ...raisonsEchec(verifierEntitesCanoniques(texte, canon)),
+    ...raisonsEchec(validerProfilContenuHeuristique(texte, appSettings.profilContenu)),
+    ...ecartsContratOuverture(texte, story.meta.personnageNom),
+  ])].slice(0, 6);
 
   commencerMesureTokens();
-  const contenu = await appellerModele({
+  let contenu = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase, {
-      budgetSysteme: appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT,
-    }),
+    messages: construireMessages(ctxBase, { budgetSysteme }),
     temperature,
     maxTokens,
   });
 
-  // Même verrou fail-closed que genererTour (voir generateTurn.ts) : cette
-  // ouverture n'a pas de boucle de réparation (pas d'échange encore établi
-  // à corriger), donc un dépassement du profil GRAND_PUBLIC est traité
-  // comme un échec de génération pur et simple — CreateScreen.valider()
-  // dégrade déjà silencieusement vers l'écran vide habituel si cette
-  // fonction échoue, ce qui est le comportement voulu ici aussi.
+  const aCorriger = ecarts(contenu);
+  if (aCorriger.length) {
+    const correction = `\n\n[CORRECTION OBLIGATOIRE DE L'OUVERTURE]\nLa première tentative ne respecte pas entièrement le contrat d'ouverture. Réécris LA SCÈNE ENTIÈRE sans commenter la correction. Corrige précisément :\n- ${aCorriger.join('\n- ')}\nConserve le lieu, la situation, le lore canonique et le style choisis.`;
+    try {
+      contenu = await appellerModele({
+        ...configurationLLM(appSettings, modelePourAppel),
+        messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection), { budgetSysteme }),
+        temperature,
+        maxTokens,
+      });
+    } catch {
+      // La première version reste utilisable : mieux vaut une ouverture
+      // imparfaite qu'un écran vide.
+    }
+  }
+
+  const canonFinal = verifierEntitesCanoniques(contenu, canon);
+  if (!canonFinal.ok) contenu = appliquerPatchLocal(contenu, canonFinal);
+  if (reponseFaitParlerLeJoueur(contenu, story.meta.personnageNom)) {
+    contenu = retirerRepliqueDuJoueur(contenu, story.meta.personnageNom) || contenu;
+  }
+
+  // Même verrou fail-closed que genererTour (voir generateTurn.ts) : un
+  // dépassement du profil GRAND_PUBLIC est un échec de génération —
+  // CreateScreen.valider() dégrade déjà vers l'écran vide habituel.
   if (!validerProfilContenuHeuristique(contenu, appSettings.profilContenu).ok) {
     annulerMesureTokens();
     throw new ErreurProfilContenu("Scène d'ouverture générée hors des limites du profil Grand public.");

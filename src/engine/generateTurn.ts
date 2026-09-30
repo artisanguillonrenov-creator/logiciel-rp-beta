@@ -74,6 +74,11 @@ const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
+/** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
+export function corpusCanonHistoire(story: StoryState, messageJoueur: string): string {
+  return corpusCanon(story, messageJoueur, LORE_ELYNDOR);
+}
+
 function genererId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -384,7 +389,7 @@ export async function genererTour(
     maxTokens,
   });
 
-  const canon = corpusCanon(storyCourante, messageJoueur, LORE_ELYNDOR);
+  const canon = corpusCanonHistoire(storyCourante, messageJoueur);
   const controlesLocaux = fusionnerRapports(
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
