@@ -34,5 +34,6 @@ export function fusionnerEtatDerivePersistant(
     social: persistee.social,
     loreEmergent: persistee.loreEmergent,
     loreEmergentDernierIndex: persistee.loreEmergentDernierIndex,
+    narrativeCore: persistee.narrativeCore ?? courante.narrativeCore,
   };
 }

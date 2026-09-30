@@ -42,7 +42,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   const debutMs = Date.now();
   const texteRequete = requeteLoreOuverture(story.meta);
   const selection = await calculerSelectionLore(story, texteRequete, appSettings, { aleatoire: false });
-  const ctxBase = construireCtxBase(story, INSTRUCTION_OUVERTURE, appSettings, selection);
+  const ctxBase = construireCtxBase(story, INSTRUCTION_OUVERTURE, appSettings, selection, undefined, false);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -74,7 +74,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     try {
       contenu = await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
-        messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection), { budgetSysteme }),
+        messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection, undefined, false), { budgetSysteme }),
         temperature,
         maxTokens,
       });

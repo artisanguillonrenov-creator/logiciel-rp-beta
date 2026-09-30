@@ -107,5 +107,13 @@ export function migrerHistoire(data: any): StoryState {
       },
     };
   }
+  if (migree.version < 12) {
+    // v9 -> v12 : alignement sur la V13 (10 : noyau narratif V12, 11 et
+    // 12 sans changement de forme). Le noyau n'est pas créé ici : il
+    // s'amorce au premier tour avec la mémoire narrative de l'histoire.
+    // Sans cette étape, une sauvegarde V13 était refusée comme « issue
+    // d'une version plus récente ».
+    migree = { ...migree, version: 12 };
+  }
   return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
 }

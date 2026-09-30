@@ -28,6 +28,7 @@ import {
   regenererDernierTour,
   type DebugLore,
 } from '../engine/generateTurn';
+import { annulerTours } from '../engine/noyauNarratif';
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
@@ -462,7 +463,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const index = story.messages.findIndex((m) => m.id === id);
     if (index < 0) return;
     const messages = [...story.messages.slice(0, index), ...story.messages.slice(index + 1)];
-    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    const sansTour = story.messages[index].role === 'assistant' ? annulerTours(story, [id]) : story;
+    const storyMaj: StoryState = { ...sansTour, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
     if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);
@@ -473,7 +475,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const index = story.messages.findIndex((m) => m.id === id);
     if (index < 0) return;
     const messages = story.messages.slice(0, index);
-    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    const sansTours = annulerTours(story, story.messages.slice(index).filter((m) => m.role === 'assistant').map((m) => m.id));
+    const storyMaj: StoryState = { ...sansTours, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
     if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);

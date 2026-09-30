@@ -34,6 +34,7 @@ import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynam
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { contradictionProbable, corpusCanon, validerRepetitionHeuristique, verifierEntitesCanoniques } from './verificationCanon';
+import { annulerTour, assurerNoyau, construireContexteNoyau, diagnosticNoyau, extraireEnveloppeEtat, validerTour } from './noyauNarratif';
 import {
   construireBlocsContexte,
   debugBlocsContexte,
@@ -70,6 +71,7 @@ import {
 } from './validator';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
+const MARGE_TOKENS_ETAT = 350;
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
@@ -232,7 +234,11 @@ export function construireCtxBase(
   appSettings: AppSettings,
   selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
   blocs: ResultatBlocs = construireBlocsContexte(story, messageJoueur),
+  // Faux pour la scène d'ouverture : aucun tour à intégrer, donc pas de bloc
+  // d'état machine à demander au narrateur.
+  avecNoyau = true,
 ): ContexteConstruction {
+  const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte, profil);
@@ -274,10 +280,11 @@ export function construireCtxBase(
     messageJoueur,
     instructionRegistreOverride: profilAdulte ? undefined : INSTRUCTION_REGISTRE_GRAND_PUBLIC,
     directionNarrative: filtrer(directionNarrative),
-    etatMonde: filtrer(formaterMonde(story.monde)),
-    engagementsEtRelations: filtrer(formaterEngagementsEtRelations(story.social)),
+    etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
+    engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
     souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
-    blocsContexte: filtrer(formaterBlocsContexte(blocs.blocs)),
+    blocsContexte: filtrer([noyau?.texte, formaterBlocsContexte(blocs.blocs)].filter(Boolean).join('\n\n')),
+    directiveEtat: noyau?.directive,
   };
 }
 
@@ -360,7 +367,9 @@ export async function genererTour(
   reponseAId?: string,
 ): Promise<ResultatTour> {
   const debutMs = Date.now();
-  const storyCourante = await rafraichirEtatDeriveAvantTour(story);
+  const storyRafraichie = await rafraichirEtatDeriveAvantTour(story);
+  const evenements = synchroniserMemoireNarrative(storyRafraichie);
+  const storyCourante = assurerNoyau(storyRafraichie, evenements);
 
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
@@ -368,7 +377,6 @@ export async function genererTour(
     appSettings,
   );
 
-  const evenements = synchroniserMemoireNarrative(storyCourante);
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
   const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
 
@@ -378,16 +386,20 @@ export async function genererTour(
     storyCourante.meta.modeleOverrideFournisseur,
   ) || configurationLLM(appSettings).model;
   const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
-  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
+  // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
+  // il rognait la scène ou arrivait coupé.
+  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
   const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
 
   commencerMesureTokens();
-  let reponse = await appellerModele({
+  const premiere = extraireEnveloppeEtat(await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
     temperature,
     maxTokens,
-  });
+  }));
+  let reponse = premiere.texte;
+  let deltaEtat = premiere.delta;
 
   const canon = corpusCanonHistoire(storyCourante, messageJoueur);
   const controlesLocaux = fusionnerRapports(
@@ -416,12 +428,12 @@ export async function genererTour(
     reponse = appliquerPatchLocal(reponse, rapport);
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
     try {
-      reponse = await reparerReponse({
+      reponse = extraireEnveloppeEtat(await reparerReponse({
         ...configurationLLM(appSettings, modelePourAppel),
         reponse,
         rapport,
         partiel: strategie === 'regeneration_partielle',
-      });
+      })).texte;
     } catch {
       aEteCorrige = false;
     }
@@ -431,12 +443,16 @@ export async function genererTour(
       .map((c) => c.raison)
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     try {
-      reponse = await appellerModele({
+      // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
+      // celui de la nouvelle apparaître dans le récit.
+      const regeneree = extraireEnveloppeEtat(await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt }),
         temperature,
         maxTokens,
-      });
+      }));
+      reponse = regeneree.texte;
+      deltaEtat = regeneree.delta;
     } catch {
       aEteCorrige = false;
     }
@@ -479,16 +495,23 @@ export async function genererTour(
   };
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
+  const storyFinale = validerTour(
+    { ...storyCourante, messages },
+    { messageJoueur: messageUtilisateur, messageNarrateur: messageAssistant, delta: deltaEtat, corrige: aEteCorrige },
+  );
+  const debugMemoire = debugMemoireNarrative(evenements.length, blocs);
 
   return {
-    story: { ...storyCourante, messages },
+    story: storyFinale,
     aEteCorrige,
-    debugLore: { ...debugLore, ...debugMemoireNarrative(evenements.length, blocs) },
+    debugLore: { ...debugLore, ...debugMemoire, blocsContexte: [...(debugMemoire.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)] },
   };
 }
 
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
-  const storyCourante = await rafraichirEtatDeriveAvantTour(story);
+  const rafraichie = await rafraichirEtatDeriveAvantTour(story);
+  // Le tour régénéré ne doit pas laisser ses événements dans le noyau.
+  const storyCourante = annulerTour(rafraichie, rafraichie.messages.at(-1)?.id ?? '');
   const messages = [...storyCourante.messages];
   const dernier = messages[messages.length - 1];
   if (!dernier || dernier.role !== 'assistant') {
