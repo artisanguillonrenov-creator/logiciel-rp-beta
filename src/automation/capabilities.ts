@@ -49,10 +49,11 @@ export function calculerCapacites(
   const embeddings = nonVide(settings.embeddingsApiKey)
     || (fournisseur === 'infermatic' ? cleInfermatic : cleOpenRouter);
 
-  // La génération d'images utilise actuellement explicitement OpenRouter,
-  // même si le narrateur est Infermatic ou local : cette règle centralisée
-  // évite qu'un bouton prétende être disponible sans la clé requise.
-  const images = settings.genererImagesActive === true && cleOpenRouter;
+  const fournisseurImages = settings.fournisseurImages ?? (fournisseur === 'chatgpt' ? 'chatgpt' : 'openrouter');
+  // ChatGPT Images réutilise la session Codex déjà connectée ; OpenRouter garde
+  // son comportement historique avec clé API. La validité de la session
+  // ChatGPT est vérifiée au moment de l'appel réseau.
+  const images = settings.genererImagesActive === true && (fournisseurImages === 'chatgpt' || cleOpenRouter);
   const langue = settings.langueInterface?.trim().toLowerCase() || 'fr';
   const traduction = langue === 'fr' || narration;
 
@@ -66,7 +67,7 @@ export function calculerCapacites(
   }
   if (!embeddings) raisons.embeddings = 'Aucun fournisseur d’embeddings disponible.';
   if (!images) raisons.images = settings.genererImagesActive
-    ? 'La génération d’images nécessite une clé OpenRouter.'
+    ? (fournisseurImages === 'chatgpt' ? 'Connecte ChatGPT dans Réglages.' : 'La génération d’images nécessite une clé OpenRouter.')
     : 'La génération d’images est désactivée.';
   if (!traduction) raisons.traduction = 'La langue active nécessite un narrateur disponible pour traduire.';
   if (fournisseur === 'local' && !modeleLocalPresent) raisons.inferenceLocale = 'Modèle local absent ou plateforme web.';

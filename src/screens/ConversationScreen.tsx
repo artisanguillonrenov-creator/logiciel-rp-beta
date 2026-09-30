@@ -212,6 +212,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <View style={styles.rangeeEntete}>
             <Pressable
               style={styles.boutonEntete}
+              onPress={() => navigation.navigate('Reglages')}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={t('Paramètres')}
+              accessibilityHint={t('Ouvre les réglages de l’application.')}
+            >
+              <Text style={styles.iconeEntete}>⚙</Text>
+            </Pressable>
+            <Pressable
+              style={styles.boutonEntete}
               onPress={() => setModalRechercheOuvert(true)}
               hitSlop={4}
               accessibilityRole="button"
@@ -280,8 +290,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
     return () => { actif = false; };
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && appSettings.moteurInference !== 'local' &&
-    !(appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
+  const moteurActif = appSettings?.moteurInference ?? 'openrouter';
+  const clefManquante = appSettings && moteurActif !== 'local' && moteurActif !== 'chatgpt' &&
+    !(moteurActif === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
   const envoyer = useCallback(async (texteOverride?: string) => {
@@ -299,11 +310,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
-    const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
-    if (appSettings.moteurInference !== 'local' && !cleApi) {
-      setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
-      return;
+    const moteur = appSettings.moteurInference ?? 'openrouter';
+    if (moteur !== 'local' && moteur !== 'chatgpt') {
+      const fournisseur = moteur === 'infermatic' ? 'Infermatic' : 'OpenRouter';
+      const cleApi = moteur === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
+      if (!cleApi) {
+        setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
+        return;
+      }
     }
     if (!appSettings.profilContenu) {
       setErreur('Déclare un profil de contenu (Grand public / Adulte) dans Réglages avant de commencer.');
@@ -718,7 +732,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
           <Pressable style={styles.boutonDebug} onPress={() => setDebugOuvert((v) => !v)}>
             <Text style={styles.texteBoutonDebug}>
               {debugOuvert ? '▾' : '▸'} Diagnostic narratif ({debugLore.metamoteurs.length} métamoteurs,{' '}
-              {debugLore.loreElyndor.length} entrées Elyndor, {debugLore.souvenirs.length} souvenirs)
+              {debugLore.loreElyndor.length} entrées Elyndor, {debugLore.souvenirs.length} souvenirs,{' '}
+              {debugLore.contextBlocks?.length ?? 0} blocs V10)
             </Text>
           </Pressable>
         )}
@@ -738,6 +753,15 @@ export default function ConversationScreen({ route, navigation }: Props) {
             ) : (
               debugLore.souvenirs.map((extrait) => (
                 <Text key={extrait} style={styles.ligneDebug}>• {extrait}</Text>
+              ))
+            )}
+            <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Context Blocks V10 réellement injectés</Text>
+            {!!debugLore.memoireNarrative && <Text style={styles.ligneDebug}>{debugLore.memoireNarrative}</Text>}
+            {(debugLore.contextBlocks?.length ?? 0) === 0 ? (
+              <Text style={styles.ligneDebug}>Aucun bloc supplémentaire pour ce tour.</Text>
+            ) : (
+              debugLore.contextBlocks!.map((bloc, index) => (
+                <Text key={String(index) + ':' + bloc} style={styles.ligneDebug}>• {bloc}</Text>
               ))
             )}
           </ScrollView>

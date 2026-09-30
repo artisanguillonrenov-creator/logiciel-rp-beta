@@ -128,6 +128,7 @@ export interface ContexteConstruction {
   etatMonde?: string;
   engagementsEtRelations?: string;
   souvenirs?: string;
+  contextBlocks?: string;
 }
 
 export interface OptionsPrompt {
@@ -143,25 +144,26 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
   const lore = formaterLore(
     ctx.loreElyndor,
     'LORE PERTINENT POUR CETTE SCÈNE',
-    Math.floor(budget * 0.22),
-    520,
+    Math.floor(budget * 0.18),
+    500,
   );
   const etat = tronquer(
     [ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'),
-    Math.floor(budget * 0.14),
+    Math.floor(budget * 0.12),
   );
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.10));
+  const contextBlocks = tronquer(ctx.contextBlocks ?? '', Math.floor(budget * 0.16));
+  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
   const resume = tronquer(
     ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.",
-    Math.floor(budget * 0.10),
+    Math.floor(budget * 0.08),
   );
-  const faits = formaterFaits(ctx.faits, Math.floor(budget * 0.12));
+  const faits = formaterFaits(ctx.faits, Math.floor(budget * 0.10));
 
   const fixe = `${NARRATIVE_IDENTITY}\n\n${REGLES_IMMUABLES}\n\n[PERSONNAGE DE {{user}}]\nNom : ${tronquer(ctx.meta.personnageNom, 180)}\nDescription : ${tronquer(ctx.meta.personnageDescription, 750)}\nPoint de départ : ${tronquer(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}\n\n[RÉSUMÉ UTILE]\n${resume}\n\n[FAITS CLÉS ÉTABLIS]\n${faits}`;
 
   const style = `\n\n[STYLE]\nTon : ${libelleTon(ctx.settings.ton)}\n${instructionLongueur(ctx.settings.longueur)}\nRythme : ${libelleRythme(ctx.settings.rythme)}.\nLiberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.\nViolence : ${libelleViolence(ctx.settings.violence)}.\nRomance : ${libelleRomance(ctx.settings.romance)}.\nHumour : ${libelleHumour(ctx.settings.humour)}.\n\nDialogues PNJ : NOM EN MAJUSCULES : « réplique ». Narration/action hors de ces lignes. Ne jamais utiliser cette étiquette pour {{user}}.\n${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-  return tronquer(`${fixe}${lore}${etat ? `\n\n[ÉTAT / CONSÉQUENCES]\n${etat}` : ''}${souvenirs}${style}`, budget);
+  return tronquer(`${fixe}${contextBlocks ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE — V10]\n${contextBlocks}` : ''}${lore}${etat ? `\n\n[ÉTAT / CONSÉQUENCES]\n${etat}` : ''}${souvenirs}${style}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

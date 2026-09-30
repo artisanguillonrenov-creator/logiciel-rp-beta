@@ -23,10 +23,11 @@ import {
   cleDedupeScene,
   cleDedupeSynchronisationAvatars,
   listerIdsPnjVisuels,
+  listerPnjVisuels,
 } from './visualPlanning';
 import { publierEvenementVisuel } from './visualEvents';
 
-const MAX_PNJ_REFERENCE_SCENE = 2;
+const MAX_PNJ_REFERENCE_SCENE = 3;
 
 export interface VisualAutomationDeps {
   getSettings(): Promise<AppSettings>;
@@ -47,7 +48,7 @@ async function genererAvatarSansCache(
     return obtenirOuGenererAvatarJoueur(story, settings);
   }
 
-  const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
+  const pnj = listerPnjVisuels(story).find((entree) => entree.id === assetId);
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
   return obtenirOuGenererAvatarPnj(story, pnj, settings);
 }
@@ -109,22 +110,26 @@ async function genererScene(story: StoryState, settings: AppSettings): Promise<s
   const portraitReference = await obtenirPortraitReferenceJoueur(story);
   const avatarJoueur = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR_VISUEL);
   const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
-  const texteSceneMinuscule = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).toLowerCase();
+  // La description visuelle produite par le narrateur est ajoutée à la
+  // détection : elle rétablit souvent le nom d'un personnage que la prose
+  // venait de désigner seulement par son rôle, sa race ou un pronom.
+  const texteSceneMinuscule = `${dernierMessageNarrateur?.content ?? story.meta.pointDeDepart}\n${prompt}`.toLowerCase();
 
   const refsPnj: string[] = [];
-  for (const pnj of story.loreEmergent
-    .filter((entree) => entree.categorie === 'pnj')
+  for (const pnj of listerPnjVisuels(story)
     .filter((entree) => pnjMentionneDansTexte(entree, texteSceneMinuscule))) {
     const uri = await obtenirAvatarPnj(story.meta.id, pnj.id);
     if (uri) refsPnj.push(uri);
     if (refsPnj.length >= MAX_PNJ_REFERENCE_SCENE) break;
   }
 
+  // Une seule identité canonique pour le joueur : l'avatar personnel
+  // généré prime ; le portrait race/sexe ne sert que de repli.
+  const referenceJoueur = avatarJoueur || portraitReference;
   const dataUrl = await genererImageScene(
-    settings.openRouterApiKey,
+    settings,
     prompt,
-    settings.modeleImagesGratuit,
-    [portraitReference, avatarJoueur, ...refsPnj],
+    [referenceJoueur, ...refsPnj],
   );
   const revision = calculerRevisionNarrative(story);
   return enregistrerIllustrationScene(story.meta.id, revision, dataUrl);

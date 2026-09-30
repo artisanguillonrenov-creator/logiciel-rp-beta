@@ -12,7 +12,7 @@ export const URLS_FOURNISSEURS = {
 
 /** L'absence du champ dans une ancienne sauvegarde garde OpenRouter. */
 export function normaliserFournisseur(value: unknown): FournisseurLLM {
-  return value === 'infermatic' || value === 'local' ? value : 'openrouter';
+  return value === 'infermatic' || value === 'chatgpt' || value === 'local' ? value : 'openrouter';
 }
 
 /** Point unique de résolution clé/modèle, partagé par tous les méta-moteurs. */
@@ -24,6 +24,9 @@ export function configurationLLM(settings: AppSettings, modeleOverride?: string)
       model: modeleOverride || settings.infermaticModel || '',
       moteurInference,
     };
+  }
+  if (moteurInference === 'chatgpt') {
+    return { apiKey: '', model: settings.chatgptModel || '', moteurInference };
   }
   return { apiKey: settings.openRouterApiKey, model: modeleOverride || settings.model, moteurInference };
 }
@@ -42,12 +45,12 @@ export function modeleOverridePourFournisseur(
 }
 
 export class ErreurFournisseurLLM extends Error {
-  readonly fournisseur: Exclude<FournisseurLLM, 'local'>;
+  readonly fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'>;
   readonly statut?: number;
 
   constructor(
     message: string,
-    fournisseur: Exclude<FournisseurLLM, 'local'> = 'openrouter',
+    fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'> = 'openrouter',
     statut?: number,
   ) {
     super(message);
@@ -58,7 +61,7 @@ export class ErreurFournisseurLLM extends Error {
 }
 
 export interface RequeteChatDistante {
-  fournisseur: Exclude<FournisseurLLM, 'local'>;
+  fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'>;
   apiKey: string;
   model: string;
   messages: unknown[];
@@ -89,7 +92,7 @@ async function fetchAvecDelai(
   }
 }
 
-function nomFournisseur(fournisseur: Exclude<FournisseurLLM, 'local'>): string {
+function nomFournisseur(fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'>): string {
   return fournisseur === 'infermatic' ? 'Infermatic' : 'OpenRouter';
 }
 
@@ -202,7 +205,7 @@ export async function appelerChatDistantAvecOutils(
 }
 
 export async function listerModelesDistants(
-  fournisseur: Exclude<FournisseurLLM, 'local'>,
+  fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'>,
   apiKey = '',
 ): Promise<ModeleDistant[]> {
   const nom = nomFournisseur(fournisseur);

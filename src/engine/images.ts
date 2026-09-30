@@ -4,6 +4,7 @@ import { configurationLLM, appellerModele, ErreurOpenRouter } from './openrouter
 import { calculerSelectionLore } from './generateTurn';
 import { obtenirAvatarPnj, enregistrerAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirPortrait } from '../data/portraits';
+import { genererImageChatGPT } from './chatgptSubscription';
 
 // Modèle ouvert (Black Forest Labs, poids publics) accessible via
 // l'API image unifiée d'OpenRouter (même fournisseur/même clé que le texte
@@ -238,13 +239,22 @@ const MAX_IMAGES_REFERENCE_SCENE = 4;
  * portrait pas encore généré) sont filtrées silencieusement.
  */
 export async function genererImageScene(
-  apiKey: string,
+  settingsOuCle: AppSettings | string,
   prompt: string,
-  gratuit?: boolean,
+  gratuitOuReferences?: boolean | (string | null | undefined)[],
   imagesReference?: (string | null | undefined)[]
 ): Promise<string> {
-  const images = (imagesReference ?? []).filter((u): u is string => !!u).slice(0, MAX_IMAGES_REFERENCE_SCENE);
-  return appellerModeleImage(apiKey, prompt, gratuit, images.length > 0 ? images : undefined);
+  const references = Array.isArray(gratuitOuReferences) ? gratuitOuReferences : imagesReference;
+  const images = (references ?? []).filter((u): u is string => !!u).slice(0, MAX_IMAGES_REFERENCE_SCENE);
+  if (typeof settingsOuCle === 'string') {
+    return appellerModeleImageOpenRouter(
+      settingsOuCle,
+      prompt,
+      typeof gratuitOuReferences === 'boolean' ? gratuitOuReferences : undefined,
+      images.length > 0 ? images : undefined,
+    );
+  }
+  return appellerModeleImageSelonSettings(settingsOuCle, prompt, images.length > 0 ? images : undefined);
 }
 
 /**
@@ -347,7 +357,7 @@ export async function obtenirOuGenererAvatarPnj(story: StoryState, pnj: EntreeLo
   const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
   const prompt = await obtenirPromptAvatarPnj(story, pnj, appSettings);
-  const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
+  const url = await appellerModeleImageSelonSettings(appSettings, prompt);
   return enregistrerAvatarPnj(story.meta.id, pnj.id, url);
 }
 
@@ -434,11 +444,24 @@ export async function obtenirOuGenererAvatarJoueur(story: StoryState, appSetting
   const existant = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
   if (existant) return existant;
   const prompt = await obtenirPromptAvatarJoueur(story, appSettings);
-  const url = await appellerModeleImage(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit);
+  const url = await appellerModeleImageSelonSettings(appSettings, prompt);
   return enregistrerAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR, url);
 }
 
-async function appellerModeleImage(
+async function appellerModeleImageSelonSettings(
+  appSettings: AppSettings,
+  prompt: string,
+  imagesReference?: string[],
+): Promise<string> {
+  const fournisseur = appSettings.fournisseurImages ?? (appSettings.moteurInference === 'chatgpt' ? 'chatgpt' : 'openrouter');
+  if (fournisseur === 'chatgpt') {
+    const references = await Promise.all((imagesReference ?? []).slice(0, MAX_IMAGES_REFERENCE_SCENE).map(preparerImageReference));
+    return genererImageChatGPT(prompt, references);
+  }
+  return appellerModeleImageOpenRouter(appSettings.openRouterApiKey, prompt, appSettings.modeleImagesGratuit, imagesReference);
+}
+
+async function appellerModeleImageOpenRouter(
   apiKey: string,
   prompt: string,
   gratuit?: boolean,

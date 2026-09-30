@@ -64,7 +64,7 @@ function estConnuPourRaisonner(model: string): { supportsReasoning: boolean; bal
  * rien côté modèle et n'est pas ce qui protège l'interface.
  */
 export function resoudreProfilRaisonnement(
-  fournisseur: Exclude<FournisseurLLM, 'local'>,
+  fournisseur: Exclude<FournisseurLLM, 'local' | 'chatgpt'>,
   model: string,
 ): ProfilRaisonnementModele {
   const { supportsReasoning, balises } = estConnuPourRaisonner(model);

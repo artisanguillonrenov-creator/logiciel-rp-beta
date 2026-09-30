@@ -1,6 +1,9 @@
 import type { MoteurInference } from '../types';
 import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
 import { appelerChatDistant, appelerChatDistantAvecOutils, ErreurFournisseurLLM, listerModelesDistants, type ModeleDistant } from './llmProvider';
+import { appelerChatGPTAbonnement } from './chatgptSubscription';
+import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
+import { enregistrerAppelSansUsage, enregistrerUsageAppel } from './tokenUsageTelemetry';
 export { configurationLLM } from './llmProvider';
 
 export interface ChatMessage {
@@ -29,11 +32,17 @@ export async function appellerModele({
   moteurInference,
   signal,
 }: AppelModeleOptions): Promise<string> {
-  if (moteurInference === 'local') return genererTexteLocal(messages);
+  if (moteurInference === 'local') {
+    enregistrerAppelSansUsage();
+    return genererTexteLocal(messages);
+  }
+  if (moteurInference === 'chatgpt') return appelerChatGPTAbonnement(messages, model, signal);
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   const TENTATIVES_MAX = 3;
   for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
     const data = await appelerChatDistant({ fournisseur, apiKey, model, messages, temperature, maxTokens, signal });
+    if (data?.usage) enregistrerUsageAppel(data.usage);
+    else enregistrerAppelSansUsage();
     const contenu = data?.choices?.[0]?.message?.content;
     if (typeof contenu === 'string' && contenu.trim()) return contenu.trim();
     if (tentative === TENTATIVES_MAX) throw new ErreurFournisseurLLM('Réponse vide reçue du modèle.', fournisseur);
@@ -93,6 +102,10 @@ export async function appellerModeleAvecOutils({
   signal,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
+  if (moteurInference === 'chatgpt') {
+    const brut = await appelerChatGPTAbonnement(ajouterInstructionsOutilsJson(messages, outils), model, signal);
+    return extraireAppelsOutilsJson(brut);
+  }
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   return appelerChatDistantAvecOutils(
     { fournisseur, apiKey, model, messages, temperature, maxTokens, signal },

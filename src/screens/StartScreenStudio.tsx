@@ -84,7 +84,17 @@ export default function StartScreenStudio({ navigation }: Props) {
     <FondAtmospherique style={styles.container} imageFond={IMAGE_ACCUEIL}>
       <View style={[styles.voile, compact && styles.voileCompact]} pointerEvents="none" />
 
-      <View style={[styles.page, { paddingTop: Math.max(insets.top, espacement.md), paddingBottom: Math.max(insets.bottom, espacement.md) }]}>
+      <ScrollView
+        style={styles.page}
+        contentContainerStyle={[
+          styles.pageContenu,
+          {
+            paddingTop: Math.max(insets.top, espacement.md),
+            paddingBottom: Math.max(insets.bottom, espacement.md) + espacement.xxl,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <Pressable style={styles.langue} onPress={() => setModalLangueOuvert(true)} hitSlop={8}>
           <Text style={styles.langueSymbole}>◎</Text>
           <Text style={styles.langueTexte}>{LANGUES_SUGGEREES.find((l) => l.code === langue)?.label ?? langue.toUpperCase()}</Text>
@@ -148,7 +158,7 @@ export default function StartScreenStudio({ navigation }: Props) {
         </View>
 
         <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>
-      </View>
+      </ScrollView>
 
       <SelecteurLangue visible={modalLangueOuvert} onFermer={() => setModalLangueOuvert(false)} />
       <ModalGuide visible={modalGuideOuvert} onFermer={() => setModalGuideOuvert(false)} />
@@ -272,6 +282,9 @@ const styles = StyleSheet.create({
   voileCompact: { backgroundColor: 'rgba(2, 8, 15, 0.30)' },
   page: {
     flex: 1,
+  },
+  pageContenu: {
+    flexGrow: 1,
     paddingHorizontal: espacement.lg,
   },
   langue: {
@@ -369,9 +382,8 @@ const styles = StyleSheet.create({
   texteLien: { color: couleurs.texteAtténué, fontFamily: polices.corpsMedium, fontSize: 12 },
   presse: { opacity: 0.72 },
   version: {
-    position: 'absolute',
-    left: espacement.sm,
-    bottom: 2,
+    alignSelf: 'flex-start',
+    marginTop: espacement.xs,
     color: couleurs.texteFaible,
     fontFamily: polices.corps,
     fontSize: 10,

@@ -18,6 +18,7 @@ import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
 import { listerModelesDistants } from '../engine/llmProvider';
+import { attendreConnexionChatGPT, demarrerConnexionChatGPT, etatConnexionChatGPT, listerModelesChatGPT } from '../engine/chatgptSubscription';
 import { verifierMiseAJour } from '../engine/updater';
 import {
   importerModeleLocal,
@@ -46,6 +47,13 @@ export default function SettingsScreen({ navigation }: Props) {
   const [model, setModel] = useState('');
   const [infermaticApiKey, setInfermaticApiKey] = useState('');
   const [infermaticModel, setInfermaticModel] = useState('');
+  const [chatgptModel, setChatgptModel] = useState('');
+  const [chatgptConnecte, setChatgptConnecte] = useState(false);
+  const [chatgptPlan, setChatgptPlan] = useState('');
+  const [chatgptCode, setChatgptCode] = useState('');
+  const [chatgptVerificationUrl, setChatgptVerificationUrl] = useState('');
+  const [chatgptConnexionEnCours, setChatgptConnexionEnCours] = useState(false);
+  const [chatgptErreur, setChatgptErreur] = useState('');
   const [embeddingsApiKey, setEmbeddingsApiKey] = useState('');
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -65,7 +73,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [rechercheModele, setRechercheModele] = useState('');
   const [chargementModeles, setChargementModeles] = useState(false);
   const [erreurModeles, setErreurModeles] = useState('');
-  const [fournisseurCatalogue, setFournisseurCatalogue] = useState<'openrouter' | 'infermatic'>('openrouter');
+  const [fournisseurCatalogue, setFournisseurCatalogue] = useState<'openrouter' | 'infermatic' | 'chatgpt'>('openrouter');
   const requeteCatalogueRef = useRef(0);
 
   const [verificationMaj, setVerificationMaj] = useState(false);
@@ -75,6 +83,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const [moteurInference, setMoteurInference] = useState<MoteurInference>('openrouter');
   const [genererImagesActive, setGenererImagesActive] = useState(false);
   const [modeleImagesGratuit, setModeleImagesGratuit] = useState(false);
+  const [fournisseurImages, setFournisseurImages] = useState<'chatgpt' | 'openrouter'>('openrouter');
   const [modeleLocalPresent, setModeleLocalPresent] = useState(false);
   const [tailleModeleLocal, setTailleModeleLocal] = useState<number | null>(null);
   const [importEnCours, setImportEnCours] = useState(false);
@@ -88,15 +97,21 @@ export default function SettingsScreen({ navigation }: Props) {
       setModel(settings.model);
       setInfermaticApiKey(settings.infermaticApiKey ?? '');
       setInfermaticModel(settings.infermaticModel ?? '');
+      setChatgptModel(settings.chatgptModel ?? '');
+      etatConnexionChatGPT().then((etat) => {
+        setChatgptConnecte(etat.connected);
+        setChatgptPlan(etat.planType ?? '');
+      }).catch(() => {});
       setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
       setConserverClesWeb(settings.conserverClesWeb ?? false);
       const cleConfiguree = settings.moteurInference === 'infermatic' ? settings.infermaticApiKey : settings.openRouterApiKey;
-      setAvancesOuverts(settings.moteurInference !== 'local' && !cleConfiguree);
+      setAvancesOuverts(settings.moteurInference !== 'local' && settings.moteurInference !== 'chatgpt' && !cleConfiguree);
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
       setGenererImagesActive(settings.genererImagesActive ?? false);
       setModeleImagesGratuit(settings.modeleImagesGratuit ?? false);
+      setFournisseurImages(settings.fournisseurImages ?? (settings.moteurInference === 'chatgpt' ? 'chatgpt' : 'openrouter'));
       setChargement(false);
     }).catch(() => {
       setErreurChargement(t('Impossible de lire les réglages. Réessaie après avoir déverrouillé l’appareil ou autorisé le stockage du navigateur.'));
@@ -196,7 +211,7 @@ export default function SettingsScreen({ navigation }: Props) {
     }
   }
 
-  function ouvrirSelecteurModeles(fournisseur: 'openrouter' | 'infermatic') {
+  function ouvrirSelecteurModeles(fournisseur: 'openrouter' | 'infermatic' | 'chatgpt') {
     const requeteId = ++requeteCatalogueRef.current;
     setFournisseurCatalogue(fournisseur);
     setModalOuvert(true);
@@ -204,14 +219,47 @@ export default function SettingsScreen({ navigation }: Props) {
     setModeles([]);
     setChargementModeles(true);
     setErreurModeles('');
-    (fournisseur === 'infermatic' ? listerModelesDistants('infermatic', infermaticApiKey.trim()) : listerModeles())
-      .then((liste) => { if (requeteCatalogueRef.current === requeteId) setModeles(liste); })
+    (fournisseur === 'chatgpt'
+      ? listerModelesChatGPT()
+      : fournisseur === 'infermatic'
+        ? listerModelesDistants('infermatic', infermaticApiKey.trim())
+        : listerModeles())
+      .then((liste) => {
+        if (requeteCatalogueRef.current === requeteId) {
+          setModeles(fournisseur === 'chatgpt'
+            ? [{ id: '', nom: 'Automatique — recommandé' }, ...liste]
+            : liste);
+        }
+      })
       .catch((e) => {
         if (requeteCatalogueRef.current === requeteId) {
           setErreurModeles(e instanceof Error ? e.message : t('Liste indisponible pour le moment.'));
         }
       })
       .finally(() => { if (requeteCatalogueRef.current === requeteId) setChargementModeles(false); });
+  }
+
+  async function connecterChatGPT() {
+    setChatgptConnexionEnCours(true);
+    setChatgptErreur('');
+    setChatgptCode('');
+    setChatgptVerificationUrl('');
+    try {
+      const debut = await demarrerConnexionChatGPT();
+      setChatgptCode(debut.userCode ?? '');
+      setChatgptVerificationUrl(debut.verificationUrl ?? '');
+      if (debut.verificationUrl) await Linking.openURL(debut.verificationUrl);
+      const etat = await attendreConnexionChatGPT();
+      setChatgptConnecte(etat.connected);
+      setChatgptPlan(etat.planType ?? '');
+      setChatgptCode('');
+      setChatgptVerificationUrl('');
+      if (etat.connected) setMessageStatut(etat.planType ? `ChatGPT connecté · forfait ${etat.planType}.` : 'ChatGPT connecté.');
+    } catch (e) {
+      setChatgptErreur(e instanceof Error ? e.message : 'Connexion ChatGPT impossible.');
+    } finally {
+      setChatgptConnexionEnCours(false);
+    }
   }
 
   async function enregistrer() {
@@ -225,6 +273,7 @@ export default function SettingsScreen({ navigation }: Props) {
         model: model.trim(),
         infermaticApiKey: infermaticApiKey.trim() || undefined,
         infermaticModel: infermaticModel.trim() || undefined,
+        chatgptModel: chatgptModel.trim() || undefined,
         embeddingsApiKey: embeddingsApiKey.trim() || undefined,
         conserverClesWeb,
         profilContenu,
@@ -232,6 +281,7 @@ export default function SettingsScreen({ navigation }: Props) {
         moteurInference,
         genererImagesActive,
         modeleImagesGratuit,
+        fournisseurImages,
       });
       setMessageStatut(t('Réglages enregistrés.'));
     } catch {
@@ -249,9 +299,11 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const fournisseurActif = moteurInference === 'local'
     ? t('Sur cet appareil')
-    : moteurInference === 'infermatic'
-      ? 'Infermatic'
-      : 'OpenRouter';
+    : moteurInference === 'chatgpt'
+      ? 'ChatGPT Plus'
+      : moteurInference === 'infermatic'
+        ? 'Infermatic'
+        : 'OpenRouter';
 
   const profilAffiche = profilContenu === 'adulte'
     ? t('Adulte')
@@ -259,12 +311,14 @@ export default function SettingsScreen({ navigation }: Props) {
       ? t('Grand public')
       : t('À déclarer');
 
-  const illustrationsPretes = genererImagesActive && !!apiKey.trim();
+  const illustrationsPretes = genererImagesActive && (fournisseurImages === 'chatgpt' ? chatgptConnecte : !!apiKey.trim());
   const etatIllustrations = !genererImagesActive
     ? t('Désactivées')
     : illustrationsPretes
-      ? t('Prêtes')
-      : t('Clé OpenRouter requise');
+      ? (fournisseurImages === 'chatgpt' ? t('ChatGPT Plus · prête') : t('OpenRouter · prête'))
+      : fournisseurImages === 'chatgpt'
+        ? t('Connexion ChatGPT requise')
+        : t('Clé OpenRouter requise');
 
   if (chargement) {
     return (
@@ -353,6 +407,12 @@ export default function SettingsScreen({ navigation }: Props) {
                 >
                   <Text style={[styles.texteOptionMoteur, moteurInference === 'infermatic' && styles.texteOptionMoteurActif]}>Infermatic</Text>
                 </Pressable>
+                <Pressable
+                  style={[styles.optionMoteur, moteurInference === 'chatgpt' && styles.optionMoteurActive]}
+                  onPress={() => { setMoteurInference('chatgpt'); setModeles([]); }}
+                >
+                  <Text style={[styles.texteOptionMoteur, moteurInference === 'chatgpt' && styles.texteOptionMoteurActif]}>ChatGPT Plus</Text>
+                </Pressable>
                 {Platform.OS !== 'web' && (
                   <Pressable
                     style={[styles.optionMoteur, moteurInference === 'local' && styles.optionMoteurActive]}
@@ -390,6 +450,61 @@ export default function SettingsScreen({ navigation }: Props) {
                     onPress={() => ouvrirSelecteurModeles('openrouter')}
                     style={styles.boutonAction}
                   />
+                </View>
+              )}
+
+              {moteurInference === 'chatgpt' && (
+                <View style={styles.blocFournisseur}>
+                  <View style={styles.etatTechnique}>
+                    <Text style={styles.ligneLabel}>{t('Compte ChatGPT')}</Text>
+                    <Text style={styles.ligneValeur}>
+                      {chatgptConnecte ? `Connecté${chatgptPlan ? ` · ${chatgptPlan}` : ''}` : 'Non connecté'}
+                    </Text>
+                  </View>
+                  <Text style={styles.aide}>{t('Utilise ton abonnement ChatGPT/Codex. Aucune clé API OpenAI n’est nécessaire. La consommation suit le quota de ton abonnement.')}</Text>
+                  {!chatgptConnecte && (
+                    <Bouton
+                      titre={chatgptConnexionEnCours ? t('Connexion en cours…') : t('Se connecter avec ChatGPT')}
+                      variante="arcane"
+                      onPress={connecterChatGPT}
+                      disabled={chatgptConnexionEnCours}
+                      style={styles.boutonAction}
+                    />
+                  )}
+                  {!!chatgptCode && (
+                    <View style={styles.etatTechnique}>
+                      <Text style={styles.ligneLabel}>{t('Code à saisir chez OpenAI')}</Text>
+                      <Text style={styles.ligneValeur}>{chatgptCode}</Text>
+                    </View>
+                  )}
+                  {!!chatgptVerificationUrl && (
+                    <Bouton
+                      titre={t('Ouvrir la page de connexion OpenAI')}
+                      variante="secondaire"
+                      onPress={() => Linking.openURL(chatgptVerificationUrl)}
+                      style={styles.boutonAction}
+                    />
+                  )}
+                  {!!chatgptErreur && <Text style={[styles.aide, { color: couleurs.danger }]}>{chatgptErreur}</Text>}
+                  {chatgptConnecte && (
+                    <View>
+                    <Champ
+                      label={t('Modèle ChatGPT/Codex (optionnel)')}
+                      value={chatgptModel}
+                      onChangeText={setChatgptModel}
+                      placeholder={t('Laisser vide = modèle automatique')}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      conteneurStyle={styles.champConteneur}
+                    />
+                      <Bouton
+                        titre={t('Parcourir les modèles ChatGPT')}
+                        variante="arcane"
+                        onPress={() => ouvrirSelecteurModeles('chatgpt')}
+                        style={styles.boutonAction}
+                      />
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -477,41 +592,57 @@ export default function SettingsScreen({ navigation }: Props) {
                 </Pressable>
               </View>
 
-              <Text style={styles.aide}>{t('Quand elle est active et qu’une clé OpenRouter est configurée, l’action « Illustrer cette scène » apparaît dans le récit. Les illustrations sont conservées localement pour l’histoire et supprimées avec elle.')}</Text>
+              <Text style={styles.aide}>{t('Quand elle est active, l’action « Illustrer cette scène » apparaît dans le récit. Les portraits et illustrations restent enregistrés localement et servent de références visuelles aux scènes suivantes.')}</Text>
 
               {genererImagesActive && (
                 <View style={styles.blocFournisseur}>
-                  {moteurInference !== 'openrouter' && (
-                    <Champ
-                      label={t('Clé OpenRouter pour les images')}
-                      value={apiKey}
-                      onChangeText={setApiKey}
-                      placeholder="sk-or-v1-…"
-                      secureTextEntry
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      conteneurStyle={styles.champConteneur}
-                    />
-                  )}
-                  {!apiKey.trim() && (
-                    <Text style={[styles.aide, { color: couleurs.danger }]}>{t('Une clé API OpenRouter est requise pour les illustrations et les portraits générés, même si le narrateur utilise Infermatic ou un modèle local.')}</Text>
-                  )}
-                  <Text style={styles.label}>{t("Mode d'images")}</Text>
+                  <Text style={styles.label}>{t("Fournisseur d'images")}</Text>
                   <View style={styles.rangeeMoteur}>
                     <Pressable
-                      style={[styles.optionMoteur, !modeleImagesGratuit && styles.optionMoteurActive]}
-                      onPress={() => setModeleImagesGratuit(false)}
+                      style={[styles.optionMoteur, fournisseurImages === 'chatgpt' && styles.optionMoteurActive]}
+                      onPress={() => setFournisseurImages('chatgpt')}
                     >
-                      <Text style={[styles.texteOptionMoteur, !modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Payant · fiable')}</Text>
+                      <Text style={[styles.texteOptionMoteur, fournisseurImages === 'chatgpt' && styles.texteOptionMoteurActif]}>ChatGPT Plus</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.optionMoteur, modeleImagesGratuit && styles.optionMoteurActive]}
-                      onPress={() => setModeleImagesGratuit(true)}
+                      style={[styles.optionMoteur, fournisseurImages === 'openrouter' && styles.optionMoteurActive]}
+                      onPress={() => setFournisseurImages('openrouter')}
                     >
-                      <Text style={[styles.texteOptionMoteur, modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Gratuit · limité')}</Text>
+                      <Text style={[styles.texteOptionMoteur, fournisseurImages === 'openrouter' && styles.texteOptionMoteurActif]}>OpenRouter</Text>
                     </Pressable>
                   </View>
-                  <Text style={styles.aide}>{t('La génération d’images utilise actuellement OpenRouter, indépendamment du fournisseur choisi pour le narrateur.')}</Text>
+
+                  {fournisseurImages === 'chatgpt' ? (
+                    <>
+                      <Text style={styles.aide}>{t('Réutilise la même connexion ChatGPT/Codex que le narrateur. La génération intégrée utilise GPT Image et consomme le quota inclus de ton compte ChatGPT.')}</Text>
+                      {!chatgptConnecte && <Text style={[styles.aide, { color: couleurs.danger }]}>{t('Connecte d’abord ChatGPT Plus dans la section Narrateur.')}</Text>}
+                    </>
+                  ) : (
+                    <>
+                      {moteurInference !== 'openrouter' && (
+                        <Champ
+                          label={t('Clé OpenRouter pour les images')}
+                          value={apiKey}
+                          onChangeText={setApiKey}
+                          placeholder="sk-or-v1-…"
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          conteneurStyle={styles.champConteneur}
+                        />
+                      )}
+                      {!apiKey.trim() && <Text style={[styles.aide, { color: couleurs.danger }]}>{t('Une clé API OpenRouter est requise pour ce fournisseur d’images.')}</Text>}
+                      <Text style={styles.label}>{t("Mode d'images OpenRouter")}</Text>
+                      <View style={styles.rangeeMoteur}>
+                        <Pressable style={[styles.optionMoteur, !modeleImagesGratuit && styles.optionMoteurActive]} onPress={() => setModeleImagesGratuit(false)}>
+                          <Text style={[styles.texteOptionMoteur, !modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Payant · fiable')}</Text>
+                        </Pressable>
+                        <Pressable style={[styles.optionMoteur, modeleImagesGratuit && styles.optionMoteurActive]} onPress={() => setModeleImagesGratuit(true)}>
+                          <Text style={[styles.texteOptionMoteur, modeleImagesGratuit && styles.texteOptionMoteurActif]}>{t('Gratuit · limité')}</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  )}
                 </View>
               )}
             </Panneau>
@@ -623,7 +754,7 @@ export default function SettingsScreen({ navigation }: Props) {
         <Modal visible={modalOuvert} animationType="slide" onRequestClose={() => setModalOuvert(false)}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalSurtitre}>{t('CATALOGUE')}</Text>
-            <Text style={styles.titre}>{fournisseurCatalogue === 'infermatic' ? t('Modèles Infermatic') : t('Modèles OpenRouter')}</Text>
+            <Text style={styles.titre}>{fournisseurCatalogue === 'chatgpt' ? t('Modèles ChatGPT') : fournisseurCatalogue === 'infermatic' ? t('Modèles Infermatic') : t('Modèles OpenRouter')}</Text>
             <Champ value={rechercheModele} onChangeText={setRechercheModele} placeholder={t('Rechercher…')} conteneurStyle={styles.champConteneur} />
             {chargementModeles ? (
               <ActivityIndicator color={couleurs.accent} style={{ marginTop: espacement.lg }} />
@@ -638,7 +769,8 @@ export default function SettingsScreen({ navigation }: Props) {
                   <Pressable
                     style={styles.ligneModele}
                     onPress={() => {
-                      if (fournisseurCatalogue === 'infermatic') setInfermaticModel(item.id);
+                      if (fournisseurCatalogue === 'chatgpt') setChatgptModel(item.id);
+                      else if (fournisseurCatalogue === 'infermatic') setInfermaticModel(item.id);
                       else setModel(item.id);
                       setModalOuvert(false);
                     }}

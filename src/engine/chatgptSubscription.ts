@@ -1,4 +1,5 @@
 import type { ChatMessage } from './openrouter';
+import { enregistrerAppelSansUsage, enregistrerUsageAppel } from './tokenUsageTelemetry';
 
 export const CHATGPT_GATEWAY_URL = 'https://elyndor-chatgpt-plus-gateway.onrender.com';
 const CLE_SESSION = 'elyndor_chatgpt_plus_session';
@@ -170,9 +171,36 @@ export async function appelerChatGPTAbonnement(
     throw new Error('La session ChatGPT a expiré. Reconnecte ton compte dans Réglages.');
   }
   const data = await lireJson(response);
+  if (data?.usage) enregistrerUsageAppel(data.usage);
+  else enregistrerAppelSansUsage();
   const contenu = data?.choices?.[0]?.message?.content;
   if (typeof contenu !== 'string' || !contenu.trim()) throw new Error('ChatGPT a renvoyé une réponse vide.');
   return contenu.trim();
+}
+
+export async function genererImageChatGPT(
+  prompt: string,
+  references: string[] = [],
+  signal?: AbortSignal,
+): Promise<string> {
+  const token = lireSessionChatGPT();
+  if (!token) throw new Error('ChatGPT Plus n’est pas connecté. Ouvre Réglages → IA & connexion.');
+  const response = await fetch(`${CHATGPT_GATEWAY_URL}/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headersAvecSession() },
+    body: JSON.stringify({ prompt, references: references.slice(0, 4) }),
+    signal,
+  });
+  if (response.status === 401) {
+    effacerSessionChatGPT();
+    throw new Error('La session ChatGPT a expiré. Reconnecte ton compte dans Réglages.');
+  }
+  const data = await lireJson(response);
+  const dataUrl = data?.dataUrl;
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+    throw new Error('ChatGPT n’a pas renvoyé d’image exploitable.');
+  }
+  return dataUrl;
 }
 
 export async function deconnecterChatGPT(): Promise<void> {

@@ -37,6 +37,8 @@ import {
   selectionnerSouvenirs,
   type Souvenir,
 } from './searchHistorique';
+import { searchHistoryLocal } from './narrative/historySearchEngine';
+import { searchLoreLocal, loreHitsAsEntries } from './narrative/loreSearchEngine';
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   ErreurProfilContenu,
@@ -53,9 +55,13 @@ import {
   reparerReponse,
   reponseFaitParlerLeJoueur,
   retirerRepliqueDuJoueur,
+  rapportOk,
   validerAgentiviteHeuristique,
   validerReponseLLM,
+  type RapportValidation,
 } from './validator';
+import { construireContextBlocks, debugContextBlocks, formaterContextBlocks, synchroniserMemoireNarrative } from './narrative/persistentMemory';
+import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './tokenUsageTelemetry';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 
@@ -70,6 +76,8 @@ export interface DebugLore {
   metamoteurs: string[];
   loreElyndor: string[];
   souvenirs: string[];
+  contextBlocks?: string[];
+  memoireNarrative?: string;
 }
 
 export interface ResultatTour {
@@ -140,11 +148,26 @@ export async function calculerSelectionLore(
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
   if (!embeddingsDisponibles(appSettings)) {
+    // Narrative OS : fallback 100 % local, sans embeddings ni appel réseau.
+    // On recherche dans tout le lore autorisé et dans l'historique ancien,
+    // puis on n'injecte que quelques extraits courts et pertinents.
+    const loreHits = searchLoreLocal(poolElyndor, texteRequete);
+    const historyHits = searchHistoryLocal(messagesAnciens, texteRequete, 0);
+    const loreElyndor = loreHitsAsEntries(loreHits);
+    const souvenirs: Souvenir[] = historyHits.map((hit) => ({
+      message: hit.message as Message,
+      score: hit.score,
+    }));
+
     return {
       metamoteursSelectionnes: [],
-      loreElyndor: [],
-      souvenirs: [],
-      debugLore: { metamoteurs: [], loreElyndor: [], souvenirs: [] },
+      loreElyndor,
+      souvenirs,
+      debugLore: {
+        metamoteurs: [],
+        loreElyndor: loreHits.map((hit) => formaterDebug(hit.entry.titre, hit.score)),
+        souvenirs: formaterSouvenirsDebug(souvenirs),
+      },
     };
   }
 
@@ -189,8 +212,15 @@ export async function calculerSelectionLore(
 }
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
-  const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return debugLore;
+  const memoireNarrative = synchroniserMemoireNarrative(story);
+  const storyV10: StoryState = { ...story, memoireNarrative };
+  const { debugLore } = await calculerSelectionLore(storyV10, messageJoueur, appSettings);
+  const contexte = construireContextBlocks(storyV10, messageJoueur);
+  return {
+    ...debugLore,
+    contextBlocks: debugContextBlocks(contexte.blocks),
+    memoireNarrative: memoireNarrative.evenements.length + ' événements indexés · ' + contexte.totalChars + ' caractères sélectionnés',
+  };
 }
 
 export function construireCtxBase(
@@ -228,6 +258,8 @@ export function construireCtxBase(
     story.directeur,
     detecterStagnation(story.directeur, story.messages.length),
   );
+  const memoireNarrative = story.memoireNarrative ?? synchroniserMemoireNarrative(story);
+  const contexteV10 = construireContextBlocks({ ...story, memoireNarrative }, messageJoueur);
 
   return {
     meta: metaSecurisee,
@@ -243,6 +275,7 @@ export function construireCtxBase(
     etatMonde: filtrer(formaterMonde(story.monde)),
     engagementsEtRelations: filtrer(formaterEngagementsEtRelations(story.social)),
     souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
+    contextBlocks: filtrer(formaterContextBlocks(contexteV10.blocks)),
   };
 }
 
@@ -307,7 +340,8 @@ export async function forcerMiseAJourEtat(story: StoryState, appSettings: AppSet
     executerMisesAJourPeriodiques(appSettings, story, story.messages),
     mettreAJourLoreEmergentSeul(appSettings, story, story.messages),
   ]);
-  return { ...story, ...maj, ...majLore };
+  const storyMaj: StoryState = { ...story, ...maj, ...majLore };
+  return { ...storyMaj, memoireNarrative: synchroniserMemoireNarrative(storyMaj) };
 }
 
 async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StoryState> {
@@ -318,6 +352,87 @@ async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StorySt
   }
 }
 
+function normaliserPourComparaison(texte: string): string {
+  return texte
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9à-ÿ' ]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function motsSignificatifs(texte: string): Set<string> {
+  const stop = new Set(['avec','dans','pour','mais','plus','comme','tout','elle','elles','leur','leurs','nous','vous','cette','ceci','cela','sans','sous','alors','encore','entre','apres','avant','vers','dont','tres','bien','fait','faire','etre','avait','sont','sera','ses','son','sur','une','des','les','que','qui','aux','par','pas']);
+  return new Set(normaliserPourComparaison(texte).split(' ').filter((mot) => mot.length >= 4 && !stop.has(mot)));
+}
+
+function similariteJaccard(a: string, b: string): number {
+  const A = motsSignificatifs(a);
+  const B = motsSignificatifs(b);
+  if (!A.size || !B.size) return 0;
+  let communs = 0;
+  for (const mot of A) if (B.has(mot)) communs++;
+  const union = A.size + B.size - communs;
+  return union ? communs / union : 0;
+}
+
+function validerRepetitionLocale(reponse: string, story: StoryState): RapportValidation {
+  const paragraphes = reponse
+    .split(/\n{2,}/)
+    .map((p) => normaliserPourComparaison(p))
+    .filter((p) => p.length >= 45);
+  const vus = new Set<string>();
+  for (const paragraphe of paragraphes) {
+    if (vus.has(paragraphe)) {
+      return {
+        ok: false,
+        checks: [{
+          nom: 'repetition_contradiction',
+          ok: false,
+          gravite: 'modere',
+          raison: 'Un paragraphe est répété presque à l’identique dans la même réponse.',
+        }],
+      };
+    }
+    vus.add(paragraphe);
+  }
+
+  const derniersNarrateurs = story.messages.filter((m) => m.role === 'assistant').slice(-2);
+  for (const ancien of derniersNarrateurs) {
+    if (ancien.content.length >= 180 && reponse.length >= 180 && similariteJaccard(reponse, ancien.content) >= 0.78) {
+      return {
+        ok: false,
+        checks: [{
+          nom: 'repetition_contradiction',
+          ok: false,
+          gravite: 'modere',
+          raison: 'La nouvelle réponse répète fortement une réponse récente au lieu de faire avancer la scène.',
+        }],
+      };
+    }
+  }
+  return rapportOk();
+}
+
+function necessiteAuditLLM(reponse: string, story: StoryState): boolean {
+  // Signaux rares de retcon ou de changement rétroactif : dans ces cas, le
+  // contrôle sémantique LLM reste utile. Tout le reste reste local/gratuit.
+  if (story.memoire.faits.length === 0) return false;
+  const texte = normaliserPourComparaison(reponse);
+  const motifsRetcon = [
+    'en realite il n avait jamais',
+    'en realite elle n avait jamais',
+    'contrairement a ce qui avait ete etabli',
+    'revenu d entre les morts',
+    'revenue d entre les morts',
+    'n etait finalement pas mort',
+    'n etait finalement pas morte',
+    'tout ce qui precedait etait une illusion',
+  ];
+  return motifsRetcon.some((motif) => texte.includes(motif));
+}
+
 export async function genererTour(
   story: StoryState,
   appSettings: AppSettings,
@@ -325,7 +440,9 @@ export async function genererTour(
   reponseAId?: string,
 ): Promise<ResultatTour> {
   const debutMs = Date.now();
-  const storyCourante = await rafraichirEtatDeriveAvantTour(story);
+  const storyChargee = await rafraichirEtatDeriveAvantTour(story);
+  const storyCourante: StoryState = { ...storyChargee, memoireNarrative: synchroniserMemoireNarrative(storyChargee) };
+  const contexteV10Debug = construireContextBlocks(storyCourante, messageJoueur);
 
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
@@ -344,6 +461,7 @@ export async function genererTour(
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur);
   const budgetPrompt = appSettings.moteurInference === 'local' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
 
+  commencerMesureTokens();
   let reponse = await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
@@ -353,13 +471,21 @@ export async function genererTour(
 
   const heuristique = validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
-  const llm = await validerReponseLLM({
-    ...configurationLLM(appSettings, modelePourAppel),
-    reponse,
-    faits: ctxBase.faits,
-    meta: ctxBase.meta,
-  });
-  const rapport = fusionnerRapports(heuristique, profilContenuCheck, llm);
+  const repetitionLocale = validerRepetitionLocale(reponse, storyCourante);
+  const rapportLocal = fusionnerRapports(heuristique, profilContenuCheck, repetitionLocale);
+
+  // V8 : 1 seul appel IA par tour dans le cas normal. Le second appel de
+  // validation n'est lancé que pour un signal sémantique rare que les
+  // contrôles déterministes ne peuvent pas trancher correctement.
+  const llm = rapportLocal.ok && necessiteAuditLLM(reponse, storyCourante)
+    ? await validerReponseLLM({
+        ...configurationLLM(appSettings, modelePourAppel),
+        reponse,
+        faits: ctxBase.faits,
+        meta: ctxBase.meta,
+      })
+    : rapportOk();
+  const rapport = fusionnerRapports(rapportLocal, llm);
 
   const strategie = determinerStrategie(rapport);
   let aEteCorrige = strategie !== 'aucune';
@@ -400,10 +526,13 @@ export async function genererTour(
   }
 
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
+    annulerMesureTokens();
     throw new ErreurProfilContenu(
       "Cette réponse ne respecte pas les limites du profil Grand public et n'a pas pu être corrigée automatiquement. Réessaie avec une formulation différente.",
     );
   }
+
+  const usageTokens = terminerMesureTokens();
 
   const messageUtilisateur: Message = {
     id: genererId(),
@@ -418,14 +547,21 @@ export async function genererTour(
     content: reponse,
     timestamp: Date.now(),
     dureeGenerationMs: Date.now() - debutMs,
+    usageTokens,
   };
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
+  const storyAvecMessages: StoryState = { ...storyCourante, messages };
+  const memoireNarrative = synchroniserMemoireNarrative(storyAvecMessages);
 
   return {
-    story: { ...storyCourante, messages },
+    story: { ...storyAvecMessages, memoireNarrative },
     aEteCorrige,
-    debugLore,
+    debugLore: {
+      ...debugLore,
+      contextBlocks: debugContextBlocks(contexteV10Debug.blocks),
+      memoireNarrative: memoireNarrative.evenements.length + ' événements indexés · ' + contexteV10Debug.totalChars + ' caractères envoyés en Context Blocks',
+    },
   };
 }
 

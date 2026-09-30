@@ -11,15 +11,11 @@ import {
   enqueueVisualAvatarSync,
   enqueueVisualSceneGeneration,
 } from './visualRoutines';
-import { ID_AVATAR_JOUEUR_VISUEL } from './visualPlanning';
+import { ID_AVATAR_JOUEUR_VISUEL, listerPnjVisuels } from './visualPlanning';
 import { calculerRevisionNarrative } from './storyRevision';
 
 function filtrerPnj(story: StoryState | null): EntreeLoreEmergent[] {
-  if (!story) return [];
-  const nomJoueur = story.meta.personnageNom.trim().toLowerCase();
-  return story.loreEmergent.filter(
-    (entree) => entree.categorie === 'pnj' && entree.titre.trim().toLowerCase() !== nomJoueur,
-  );
+  return story ? listerPnjVisuels(story) : [];
 }
 
 export function useVisualAutomation(story: StoryState | null, appSettings: AppSettings | null) {

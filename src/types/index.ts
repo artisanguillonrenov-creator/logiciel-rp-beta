@@ -107,6 +107,17 @@ export interface Message {
   // "assistant" uniquement. Affichage/diagnostic seulement, jamais transmis
   // au moteur. Absent sur les messages écrits avant l'ajout de cette mesure.
   dureeGenerationMs?: number;
+  // Télémétrie de consommation de tout le tour ayant produit cette réponse :
+  // narration + validation + éventuelle réparation/régénération.
+  usageTokens?: {
+    inputTokens: number;
+    cachedInputTokens: number;
+    outputTokens: number;
+    reasoningTokens: number;
+    totalTokens: number;
+    apiCalls: number;
+    complete: boolean;
+  };
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
@@ -266,6 +277,23 @@ export interface SocialState {
   relations: RelationPersonnage[];
 }
 
+// V10 — registre chronologique local, dérivé du transcript sans appel IA.
+export interface EvenementNarratif {
+  id: string;
+  messageIndex: number;
+  timestamp: number;
+  lieu?: string;
+  dateChronique?: string;
+  participants: string[];
+  actionJoueur: string;
+  resultat: string;
+}
+
+export interface MemoireNarrativeState {
+  evenements: EvenementNarratif[];
+  dernierMessageIndex: number;
+}
+
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storyMigration.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
@@ -291,6 +319,9 @@ export interface StoryState {
   // 8 messages. Optionnel : histoires sauvegardées avant cet ajout, traité
   // comme 0 (rescan complet une fois, sans casser rien).
   loreEmergentDernierIndex?: number;
+  // V10 : mémoire narrative hiérarchique. Optionnelle pour que les sauvegardes
+  // V9/V9.1 restent valides sans migration destructive.
+  memoireNarrative?: MemoireNarrativeState;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
@@ -305,7 +336,7 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // reste le mode par défaut, 'local' bascule sur expo-litert-lm — voir
 // src/engine/localInference.ts et src/storage/modeleLocalStore.ts.
 // Natif uniquement : jamais proposé/activable sur le build web.
-export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local';
+export type FournisseurLLM = 'openrouter' | 'infermatic' | 'chatgpt' | 'local';
 export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
@@ -313,6 +344,8 @@ export interface AppSettings {
   model: string;
   infermaticApiKey?: string;
   infermaticModel?: string;
+  // Modèle Codex/ChatGPT facultatif. Vide = modèle par défaut du compte ChatGPT.
+  chatgptModel?: string;
   // undefined (ou 'openrouter') = comportement historique. Voir MoteurInference.
   moteurInference?: MoteurInference;
   // Clé de secours pour les embeddings (recherche sémantique du lore) si
@@ -356,6 +389,8 @@ export interface AppSettings {
   // coût négligeable ~0,05-0,08 $/image) ; true = gratuite mais limitée en
   // requêtes/minute et sans garantie de disponibilité, voir images.ts.
   modeleImagesGratuit?: boolean;
+  // Fournisseur dédié aux images. Par défaut : ChatGPT si le narrateur est ChatGPT, OpenRouter sinon.
+  fournisseurImages?: 'chatgpt' | 'openrouter';
 }
 
 // Pack de contenu additionnel (plugin "esprit", brief Phase 2 section 5) :
