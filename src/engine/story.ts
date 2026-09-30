@@ -1,5 +1,6 @@
 import type { ContexteHistoire, StoryState, StorySettings } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
+import { assurerNarrativeCoreV12, creerNarrativeCoreV12 } from './narrative/narrativeCoreV12';
 
 function genererId(): string {
   return `histoire-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -15,7 +16,7 @@ export function creerNouvelleHistoire(params: {
   sexe?: string;
 }): StoryState {
   const maintenant = Date.now();
-  return {
+  const story: StoryState = {
     version: VERSION_SCHEMA_HISTOIRE,
     meta: {
       id: genererId(),
@@ -44,7 +45,9 @@ export function creerNouvelleHistoire(params: {
     },
     monde: { zones: [], flags: {}, compteurs: {}, declencheurs: [] },
     social: { engagements: [], relations: [] },
+    narrativeCore: creerNarrativeCoreV12(),
   };
+  return assurerNarrativeCoreV12(story);
 }
 
 // Branches de conversation (brief Phase 2) : copie indépendante d'une

@@ -97,70 +97,43 @@ test('les tool_calls valides sont parsés et les arguments invalides ignorés', 
   assert.deepEqual(appels, [{ nom: 'changer_lieu', arguments: { lieu: 'tour' } }]);
 });
 
-test('Infermatic-only dispose des embeddings nécessaires au lore et aux métamoteurs', async () => {
+test('les embeddings du Narrative OS sont locaux, disponibles et déterministes', async () => {
   const settings = {
     openRouterApiKey: '', model: 'ancien', moteurInference: 'infermatic' as const,
     infermaticApiKey: 'infermatic-only', infermaticModel: 'narrateur',
   };
+  let appelsReseau = 0;
+  globalThis.fetch = async () => {
+    appelsReseau++;
+    throw new Error('Un embedding local ne doit jamais appeler le réseau');
+  };
+
   assert.equal(embeddingsDisponibles(settings), true);
-  let requete: { url: string; body: any; authorization: string } | undefined;
-  globalThis.fetch = async (url, init) => {
-    requete = {
-      url: String(url), body: JSON.parse(String(init?.body)),
-      authorization: (init?.headers as Record<string, string>).Authorization,
-    };
-    return Response.json({ data: [{ index: 0, embedding: [1, 0] }] });
-  };
-  const resultat = await obtenirEmbeddings(['quête à Elyndor'], settings);
-  assert.equal(requete?.url, 'https://api.totalgpt.ai/v1/embeddings');
-  assert.equal(requete?.authorization, 'Bearer infermatic-only');
-  assert.equal(requete?.body.model, 'Qwen-Qwen3-Embedding-8B');
-  assert.deepEqual(resultat.vecteurs, [[1, 0]]);
-  assert.equal(resultat.identiteCache, 'infermatic:Qwen-Qwen3-Embedding-8B');
-  assert.notEqual(
-    identiteEmbeddingsConfiguree(settings),
-    identiteEmbeddingsConfiguree({ ...settings, moteurInference: 'openrouter', openRouterApiKey: 'or-key' }),
-  );
-});
-
-test('Infermatic embeddings se replie sur E5 en tronquant les textes longs', async () => {
-  const modeles: string[] = [];
-  let texteE5 = '';
-  globalThis.fetch = async (_url, init) => {
-    const body = JSON.parse(String(init?.body));
-    modeles.push(body.model);
-    if (body.model === 'Qwen-Qwen3-Embedding-8B') return Response.json({ error: { message: 'indisponible' } }, { status: 404 });
-    texteE5 = body.input[0];
-    return Response.json({ data: [{ index: 0, embedding: [1] }] });
-  };
-  const resultat = await obtenirEmbeddings(['é'.repeat(5000)], {
-    openRouterApiKey: '', model: '', moteurInference: 'infermatic', infermaticApiKey: 'k', infermaticModel: 'chat',
+  const premier = await obtenirEmbeddings(['quête à Elyndor'], settings);
+  const second = await obtenirEmbeddings(['quête à Elyndor'], {
+    ...settings, moteurInference: 'openrouter', openRouterApiKey: 'or-key',
   });
-  assert.deepEqual(modeles, ['Qwen-Qwen3-Embedding-8B', 'intfloat-multilingual-e5-base']);
-  assert.ok(Array.from(texteE5).length <= 128);
-  assert.equal(resultat.identiteCache, 'infermatic:intfloat-multilingual-e5-base');
-  assert.equal(cacheEmbeddingsCompatible('infermatic:Qwen-Qwen3-Embedding-8B', {
-    openRouterApiKey: '', model: '', moteurInference: 'infermatic', infermaticApiKey: 'k',
-  }), true);
-  assert.equal(cacheEmbeddingsCompatible('infermatic:intfloat-multilingual-e5-base', {
-    openRouterApiKey: '', model: '', moteurInference: 'infermatic', infermaticApiKey: 'k',
-  }), true);
+
+  assert.equal(appelsReseau, 0);
+  assert.equal(premier.fournisseur, 'local');
+  assert.equal(premier.identiteCache, 'local:hashing-v1:512');
+  assert.equal(identiteEmbeddingsConfiguree(settings), 'local:hashing-v1:512');
+  assert.equal(premier.vecteurs[0].length, 512);
+  assert.deepEqual(premier.vecteurs, second.vecteurs);
+  assert.equal(cacheEmbeddingsCompatible('local:hashing-v1:512', settings), true);
+  assert.equal(cacheEmbeddingsCompatible('infermatic:ancien-modele', settings), false);
 });
 
-test('la file Infermatic limite chat et embeddings à une requête active', async () => {
+test('la file Infermatic limite les appels chat distants à une requête active', async () => {
   let actifs = 0; let maximum = 0;
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async () => {
     actifs++; maximum = Math.max(maximum, actifs);
     await new Promise((resolve) => setTimeout(resolve, 10));
     actifs--;
-    return String(url).includes('/embeddings')
-      ? Response.json({ data: [{ index: 0, embedding: [1] }] })
-      : Response.json({ choices: [{ message: { content: 'ok' } }] });
+    return Response.json({ choices: [{ message: { content: 'ok' } }] });
   };
-  const settings = { openRouterApiKey: '', model: '', moteurInference: 'infermatic' as const, infermaticApiKey: 'k', infermaticModel: 'm' };
   await Promise.all([
     appelerChatDistant({ fournisseur: 'infermatic', apiKey: 'k', model: 'm', messages: [], temperature: 1, maxTokens: 1 }),
-    obtenirEmbeddings(['a'], settings),
     appelerChatDistant({ fournisseur: 'infermatic', apiKey: 'k', model: 'm', messages: [], temperature: 1, maxTokens: 1 }),
   ]);
   assert.equal(maximum, 1);
@@ -202,14 +175,17 @@ test('429 Infermatic respecte un retry borné', async () => {
   assert.equal(appels, 3);
 });
 
-test('les erreurs embeddings 400/401/403 ne révèlent aucun secret', async () => {
-  for (const statut of [400, 401, 403]) {
-    globalThis.fetch = async () => Response.json({ error: { message: 'Bearer SECRET_TEST / SECRET_TEST refusé' } }, { status: statut });
-    await assert.rejects(
-      obtenirEmbeddings(['x'], { openRouterApiKey: '', model: '', moteurInference: 'infermatic', infermaticApiKey: 'SECRET_TEST' }),
-      (e: unknown) => e instanceof Error && !e.message.includes('SECRET_TEST'),
-    );
-  }
+test('les embeddings locaux ne transmettent jamais les clés API', async () => {
+  let appelsReseau = 0;
+  globalThis.fetch = async () => {
+    appelsReseau++;
+    throw new Error('réseau interdit');
+  };
+  const resultat = await obtenirEmbeddings(['x'], {
+    openRouterApiKey: 'SECRET_OR', model: 'chat', moteurInference: 'infermatic', infermaticApiKey: 'SECRET_INF',
+  });
+  assert.equal(appelsReseau, 0);
+  assert.equal(resultat.identiteCache, 'local:hashing-v1:512');
 });
 
 test('nettoie les blocs think sans toucher à la réponse finale', () => {
@@ -239,25 +215,15 @@ test('le mutex cache évite une mise à jour perdue entre deux transactions', as
   assert.deepEqual(index, ['lore-a', 'lore-b']);
 });
 
-test('le cache OpenAI fallback reste compatible avec une configuration OpenRouter', async () => {
+test('le cache d embeddings ne mélange pas les anciennes identités réseau avec le hashing local', async () => {
   const settings = {
     openRouterApiKey: 'or-key', model: 'chat', moteurInference: 'openrouter' as const,
     embeddingsApiKey: 'openai-key',
   };
-  let appels = 0;
-  globalThis.fetch = async (url) => {
-    appels++;
-    if (String(url).includes('openrouter.ai')) {
-      return Response.json({ error: { message: 'embeddings indisponibles' } }, { status: 400 });
-    }
-    return Response.json({ data: [{ index: 0, embedding: [0, 1] }] });
-  };
   const resultat = await obtenirEmbeddings(['lore'], settings);
-  assert.equal(appels, 2);
-  assert.equal(resultat.identiteCache, 'openai:text-embedding-3-small');
-  // C'est la décision utilisée par assurerEmbeddings au tour suivant : un
-  // cache compatible est servi directement, sans rappeler obtenirEmbeddings.
+  assert.equal(resultat.identiteCache, 'local:hashing-v1:512');
   assert.equal(cacheEmbeddingsCompatible(resultat.identiteCache, settings), true);
+  assert.equal(cacheEmbeddingsCompatible('openai:text-embedding-3-small', settings), false);
 });
 
 test('un rejet de tool_choice Infermatic se replie sur le JSON-en-prose', async () => {

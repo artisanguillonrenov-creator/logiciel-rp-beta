@@ -297,7 +297,7 @@ export interface MemoireNarrativeState {
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storyMigration.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 9;
+export const VERSION_SCHEMA_HISTOIRE = 12;
 
 export interface StoryState {
   version: number;
@@ -322,6 +322,10 @@ export interface StoryState {
   // V10 : mémoire narrative hiérarchique. Optionnelle pour que les sauvegardes
   // V9/V9.1 restent valides sans migration destructive.
   memoireNarrative?: MemoireNarrativeState;
+  // V12 : Event Ledger, Temporal Canon, croyances, rumeurs, réputation,
+  // dettes narratives et état BDI. Optionnel uniquement pour la migration
+  // des sauvegardes antérieures ; toute histoire chargée est normalisée.
+  narrativeCore?: unknown;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil

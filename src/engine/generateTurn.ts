@@ -61,6 +61,14 @@ import {
   type RapportValidation,
 } from './validator';
 import { construireContextBlocks, debugContextBlocks, formaterContextBlocks, synchroniserMemoireNarrative } from './narrative/persistentMemory';
+import {
+  assurerNarrativeCoreV12,
+  committerTourNarratifV12,
+  construireContexteNarratifV12,
+  debugNarrativeCoreV12,
+  extraireEnveloppeNarrativeV12,
+  reconstruireNarrativeCoreDepuisTranscript,
+} from './narrative/narrativeCoreV12';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './tokenUsageTelemetry';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
@@ -441,8 +449,10 @@ export async function genererTour(
 ): Promise<ResultatTour> {
   const debutMs = Date.now();
   const storyChargee = await rafraichirEtatDeriveAvantTour(story);
-  const storyCourante: StoryState = { ...storyChargee, memoireNarrative: synchroniserMemoireNarrative(storyChargee) };
+  const storyV10: StoryState = { ...storyChargee, memoireNarrative: synchroniserMemoireNarrative(storyChargee) };
+  const storyCourante = assurerNarrativeCoreV12(storyV10);
   const contexteV10Debug = construireContextBlocks(storyCourante, messageJoueur);
+  const contexteV12 = construireContexteNarratifV12(storyCourante, messageJoueur);
 
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
@@ -450,7 +460,14 @@ export async function genererTour(
     appSettings,
   );
 
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
+  const ctxV10 = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
+  const ctxBase: ContexteConstruction = {
+    ...ctxV10,
+    contextBlocks: [ctxV10.contextBlocks, contexteV12.text].filter(Boolean).join('\n\n'),
+    etatMonde: [ctxV10.etatMonde, contexteV12.worldText].filter(Boolean).join('\n\n'),
+    engagementsEtRelations: [ctxV10.engagementsEtRelations, contexteV12.socialText].filter(Boolean).join('\n\n'),
+    v12Directive: contexteV12.directive,
+  };
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -468,6 +485,12 @@ export async function genererTour(
     temperature,
     maxTokens,
   });
+
+  // Le modèle peut produire un State Delta après la narration. Ce JSON n'est
+  // jamais montré ni envoyé aux validateurs comme prose narrative.
+  let enveloppeV12 = extraireEnveloppeNarrativeV12(reponse);
+  let deltaV12 = enveloppeV12.delta;
+  reponse = enveloppeV12.text;
 
   const heuristique = validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom);
   const profilContenuCheck = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
@@ -515,9 +538,20 @@ export async function genererTour(
         temperature,
         maxTokens,
       });
+      enveloppeV12 = extraireEnveloppeNarrativeV12(reponse);
+      deltaV12 = enveloppeV12.delta;
+      reponse = enveloppeV12.text;
     } catch {
       aEteCorrige = false;
     }
+  }
+
+  // Une réparation peut elle-même avoir conservé/recréé le marqueur ; on
+  // effectue un dernier nettoyage avant toute persistance ou affichage.
+  const enveloppeFinaleV12 = extraireEnveloppeNarrativeV12(reponse);
+  if (enveloppeFinaleV12.found) {
+    reponse = enveloppeFinaleV12.text;
+    if (enveloppeFinaleV12.delta) deltaV12 = enveloppeFinaleV12.delta;
   }
 
   if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
@@ -552,15 +586,21 @@ export async function genererTour(
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
   const storyAvecMessages: StoryState = { ...storyCourante, messages };
-  const memoireNarrative = synchroniserMemoireNarrative(storyAvecMessages);
+  const storyAvecCore = committerTourNarratifV12(storyAvecMessages, {
+    userMessage: messageUtilisateur,
+    assistantMessage: messageAssistant,
+    delta: deltaV12,
+    wasCorrected: aEteCorrige,
+  });
+  const memoireNarrative = synchroniserMemoireNarrative(storyAvecCore);
 
   return {
-    story: { ...storyAvecMessages, memoireNarrative },
+    story: { ...storyAvecCore, memoireNarrative },
     aEteCorrige,
     debugLore: {
       ...debugLore,
-      contextBlocks: debugContextBlocks(contexteV10Debug.blocks),
-      memoireNarrative: memoireNarrative.evenements.length + ' événements indexés · ' + contexteV10Debug.totalChars + ' caractères envoyés en Context Blocks',
+      contextBlocks: [...debugContextBlocks(contexteV10Debug.blocks), ...debugNarrativeCoreV12(storyAvecCore, messageJoueur)],
+      memoireNarrative: memoireNarrative.evenements.length + ' événements indexés · ' + contexteV10Debug.totalChars + ' caractères V10 · V12 ledger actif',
     },
   };
 }
@@ -591,5 +631,10 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
     loreEmergentDernierIndex: Math.min(storyCourante.loreEmergentDernierIndex ?? 0, messages.length - 2),
   };
 
-  return genererTour(storySansDernierEchange, appSettings, avantDernier.content);
+  const storySansMemoireDuTour = {
+    ...storySansDernierEchange,
+    memoireNarrative: synchroniserMemoireNarrative(storySansDernierEchange),
+  };
+  const storyTransactionnel = reconstruireNarrativeCoreDepuisTranscript(storySansMemoireDuTour);
+  return genererTour(storyTransactionnel, appSettings, avantDernier.content);
 }

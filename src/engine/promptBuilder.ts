@@ -129,6 +129,9 @@ export interface ContexteConstruction {
   engagementsEtRelations?: string;
   souvenirs?: string;
   contextBlocks?: string;
+  // Directive machine du Narrative Core V12. Elle demande au modèle un
+  // State Delta JSON qui sera retiré avant tout affichage au joueur.
+  v12Directive?: string;
 }
 
 export interface OptionsPrompt {
@@ -163,7 +166,7 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
 
   const style = `\n\n[STYLE]\nTon : ${libelleTon(ctx.settings.ton)}\n${instructionLongueur(ctx.settings.longueur)}\nRythme : ${libelleRythme(ctx.settings.rythme)}.\nLiberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.\nViolence : ${libelleViolence(ctx.settings.violence)}.\nRomance : ${libelleRomance(ctx.settings.romance)}.\nHumour : ${libelleHumour(ctx.settings.humour)}.\n\nDialogues PNJ : NOM EN MAJUSCULES : « réplique ». Narration/action hors de ces lignes. Ne jamais utiliser cette étiquette pour {{user}}.\n${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-  return tronquer(`${fixe}${contextBlocks ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE — V10]\n${contextBlocks}` : ''}${lore}${etat ? `\n\n[ÉTAT / CONSÉQUENCES]\n${etat}` : ''}${souvenirs}${style}`, budget);
+  return tronquer(`${fixe}${contextBlocks ? `\n\n[MÉMOIRE / CANON PERTINENTS]\n${contextBlocks}` : ''}${lore}${etat ? `\n\n[ÉTAT / CONSÉQUENCES]\n${etat}` : ''}${souvenirs}${style}${ctx.v12Directive ? `\n\n${ctx.v12Directive}` : ''}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

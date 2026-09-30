@@ -1,5 +1,6 @@
 import type { StoryState } from '../types';
 import { VERSION_SCHEMA_HISTOIRE } from '../types';
+import { assurerNarrativeCoreV12, creerNarrativeCoreV12 } from '../engine/narrative/narrativeCoreV12';
 
 // Compatibilité de sauvegarde d'une version à l'autre (esprit de
 // l'auto-updater du brief Phase 2) : une histoire sauvegardée par une
@@ -107,5 +108,23 @@ export function migrerHistoire(data: any): StoryState {
       },
     };
   }
-  return { ...migree, version: VERSION_SCHEMA_HISTOIRE };
+  if (migree.version < 10) {
+    // v9 -> v10 : première apparition du Narrative Core structuré.
+    migree = {
+      ...migree,
+      version: 10,
+      narrativeCore: migree.narrativeCore ?? creerNarrativeCoreV12(),
+    };
+  }
+  if (migree.version < 11) {
+    // v10 -> v11 : compatibilité des builds intermédiaires Narrative OS.
+    migree = { ...migree, version: 11 };
+  }
+  if (migree.version < 12) {
+    // v11 -> v12 : Event Ledger / Temporal Canon deviennent autoritatifs.
+    migree = { ...migree, version: 12 };
+  }
+
+  const normalisee = assurerNarrativeCoreV12({ ...migree, version: VERSION_SCHEMA_HISTOIRE } as StoryState);
+  return { ...normalisee, version: VERSION_SCHEMA_HISTOIRE };
 }
