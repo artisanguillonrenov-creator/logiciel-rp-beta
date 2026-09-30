@@ -1,0 +1,72 @@
+name: Consolidate Android GGUF runtime
+
+on:
+  push:
+    branches:
+      - rebuild/elyndor-v13-source-20260930
+    paths:
+      - .github/workflows/consolidate-android-gguf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate-gguf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consolidation branch
+        uses: actions/checkout@v4
+        with:
+          ref: rebuild/elyndor-v13-source-20260930
+          fetch-depth: 0
+
+      - name: Fetch Android GGUF reference branch
+        run: git fetch origin chatgpt/android-gguf-local-model
+
+      - name: Restore validated GGUF runtime files
+        run: |
+          git checkout origin/chatgpt/android-gguf-local-model -- src/engine/localInference.ts src/storage/modeleLocalStore.ts
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          p.expo = p.expo || {};
+          p.expo.newArchEnabled = true;
+          p.expo.plugins = p.expo.plugins || [];
+          const hasLlama = p.expo.plugins.some(x => Array.isArray(x) ? x[0] === 'llama.rn' : x === 'llama.rn');
+          if (!hasLlama) {
+            const fontIndex = p.expo.plugins.findIndex(x => x === 'expo-font');
+            const llamaPlugin = ['llama.rn', {
+              enableEntitlements: true,
+              entitlementsProfile: 'production',
+              forceCxx20: true,
+              enableOpenCL: false
+            }];
+            p.expo.plugins.splice(fontIndex >= 0 ? fontIndex + 1 : 0, 0, llamaPlugin);
+          }
+          fs.writeFileSync('app.json', JSON.stringify(p, null, 2) + '\n');
+          NODE
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install llama.rn and synchronize lockfile
+        run: npm install --save-exact llama.rn@0.12.9 --no-audit --no-fund
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Commit GGUF runtime into consolidated source
+        run: |
+          git config user.name "Elyndor Android consolidation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/engine/localInference.ts src/storage/modeleLocalStore.ts app.json package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No Android GGUF changes to commit."
+            exit 0
+          fi
+          git commit -m "feat(android): integrate direct GGUF runtime with llama.rn"
+          git push origin HEAD:rebuild/elyndor-v13-source-20260930
