@@ -746,6 +746,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 <Text key={extrait} style={styles.ligneDebug}>• {extrait}</Text>
               ))
             )}
+            {debugLore.blocsContexte ? (
+              <>
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>
+                  Mémoire narrative{debugLore.memoireNarrative ? ` — ${debugLore.memoireNarrative}` : ''}
+                </Text>
+                {debugLore.blocsContexte.map((ligne) => (
+                  <Text key={ligne} style={styles.ligneDebug}>• {ligne}</Text>
+                ))}
+              </>
+            ) : null}
           </ScrollView>
         )}
 

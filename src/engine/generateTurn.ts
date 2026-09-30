@@ -34,6 +34,13 @@ import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynam
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
+  construireBlocsContexte,
+  debugBlocsContexte,
+  formaterBlocsContexte,
+  synchroniserMemoireNarrative,
+  type ResultatBlocs,
+} from './memoireNarrative';
+import {
   embedderMessagesAnciens,
   formaterSouvenirs,
   formaterSouvenirsDebug,
@@ -73,6 +80,9 @@ export interface DebugLore {
   metamoteurs: string[];
   loreElyndor: string[];
   souvenirs: string[];
+  // Mémoire narrative (V13) : blocs retenus pour le tour et taille de l'index.
+  blocsContexte?: string[];
+  memoireNarrative?: string;
 }
 
 export interface ResultatTour {
@@ -196,9 +206,17 @@ export async function calculerSelectionLore(
   };
 }
 
+function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
+  return {
+    blocsContexte: debugBlocsContexte(blocs.blocs),
+    memoireNarrative: `${nbEvenements} événements indexés · ${blocs.totalCaracteres} caractères sélectionnés`,
+  };
+}
+
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
   const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return debugLore;
+  const evenements = synchroniserMemoireNarrative(story);
+  return { ...debugLore, ...debugMemoireNarrative(evenements.length, construireBlocsContexte(story, messageJoueur, evenements)) };
 }
 
 export function construireCtxBase(
@@ -206,6 +224,7 @@ export function construireCtxBase(
   messageJoueur: string,
   appSettings: AppSettings,
   selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
+  blocs: ResultatBlocs = construireBlocsContexte(story, messageJoueur),
 ): ContexteConstruction {
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
@@ -251,6 +270,7 @@ export function construireCtxBase(
     etatMonde: filtrer(formaterMonde(story.monde)),
     engagementsEtRelations: filtrer(formaterEngagementsEtRelations(story.social)),
     souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
+    blocsContexte: filtrer(formaterBlocsContexte(blocs.blocs)),
   };
 }
 
@@ -341,7 +361,9 @@ export async function genererTour(
     appSettings,
   );
 
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs });
+  const evenements = synchroniserMemoireNarrative(storyCourante);
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -436,7 +458,7 @@ export async function genererTour(
   return {
     story: { ...storyCourante, messages },
     aEteCorrige,
-    debugLore,
+    debugLore: { ...debugLore, ...debugMemoireNarrative(evenements.length, blocs) },
   };
 }
 
