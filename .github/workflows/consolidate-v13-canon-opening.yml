@@ -1,0 +1,56 @@
+name: Consolidate V13 canon and opening engine
+
+on:
+  push:
+    branches:
+      - rebuild/elyndor-v13-source-20260930
+    paths:
+      - scripts/wire-v13-canon-guard.mjs
+      - src/engine/canonGuard.ts
+      - src/engine/openingGenerator.ts
+      - tests/canonGuard.test.ts
+      - .github/workflows/consolidate-v13-canon-opening.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate-v13-canon:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout consolidation branch
+        uses: actions/checkout@v4
+        with:
+          ref: rebuild/elyndor-v13-source-20260930
+          fetch-depth: 0
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Wire Canon Entity Guard into turn generation
+        run: node scripts/wire-v13-canon-guard.mjs
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Automated tests
+        run: npm test
+
+      - name: Commit validated wiring
+        run: |
+          git config user.name "Elyndor V13 consolidation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/engine/generateTurn.ts
+          if git diff --cached --quiet; then
+            echo "No canon wiring changes to commit."
+            exit 0
+          fi
+          git commit -m "feat(narrative): enforce canonical entities and deterministic openings"
+          git push origin HEAD:rebuild/elyndor-v13-source-20260930
