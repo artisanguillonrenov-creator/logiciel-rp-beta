@@ -6,6 +6,7 @@ on:
       - rebuild/elyndor-v13-source-20260930
     paths:
       - scripts/consolidate-v12-authoritative-core.mjs
+      - scripts/fix-v12-consolidation-tests.mjs
       - src/engine/narrative/narrativeCoreV12.ts
       - src/engine/narrative/narrativeCoreV12.runtime.js
       - .github/workflows/consolidate-v12-core.yml
@@ -36,6 +37,9 @@ jobs:
       - name: Wire V12 runtime into TypeScript source
         run: node scripts/consolidate-v12-authoritative-core.mjs
 
+      - name: Align tests and fresh-story migration state
+        run: node scripts/fix-v12-consolidation-tests.mjs
+
       - name: Narrative Core V12 runtime self-test
         run: |
           node - <<'NODE'
@@ -55,7 +59,7 @@ jobs:
         run: |
           git config user.name "Elyndor V12 consolidation"
           git config user.email "actions@users.noreply.github.com"
-          git add src/types/index.ts src/storage/storyMigration.ts src/engine/story.ts src/engine/promptBuilder.ts src/engine/generateTurn.ts
+          git add src/types/index.ts src/storage/storyMigration.ts src/engine/story.ts src/engine/promptBuilder.ts src/engine/generateTurn.ts tests/llmProvider.test.ts tests/storage.test.ts
           if git diff --cached --quiet; then
             echo "No V12 source changes to commit."
             exit 0
