@@ -17,7 +17,8 @@ import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, MoteurInference, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { listerModeles, type ModeleOpenRouter } from '../engine/openrouter';
-import { listerModelesDistants } from '../engine/llmProvider';
+import { listerModelesDistants, type ModeleDistant } from '../engine/llmProvider';
+import { connecterServeurLocal, EXEMPLES_URL_SERVEUR_LOCAL, normaliserUrlServeur } from '../engine/serveurLocal';
 import { verifierMiseAJour } from '../engine/updater';
 import {
   importerModeleLocal,
@@ -80,6 +81,13 @@ export default function SettingsScreen({ navigation }: Props) {
   const [importEnCours, setImportEnCours] = useState(false);
   const [erreurModeleLocal, setErreurModeleLocal] = useState('');
 
+  const [serveurUrl, setServeurUrl] = useState('');
+  const [serveurModele, setServeurModele] = useState('');
+  const [serveurApiKey, setServeurApiKey] = useState('');
+  const [serveurConnexion, setServeurConnexion] = useState(false);
+  const [serveurEtat, setServeurEtat] = useState<{ ok: boolean; texte: string } | null>(null);
+  const [serveurModeles, setServeurModeles] = useState<ModeleDistant[]>([]);
+
   function chargerReglages() {
     setErreurChargement('');
     setChargement(true);
@@ -89,9 +97,13 @@ export default function SettingsScreen({ navigation }: Props) {
       setInfermaticApiKey(settings.infermaticApiKey ?? '');
       setInfermaticModel(settings.infermaticModel ?? '');
       setEmbeddingsApiKey(settings.embeddingsApiKey ?? '');
+      setServeurUrl(settings.serveurLocalUrl ?? '');
+      setServeurModele(settings.serveurLocalModele ?? '');
+      setServeurApiKey(settings.serveurLocalApiKey ?? '');
       setConserverClesWeb(settings.conserverClesWeb ?? false);
       const cleConfiguree = settings.moteurInference === 'infermatic' ? settings.infermaticApiKey : settings.openRouterApiKey;
-      setAvancesOuverts(settings.moteurInference !== 'local' && !cleConfiguree);
+      const sansCle = settings.moteurInference === 'local' || settings.moteurInference === 'serveur';
+      setAvancesOuverts(!sansCle && !cleConfiguree);
       setProfilContenu(settings.profilContenu);
       setCodeDeverrouillage(settings.codeDeverrouillage);
       setMoteurInference(settings.moteurInference ?? 'openrouter');
@@ -125,6 +137,37 @@ export default function SettingsScreen({ navigation }: Props) {
       setErreurModeleLocal(e instanceof Error ? e.message : t('Import impossible.'));
     } finally {
       setImportEnCours(false);
+    }
+  }
+
+  // V13.2.5 « nom + Entrée » : le nom tapé (avec ou sans .gguf) est retrouvé
+  // parmi les modèles du serveur, puis le choix est mémorisé tout de suite —
+  // pas besoin de penser à « Enregistrer » pour pouvoir jouer.
+  async function connecterServeur(modeleChoisi?: string) {
+    if (serveurConnexion) return;
+    setServeurConnexion(true);
+    setServeurEtat(null);
+    const baseUrl = normaliserUrlServeur(serveurUrl);
+    const apiKeyServeur = serveurApiKey.trim() || undefined;
+    try {
+      const { modele, modeles } = await connecterServeurLocal({ baseUrl, apiKey: apiKeyServeur }, modeleChoisi ?? serveurModele);
+      setServeurModeles(modeles);
+      setServeurUrl(baseUrl);
+      setServeurModele(modele);
+      setMoteurInference('serveur');
+      const settingsActuelles = await getSettings();
+      await saveSettings({
+        ...settingsActuelles,
+        moteurInference: 'serveur',
+        serveurLocalUrl: baseUrl,
+        serveurLocalModele: modele,
+        serveurLocalApiKey: apiKeyServeur,
+      });
+      setServeurEtat({ ok: true, texte: `${t('Modèle prêt')} · ${modele}` });
+    } catch (e) {
+      setServeurEtat({ ok: false, texte: e instanceof Error ? e.message : t('Connexion au serveur local impossible.') });
+    } finally {
+      setServeurConnexion(false);
     }
   }
 
@@ -226,6 +269,9 @@ export default function SettingsScreen({ navigation }: Props) {
         infermaticApiKey: infermaticApiKey.trim() || undefined,
         infermaticModel: infermaticModel.trim() || undefined,
         embeddingsApiKey: embeddingsApiKey.trim() || undefined,
+        serveurLocalUrl: serveurUrl.trim() ? normaliserUrlServeur(serveurUrl) : undefined,
+        serveurLocalModele: serveurModele.trim() || undefined,
+        serveurLocalApiKey: serveurApiKey.trim() || undefined,
         conserverClesWeb,
         profilContenu,
         codeDeverrouillage,
@@ -249,7 +295,9 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const fournisseurActif = moteurInference === 'local'
     ? t('Sur cet appareil')
-    : moteurInference === 'infermatic'
+    : moteurInference === 'serveur'
+      ? t('Serveur local')
+      : moteurInference === 'infermatic'
       ? 'Infermatic'
       : 'OpenRouter';
 
@@ -361,6 +409,12 @@ export default function SettingsScreen({ navigation }: Props) {
                     <Text style={[styles.texteOptionMoteur, moteurInference === 'local' && styles.texteOptionMoteurActif]}>{t('Local')}</Text>
                   </Pressable>
                 )}
+                <Pressable
+                  style={[styles.optionMoteur, moteurInference === 'serveur' && styles.optionMoteurActive]}
+                  onPress={() => setMoteurInference('serveur')}
+                >
+                  <Text style={[styles.texteOptionMoteur, moteurInference === 'serveur' && styles.texteOptionMoteurActif]}>{t('Serveur local')}</Text>
+                </Pressable>
               </View>
 
               {moteurInference === 'openrouter' && (
@@ -451,6 +505,72 @@ export default function SettingsScreen({ navigation }: Props) {
                     />
                   )}
                   {erreurModeleLocal ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurModeleLocal}</Text> : null}
+                </View>
+              )}
+
+              {moteurInference === 'serveur' && (
+                <View style={styles.blocFournisseur}>
+                  <Text style={styles.aide}>{t('Le modèle tourne sur ton PC dans LM Studio, Ollama ou un autre runtime compatible OpenAI. Tape le nom du modèle (le fichier GGUF, avec ou sans .gguf) puis appuie sur Entrée.')}</Text>
+                  <Champ
+                    label={t('Modèle local')}
+                    value={serveurModele}
+                    onChangeText={(v) => { setServeurModele(v); setServeurEtat(null); }}
+                    onSubmitEditing={() => connecterServeur()}
+                    returnKeyType="done"
+                    placeholder={t('ex : Qwen3.5-9B-Q4_K_M.gguf')}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Champ
+                    label={t('Adresse du serveur')}
+                    value={serveurUrl}
+                    onChangeText={(v) => { setServeurUrl(v); setServeurEtat(null); }}
+                    onSubmitEditing={() => connecterServeur()}
+                    placeholder={EXEMPLES_URL_SERVEUR_LOCAL.lmStudio}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Text style={styles.aide}>
+                    {t('Laisse vide pour LM Studio sur ce même appareil.')} {t('Ollama')} : {EXEMPLES_URL_SERVEUR_LOCAL.ollama}. {t('Depuis un téléphone ou une tablette, utilise l’adresse IP du PC (ex : 192.168.1.25:1234) et active l’accès réseau local dans le runtime.')}
+                  </Text>
+                  <Champ
+                    label={t('Clé du serveur (facultative)')}
+                    value={serveurApiKey}
+                    onChangeText={setServeurApiKey}
+                    placeholder={t('Seulement si ton serveur en exige une')}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    conteneurStyle={styles.champConteneur}
+                  />
+                  <Bouton
+                    titre={serveurConnexion ? t('Connexion en cours…') : t('Charger ce modèle')}
+                    variante="arcane"
+                    onPress={() => connecterServeur()}
+                    desactive={serveurConnexion}
+                    style={styles.boutonAction}
+                  />
+                  {serveurEtat ? (
+                    <Text style={[styles.statut, { color: serveurEtat.ok ? couleurs.succes : couleurs.danger }]}>{serveurEtat.texte}</Text>
+                  ) : null}
+                  {serveurModeles.length > 1 && (
+                    <View style={styles.listeModelesServeur}>
+                      <Text style={styles.label}>{t('Modèles disponibles sur le serveur')}</Text>
+                      {serveurModeles.map((m) => (
+                        <Pressable
+                          key={m.id}
+                          style={[styles.ligneSelection, m.id === serveurModele && styles.ligneSelectionActive]}
+                          onPress={() => connecterServeur(m.id)}
+                        >
+                          <Text style={styles.ligneValeur}>{m.id}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.aide}>{t('Le premier message peut être nettement plus lent : le modèle doit être chargé et le contexte préparé. Elyndor attend jusqu’à 10 minutes.')}</Text>
                 </View>
               )}
             </Panneau>
@@ -893,6 +1013,10 @@ const styles = StyleSheet.create({
   },
   boutonAction: {
     marginTop: espacement.sm,
+  },
+  listeModelesServeur: {
+    marginTop: espacement.md,
+    gap: espacement.xs,
   },
   etatTechnique: {
     borderLeftWidth: 2,

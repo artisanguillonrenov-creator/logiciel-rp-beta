@@ -280,7 +280,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     return () => { actif = false; };
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && appSettings.moteurInference !== 'local' &&
+  const clefManquante = appSettings && appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' &&
     !(appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
@@ -301,7 +301,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
     const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
     const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
-    if (appSettings.moteurInference !== 'local' && !cleApi) {
+    if (appSettings.moteurInference === 'serveur' && !appSettings.serveurLocalModele?.trim()) {
+      setErreur('Choisis le modèle du serveur local dans Réglages avant de commencer.');
+      return;
+    }
+    if (appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' && !cleApi) {
       setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
       return;
     }
@@ -530,7 +534,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
         ...story.meta,
         modeleOverride: modeleOverrideEdit.trim() || undefined,
         modeleOverrideFournisseur: modeleOverrideEdit.trim()
-          ? (appSettings?.moteurInference === 'infermatic' ? 'infermatic' : 'openrouter')
+          ? (appSettings?.moteurInference === 'infermatic' || appSettings?.moteurInference === 'serveur'
+            ? appSettings.moteurInference
+            : 'openrouter')
           : undefined,
         temperatureOverride: temperature !== undefined && !Number.isNaN(temperature) ? temperature : undefined,
       },

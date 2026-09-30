@@ -1,6 +1,7 @@
 import type { MoteurInference } from '../types';
 import { genererTexteLocal, appellerModeleLocalAvecOutilsJson } from './localInference';
 import { appelerChatDistant, appelerChatDistantAvecOutils, ErreurFournisseurLLM, listerModelesDistants, type ModeleDistant } from './llmProvider';
+import { appelerServeurAvecOutils, genererTexteServeur, normaliserUrlServeur } from './serveurLocal';
 export { configurationLLM } from './llmProvider';
 
 export interface ChatMessage {
@@ -15,6 +16,8 @@ export interface AppelModeleOptions {
   temperature?: number;
   maxTokens?: number;
   moteurInference?: MoteurInference;
+  // Adresse du moteur 'serveur', fournie par configurationLLM.
+  baseUrl?: string;
   signal?: AbortSignal;
 }
 
@@ -27,9 +30,16 @@ export async function appellerModele({
   temperature = 0.9,
   maxTokens = 700,
   moteurInference,
+  baseUrl,
   signal,
 }: AppelModeleOptions): Promise<string> {
   if (moteurInference === 'local') return genererTexteLocal(messages);
+  if (moteurInference === 'serveur') {
+    return genererTexteServeur({
+      config: { baseUrl: normaliserUrlServeur(baseUrl), model, apiKey: apiKey || undefined },
+      messages, temperature, maxTokens, signal,
+    });
+  }
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   const TENTATIVES_MAX = 3;
   for (let tentative = 1; tentative <= TENTATIVES_MAX; tentative++) {
@@ -79,6 +89,8 @@ export interface AppelModeleAvecOutilsOptions {
   temperature?: number;
   maxTokens?: number;
   moteurInference?: MoteurInference;
+  // Adresse du moteur 'serveur', fournie par configurationLLM.
+  baseUrl?: string;
   signal?: AbortSignal;
 }
 
@@ -90,9 +102,17 @@ export async function appellerModeleAvecOutils({
   temperature = 0.2,
   maxTokens = 600,
   moteurInference,
+  baseUrl,
   signal,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   if (moteurInference === 'local') return appellerModeleLocalAvecOutilsJson(messages, outils);
+  if (moteurInference === 'serveur') {
+    return appelerServeurAvecOutils(
+      { config: { baseUrl: normaliserUrlServeur(baseUrl), model, apiKey: apiKey || undefined }, messages, temperature, maxTokens, signal },
+      outils,
+      outils.map(versSchemaOutil),
+    );
+  }
   const fournisseur = moteurInference === 'infermatic' ? 'infermatic' : 'openrouter';
   return appelerChatDistantAvecOutils(
     { fournisseur, apiKey, model, messages, temperature, maxTokens, signal },

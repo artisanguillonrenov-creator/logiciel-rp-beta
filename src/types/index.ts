@@ -55,7 +55,7 @@ export interface StoryMeta {
   // Réglages. Optionnels, ignorés tant qu'absents.
   modeleOverride?: string;
   // Absent sur les anciennes histoires : leur override est OpenRouter-only.
-  modeleOverrideFournisseur?: 'openrouter' | 'infermatic';
+  modeleOverrideFournisseur?: 'openrouter' | 'infermatic' | 'serveur';
   temperatureOverride?: number;
   // Titre personnalisé donné depuis "Charger Conversation" (Renommer) —
   // affiché à la place de personnageNom quand présent.
@@ -305,7 +305,10 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // reste le mode par défaut, 'local' bascule sur expo-litert-lm — voir
 // src/engine/localInference.ts et src/storage/modeleLocalStore.ts.
 // Natif uniquement : jamais proposé/activable sur le build web.
-export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local';
+// 'serveur' (repris de la V13 « Modèle local ») : un runtime compatible
+// OpenAI (LM Studio, Ollama…) lancé sur un PC du réseau local — disponible
+// sur toutes les plateformes, voir src/engine/serveurLocal.ts.
+export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local' | 'serveur';
 export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
@@ -315,6 +318,13 @@ export interface AppSettings {
   infermaticModel?: string;
   // undefined (ou 'openrouter') = comportement historique. Voir MoteurInference.
   moteurInference?: MoteurInference;
+  // Moteur 'serveur' : adresse de l'API /v1 (ex. http://192.168.1.25:1234/v1)
+  // et identifiant du modèle tel que le runtime le liste. La clé est
+  // facultative (la plupart des runtimes locaux n'en demandent pas) et,
+  // quand elle existe, rangée dans le coffre comme les autres clés.
+  serveurLocalUrl?: string;
+  serveurLocalModele?: string;
+  serveurLocalApiKey?: string;
   // Clé de secours pour les embeddings (recherche sémantique du lore) si
   // OpenRouter n'en sert pas pour ce compte. Optionnelle : voir
   // src/engine/embeddings.ts.

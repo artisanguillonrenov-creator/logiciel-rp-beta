@@ -2,7 +2,7 @@ import type { AppSettings } from '../types';
 import { creerFileSerie } from './serialQueue';
 
 const CLE_REGLAGES = '@rp_beta/settings';
-const CLES_API = ['openRouterApiKey', 'infermaticApiKey', 'embeddingsApiKey'] as const;
+const CLES_API = ['openRouterApiKey', 'infermaticApiKey', 'embeddingsApiKey', 'serveurLocalApiKey'] as const;
 export type ClesApi = Pick<AppSettings, typeof CLES_API[number]>;
 export interface StockageCles {
   lire(): Promise<ClesApi | null>;
@@ -14,8 +14,12 @@ interface StockageReglages {
 }
 
 function separerCles(settings: AppSettings) {
-  const { openRouterApiKey, infermaticApiKey, embeddingsApiKey, ...publics } = settings;
-  return { publics, cles: { openRouterApiKey: openRouterApiKey ?? '', infermaticApiKey, embeddingsApiKey } };
+  const { openRouterApiKey, infermaticApiKey, embeddingsApiKey, serveurLocalApiKey, ...publics } = settings;
+  // Clé ajoutée après coup : ne l'écrire que si elle existe, pour que les
+  // coffres existants relus restent identiques à ce qui y a été rangé.
+  const cles: ClesApi = { openRouterApiKey: openRouterApiKey ?? '', infermaticApiKey, embeddingsApiKey };
+  if (serveurLocalApiKey !== undefined) cles.serveurLocalApiKey = serveurLocalApiKey;
+  return { publics, cles };
 }
 
 export function creerDepotReglages(stockage: StockageReglages, secrets: StockageCles, defauts: AppSettings) {

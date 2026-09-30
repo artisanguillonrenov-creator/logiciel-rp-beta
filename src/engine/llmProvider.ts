@@ -2,8 +2,11 @@ import type { AppSettings, FournisseurLLM } from '../types';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import type { ToolDefinition } from './openrouter';
 import { fetchInfermatic } from './infermaticScheduler';
+import { normaliserUrlServeur } from './serveurUrl';
 import { masquerSecrets } from './responseSanitizer';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
+
+type FournisseurDistant = Exclude<FournisseurLLM, 'local' | 'serveur'>;
 
 export const URLS_FOURNISSEURS = {
   openrouter: 'https://openrouter.ai/api/v1',
@@ -12,7 +15,7 @@ export const URLS_FOURNISSEURS = {
 
 /** L'absence du champ dans une ancienne sauvegarde garde OpenRouter. */
 export function normaliserFournisseur(value: unknown): FournisseurLLM {
-  return value === 'infermatic' || value === 'local' ? value : 'openrouter';
+  return value === 'infermatic' || value === 'local' || value === 'serveur' ? value : 'openrouter';
 }
 
 /** Point unique de résolution clé/modèle, partagé par tous les méta-moteurs. */
@@ -25,13 +28,24 @@ export function configurationLLM(settings: AppSettings, modeleOverride?: string)
       moteurInference,
     };
   }
+  if (moteurInference === 'serveur') {
+    // L'adresse voyage avec la configuration pour que chaque méta-moteur
+    // (validateur, mémoire, simulation…) vise le même serveur sans relire
+    // les réglages.
+    return {
+      apiKey: settings.serveurLocalApiKey ?? '',
+      model: modeleOverride || settings.serveurLocalModele || '',
+      moteurInference,
+      baseUrl: normaliserUrlServeur(settings.serveurLocalUrl),
+    };
+  }
   return { apiKey: settings.openRouterApiKey, model: modeleOverride || settings.model, moteurInference };
 }
 
 export function modeleOverridePourFournisseur(
   settings: AppSettings,
   modeleOverride?: string,
-  fournisseurOverride?: 'openrouter' | 'infermatic',
+  fournisseurOverride?: 'openrouter' | 'infermatic' | 'serveur',
 ): string | undefined {
   if (!modeleOverride?.trim()) return undefined;
   const fournisseurActuel = normaliserFournisseur(settings.moteurInference);
@@ -42,12 +56,12 @@ export function modeleOverridePourFournisseur(
 }
 
 export class ErreurFournisseurLLM extends Error {
-  readonly fournisseur: Exclude<FournisseurLLM, 'local'>;
+  readonly fournisseur: FournisseurDistant;
   readonly statut?: number;
 
   constructor(
     message: string,
-    fournisseur: Exclude<FournisseurLLM, 'local'> = 'openrouter',
+    fournisseur: FournisseurDistant = 'openrouter',
     statut?: number,
   ) {
     super(message);
@@ -58,7 +72,7 @@ export class ErreurFournisseurLLM extends Error {
 }
 
 export interface RequeteChatDistante {
-  fournisseur: Exclude<FournisseurLLM, 'local'>;
+  fournisseur: FournisseurDistant;
   apiKey: string;
   model: string;
   messages: unknown[];
@@ -89,7 +103,7 @@ async function fetchAvecDelai(
   }
 }
 
-function nomFournisseur(fournisseur: Exclude<FournisseurLLM, 'local'>): string {
+function nomFournisseur(fournisseur: FournisseurDistant): string {
   return fournisseur === 'infermatic' ? 'Infermatic' : 'OpenRouter';
 }
 
@@ -202,7 +216,7 @@ export async function appelerChatDistantAvecOutils(
 }
 
 export async function listerModelesDistants(
-  fournisseur: Exclude<FournisseurLLM, 'local'>,
+  fournisseur: FournisseurDistant,
   apiKey = '',
 ): Promise<ModeleDistant[]> {
   const nom = nomFournisseur(fournisseur);
