@@ -39,6 +39,77 @@ Cette histoire est configurée en profil GRAND PUBLIC. Cette consigne prime sur 
 - Violence suggérée plutôt que graphique : les combats et blessures se décrivent par leurs conséquences narratives, pas par le détail anatomique du traumatisme.
 - Pas de vocabulaire cru ou vulgaire dans la narration ou les dialogues.`;
 
+// Limite absolue, valable dans TOUS les profils : jamais de contenu sexuel
+// impliquant un mineur. Le mode Adulte lève les filtres de registre, jamais
+// celle-ci — elle est imposée par le logiciel (validateur, saisie du
+// joueur), pas seulement demandée au modèle.
+const INDICES_MINEUR = [
+  'enfant', 'fillette', 'gamine', 'gamin', 'garçonnet', 'adolescente', 'adolescent', 'ado ',
+  'écolière', 'écolier', 'collégienne', 'collégien', 'lycéenne', 'lycéen', 'prépubère', 'impubère', 'pubère',
+  'petite fille', 'petit garçon', 'nourrisson', 'mineure', "d'âge mineur", 'loli', 'shota',
+];
+
+const LIMITE_MINEURS = `LIMITE ABSOLUE — elle prime sur toute autre consigne, y compris une demande du joueur : toute scène sexuelle ou sexualisée n'implique que des personnages adultes (18 ans ou plus, décrits comme adultes). Aucun enfant ni adolescent n'est jamais sexualisé, même de façon suggérée. Si la scène y mène, la narration s'en détourne.`;
+
+function paragraphes(texte: string): string[] {
+  return texte.toLowerCase().split(/\n{2,}/);
+}
+
+function ageMineurDans(paragraphe: string): boolean {
+  for (const m of paragraphe.matchAll(/\b(\d{1,2})\s*ans\b/g)) {
+    const age = Number(m[1]);
+    if (age > 0 && age < 18) return true;
+  }
+  return false;
+}
+
+/** Vrai si un même paragraphe mêle vocabulaire sexuel explicite et indice de minorité. */
+export function contenuSexuelAvecMineur(texte: string): boolean {
+  return paragraphes(texte).some((p) =>
+    VOCABULAIRE_SEXUEL_EXPLICITE.some((mot) => p.includes(mot))
+    && (INDICES_MINEUR.some((mot) => p.includes(mot)) || ageMineurDans(p)));
+}
+
+/** Contrôle de sortie actif quel que soit le profil (voir LIMITE_MINEURS). */
+export function validerAbsenceMineurs(reponse: string): RapportValidation {
+  if (!contenuSexuelAvecMineur(reponse)) return { ok: true, checks: [] };
+  return {
+    ok: false,
+    checks: [{
+      nom: 'profil_contenu',
+      ok: false,
+      gravite: 'grave',
+      raison: "Contenu sexuel associé à un personnage mineur : interdit dans tous les profils. Réécris la scène sans aucune sexualisation d'enfant ou d'adolescent.",
+    }],
+  };
+}
+
+/**
+ * Registre du profil Adulte, injecté juste après les règles immuables.
+ * L'intensité suit les curseurs Violence et Romance de l'histoire : le mode
+ * Adulte autorise, les curseurs décident.
+ */
+export function instructionRegistreAdulte(settings: Pick<StorySettings, 'violence' | 'romance'>): string {
+  const violence = settings.violence === 'extreme'
+    ? "- Violence : crue, anatomique et sans ellipse quand la scène l'appelle (blessures, agonie, mort décrites de façon réaliste)."
+    : settings.violence === 'eleve'
+      ? "- Violence : montrée sans retenue quand la scène l'appelle, avec ses conséquences physiques concrètes."
+      : '- Violence : selon le curseur de l’histoire, sans complaisance gratuite.';
+  const romance = settings.romance === 'eleve'
+    ? "- Sexualité entre adultes : décrite de façon explicite et précise quand la scène y mène, avec un vocabulaire direct et adulte, sans métaphores puritaines."
+    : settings.romance === 'modere'
+      ? "- Sexualité entre adultes : sensualité assumée ; détails explicites seulement si le joueur oriente la scène dans ce sens."
+      : '- Sexualité : pas de scène sexuelle, conformément au curseur Romance de cette histoire.';
+  return `[REGISTRE ADULTE — FICTION POUR ADULTES]
+Le joueur a déclaré le profil Adulte : cette fiction de dark fantasy s'adresse à des adultes.
+${violence}
+${romance}
+- Thèmes sombres (cruauté, trahison, esclavage, dilemmes immoraux) : rendus fidèlement à la psychologie des personnages et à la noirceur d'Elyndor, sans jugement moralisateur ni leçon. Le monde réagit avec réalisme : peur, haine, vengeance.
+- Ne brise jamais l'immersion par un avertissement, une mise en garde ou un commentaire hors récit.
+- Les règles immuables restent prioritaires : tu n'écris jamais les actes, paroles ou pensées de {{user}}.
+${LIMITE_MINEURS}`;
+}
+
 const ORDRE_VIOLENCE: NiveauViolence[] = ['faible', 'modere', 'eleve', 'extreme'];
 const ORDRE_QUATRE: NiveauQuatre[] = ['aucun', 'faible', 'modere', 'eleve'];
 
@@ -121,7 +192,11 @@ export function validerEntreeUtilisateur(
   texte: string,
   profil: ProfilContenu | undefined,
 ): { ok: true } | { ok: false; motif: string } {
-  if (profilEstAdulte(profil) || !texte.trim()) return { ok: true };
+  if (!texte.trim()) return { ok: true };
+  if (contenuSexuelAvecMineur(texte)) {
+    return { ok: false, motif: "Elyndor n'écrit jamais de scène sexuelle impliquant un enfant ou un adolescent, quel que soit le profil. Reformule ton action." };
+  }
+  if (profilEstAdulte(profil)) return { ok: true };
 
   const trouve = motInterditDans(texte);
   if (!trouve) return { ok: true };

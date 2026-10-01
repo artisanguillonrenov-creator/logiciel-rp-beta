@@ -101,3 +101,18 @@ du commit exact et vérification native ; aucune fusion automatique.
 Références Expo versionnées : [SQLite](https://docs.expo.dev/versions/v57.0.0/sdk/sqlite/),
 [SecureStore](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/),
 [FileSystem](https://docs.expo.dev/versions/v57.0.0/sdk/filesystem/).
+
+## Profil Adulte et choix du modèle
+
+En profil Adulte, l'application ne filtre ni la violence graphique, ni la
+sexualité explicite entre adultes, ni les thèmes sombres : la consigne
+« registre adulte » est injectée juste après les règles immuables, avec une
+intensité réglée par les curseurs Violence et Romance de l'histoire. Seule
+limite, active dans tous les profils : aucune scène sexuelle impliquant un
+enfant ou un adolescent (bloquée en sortie comme en saisie).
+
+Les modèles à filtrage strict (Anthropic, OpenAI…) refusent souvent ce
+registre : réponses vides, refus dans le texte ou erreurs 400. Pour une
+histoire Adulte, choisir dans Réglages un modèle orienté jeu de rôle sans
+filtre, par exemple parmi ceux proposés par Infermatic (familles Midnight,
+Magnum, Command-R…), ou un modèle de ce type sur le serveur local.
