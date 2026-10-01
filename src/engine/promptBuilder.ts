@@ -1,6 +1,7 @@
 import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
+import { IDENTITE_NARRATIVE } from './identiteNarrative';
 
 // Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
 // aussi de frontière pour la recherche sémantique de secours dans
@@ -121,6 +122,10 @@ export interface ContexteConstruction {
   etatMonde?: string;
   engagementsEtRelations?: string;
   souvenirs?: string;
+  // Blocs de la mémoire narrative (voir memoireNarrative.ts), déjà formatés.
+  blocsContexte?: string;
+  // Consigne machine ajoutée juste après les règles (noyau narratif V12).
+  directiveEtat?: string;
 }
 
 export interface OptionsPrompt {
@@ -129,25 +134,17 @@ export interface OptionsPrompt {
 
 export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
-  const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.36), 900);
-  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.22), 650);
-  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.16));
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.08));
-  const fixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
+  const entete = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
-${REGLES_IMMUABLES}
+${IDENTITE_NARRATIVE}
+
+${REGLES_IMMUABLES}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
 
 [PERSONNAGE DE {{user}}]
-Nom : ${tronquer(ctx.meta.personnageNom, 300)}
-Description : ${tronquer(ctx.meta.personnageDescription, 1200)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 1200)}
-${formaterContexte(ctx.meta)}
-
-[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]
-${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(budget * 0.08))}
-
-[FAITS CLÉS ÉTABLIS]
-${formaterFaits(ctx.faits, Math.floor(budget * 0.10))}`;
+Nom : ${tronquer(ctx.meta.personnageNom, 180)}
+Description : ${tronquer(ctx.meta.personnageDescription, 750)}
+Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}
+${formaterContexte(ctx.meta)}`;
   const style = `
 
 [STYLE]
@@ -162,8 +159,22 @@ Humour : ${libelleHumour(ctx.settings.humour)}.
 Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
 KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
-${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 1800)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
-  return tronquer(`${fixe}${socle}${lore}${etat}${souvenirs}${style}`, budget);
+${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
+
+  const resume = `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(budget * 0.08))}`;
+  const faits = `\n\n[FAITS CLÉS ÉTABLIS]\n${formaterFaits(ctx.faits, Math.floor(budget * 0.10))}`;
+  const blocs = ctx.blocsContexte ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.floor(budget * 0.14))}` : '';
+  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.20), 650);
+  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.14));
+  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
+  const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.30), 900);
+
+  // L'en-tête (règles, personnage) et le style ne sont jamais tronqués :
+  // auparavant, un prompt trop long perdait sa fin, donc le style et la
+  // consigne de correction. Seul le milieu est rogné, par la fin — les
+  // métamoteurs, règles de mise en scène générales, partent en premier.
+  const milieu = tronquer(`${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`, Math.max(0, budget - entete.length - style.length));
+  return tronquer(`${entete}${milieu}${style}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

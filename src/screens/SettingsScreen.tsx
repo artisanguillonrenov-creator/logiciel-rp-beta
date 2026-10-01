@@ -26,13 +26,14 @@ import {
   supprimerModeleLocal,
   tailleModeleLocalOctets,
 } from '../storage/modeleLocalStore';
-import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import { couleurs, espacement, polices, rayon, styleOptionSelectionnee, stylePetitesCapitales, texteOptionSelectionnee } from '../theme/theme';
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import { useLangue } from '../i18n/LangueProvider';
+import { useEtatCloud } from '../cloud/useEtatCloud';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reglages'>;
 
@@ -41,6 +42,7 @@ const IMAGE_REGLAGES = require('../../assets/scenes/creation-preferences.png');
 export default function SettingsScreen({ navigation }: Props) {
   const { t } = useLangue();
   const { width } = useWindowDimensions();
+  const cloud = useEtatCloud();
   const estTablette = width >= 900;
 
   const [apiKey, setApiKey] = useState('');
@@ -498,10 +500,9 @@ export default function SettingsScreen({ navigation }: Props) {
                   {modeleLocalPresent && (
                     <Bouton
                       titre={t('Supprimer le modèle local')}
-                      variante="secondaire"
+                      variante="danger"
                       onPress={supprimerModele}
                       style={styles.boutonAction}
-                      texteStyle={{ color: couleurs.danger }}
                     />
                   )}
                   {erreurModeleLocal ? <Text style={[styles.statut, { color: couleurs.danger }]}>{erreurModeleLocal}</Text> : null}
@@ -637,6 +638,23 @@ export default function SettingsScreen({ navigation }: Props) {
             </Panneau>
 
             <Panneau style={styles.section}>
+              <Text style={styles.sectionSurtitre}>{t('COMPTE')}</Text>
+              <Text style={styles.sectionTitre}>{t('Compte & synchronisation')}</Text>
+              <Text style={styles.sectionDescription}>
+                {cloud.utilisateur
+                  ? `${t('Connecté')} · ${cloud.utilisateur.email ?? cloud.utilisateur.nom ?? ''}`
+                  : t('Connecte-toi pour retrouver tes histoires, personnages et réglages sur tous tes appareils. Sans compte, tout reste sur cet appareil.')}
+              </Text>
+              <Bouton
+                titre={cloud.utilisateur ? t('Gérer mon compte') : t('Se connecter')}
+                variante="secondaire"
+                icone="sceau"
+                onPress={() => navigation.navigate('Compte')}
+                style={styles.boutonAction}
+              />
+            </Panneau>
+
+            <Panneau style={styles.section}>
               <Pressable
                 onPress={() => setAvancesOuverts((v) => !v)}
                 style={styles.enteteSectionPliable}
@@ -734,6 +752,7 @@ export default function SettingsScreen({ navigation }: Props) {
           <Text style={styles.zoneEnregistrementTexte}>{t('Les changements prennent effet après enregistrement.')}</Text>
           <Bouton
             titre={enregistrement ? t('Enregistrement…') : t('Enregistrer les réglages')}
+            icone="plume"
             onPress={enregistrer}
             desactive={enregistrement}
             style={styles.boutonPrincipal}
@@ -952,6 +971,7 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderWidth: 1,
     borderColor: couleurs.bordure,
+    borderRadius: rayon.sm,
     backgroundColor: couleurs.fondChampSaisie,
     paddingHorizontal: espacement.md,
     paddingVertical: espacement.sm,
@@ -959,9 +979,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: espacement.sm,
   },
-  ligneSelectionActive: {
-    borderColor: couleurs.accent,
-  },
+  ligneSelectionActive: styleOptionSelectionnee,
   ligneLabel: {
     ...stylePetitesCapitales,
     color: couleurs.texteAtténué,
@@ -991,23 +1009,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: espacement.sm,
     borderWidth: 1,
     borderColor: couleurs.bordure,
+    borderRadius: rayon.sm,
     backgroundColor: couleurs.fondChampSaisie,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionMoteurActive: {
-    borderColor: couleurs.accent,
-    backgroundColor: 'rgba(78, 174, 248, 0.10)',
-  },
+  optionMoteurActive: styleOptionSelectionnee,
   texteOptionMoteur: {
     color: couleurs.texteAtténué,
     fontFamily: polices.corpsMedium,
     fontSize: 14,
     textAlign: 'center',
   },
-  texteOptionMoteurActif: {
-    color: couleurs.accentClair,
-  },
+  texteOptionMoteurActif: texteOptionSelectionnee,
   blocFournisseur: {
     marginTop: espacement.sm,
   },
@@ -1101,9 +1115,7 @@ const styles = StyleSheet.create({
   optionProfil: {
     marginTop: espacement.md,
   },
-  optionProfilActive: {
-    borderColor: couleurs.accent,
-  },
+  optionProfilActive: styleOptionSelectionnee,
   texteOptionProfil: {
     color: couleurs.texte,
     fontFamily: polices.titre,

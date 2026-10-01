@@ -5,6 +5,7 @@ import JSZip from 'jszip';
 import { Platform } from 'react-native';
 import type { Message, StoryState } from '../types';
 import { analyserMessage } from './messageFormatter';
+import { cumulerUsages } from './mesureTokens';
 
 // Trois formats proposés au moment du téléchargement (boutons simples, pas
 // de menu déroulant) — texte brut par défaut, PDF pour l'universalité,
@@ -46,6 +47,30 @@ function nomFichier(story: StoryState, extension: string): string {
   return `${base || 'histoire'}.${extension}`;
 }
 
+// Consommation (V13) : détail sous chaque réponse du narrateur et bilan en
+// fin de document, pour les exports texte et PDF. L'EPUB reste un livre.
+function nombre(n: number): string {
+  return Math.max(0, Math.floor(n || 0)).toLocaleString('fr-FR');
+}
+
+function lignesConsommation(m: Message): string[] {
+  const u = m.usageTokens;
+  if (!u) return [];
+  return [
+    '[CONSOMMATION DU TOUR]',
+    `Entrée : ${nombre(u.inputTokens)} tokens`,
+    `Cache : ${nombre(u.cachedInputTokens)} tokens`,
+    `Sortie : ${nombre(u.outputTokens)} tokens`,
+    `Raisonnement : ${nombre(u.reasoningTokens)} tokens`,
+    `Total : ${nombre(u.totalTokens)} tokens`,
+    `Appels IA : ${u.apiCalls}${u.complete ? '' : ' · données partielles'}`,
+  ];
+}
+
+function bilanConsommation(story: StoryState) {
+  return cumulerUsages(story.messages.map((m) => m.usageTokens));
+}
+
 function genererTexteBrut(story: StoryState): string {
   const lignes: string[] = [];
   const titre = story.meta.titre || story.meta.personnageNom;
@@ -53,21 +78,45 @@ function genererTexteBrut(story: StoryState): string {
   for (const m of story.messages) {
     lignes.push(`${nomAuteur(story, m.role)} :`);
     lignes.push(m.content);
+    if (m.role === 'assistant' && m.usageTokens) lignes.push('', ...lignesConsommation(m));
     lignes.push('');
+  }
+  const bilan = bilanConsommation(story);
+  if (bilan.apiCalls > 0) {
+    lignes.push(
+      '==============================',
+      'STATISTIQUES DE LA CONVERSATION',
+      `Appels IA : ${bilan.apiCalls}`,
+      `Tokens entrée : ${nombre(bilan.inputTokens)}`,
+      `Tokens cache : ${nombre(bilan.cachedInputTokens)}`,
+      `Tokens sortie : ${nombre(bilan.outputTokens)}`,
+      `Tokens raisonnement : ${nombre(bilan.reasoningTokens)}`,
+      `CONSOMMATION TOTALE : ${nombre(bilan.totalTokens)} tokens`,
+    );
+    if (bilan.toursPartiels) lignes.push(`Attention : ${bilan.toursPartiels} tour(s) ont des données partielles.`);
+    lignes.push('==============================', '');
   }
   return lignes.join('\n');
 }
 
-function genererCorpsHtml(story: StoryState): { titre: string; messages: string } {
+function genererCorpsHtml(story: StoryState, avecConsommation = true): { titre: string; messages: string } {
   const titre = echapperHtml(story.meta.titre || story.meta.personnageNom);
   const messages = story.messages
     .map((m) => {
       const auteur = echapperHtml(nomAuteur(story, m.role));
       const classe = m.role === 'user' ? 'joueur' : 'narrateur';
-      return `<p class="message ${classe}"><span class="auteur">${auteur}</span><br/>${segmentsVersHtml(m.content)}</p>`;
+      const u = avecConsommation && m.role === 'assistant' ? m.usageTokens : undefined;
+      const consommation = u
+        ? `<div class="usage"><strong>Consommation du tour</strong> · Entrée ${nombre(u.inputTokens)} · Cache ${nombre(u.cachedInputTokens)} · Sortie ${nombre(u.outputTokens)} · Raisonnement ${nombre(u.reasoningTokens)} · <strong>Total ${nombre(u.totalTokens)} tokens</strong> · ${u.apiCalls} appel(s) IA${u.complete ? '' : ' · données partielles'}</div>`
+        : '';
+      return `<p class="message ${classe}"><span class="auteur">${auteur}</span><br/>${segmentsVersHtml(m.content)}</p>${consommation}`;
     })
     .join('\n');
-  return { titre, messages };
+  const bilan = bilanConsommation(story);
+  const total = avecConsommation && bilan.apiCalls > 0
+    ? `<section class="usage-total"><h2>Statistiques de la conversation</h2><p>Appels IA : ${bilan.apiCalls}<br/>Entrée : ${nombre(bilan.inputTokens)} tokens<br/>Cache : ${nombre(bilan.cachedInputTokens)} tokens<br/>Sortie : ${nombre(bilan.outputTokens)} tokens<br/>Raisonnement : ${nombre(bilan.reasoningTokens)} tokens<br/><strong>Consommation totale : ${nombre(bilan.totalTokens)} tokens</strong>${bilan.toursPartiels ? `<br/>Attention : ${bilan.toursPartiels} tour(s) ont des données partielles.` : ''}</p></section>`
+    : '';
+  return { titre, messages: messages + total };
 }
 
 const STYLE_EXPORT = `
@@ -78,6 +127,9 @@ const STYLE_EXPORT = `
   .action { font-style: italic; color: #555; }
   .dialogue { color: #7a5c1e; }
   .locuteur { color: #1a1a1a; }
+  .usage { font-size: 11px; color: #777; margin: -12px 0 18px; }
+  .usage-total { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ccc; font-size: 13px; }
+  .usage-total h2 { font-size: 16px; }
 `;
 
 // --- Écriture + partage natif (Android/iOS) : fichier temporaire dans le
@@ -145,7 +197,7 @@ async function exporterPdf(story: StoryState): Promise<void> {
 }
 
 async function genererEpubOctets(story: StoryState): Promise<Uint8Array> {
-  const { titre, messages } = genererCorpsHtml(story);
+  const { titre, messages } = genererCorpsHtml(story, false);
   const zip = new JSZip();
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
 

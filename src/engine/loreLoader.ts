@@ -206,3 +206,34 @@ export function selectionnerLoreElyndorSemantique(
     ...classement.map((c) => ({ id: c.entry.id, titre: c.entry.titre, contenu: c.entry.contenu, score: c.score })),
   ];
 }
+
+const PREFIXE_ROYAUME = '[ROYAUME] ';
+const MAX_ANCRES_CANON = 2;
+
+/**
+ * Priorité canon (V13) : un royaume nommé dans la scène (« Paris »,
+ * « Tokyo »…) a toujours sa fiche en contexte, même si la recherche
+ * sémantique ou lexicale l'a classée trop bas — c'est ce qui empêche le
+ * modèle d'improviser un souverain ou des institutions. Viennent ensuite
+ * les entrées classées par pertinence, puis le socle toujours actif.
+ */
+export function prioriserLoreCanon(texteRequete: string, selection: LoreEntry[], entrees: ElyndorEntryChargee[]): LoreEntry[] {
+  const requete = normalise(texteRequete);
+  const ancres: LoreEntry[] = [];
+  for (const entree of entrees) {
+    if (ancres.length >= MAX_ANCRES_CANON) break;
+    if (!entree.titre.startsWith(PREFIXE_ROYAUME)) continue;
+    const lieu = normalise(entree.titre.slice(PREFIXE_ROYAUME.length).split('—')[0].trim());
+    if (lieu.length >= 3 && requete.includes(lieu)) {
+      ancres.push({ id: entree.id, titre: entree.titre, contenu: entree.contenu, score: 2 });
+    }
+  }
+  const vus = new Set<string>();
+  const resultat: LoreEntry[] = [];
+  for (const e of [...ancres, ...selection.filter((s) => s.score !== undefined), ...selection.filter((s) => s.score === undefined)]) {
+    if (vus.has(e.id)) continue;
+    vus.add(e.id);
+    resultat.push(e);
+  }
+  return resultat;
+}

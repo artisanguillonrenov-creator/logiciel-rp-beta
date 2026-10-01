@@ -7,4 +7,5 @@ export type RootStackParamList = {
   Plugins: undefined;
   ReglagesConcepteur: undefined;
   ChargerConversation: undefined;
+  Compte: undefined;
 };

@@ -1,3 +1,5 @@
+import type { NarrativeCoreState } from '../engine/noyauNarratif';
+
 export type Creativite = 'faible' | 'moyenne' | 'elevee';
 export type Longueur = 'courte' | 'moyenne' | 'longue';
 // Violence a son échelle propre (jusqu'à "extrême"), distincte de Romance
@@ -107,6 +109,21 @@ export interface Message {
   // "assistant" uniquement. Affichage/diagnostic seulement, jamais transmis
   // au moteur. Absent sur les messages écrits avant l'ajout de cette mesure.
   dureeGenerationMs?: number;
+  // Tokens consommés par tous les appels du tour qui a produit ce message
+  // (V13) — affichés dans les exports, jamais transmis au moteur.
+  usageTokens?: UsageTokens;
+}
+
+export interface UsageTokens {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+  apiCalls: number;
+  // false si au moins un appel n'a renvoyé aucun usage (runtime local,
+  // fournisseur muet) : les totaux sont alors des minima.
+  complete: boolean;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
@@ -269,7 +286,7 @@ export interface SocialState {
 // Incrémenté à chaque changement de forme des données persistées ; voir
 // migrerHistoire dans storyMigration.ts (esprit de l'auto-updater du brief Phase 2 :
 // compatibilité de sauvegarde garantie d'une version à l'autre).
-export const VERSION_SCHEMA_HISTOIRE = 9;
+export const VERSION_SCHEMA_HISTOIRE = 12;
 
 export interface StoryState {
   version: number;
@@ -291,6 +308,10 @@ export interface StoryState {
   // 8 messages. Optionnel : histoires sauvegardées avant cet ajout, traité
   // comme 0 (rescan complet une fois, sans casser rien).
   loreEmergentDernierIndex?: number;
+  // Noyau narratif V12 (voir src/engine/noyauNarratif.ts) : canon
+  // structuré, croyances des PNJ, rumeurs, dettes. Absent tant que
+  // l'histoire n'a pas joué de tour depuis son ajout ; format V13.
+  narrativeCore?: NarrativeCoreState;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil

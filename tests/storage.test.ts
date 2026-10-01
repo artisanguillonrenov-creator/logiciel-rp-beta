@@ -165,7 +165,7 @@ test('migration v1 complète ; schéma futur et JSON invalide préservés sans e
   delete v1.directeur;
   v1.memoire.faits = [{ id: 'fait-1', contenu: 'Une promesse' }];
   const migree = migrerHistoire(v1);
-  assert.equal(migree.version, 9);
+  assert.equal(migree.version, 12);
   assert.equal(migree.memoire.faits[0].niveau, 'canon');
   assert.deepEqual(migree.social, { engagements: [], relations: [] });
   for (const contenu of ['{cassé', JSON.stringify({ ...histoire(), version: 999 })]) {

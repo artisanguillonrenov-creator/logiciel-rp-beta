@@ -45,13 +45,13 @@ const styles = StyleSheet.create({
     marginBottom: espacement.xs + 2,
   },
   labelFocus: {
-    color: couleurs.accentClair,
+    color: couleurs.doreClair,
   },
   champ: {
     minHeight: 48,
     backgroundColor: couleurs.fondChampSaisie,
     borderWidth: 1,
-    borderColor: couleurs.bordure,
+    borderColor: 'rgba(146, 177, 235, 0.30)',
     borderRadius: rayon.sm,
     color: couleurs.texte,
     paddingHorizontal: espacement.md,
@@ -59,9 +59,14 @@ const styles = StyleSheet.create({
     fontFamily: polices.corps,
     fontSize: 16,
   },
+  // Grimoire V13.2 : le focus s'allume à l'or, comme une enluminure.
   champFocus: {
-    borderColor: couleurs.accent,
-    backgroundColor: 'rgba(5, 18, 31, 0.88)',
+    borderColor: 'rgba(242, 211, 140, 0.78)',
+    backgroundColor: 'rgba(3, 10, 24, 0.99)',
+    shadowColor: couleurs.dore,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 9,
   },
   champMultiligne: {
     minHeight: 92,
@@ -69,15 +74,17 @@ const styles = StyleSheet.create({
   },
   champNarratif: {
     minHeight: 52,
-    backgroundColor: 'rgba(3, 9, 16, 0.94)',
-    borderColor: 'rgba(216, 179, 107, 0.22)',
+    backgroundColor: 'rgba(3, 9, 22, 0.96)',
+    borderColor: 'rgba(216, 177, 95, 0.40)',
+    borderRadius: 22,
+    paddingLeft: 18,
     paddingHorizontal: espacement.md,
     paddingVertical: espacement.sm + 1,
     fontSize: 17,
     lineHeight: 22,
   },
   champNarratifFocus: {
-    borderColor: couleurs.dore,
-    backgroundColor: 'rgba(6, 14, 22, 0.98)',
+    borderColor: 'rgba(242, 211, 140, 0.78)',
+    backgroundColor: 'rgba(3, 10, 24, 0.99)',
   },
 });

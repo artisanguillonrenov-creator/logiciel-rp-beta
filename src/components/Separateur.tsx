@@ -1,19 +1,31 @@
 import React from 'react';
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { couleurs, espacement } from '../theme/theme';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { espacement } from '../theme/theme';
+import { EtoileOrnement } from './Ornements';
 
 interface SeparateurProps {
   style?: StyleProp<ViewStyle>;
 }
 
-// Motif ornemental récurrent (losange central + traits fins) — remplace un
-// séparateur plat entre titre/sous-titre ou en bas d'écran entre boutons.
+// Motif ornemental récurrent : deux filets d'or qui s'estompent vers
+// l'extérieur autour d'une étoile à huit branches (grimoire V13.2).
 export default function Separateur({ style }: SeparateurProps) {
   return (
     <View style={[styles.rangee, style]}>
-      <View style={styles.ligne} />
-      <Text style={styles.losange}>◆</Text>
-      <View style={styles.ligne} />
+      <LinearGradient
+        colors={['rgba(216, 177, 95, 0)', 'rgba(216, 177, 95, 0.62)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.ligne}
+      />
+      <EtoileOrnement taille={16} style={styles.etoile} />
+      <LinearGradient
+        colors={['rgba(216, 177, 95, 0.62)', 'rgba(216, 177, 95, 0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.ligne}
+      />
     </View>
   );
 }
@@ -27,11 +39,8 @@ const styles = StyleSheet.create({
   ligne: {
     flex: 1,
     height: 1,
-    backgroundColor: couleurs.bordure,
   },
-  losange: {
-    color: couleurs.dore,
-    fontSize: 10,
+  etoile: {
     marginHorizontal: espacement.sm,
   },
 });

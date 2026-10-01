@@ -24,7 +24,10 @@ import { VERSION_APP } from '../version';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Bouton from '../components/Bouton';
 import Separateur from '../components/Separateur';
-import { couleurs, espacement, interfaceV2, polices, rayon, stylePetitesCapitales } from '../theme/theme';
+import Panneau from '../components/Panneau';
+import { BoussoleOrnement } from '../components/Ornements';
+import { useEtatCloud } from '../cloud/useEtatCloud';
+import { couleurs, espacement, interfaceV2, polices, rayon, styleOptionSelectionnee, stylePetitesCapitales, texteOptionSelectionnee } from '../theme/theme';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
 
@@ -57,7 +60,10 @@ export default function StartScreenStudio({ navigation }: Props) {
   const [modalLangueOuvert, setModalLangueOuvert] = useState(false);
   const [modalGuideOuvert, setModalGuideOuvert] = useState(false);
   const [modalSynopsisOuvert, setModalSynopsisOuvert] = useState(false);
+  const cloud = useEtatCloud();
+  const compteCloud = !!cloud.utilisateur;
 
+  // La révision change quand la synchronisation a rapatrié des histoires.
   useFocusEffect(
     useCallback(() => {
       let actif = true;
@@ -71,7 +77,7 @@ export default function StartScreenStudio({ navigation }: Props) {
           if (actif) setErreurHistoires('Impossible de lire tes histoires.');
         });
       return () => { actif = false; };
-    }, []),
+    }, [cloud.revision]),
   );
 
   const derniereHistoire = histoires[0];
@@ -91,17 +97,15 @@ export default function StartScreenStudio({ navigation }: Props) {
         </Pressable>
 
         <View style={[styles.marque, compact && styles.marqueCompact]}>
-          <View style={styles.rangeeTitre}>
-            <Text style={styles.sceau}>✦</Text>
-            <Text style={[styles.titre, compact && styles.titreCompact]}>ELYNDOR</Text>
-          </View>
+          <BoussoleOrnement largeur={compact ? 110 : 132} style={styles.boussole} />
+          <Text style={[styles.titre, compact && styles.titreCompact]}>ELYNDOR</Text>
           <Text style={styles.sousTitre}>{t('Vos décisions laissent des traces.')}</Text>
           <Separateur style={styles.separateurTitre} />
         </View>
 
         <View style={styles.espaceCentral} />
 
-        <View style={[styles.actions, compact && styles.actionsCompact]}>
+        <Panneau style={[styles.actions, compact && styles.actionsCompact]}>
           {derniereHistoire ? (
             <Pressable
               style={({ pressed }) => [styles.carteContinuer, pressed && styles.presse]}
@@ -130,19 +134,21 @@ export default function StartScreenStudio({ navigation }: Props) {
             </View>
           )}
 
-          <Bouton titre={t('Nouvelle histoire')} onPress={() => navigation.navigate('Creation')} style={styles.boutonPrincipal} />
+          <Bouton titre={t('Nouvelle histoire')} icone="livre" onPress={() => navigation.navigate('Creation')} style={styles.boutonAccueil} />
           <Bouton
             titre={t('Charger une histoire')}
             variante="secondaire"
+            icone="livres"
             onPress={() => navigation.navigate('ChargerConversation')}
-            style={styles.boutonSecondaire}
+            style={styles.boutonAccueil}
           />
 
           {erreurHistoires ? <Text style={styles.erreur}>{t(erreurHistoires)}</Text> : null}
-        </View>
+        </Panneau>
 
         <View style={styles.pied}>
           <LienBas titre={t('Paramètres')} symbole="⚙" onPress={() => navigation.navigate('Reglages')} />
+          <LienBas titre={compteCloud ? t('Compte') : t('Se connecter')} symbole="✦" onPress={() => navigation.navigate('Compte')} />
           <LienBas titre={t('Guide')} symbole="◇" onPress={() => setModalGuideOuvert(true)} />
           <LienBas titre={t("Monde d'Elyndor")} symbole="✧" onPress={() => setModalSynopsisOuvert(true)} />
         </View>
@@ -289,18 +295,17 @@ const styles = StyleSheet.create({
   langueTexte: { color: couleurs.texteAtténué, fontFamily: polices.corpsMedium, fontSize: 12 },
   marque: { alignItems: 'center', marginTop: espacement.xl },
   marqueCompact: { marginTop: espacement.lg },
-  rangeeTitre: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sceau: { color: couleurs.dore, fontSize: 34, textShadowColor: 'rgba(216,179,107,0.35)', textShadowRadius: 8 },
+  boussole: { marginBottom: espacement.sm },
   titre: {
-    color: couleurs.doreClair,
+    color: '#F1D189',
     fontFamily: polices.display,
     fontSize: 64,
-    letterSpacing: 5,
+    letterSpacing: 9,
     textShadowColor: 'rgba(0,0,0,0.72)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
   },
-  titreCompact: { fontSize: 42, letterSpacing: 3 },
+  titreCompact: { fontSize: 42, letterSpacing: 6 },
   sousTitre: {
     color: couleurs.texte,
     fontFamily: polices.corps,
@@ -313,17 +318,18 @@ const styles = StyleSheet.create({
   espaceCentral: { flex: 1, minHeight: 12 },
   actions: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: 560,
     alignSelf: 'center',
     gap: espacement.sm,
     marginBottom: espacement.md,
+    padding: espacement.md + 2,
   },
   actionsCompact: { maxWidth: 460 },
   carteContinuer: {
     minHeight: 88,
     flexDirection: 'row',
     alignItems: 'stretch',
-    backgroundColor: 'rgba(5, 14, 24, 0.90)',
+    backgroundColor: 'rgba(4, 12, 28, 0.90)',
     borderWidth: 1,
     borderColor: couleurs.bordureDoree,
     borderRadius: rayon.sm,
@@ -339,16 +345,16 @@ const styles = StyleSheet.create({
   metaHistoire: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12, marginTop: 2 },
   flecheContinuer: { color: couleurs.dore, fontFamily: polices.titre, fontSize: 32, alignSelf: 'center', paddingRight: espacement.md },
   invitationPremiere: {
-    backgroundColor: 'rgba(5, 14, 24, 0.88)',
+    backgroundColor: 'rgba(4, 12, 28, 0.72)',
     borderWidth: 1,
     borderColor: couleurs.bordureSubtile,
+    borderRadius: rayon.sm,
     padding: espacement.md,
     marginBottom: espacement.xs,
   },
   invitationTitre: { color: couleurs.doreClair, fontFamily: polices.titre, fontSize: 20, textAlign: 'center' },
   invitationTexte: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 14, textAlign: 'center', marginTop: 4 },
-  boutonPrincipal: { backgroundColor: 'rgba(216, 179, 107, 0.88)' },
-  boutonSecondaire: { backgroundColor: 'rgba(4, 12, 22, 0.78)' },
+  boutonAccueil: { minHeight: 58 },
   erreur: { color: couleurs.danger, fontFamily: polices.corps, textAlign: 'center', marginTop: 4 },
   pied: {
     flexDirection: 'row',
@@ -387,23 +393,23 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: interfaceV2.largeurPanneauMax,
     maxHeight: '84%',
-    backgroundColor: couleurs.fondCarteDense,
+    backgroundColor: 'rgba(4, 12, 30, 0.99)',
     borderWidth: 1,
-    borderColor: couleurs.bordureDoree,
-    borderRadius: rayon.sm,
+    borderColor: 'rgba(216, 177, 95, 0.50)',
+    borderRadius: rayon.lg,
     padding: espacement.lg,
   },
   titreModal: { color: couleurs.doreClair, fontFamily: polices.displaySemiGras, fontSize: 20, textAlign: 'center', marginBottom: espacement.md },
   scrollModal: { flexGrow: 0 },
   optionLangue: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: couleurs.bordureSubtile },
-  optionLangueActive: { backgroundColor: 'rgba(78,174,248,0.10)' },
+  optionLangueActive: { ...styleOptionSelectionnee, borderRadius: rayon.sm, borderWidth: 1 },
   texteOptionLangue: { color: couleurs.texte, fontFamily: polices.corps, fontSize: 16, textAlign: 'center' },
-  texteOptionLangueActive: { color: couleurs.accentClair },
+  texteOptionLangueActive: texteOptionSelectionnee,
   labelLibre: { ...stylePetitesCapitales, color: couleurs.texteAtténué, fontSize: 10, marginTop: espacement.md, marginBottom: espacement.xs },
   rangeeLibre: { flexDirection: 'row', gap: espacement.sm },
-  champLibre: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: couleurs.bordure, color: couleurs.texte, paddingHorizontal: espacement.sm, fontFamily: polices.corps },
-  appliquerLibre: { minHeight: 48, justifyContent: 'center', borderWidth: 1, borderColor: couleurs.accent, paddingHorizontal: espacement.md },
-  texteAppliquer: { color: couleurs.accentClair, fontFamily: polices.corpsMedium },
+  champLibre: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: couleurs.bordure, borderRadius: rayon.sm, color: couleurs.texte, paddingHorizontal: espacement.sm, fontFamily: polices.corps },
+  appliquerLibre: { minHeight: 48, justifyContent: 'center', borderWidth: 1, borderColor: couleurs.bordureDoree, borderRadius: rayon.sm, paddingHorizontal: espacement.md },
+  texteAppliquer: { color: couleurs.doreClair, fontFamily: polices.corpsMedium },
   blocGuide: { marginBottom: espacement.md },
   titreGuide: { color: couleurs.dore, fontFamily: polices.titre, fontSize: 17, marginBottom: 2 },
   texteGuide: { color: couleurs.texte, fontFamily: polices.corps, fontSize: 15, lineHeight: 22 },

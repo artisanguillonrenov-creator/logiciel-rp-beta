@@ -43,3 +43,11 @@ test('les messages récents sont bornés individuellement', () => {
   assert.ok(messages.slice(1, -1).every((message) => message.content.length <= 950));
   assert.ok(messages.at(-1)!.content.length <= 2030);
 });
+
+test('identité narrative en tête et style jamais tronqué, même en budget local saturé', () => {
+  const [systeme] = construireMessages({ ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(400) }, { budgetSysteme: BUDGET_SYSTEM_LOCAL });
+  assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);
+  assert.match(systeme.content, /POINT DE VUE: dans la narration uniquement/);
+  assert.match(systeme.content, /\[STYLE\][\s\S]*Format des dialogues des PNJ/);
+  assert.match(systeme.content, /\[MÉMOIRE NARRATIVE PERTINENTE\]/);
+});

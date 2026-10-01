@@ -28,6 +28,7 @@ import {
   regenererDernierTour,
   type DebugLore,
 } from '../engine/generateTurn';
+import { annulerTours } from '../engine/noyauNarratif';
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
 import { suggererRepliqueJoueur } from '../engine/suggestion';
@@ -37,7 +38,7 @@ import { ErreurEmbeddings } from '../engine/embeddings';
 import { ErreurMoteurLocal } from '../engine/localInference';
 import { ErreurProfilContenu, validerEntreeUtilisateur } from '../engine/contenuAdulte';
 import { exporterConversation, type FormatExport } from '../engine/conversationExport';
-import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
+import { couleurs, espacement, polices, rayon, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
@@ -47,7 +48,7 @@ import TexteMessageFormate from '../components/TexteMessageFormate';
 import BoutonDictee from '../components/BoutonDictee';
 import { useLangue } from '../i18n/LangueProvider';
 
-const IMAGE_CONVERSATION = require('../../assets/scenes/creation-point-depart.png');
+const IMAGE_CONVERSATION = require('../../assets/scenes/cour-des-serments.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 
@@ -462,7 +463,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const index = story.messages.findIndex((m) => m.id === id);
     if (index < 0) return;
     const messages = [...story.messages.slice(0, index), ...story.messages.slice(index + 1)];
-    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    const sansTour = story.messages[index].role === 'assistant' ? annulerTours(story, [id]) : story;
+    const storyMaj: StoryState = { ...sansTour, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
     if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);
@@ -473,7 +475,8 @@ export default function ConversationScreen({ route, navigation }: Props) {
     const index = story.messages.findIndex((m) => m.id === id);
     if (index < 0) return;
     const messages = story.messages.slice(0, index);
-    const storyMaj: StoryState = { ...story, messages, ...tronquerCurseurs(story, messages.length) };
+    const sansTours = annulerTours(story, story.messages.slice(index).filter((m) => m.role === 'assistant').map((m) => m.id));
+    const storyMaj: StoryState = { ...sansTours, messages, ...tronquerCurseurs(story, messages.length) };
     setStory(storyMaj);
     if (!await enregistrerEtat(storyMaj)) return;
     setMessageASupprimer(null);
@@ -746,6 +749,16 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 <Text key={extrait} style={styles.ligneDebug}>• {extrait}</Text>
               ))
             )}
+            {debugLore.blocsContexte ? (
+              <>
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>
+                  Mémoire narrative{debugLore.memoireNarrative ? ` — ${debugLore.memoireNarrative}` : ''}
+                </Text>
+                {debugLore.blocsContexte.map((ligne) => (
+                  <Text key={ligne} style={styles.ligneDebug}>• {ligne}</Text>
+                ))}
+              </>
+            ) : null}
           </ScrollView>
         )}
 
@@ -997,16 +1010,14 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <Text style={styles.titreModal}>{t('Supprimer')}</Text>
             <Bouton
               titre={t('Supprimer ce message')}
-              variante="secondaire"
+              variante="danger"
               onPress={() => messageASupprimer && supprimerMessageSeul(messageASupprimer)}
-              texteStyle={{ color: couleurs.danger }}
               style={{ marginTop: espacement.sm }}
             />
             <Bouton
               titre={t('Supprimer ce message et les suivants')}
-              variante="secondaire"
+              variante="danger"
               onPress={() => messageASupprimer && supprimerMessagesASuivant(messageASupprimer)}
-              texteStyle={{ color: couleurs.danger }}
               style={{ marginTop: espacement.sm }}
             />
             <Bouton titre={t('Annuler')} variante="secondaire" onPress={() => setMessageASupprimer(null)} style={{ marginTop: espacement.sm }} />
@@ -1213,16 +1224,24 @@ const styles = StyleSheet.create({
   bulle: {
     borderWidth: 1,
     borderColor: 'transparent',
-    paddingHorizontal: espacement.sm,
+    borderRadius: rayon.md,
+    paddingHorizontal: espacement.sm + 2,
     paddingVertical: espacement.sm,
   },
+  // Voix du joueur : bleu arcane franc, bulle « signée » en bas à droite.
   bulleJoueur: {
     backgroundColor: couleurs.bulleJoueur,
-    borderColor: 'rgba(90, 172, 255, 0.35)',
+    borderColor: 'rgba(140, 182, 255, 0.70)',
+    borderRadius: 18,
+    borderBottomRightRadius: 5,
+    shadowColor: '#3C78FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 11,
   },
   bulleNarrateur: {
     backgroundColor: couleurs.bulleNarrateur,
-    borderColor: couleurs.bordure,
+    borderColor: 'rgba(216, 177, 95, 0.12)',
   },
   texteBulle: {
     color: couleurs.texte,
@@ -1488,10 +1507,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
+  // Pupitre de saisie : plaque bleu nuit à liseré or, arrondie en haut.
   zoneSaisie: {
     borderTopWidth: 1,
-    borderTopColor: couleurs.bordure,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(216, 177, 95, 0.36)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    backgroundColor: 'rgba(2, 7, 18, 0.97)',
     padding: espacement.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.38,
+    shadowRadius: 26,
   },
   bandeauReponseA: {
     flexDirection: 'row',
