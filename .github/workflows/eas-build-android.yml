@@ -5,13 +5,13 @@ on:
     branches:
       - claude/new-session-glwy6e
       - claude/focused-carson-wgfz3x
-    paths:
-      - app.json
-      - eas.json
-      - package.json
-      - package-lock.json
-      - plugins/**
-      - .github/workflows/eas-build-android.yml
+    # Un APK à chaque modification de l'application : la mise à jour OTA
+    # n'arrive pas toujours sur l'appareil. Seuls les changements de
+    # documentation n'en déclenchent pas.
+    paths-ignore:
+      - '**.md'
+      - docs/**
+      - art-direction-concepts/**
   workflow_dispatch:
 
 jobs:
