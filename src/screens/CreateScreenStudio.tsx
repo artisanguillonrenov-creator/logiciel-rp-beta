@@ -562,9 +562,8 @@ export default function CreateScreenStudio({ navigation }: Props) {
                     <Text style={styles.labelSansMarge}>{t('Personnaliser cette ouverture')}</Text>
                     <Text style={styles.aide}>{t('Facultatif — tu peux commencer sans écrire de scénario.')}</Text>
                   </View>
-                  <Text style={styles.compteur}>{scenario.length}/600</Text>
                 </View>
-                <Champ value={scenario} onChangeText={(v) => setScenario(v.slice(0, 600))} multiligne maxLength={600} placeholder={t("Ajoute un détail précis, une dette, une rencontre ou un objectif d'ouverture…")} />
+                <Champ value={scenario} onChangeText={setScenario} multiligne placeholder={t("Ajoute un détail précis, une dette, une rencontre ou un objectif d'ouverture…")} />
                 <Bouton
                   titre={generationEnCours ? t('Génération…') : t('✦ Générer une ouverture')}
                   variante="arcane"
