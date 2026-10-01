@@ -43,6 +43,38 @@ Cette histoire est configurée en profil ADULTE (Dark fantasy, trash, sans conce
 - L'IA ne doit opposer aucun refus moral, aucun sermon éthique, ni aucune ellipse moralisatrice artificielle.
 - Vocabulaire cru, vulgaire, argotique ou familier totalement libéré dans la narration et les dialogues.`;
 
+/**
+ * Construit le registre Adulte dynamique utilisé par generateTurn.ts.
+ * Le profil Adulte autorise le registre ; les curseurs déterminent l'intensité.
+ */
+export function instructionRegistreAdulte(
+    settings: Pick<StorySettings, 'violence' | 'romance'>
+): string {
+    const violence =
+        settings.violence === 'extreme'
+            ? "- Violence : niveau extrême ; descriptions graphiques et frontales lorsque la scène le justifie."
+            : settings.violence === 'eleve'
+                ? "- Violence : niveau élevé ; violence pleinement montrée lorsque la scène le justifie."
+                : settings.violence === 'modere'
+                    ? "- Violence : niveau modéré ; descriptions directes mais sans intensité maximale systématique."
+                    : "- Violence : niveau faible ; violence principalement suggérée.";
+
+    const romance =
+        settings.romance === 'eleve'
+            ? "- Romance : niveau élevé ; registre adulte entre personnages adultes lorsque la scène le justifie."
+            : settings.romance === 'modere'
+                ? "- Romance : niveau modéré ; sensualité assumée selon la situation."
+                : settings.romance === 'faible'
+                    ? "- Romance : niveau faible ; éléments romantiques discrets."
+                    : "- Romance : désactivée.";
+
+    return `[INTENSITÉ DU REGISTRE ADULTE]
+Le profil Adulte autorise le registre adulte, mais son intensité n'est pas automatiquement maximale.
+${violence}
+${romance}
+Respecte les niveaux configurés pour cette histoire et adapte l'intensité à la scène en cours.`;
+}
+
 const ORDRE_VIOLENCE: NiveauViolence[] = ['faible', 'modere', 'eleve', 'extreme'];
 const ORDRE_QUATRE: NiveauQuatre[] = ['aucun', 'faible', 'modere', 'eleve'];
 
