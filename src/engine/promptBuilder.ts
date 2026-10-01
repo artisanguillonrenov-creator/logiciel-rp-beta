@@ -177,8 +177,11 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   // auparavant, un prompt trop long perdait sa fin, donc le style et la
   // consigne de correction. Seul le milieu est rogné, par la fin — les
   // métamoteurs, règles de mise en scène générales, partent en premier.
-  const milieu = tronquer(`${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`, Math.max(0, budget - entete.length - style.length));
-  return tronquer(`${entete}${milieu}${style}`, budget);
+  const milieu = tronquer(
+  `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
+  Math.max(0, budget - entete.length),
+);
+return tronquer(`${entete}${milieu}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
