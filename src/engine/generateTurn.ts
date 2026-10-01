@@ -1,12 +1,9 @@
-import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
-  chargerMetamoteurs,
   prioriserLoreCanon,
   selectionnerLoreElyndorSemantique,
-  selectionnerMetamoteursSemantique,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
@@ -61,6 +58,10 @@ import {
   validerProfilContenuHeuristique,
 } from './contenuAdulte';
 import {
+  construireContratNarratifNatif,
+  debugContratNarratif,
+} from './narrativeBehaviorKernel';
+import {
   appliquerPatchLocal,
   determinerStrategie,
   fusionnerRapports,
@@ -72,10 +73,7 @@ import {
   validerReponseLLM,
 } from './validator';
 
-const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
-
-const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
@@ -88,10 +86,12 @@ function genererId(): string {
 }
 
 export interface DebugLore {
+  // Conservé sous ce nom pour compatibilité de l'UI de debug. Ce champ ne
+  // contient plus des entrées de lore [MÉTA], mais les responsabilités
+  // natives M01–M15 effectivement mobilisées par le tour.
   metamoteurs: string[];
   loreElyndor: string[];
   souvenirs: string[];
-  // Mémoire narrative (V13) : blocs retenus pour le tour et taille de l'index.
   blocsContexte?: string[];
   memoireNarrative?: string;
 }
@@ -124,12 +124,16 @@ function construireTexteRequete(story: StoryState, messageJoueur: string, appSet
 }
 
 interface SelectionLore {
-  metamoteursSelectionnes: ReturnType<typeof selectionnerMetamoteursSemantique>;
   loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
   souvenirs: Souvenir[];
   debugLore: DebugLore;
 }
 
+/**
+ * Sélection sémantique réservée aux données qui sont réellement du contenu
+ * à retrouver (lore et ancien historique). M01–M15 ne passent plus ici :
+ * le noyau comportemental existe même sans embeddings.
+ */
 export async function calculerSelectionLore(
   story: StoryState,
   messageJoueur: string,
@@ -140,12 +144,6 @@ export async function calculerSelectionLore(
   const profilAdulte = profil === 'adulte';
   const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
-
-  const metamoteursDisponibles = profilAdulte
-    ? METAMOTEURS
-    : METAMOTEURS.filter(
-        (e) => e.titre !== METAMOTEUR_REGISTRE && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
-      );
 
   const poolElyndorBrut = [
     ...LORE_ELYNDOR,
@@ -164,12 +162,13 @@ export async function calculerSelectionLore(
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
   if (!embeddingsDisponibles(appSettings)) {
-    // Repli lexical (V13) : sans fournisseur d'embeddings, on classe le lore
-    // et l'historique par mots communs plutôt que de partir sans rien.
-    const loreElyndor = prioriserLoreCanon(texteRequete, rechercherLoreLexical(poolElyndor, texteRequete), LORE_ELYNDOR);
+    const loreElyndor = prioriserLoreCanon(
+      texteRequete,
+      rechercherLoreLexical(poolElyndor, texteRequete),
+      LORE_ELYNDOR,
+    );
     const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
     return {
-      metamoteursSelectionnes: [],
       loreElyndor,
       souvenirs,
       debugLore: {
@@ -180,11 +179,7 @@ export async function calculerSelectionLore(
     };
   }
 
-  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
-    assurerEmbeddings(
-      metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-      appSettings,
-    ),
+  const [vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
     assurerEmbeddings(
       poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
       appSettings,
@@ -193,24 +188,25 @@ export async function calculerSelectionLore(
     embedderMessagesAnciens(messagesAnciens, appSettings),
   ]);
 
-  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-    metamoteursDisponibles,
-    vecteurRequete,
-    vecteursMetamoteurs,
-  );
   const loreElyndor = prioriserLoreCanon(
     texteRequete,
-    selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
+    selectionnerLoreElyndorSemantique(
+      poolElyndor,
+      texteRequete,
+      vecteurRequete,
+      vecteursElyndor,
+      undefined,
+      optionsLoreElyndor,
+    ),
     LORE_ELYNDOR,
   );
   const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
   return {
-    metamoteursSelectionnes,
     loreElyndor,
     souvenirs,
     debugLore: {
-      metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
+      metamoteurs: [],
       loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
       souvenirs: formaterSouvenirsDebug(souvenirs),
     },
@@ -226,21 +222,28 @@ function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
   const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  const evenements = synchroniserMemoireNarrative(story);
-  return { ...debugLore, ...debugMemoireNarrative(evenements.length, construireBlocsContexte(story, messageJoueur, evenements)) };
+  const storyNoyau = assurerNoyau(story);
+  const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
+  const evenements = synchroniserMemoireNarrative(storyNoyau);
+  return {
+    ...debugLore,
+    metamoteurs: debugContratNarratif(contrat),
+    ...debugMemoireNarrative(evenements.length, construireBlocsContexte(storyNoyau, messageJoueur, evenements)),
+  };
 }
 
 export function construireCtxBase(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
-  selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
+  selection: Pick<SelectionLore, 'loreElyndor' | 'souvenirs'>,
   blocs: ResultatBlocs = construireBlocsContexte(story, messageJoueur),
-  // Faux pour la scène d'ouverture : aucun tour à intégrer, donc pas de bloc
-  // d'état machine à demander au narrateur.
+  // Faux pour la scène d'ouverture : pas de delta d'état machine à demander.
   avecNoyau = true,
 ): ContexteConstruction {
-  const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
+  const storyNoyau = avecNoyau ? assurerNoyau(story) : story;
+  const noyau = avecNoyau ? construireContexteNoyau(storyNoyau as ReturnType<typeof assurerNoyau>, messageJoueur) : null;
+  const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte, profil);
@@ -271,20 +274,27 @@ export function construireCtxBase(
     detecterStagnation(story.directeur, story.messages.length),
   );
 
+  // Une seule source est injectée pour chaque domaine. Le noyau structuré
+  // est prioritaire ; les anciens états servent uniquement de repli lors de
+  // l'ouverture ou si aucun état noyau pertinent n'existe encore.
+  const mondeNoyau = filtrer(noyau?.texteMonde);
+  const socialNoyau = filtrer(noyau?.texteSocial);
+
   return {
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
+    profilContenu: profil,
     resume: filtrer(story.memoire.resume),
     faits,
-    metamoteursSelectionnes: selection.metamoteursSelectionnes,
     loreElyndor: selection.loreElyndor,
     messagesRecents,
     messageJoueur,
+    contratNarratif: filtrer(contrat.texte),
     instructionRegistreOverride: profilAdulte ? undefined : INSTRUCTION_REGISTRE_GRAND_PUBLIC,
     registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
-    etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
-    engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
+    etatMonde: mondeNoyau || filtrer(formaterMonde(story.monde)),
+    engagementsEtRelations: socialNoyau || filtrer(formaterEngagementsEtRelations(story.social)),
     souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
     blocsContexte: filtrer([noyau?.texte, formaterBlocsContexte(blocs.blocs)].filter(Boolean).join('\n\n')),
     directiveEtat: noyau?.directive,
@@ -296,15 +306,16 @@ export async function construirePromptDebug(
   messageJoueur: string,
   appSettings: AppSettings,
 ): Promise<string> {
-  const { metamoteursSelectionnes, loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
+  const { loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { loreElyndor, souvenirs }));
 }
 
 function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
   if (appSettings.profilContenu === 'adulte') return messages;
   return messages.map((message) => ({
     ...message,
-    content: filtrerTextePourProfil(message.content, appSettings.profilContenu) || '[Contenu antérieur masqué par le profil Grand public.]',
+    content: filtrerTextePourProfil(message.content, appSettings.profilContenu)
+      || '[Contenu antérieur masqué par le profil Grand public.]',
   }));
 }
 
@@ -374,14 +385,16 @@ export async function genererTour(
   const evenements = synchroniserMemoireNarrative(storyRafraichie);
   const storyCourante = assurerNoyau(storyRafraichie, evenements);
 
-  const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
+  const { loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
     messageJoueur,
     appSettings,
   );
+  const contrat = construireContratNarratifNatif(storyCourante, messageJoueur, appSettings.profilContenu);
+  debugLore.metamoteurs = debugContratNarratif(contrat);
 
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
+  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -389,10 +402,10 @@ export async function genererTour(
     storyCourante.meta.modeleOverrideFournisseur,
   ) || configurationLLM(appSettings).model;
   const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
-  // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
-  // il rognait la scène ou arrivait coupé.
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
-  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
+    ? BUDGET_SYSTEM_LOCAL
+    : BUDGET_SYSTEM_DISTANT;
 
   commencerMesureTokens();
   const premiere = extraireEnveloppeEtat(await appellerModele({
@@ -412,9 +425,6 @@ export async function genererTour(
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
-  // V13 : l'appel de validation au modèle (un second appel complet, très
-  // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
-  // passés et que la réponse semble défaire un fait établi.
   const llm = controlesLocaux.ok && contradictionProbable(reponse, storyCourante)
     ? await validerReponseLLM({
         ...configurationLLM(appSettings, modelePourAppel),
@@ -447,8 +457,6 @@ export async function genererTour(
       .map((c) => c.raison)
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     try {
-      // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
-      // celui de la nouvelle apparaître dans le récit.
       const regeneree = extraireEnveloppeEtat(await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt }),
@@ -462,8 +470,6 @@ export async function genererTour(
     }
   }
 
-  // Dernier filet : une entité inventée qui a survécu à la correction est
-  // remplacée par un terme générique plutôt que d'entrer dans l'histoire.
   const canonFinal = verifierEntitesCanoniques(reponse, canon);
   if (!canonFinal.ok) {
     reponse = appliquerPatchLocal(reponse, canonFinal);
@@ -512,23 +518,25 @@ export async function genererTour(
   return {
     story: storyFinale,
     aEteCorrige,
-    debugLore: { ...debugLore, ...debugMemoire, blocsContexte: [...(debugMemoire.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)] },
+    debugLore: {
+      ...debugLore,
+      ...debugMemoire,
+      blocsContexte: [
+        ...(debugMemoire.blocsContexte ?? []),
+        ...diagnosticNoyau(storyFinale),
+      ],
+    },
   };
 }
 
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
   const rafraichie = await rafraichirEtatDeriveAvantTour(story);
-  // Le tour régénéré ne doit pas laisser ses événements dans le noyau.
   const storyCourante = annulerTour(rafraichie, rafraichie.messages.at(-1)?.id ?? '');
   const messages = [...storyCourante.messages];
   const dernier = messages[messages.length - 1];
-  if (!dernier || dernier.role !== 'assistant') {
-    throw new Error('Aucune réponse à régénérer.');
-  }
+  if (!dernier || dernier.role !== 'assistant') throw new Error('Aucune réponse à régénérer.');
   const avantDernier = messages[messages.length - 2];
-  if (!avantDernier || avantDernier.role !== 'user') {
-    throw new Error('Aucun message joueur associé à régénérer.');
-  }
+  if (!avantDernier || avantDernier.role !== 'user') throw new Error('Aucun message joueur associé à régénérer.');
 
   const storySansDernierEchange: StoryState = {
     ...storyCourante,
