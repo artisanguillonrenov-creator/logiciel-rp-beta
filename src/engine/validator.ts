@@ -175,10 +175,10 @@ export async function validerReponseLLM({
     : 'Aucun fait établi.';
 
   // Si le mode adulte est actif, on retire le check de profil de la liste
-const checksAValider = profilEstAdulte(meta.profilContenu) 
-    ? NOMS_CHECKS.filter(c => c !== 'profil_contenu')
+  const checksAValider = profilEstAdulte(meta.profilContenu)
+    ? NOMS_CHECKS.filter((c) => c !== 'profil_contenu')
     : NOMS_CHECKS;
-  
+
   try {
     const sortie = await appellerModele({
       apiKey,
@@ -219,12 +219,12 @@ Pour chaque contrôle, marque ok=false uniquement en cas de problème réel :
       ],
     });
 
-    const checks: ResultatCheck[] = checksAValider.map((nom) => {
+    const match = sortie.match(/\{[\s\S]*\}/);
     if (!match) return rapportOk();
     const parsed = JSON.parse(match[0]);
     const brut = parsed?.checks ?? {};
 
-    const checks: ResultatCheck[] = NOMS_CHECKS.map((nom): ResultatCheck => {
+    const checks: ResultatCheck[] = checksAValider.map((nom): ResultatCheck => {
       const c = brut[nom];
       if (!c || typeof c !== 'object') return { nom, ok: true, gravite: 'mineur', raison: '' };
       const gravite: Gravite = ['mineur', 'modere', 'grave'].includes(c.gravite) ? c.gravite : 'modere';
