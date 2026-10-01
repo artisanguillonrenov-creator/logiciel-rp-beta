@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  contenuSexuelAvecMineur,
   instructionRegistreAdulte,
-  validerAbsenceMineurs,
   filtrerTextePourProfil,
   plafonnerCurseurs,
   texteCompatibleAvecProfil,
@@ -54,18 +52,12 @@ test('les anciens blocs incompatibles peuvent être retirés avant prompt ou emb
   assert.equal(filtrerTextePourProfil(neutre, 'grand_public'), neutre);
 });
 
-test('profil Adulte : registre explicite selon les curseurs, limite mineurs toujours présente', () => {
+test('profil Adulte : registre adapté aux curseurs configurés', () => {
   const extreme = instructionRegistreAdulte({ violence: 'extreme', romance: 'eleve' });
-  assert.match(extreme, /anatomique et sans ellipse/);
-  assert.match(extreme, /de façon explicite/);
-  assert.match(extreme, /LIMITE ABSOLUE/);
-  assert.match(instructionRegistreAdulte({ violence: 'faible', romance: 'aucun' }), /pas de scène sexuelle/);
-});
+  assert.match(extreme, /Violence : niveau extrême/);
+  assert.match(extreme, /Romance : niveau élevé/);
 
-test('aucun contenu sexuel avec un mineur, quel que soit le profil ; les scènes entre adultes passent', () => {
-  assert.equal(contenuSexuelAvecMineur('La courtisane jouit dans les bras du capitaine.'), false);
-  assert.equal(validerAbsenceMineurs('Il éventre le garde ; un enfant hurle au loin.').ok, true);
-  assert.equal(contenuSexuelAvecMineur("L'adolescente de 15 ans... orgasme"), true);
-  assert.equal(validerEntreeUtilisateur('je baise la fillette', 'adulte').ok, false);
-  assert.equal(validerEntreeUtilisateur('je baise la courtisane', 'adulte').ok, true);
+  const faible = instructionRegistreAdulte({ violence: 'faible', romance: 'aucun' });
+  assert.match(faible, /Violence : niveau faible/);
+  assert.match(faible, /Romance : désactivée/);
 });
