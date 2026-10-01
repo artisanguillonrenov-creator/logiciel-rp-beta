@@ -2,7 +2,7 @@ import type { ChatMessage } from '../openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
-import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE, profilEstAdulte } from './contenuAdulte';
+import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
 
 // Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
 // aussi de frontière pour la recherche sémantique de secours dans
@@ -150,7 +150,7 @@ Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}${forma
 Const style : ""
 
 [STYLE & FILTRE SYSTEME]
-${profilEstAdulte(ctx.meta.profilContenu) ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}
+${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}
 
 Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
