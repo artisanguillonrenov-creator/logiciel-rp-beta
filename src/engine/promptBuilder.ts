@@ -1,8 +1,7 @@
-import type { ChatMessage } from '../openrouter';
+import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
-import { IDENTITE_NARRATEUR } from './identiteNarrateur';
-import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE, profilEstAdulte } from './contenuAdulte';
+import { IDENTITE_NARRATIVE } from './identiteNarrative';
 
 // Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
 // aussi de frontière pour la recherche sémantique de secours dans
@@ -146,12 +145,11 @@ ${REGLES_IMMUABLES}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}${ctx
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
 Description : ${tronquer(ctx.meta.personnageDescription, 750)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}
-Const style : ""
+Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}
+${formaterContexte(ctx.meta)}`;
+  const style = `
 
-[STYLE & FILTRE SYSTEME]
-${profilEstAdulte(ctx.meta.profilContenu) ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}
-
+[STYLE]
 Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
 Rythme : ${libelleRythme(ctx.settings.rythme)}.
