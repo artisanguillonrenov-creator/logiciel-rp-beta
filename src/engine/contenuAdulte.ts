@@ -20,6 +20,11 @@ const VOCABULAIRE_VIOLENCE_GRAPHIQUE = [
   'organes a l\'air', 'vide ses tripes', 'agonise dans son sang',
 ];
 
+const INDICES_MINEUR = [
+  'enfant', 'adolescent', 'adolescente', 'mineur', 'mineure', 'garcon de', 'fille de',
+  'ecolier', 'ecoliere', 'collégien', 'collégienne', 'lycéen', 'lycéenne',
+];
+
 export const ENTREES_ADULTE_UNIQUEMENT = [
   '[MONDE] Mœurs Vestimentaires Féminines',
   '[MONDE] Mœurs Sexuelles d\'Elyndor',
@@ -70,11 +75,7 @@ export function plafonnerCurseurs(settings: StorySettings, profil: ProfilContenu
   };
 }
 
-/**
- * Directive M08 calculée à partir des curseurs réels. Elle décrit une cible
- * de rendu et non une autorisation supplémentaire : M13/les garde-fous de
- * l'application restent prioritaires.
- */
+/** Directive M08 calculée à partir des curseurs réels. */
 export function instructionRegistreAdulte(settings: StorySettings): string {
   return `${INSTRUCTION_REGISTRE_ADULTE}\nCurseurs actifs : violence=${settings.violence}; romance=${settings.romance}; humour=${settings.humour}; ton=${settings.ton}; longueur=${settings.longueur}; rythme=${settings.rythme}; créativité=${settings.creativite}.\nApplique chaque axe uniquement s'il est présent dans la scène. Ne modère pas silencieusement un niveau élevé/extrême pertinent et ne crée pas de contenu seulement pour atteindre un niveau.`;
 }
@@ -85,11 +86,35 @@ function motInterditDans(texte: string): string | undefined {
     ?? VOCABULAIRE_VIOLENCE_GRAPHIQUE.find((mot) => bas.includes(mot));
 }
 
+function contientSexuelExplicite(texte: string): boolean {
+  const bas = texte.toLowerCase();
+  return VOCABULAIRE_SEXUEL_EXPLICITE.some((mot) => bas.includes(mot));
+}
+
+function contientIndiceMineur(texte: string): boolean {
+  const bas = texte.toLowerCase();
+  if (INDICES_MINEUR.some((mot) => bas.includes(mot))) return true;
+  const ages = [...bas.matchAll(/\b(\d{1,2})\s*(?:ans|annees|années)\b/g)].map((m) => Number(m[1]));
+  return ages.some((age) => age >= 0 && age < 18);
+}
+
+/** Garde-fou indépendant du profil : aucune sexualisation explicite de mineur. */
+export function validerAbsenceMineurs(reponse: string): RapportValidation {
+  if (!contientSexuelExplicite(reponse) || !contientIndiceMineur(reponse)) return { ok: true, checks: [] };
+  return {
+    ok: false,
+    checks: [{
+      nom: 'profil_contenu',
+      ok: false,
+      gravite: 'grave',
+      raison: 'Contenu sexuel explicite associé à un personnage identifié comme mineur.',
+    }],
+  };
+}
+
 /**
  * Utilisé avant de réinjecter du contenu historique/lore dans un prompt ou
- * avant de l'envoyer au fournisseur d'embeddings. Un ancien récit créé en
- * mode Adulte ne doit pas contourner le profil après un passage en Grand
- * Public. Le filtrage reste heuristique, comme le validateur de sortie.
+ * avant de l'envoyer au fournisseur d'embeddings.
  */
 export function texteCompatibleAvecProfil(texte: string, profil: ProfilContenu | undefined): boolean {
   return profilEstAdulte(profil) || !motInterditDans(texte);
