@@ -1,7 +1,7 @@
 import type { ChatMessage } from '../openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { REGLES_IMMUABLES } from './rules';
-import { IDENTITE_NARRATEUR } from './identiteNarrateur';
+import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE, profilEstAdulte } from './contenuAdulte';
 
 // Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
