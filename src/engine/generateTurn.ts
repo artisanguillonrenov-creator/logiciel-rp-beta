@@ -54,7 +54,6 @@ import {
   ErreurProfilContenu,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
   instructionRegistreAdulte,
-  validerAbsenceMineurs,
   filtrerTextePourProfil,
   plafonnerCurseurs,
   texteCompatibleAvecProfil,
