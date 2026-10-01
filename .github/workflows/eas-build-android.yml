@@ -26,6 +26,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npx tsc --noEmit
+
       - run: npm install --global eas-cli
 
       - name: Configurer la mémoire Gradle
