@@ -242,7 +242,7 @@ export function construireCtxBase(
   const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
-  const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte, profil);
+  const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte ?? '', profil);
   const nomPersonnage = filtrer(story.meta.personnageNom) || 'Personnage';
   const metaSecurisee = profilAdulte
     ? story.meta
