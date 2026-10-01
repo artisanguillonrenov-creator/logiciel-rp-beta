@@ -30,6 +30,7 @@ import { useEtatCloud } from '../cloud/useEtatCloud';
 import { couleurs, espacement, interfaceV2, polices, rayon, styleOptionSelectionnee, stylePetitesCapitales, texteOptionSelectionnee } from '../theme/theme';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
+const CARTE_CONTINUER_HAUTEUR = 92;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Demarrage'>;
 
@@ -325,8 +326,11 @@ const styles = StyleSheet.create({
     padding: espacement.md + 2,
   },
   actionsCompact: { maxWidth: 460 },
+  // Hauteur fixe : sur Android, une image dont seule la largeur est donnée
+  // prend la hauteur de son fichier (portrait de 1 600 px) et étirait la
+  // carte au point de pousser les boutons sous la barre de navigation.
   carteContinuer: {
-    minHeight: 88,
+    height: CARTE_CONTINUER_HAUTEUR,
     flexDirection: 'row',
     alignItems: 'stretch',
     backgroundColor: 'rgba(4, 12, 28, 0.90)',
@@ -336,8 +340,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: espacement.xs,
   },
-  miniatureSauvegarde: { width: 88, minHeight: 88 },
-  miniatureVide: { width: 88, alignItems: 'center', justifyContent: 'center', backgroundColor: couleurs.fondCarteDense },
+  miniatureSauvegarde: { width: 80, height: '100%' },
+  miniatureVide: { width: 80, height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: couleurs.fondCarteDense },
   runeMiniature: { color: couleurs.dore, fontSize: 24 },
   contenuContinuer: { flex: 1, justifyContent: 'center', paddingHorizontal: espacement.md, paddingVertical: espacement.sm },
   labelContinuer: { ...stylePetitesCapitales, color: couleurs.dore, fontSize: 11 },
