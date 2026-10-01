@@ -408,7 +408,6 @@ export async function genererTour(
   const controlesLocaux = fusionnerRapports(
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
-    validerAbsenceMineurs(reponse),
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
@@ -475,10 +474,6 @@ export async function genererTour(
     if (nettoyee) reponse = nettoyee;
   }
 
-  if (!validerAbsenceMineurs(reponse).ok) {
-    annulerMesureTokens();
-    throw new ErreurProfilContenu("Cette réponse a été bloquée : Elyndor n'écrit jamais de scène sexuelle impliquant un enfant ou un adolescent. Réessaie avec une autre orientation.");
-  }
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
     annulerMesureTokens();
     throw new ErreurProfilContenu(
