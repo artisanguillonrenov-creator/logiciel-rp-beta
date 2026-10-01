@@ -1,6 +1,5 @@
 import type { Fact, MoteurInference, StoryMeta } from '../types';
 import { appellerModele } from './openrouter';
-import { profilEstAdulte } from './contenuAdulte';
 
 // Tournures qui trahissent une décision prise à la place du joueur —
 // violation de la règle 7 (l'IA ne contrôle jamais le joueur) et de
@@ -174,11 +173,7 @@ export async function validerReponseLLM({
     ? faits.map((f) => `- [${f.type}]${f.resolue ? ' (résolu)' : ''} ${f.texte}`).join('\n')
     : 'Aucun fait établi.';
 
-  // Si le mode adulte est actif, on retire le check de profil de la liste
-  const checksAValider = profilEstAdulte(meta.profilContenu)
-    ? NOMS_CHECKS.filter((c) => c !== 'profil_contenu')
-    : NOMS_CHECKS;
-
+  const checksAValider = NOMS_CHECKS;
   try {
     const sortie = await appellerModele({
       apiKey,
