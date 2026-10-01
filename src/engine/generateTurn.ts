@@ -53,6 +53,8 @@ import {
   ENTREES_ADULTE_UNIQUEMENT,
   ErreurProfilContenu,
   INSTRUCTION_REGISTRE_GRAND_PUBLIC,
+  instructionRegistreAdulte,
+  validerAbsenceMineurs,
   filtrerTextePourProfil,
   plafonnerCurseurs,
   texteCompatibleAvecProfil,
@@ -279,6 +281,7 @@ export function construireCtxBase(
     messagesRecents,
     messageJoueur,
     instructionRegistreOverride: profilAdulte ? undefined : INSTRUCTION_REGISTRE_GRAND_PUBLIC,
+    registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
     engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
@@ -405,6 +408,7 @@ export async function genererTour(
   const controlesLocaux = fusionnerRapports(
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
+    validerAbsenceMineurs(reponse),
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
@@ -471,6 +475,10 @@ export async function genererTour(
     if (nettoyee) reponse = nettoyee;
   }
 
+  if (!validerAbsenceMineurs(reponse).ok) {
+    annulerMesureTokens();
+    throw new ErreurProfilContenu("Cette réponse a été bloquée : Elyndor n'écrit jamais de scène sexuelle impliquant un enfant ou un adolescent. Réessaie avec une autre orientation.");
+  }
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
     annulerMesureTokens();
     throw new ErreurProfilContenu(

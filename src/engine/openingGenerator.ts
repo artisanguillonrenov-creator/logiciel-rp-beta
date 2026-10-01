@@ -10,7 +10,7 @@ import {
 import { configurationLLM, appellerModele } from './openrouter';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
-import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
+import { ErreurProfilContenu, validerAbsenceMineurs, validerProfilContenuHeuristique } from './contenuAdulte';
 import { INSTRUCTION_OUVERTURE, ecartsContratOuverture, requeteLoreOuverture } from './controleOuverture';
 import { verifierEntitesCanoniques } from './verificationCanon';
 import {
@@ -57,6 +57,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     ...raisonsEchec(validerAgentiviteHeuristique(texte, story.meta.personnageNom)),
     ...raisonsEchec(verifierEntitesCanoniques(texte, canon)),
     ...raisonsEchec(validerProfilContenuHeuristique(texte, appSettings.profilContenu)),
+    ...raisonsEchec(validerAbsenceMineurs(texte)),
     ...ecartsContratOuverture(texte, story.meta.personnageNom),
   ])].slice(0, 6);
 
@@ -93,7 +94,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   // Même verrou fail-closed que genererTour (voir generateTurn.ts) : un
   // dépassement du profil GRAND_PUBLIC est un échec de génération —
   // CreateScreen.valider() dégrade déjà vers l'écran vide habituel.
-  if (!validerProfilContenuHeuristique(contenu, appSettings.profilContenu).ok) {
+  if (!validerProfilContenuHeuristique(contenu, appSettings.profilContenu).ok || !validerAbsenceMineurs(contenu).ok) {
     annulerMesureTokens();
     throw new ErreurProfilContenu("Scène d'ouverture générée hors des limites du profil Grand public.");
   }

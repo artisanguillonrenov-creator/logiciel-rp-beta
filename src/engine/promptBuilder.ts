@@ -124,6 +124,8 @@ export interface ContexteConstruction {
   souvenirs?: string;
   // Blocs de la mémoire narrative (voir memoireNarrative.ts), déjà formatés.
   blocsContexte?: string;
+  // Registre du profil Adulte, juste après les règles immuables.
+  registreAdulte?: string;
   // Consigne machine ajoutée juste après les règles (noyau narratif V12).
   directiveEtat?: string;
 }
@@ -138,7 +140,7 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
 
 ${IDENTITE_NARRATIVE}
 
-${REGLES_IMMUABLES}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
+${REGLES_IMMUABLES}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
 
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
