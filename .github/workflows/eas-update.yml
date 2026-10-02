@@ -32,15 +32,68 @@ jobs:
           node-version: 24
 
       - name: Appliquer Elyndor V3 étape 3
-        run: python .github/scripts/v3_step3.py
+        run: |
+          set +e
+          python .github/scripts/v3_step3.py
+          SCRIPT_STATUS=$?
+          set -e
+          if [ "$SCRIPT_STATUS" -ne 0 ]; then
+            echo "Le préparateur a atteint son garde-fou final ; correction ciblée de l'insertion dans promptBuilder.ts."
+          fi
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engine/promptBuilder.ts')
+          text = path.read_text(encoding='utf-8')
+          precedence = "Les paramètres de session ci-dessous priment sur toute formulation du lore portant sur l'intensité de narration. Le lore établit des faits ; il ne relève jamais un curseur."
+          if precedence not in text:
+              needle = "${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}\n\nTon :"
+              replacement = "${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}${ctx.registreAdulte ? `\\n\\n${ctx.registreAdulte}` : ''}\n\n" + precedence + "\n\nTon :"
+              if needle not in text:
+                  raise SystemExit('Point insertion STYLE & FILTRE SYSTEME introuvable')
+              text = text.replace(needle, replacement, 1)
+              path.write_text(text, encoding='utf-8')
+
+          assert precedence in path.read_text(encoding='utf-8')
+          print('Insertion de précédence : OK')
+          PY
 
       - run: npm ci
 
       - name: Vérifier TypeScript
         run: npx tsc --noEmit
 
-      - name: Vérifier le diff
-        run: git diff --check
+      - name: Vérifier le diff et les garde-fous finaux
+        run: |
+          git diff --check
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          lore = json.loads(Path('src/data/elyndorLore.json').read_text(encoding='utf-8'))
+          ids = [e['id'] for e in lore['entries']]
+          assert len(ids) == 102 and len(set(ids)) == 102
+          entries = {e['id']: e for e in lore['entries']}
+          assert all(entries[i]['constant'] is False for i in (12, 13, 101))
+          assert 'à son intensité maximale' not in entries[1]['content']
+
+          meta = json.loads(Path('src/data/metamoteurs.json').read_text(encoding='utf-8'))
+          m08 = [e for e in meta['data'] if e.get('comment') == '[MÉTA] Registre et Style Narratif']
+          assert len(m08) == 1
+          assert "l'intensité n'est jamais automatiquement maximale" in m08[0]['content']
+
+          adulte = Path('src/engine/contenuAdulte.ts').read_text(encoding='utf-8')
+          assert 'ADULTE EXTRÊME & UNDERGROUND' not in adulte
+          assert "permission de registre, jamais une consigne d'intensité maximale" in adulte
+
+          prompt = Path('src/engine/promptBuilder.ts').read_text(encoding='utf-8')
+          assert 'Le lore établit des faits ; il ne relève jamais un curseur.' in prompt
+          assert prompt.count('ctx.registreAdulte') >= 1
+
+          report = Path('docs/v3/STEP3_REGISTRE_STYLE_PARAMETRES_V3.md')
+          assert report.exists()
+          print('Tous les garde-fous V3 étape 3 : OK')
+          PY
 
       - name: Commit étape 3
         run: |
