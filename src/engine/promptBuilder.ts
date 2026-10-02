@@ -4,41 +4,114 @@ import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
 
-// Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
-// aussi de frontière pour la recherche sémantique de secours dans
-// l'historique (src/engine/searchHistorique.ts).
+// Fenêtre de messages bruts envoyée systématiquement (L0).
 export const NB_MESSAGES_RECENTS = 10;
 
-// Les modèles locaux ont une fenêtre plus étroite que les modèles distants.
-// Ces plafonds sont exprimés en caractères, volontairement conservateurs :
-// ils laissent de la place à la réponse et évitent de dépasser la fenêtre
-// après tokenisation, qui varie selon le fournisseur.
-export const BUDGET_SYSTEM_DISTANT = 24000;
+// 32k caractères restent très conservateurs pour les modèles distants tout
+// en donnant assez d'air au contexte utile. Le local garde un budget plus
+// serré. Les allocations internes garantissent désormais les blocs
+// prioritaires au lieu de tronquer aveuglément la fin du prompt.
+export const BUDGET_SYSTEM_DISTANT = 32000;
 export const BUDGET_SYSTEM_LOCAL = 12000;
 export const BUDGET_MESSAGE_RECENT = 900;
 
-function tronquer(texte: string, longueur: number): string {
+function tronquerSilencieusement(texte: string, longueur: number): string {
+  if (longueur <= 0) return '';
   if (texte.length <= longueur) return texte;
-  return `${texte.slice(0, Math.max(0, longueur - 34)).trimEnd()}\n[… contexte tronqué …]`;
+  if (longueur === 1) return '…';
+  return `${texte.slice(0, Math.max(0, longueur - 1)).trimEnd()}…`;
 }
 
 function formaterFaits(faits: Fact[], budget = 3200): string {
   if (faits.length === 0) return 'Aucun fait clé enregistré pour l’instant.';
-  return tronquer(faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'), budget);
+  return tronquerSilencieusement(
+    faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'),
+    budget,
+  );
 }
 
-function formaterLore(entries: LoreEntry[], titre: string, budget: number, longueurEntree: number): string {
-  if (entries.length === 0 || budget <= 0) return '';
-  const blocs: string[] = [];
-  let restant = budget;
-  for (const entry of entries) {
-    const bloc = `### ${entry.titre}\n${tronquer(entry.contenu, longueurEntree)}`;
-    if (bloc.length > restant && blocs.length > 0) break;
-    blocs.push(tronquer(bloc, restant));
-    restant -= blocs.at(-1)!.length + 2;
-    if (restant <= 80) break;
+interface ResultatBlocEntrees {
+  texte: string;
+  injectees: string[];
+  tronquees: string[];
+  excluesBudget: string[];
+}
+
+function coutEnteteEntree(entry: LoreEntry): number {
+  return `### ${entry.titre}\n`.length + 2;
+}
+
+/**
+ * Répartit le budget entre les entrées au lieu de remplir le prompt avec les
+ * premières puis d'abandonner silencieusement les suivantes.
+ *
+ * `garantirToutes` est utilisé pour les 15 anciens métamoteurs et le socle
+ * canon : chaque entrée reçoit au moins un extrait, quitte à être compactée.
+ */
+function formaterEntrees(
+  entries: LoreEntry[],
+  titre: string,
+  budget: number,
+  options: { garantirToutes?: boolean; minContenu?: number; maxContenu?: number } = {},
+): ResultatBlocEntrees {
+  if (entries.length === 0 || budget <= 0) {
+    return { texte: '', injectees: [], tronquees: [], excluesBudget: entries.map((e) => e.titre) };
   }
-  return blocs.length ? `\n\n[${titre}]\n${blocs.join('\n\n')}` : '';
+
+  const enteteSection = `\n\n[${titre}]\n`;
+  if (enteteSection.length >= budget) {
+    return { texte: '', injectees: [], tronquees: [], excluesBudget: entries.map((e) => e.titre) };
+  }
+
+  const garantirToutes = options.garantirToutes ?? false;
+  const minContenu = Math.max(40, options.minContenu ?? 160);
+  const maxContenu = Math.max(minContenu, options.maxContenu ?? 650);
+  let restant = budget - enteteSection.length;
+  const blocs: string[] = [];
+  const injectees: string[] = [];
+  const tronquees: string[] = [];
+  const excluesBudget: string[] = [];
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const enteteEntree = `### ${entry.titre}\n`;
+    const restantes = entries.slice(i + 1);
+    const reserveRestantes = garantirToutes
+      ? restantes.reduce((total, e) => total + coutEnteteEntree(e) + minContenu, 0)
+      : 0;
+    const disponibleContenu = Math.min(maxContenu, restant - enteteEntree.length - reserveRestantes);
+
+    if (disponibleContenu < (garantirToutes ? 24 : minContenu)) {
+      excluesBudget.push(entry.titre, ...restantes.map((e) => e.titre));
+      break;
+    }
+
+    const contenu = tronquerSilencieusement(entry.contenu, disponibleContenu);
+    const bloc = `${enteteEntree}${contenu}`;
+    blocs.push(bloc);
+    injectees.push(entry.titre);
+    if (contenu.length < entry.contenu.length) tronquees.push(entry.titre);
+    restant -= bloc.length + 2;
+
+    if (restant <= 0) {
+      excluesBudget.push(...entries.slice(i + 1).map((e) => e.titre));
+      break;
+    }
+  }
+
+  return {
+    texte: blocs.length ? `${enteteSection}${blocs.join('\n\n')}` : '',
+    injectees,
+    tronquees,
+    excluesBudget,
+  };
+}
+
+function formaterSection(titre: string, contenu: string, budget: number): string {
+  if (!contenu.trim() || budget <= 0) return '';
+  const entete = `\n\n[${titre}]\n`;
+  if (entete.length >= budget) return '';
+  return `${entete}${tronquerSilencieusement(contenu, budget - entete.length)}`;
 }
 
 function instructionLongueur(longueur: StorySettings['longueur']): string {
@@ -89,7 +162,7 @@ function libelleRythme(niveau: StorySettings['rythme']): string {
   switch (niveau) {
     case 'lent': return "prends ton temps : détails, ambiance, scènes qui respirent avant que l'intrigue n'avance";
     case 'rapide': return "avance vite : va à l'essentiel, enchaîne les événements sans t'attarder sur les transitions";
-    default: return "un rythme équilibré, ni précipité ni étiré";
+    default: return 'un rythme équilibré, ni précipité ni étiré';
   }
 }
 
@@ -97,14 +170,19 @@ function libelleTon(ton: StorySettings['ton']): string {
   switch (ton) {
     case 'heroique_epique': return 'Héroïque et épique — aventures grandioses, enjeux qui dépassent le personnage, souffle inspirant.';
     case 'mysterieux_intrigant': return 'Mystérieux et intrigant — secrets, complots, révélations dosées, tension permanente.';
-    case 'leger_aventureux': return "Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.";
+    case 'leger_aventureux': return 'Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.';
     default: return 'Sombre et réaliste — ambiance immersive, dure et crédible.';
   }
 }
 
 function formaterContexte(meta: StoryMeta): string {
   const { lieu, ambiance, dateChronique, objectifs } = meta.contexte;
-  const lignes = [lieu && `Lieu : ${lieu}`, ambiance && `Ambiance : ${ambiance}`, dateChronique && `Période : ${dateChronique}`, objectifs && `Objectifs du personnage : ${objectifs}`].filter(Boolean);
+  const lignes = [
+    lieu && `Lieu : ${lieu}`,
+    ambiance && `Ambiance : ${ambiance}`,
+    dateChronique && `Période : ${dateChronique}`,
+    objectifs && `Objectifs du personnage : ${objectifs}`,
+  ].filter(Boolean);
   return lignes.length ? `\n\n[CONTEXTE DE L'HISTOIRE]\n${lignes.join('\n')}` : '';
 }
 
@@ -123,11 +201,8 @@ export interface ContexteConstruction {
   etatMonde?: string;
   engagementsEtRelations?: string;
   souvenirs?: string;
-  // Blocs de la mémoire narrative (voir memoireNarrative.ts), déjà formatés.
   blocsContexte?: string;
-  // Registre du profil Adulte, juste après les règles immuables.
   registreAdulte?: string;
-  // Consigne machine ajoutée juste après les règles (noyau narratif V12).
   directiveEtat?: string;
 }
 
@@ -135,7 +210,29 @@ export interface OptionsPrompt {
   budgetSysteme?: number;
 }
 
-export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
+export interface DiagnosticPrompt {
+  caracteres: number;
+  budget: number;
+  metamoteursSelectionnes: number;
+  metamoteursInjectes: string[];
+  metamoteursTronques: string[];
+  metamoteursExclusBudget: string[];
+  loreSelectionne: number;
+  loreInjecte: string[];
+  loreTronque: string[];
+  loreExclusBudget: string[];
+  promptTronque: boolean;
+}
+
+export interface ResultatPrompt {
+  prompt: string;
+  diagnostic: DiagnosticPrompt;
+}
+
+export function construireSystemPromptAvecDiagnostic(
+  ctx: ContexteConstruction,
+  options: OptionsPrompt = {},
+): ResultatPrompt {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
   const entete = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
@@ -144,9 +241,9 @@ ${IDENTITE_NARRATIVE}
 ${REGLES_IMMUABLES}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
 
 [PERSONNAGE DE {{user}}]
-Nom : ${tronquer(ctx.meta.personnageNom, 180)}
-Description : ${tronquer(ctx.meta.personnageDescription, 750)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}
+Nom : ${tronquerSilencieusement(ctx.meta.personnageNom, 180)}
+Description : ${tronquerSilencieusement(ctx.meta.personnageDescription, 750)}
+Point de départ de l'histoire : ${tronquerSilencieusement(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}
 Const style : ""
 
 [STYLE & FILTRE SYSTEME]
@@ -163,40 +260,124 @@ Humour : ${libelleHumour(ctx.settings.humour)}.
 Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
 KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
-${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
+${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquerSilencieusement(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-  const resume = `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(budget * 0.08))}`;
-  const faits = `\n\n[FAITS CLÉS ÉTABLIS]\n${formaterFaits(ctx.faits, Math.floor(budget * 0.10))}`;
-  const blocs = ctx.blocsContexte ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.floor(budget * 0.14))}` : '';
-  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.20), 650);
-  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.14));
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
-  const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.30), 900);
+  const disponible = Math.max(0, budget - entete.length);
+  const bMeta = Math.floor(disponible * 0.34);
+  const bLoreObligatoire = Math.floor(disponible * 0.18);
+  const bLoreOptionnel = Math.floor(disponible * 0.10);
+  const bBlocs = Math.floor(disponible * 0.12);
+  const bFaits = Math.floor(disponible * 0.08);
+  const bResume = Math.floor(disponible * 0.06);
+  const bEtat = Math.floor(disponible * 0.07);
+  const bSouvenirs = Math.max(0, disponible - bMeta - bLoreObligatoire - bLoreOptionnel - bBlocs - bFaits - bResume - bEtat);
 
-  // L'en-tête (règles, personnage) et le style ne sont jamais tronqués :
-  // auparavant, un prompt trop long perdait sa fin, donc le style et la
-  // consigne de correction. Seul le milieu est rogné, par la fin — les
-  // métamoteurs, règles de mise en scène générales, partent en premier.
-  const milieu = tronquer(
-  `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
-  Math.max(0, budget - entete.length),
-);
-return tronquer(`${entete}${milieu}`, budget);
+  const loreObligatoire = ctx.loreElyndor.filter((e) => e.score === undefined || (e.score ?? 0) > 1.5);
+  const idsObligatoires = new Set(loreObligatoire.map((e) => e.id));
+  const loreOptionnel = ctx.loreElyndor.filter((e) => !idsObligatoires.has(e.id));
+
+  const meta = formaterEntrees(
+    ctx.metamoteursSelectionnes,
+    'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE',
+    bMeta,
+    { garantirToutes: true, minContenu: 120, maxContenu: 620 },
+  );
+  const loreCanon = formaterEntrees(
+    loreObligatoire,
+    'LORE ELYNDOR — SOCLE ET ANCRES CANON',
+    bLoreObligatoire,
+    { garantirToutes: true, minContenu: 140, maxContenu: 520 },
+  );
+  const lorePertinent = formaterEntrees(
+    loreOptionnel,
+    'LORE ELYNDOR PERTINENT',
+    bLoreOptionnel,
+    { garantirToutes: false, minContenu: 170, maxContenu: 430 },
+  );
+
+  const resume = formaterSection(
+    "RÉSUMÉ DE L'HISTOIRE JUSQU'ICI",
+    ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.",
+    bResume,
+  );
+  const faits = formaterSection('FAITS CLÉS ÉTABLIS', formaterFaits(ctx.faits, bFaits), bFaits);
+  const blocs = formaterSection('MÉMOIRE NARRATIVE PERTINENTE', ctx.blocsContexte ?? '', bBlocs);
+  const etat = formaterSection(
+    'ÉTAT ACTUEL ET DIRECTION',
+    [ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'),
+    bEtat,
+  );
+  const souvenirs = ctx.souvenirs ? tronquerSilencieusement(ctx.souvenirs, bSouvenirs) : '';
+
+  // Priorité matérielle dans le prompt : règles/en-tête, métamoteurs,
+  // socle canon, faits/état/mémoire, puis lore supplémentaire et souvenirs.
+  // Aucun marqueur technique de troncature n'est envoyé au modèle.
+  const brut = `${entete}${meta.texte}${loreCanon.texte}${faits}${etat}${blocs}${resume}${lorePertinent.texte}${souvenirs}`;
+  const prompt = tronquerSilencieusement(brut, budget);
+  const promptTronque = prompt.length < brut.length;
+
+  return {
+    prompt,
+    diagnostic: {
+      caracteres: prompt.length,
+      budget,
+      metamoteursSelectionnes: ctx.metamoteursSelectionnes.length,
+      metamoteursInjectes: meta.injectees,
+      metamoteursTronques: meta.tronquees,
+      metamoteursExclusBudget: meta.excluesBudget,
+      loreSelectionne: ctx.loreElyndor.length,
+      loreInjecte: [...loreCanon.injectees, ...lorePertinent.injectees],
+      loreTronque: [...loreCanon.tronquees, ...lorePertinent.tronquees],
+      loreExclusBudget: [...loreCanon.excluesBudget, ...lorePertinent.excluesBudget],
+      promptTronque,
+    },
+  };
+}
+
+export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
+  return construireSystemPromptAvecDiagnostic(ctx, options).prompt;
+}
+
+export interface ResultatMessagesPrompt {
+  messages: ChatMessage[];
+  diagnostic: DiagnosticPrompt;
+}
+
+export function construireMessagesAvecDiagnostic(
+  ctx: ContexteConstruction,
+  options: OptionsPrompt = {},
+): ResultatMessagesPrompt {
+  const { prompt, diagnostic } = construireSystemPromptAvecDiagnostic(ctx, options);
+  const recents = ctx.messagesRecents.slice(-NB_MESSAGES_RECENTS).map((m) => ({
+    role: m.role,
+    content: tronquerSilencieusement(m.content, BUDGET_MESSAGE_RECENT),
+  } as ChatMessage));
+  return {
+    messages: [
+      { role: 'system', content: prompt },
+      ...recents,
+      { role: 'user', content: tronquerSilencieusement(ctx.messageJoueur, 2000) },
+    ],
+    diagnostic,
+  };
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
-  const systemPrompt = construireSystemPrompt(ctx, options);
-  const recents = ctx.messagesRecents.slice(-NB_MESSAGES_RECENTS).map((m) => ({
-    role: m.role,
-    content: tronquer(m.content, BUDGET_MESSAGE_RECENT),
-  } as ChatMessage));
-  return [{ role: 'system', content: systemPrompt }, ...recents, { role: 'user', content: tronquer(ctx.messageJoueur, 2000) }];
+  return construireMessagesAvecDiagnostic(ctx, options).messages;
 }
 
 export function temperaturePourCreativite(creativite: StorySettings['creativite']): number {
-  switch (creativite) { case 'faible': return 0.5; case 'elevee': return 1.1; default: return 0.85; }
+  switch (creativite) {
+    case 'faible': return 0.5;
+    case 'elevee': return 1.1;
+    default: return 0.85;
+  }
 }
 
 export function maxTokensPourLongueur(longueur: StorySettings['longueur']): number {
-  switch (longueur) { case 'courte': return 350; case 'longue': return 1100; default: return 650; }
+  switch (longueur) {
+    case 'courte': return 350;
+    case 'longue': return 1100;
+    default: return 650;
+  }
 }
