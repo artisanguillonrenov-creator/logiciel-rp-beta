@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   migrate-step7:
-    if: ${{ !contains(github.event.head_commit.message, 'V3 étape 7') }}
+    if: ${{ github.event.head_commit.message != 'V3 étape 7 — cultures réellement distinctes' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
