@@ -1,0 +1,24 @@
+name: Elyndor V3 Etape 6
+
+on:
+  push:
+    branches:
+      - claude/new-session-glwy6e
+
+jobs:
+  validate-lore-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Tests
+        run: npm test
+      - name: TypeScript
+        run: npx tsc --noEmit
