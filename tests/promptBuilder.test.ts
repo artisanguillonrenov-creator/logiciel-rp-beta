@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  BUDGET_CONVERSATION_LOCAL,
   BUDGET_SYSTEM_LOCAL,
   construireMessages,
+  selectionnerMessagesRecents,
 } from '../src/engine/promptBuilder';
 import { creerNouvelleHistoire } from '../src/engine/story';
 
@@ -26,26 +28,59 @@ function contexte() {
     })),
     metamoteursSelectionnes: Array.from({ length: 15 }, (_, i) => ({ id: `m-${i}`, titre: `Meta ${i}`, contenu: `Instruction de scène ${i} `.repeat(150) })),
     loreElyndor: Array.from({ length: 20 }, (_, i) => ({ id: `l-${i}`, titre: `Lore ${i}`, contenu: `Détail de lore ${i} `.repeat(120), score: 0.9 })),
-    messagesRecents: Array.from({ length: 10 }, (_, i) => ({ id: `msg-${i}`, role: i % 2 ? 'assistant' as const : 'user' as const, content: 'Message récent '.repeat(200), timestamp: i })),
-    messageJoueur: 'Je regarde autour de moi. '.repeat(100),
+    messagesRecents: Array.from({ length: 20 }, (_, i) => ({ id: `msg-${i}`, role: i % 2 ? 'assistant' as const : 'user' as const, content: `Message récent ${i} `.repeat(40), timestamp: i })),
+    messageJoueur: 'Je regarde autour de moi. '.repeat(20),
   };
 }
 
 test('le budget local borne le prompt sans retirer les règles immuables', () => {
-  const [systeme] = construireMessages(contexte(), { budgetSysteme: BUDGET_SYSTEM_LOCAL });
+  const [systeme] = construireMessages(contexte(), { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: BUDGET_CONVERSATION_LOCAL });
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);
   assert.match(systeme.content, /AUTONOMIE DU JOUEUR STRICTE/);
   assert.match(systeme.content, /CONTRADICTIONS INTERDITES/);
 });
 
-test('les messages récents sont bornés individuellement', () => {
-  const messages = construireMessages(contexte(), { budgetSysteme: BUDGET_SYSTEM_LOCAL });
-  assert.ok(messages.slice(1, -1).every((message) => message.content.length <= 950));
-  assert.ok(messages.at(-1)!.content.length <= 2030);
+test('les messages récents sont conservés entiers sans limite fixe de dix messages', () => {
+  const ctx = contexte();
+  const messages = construireMessages(ctx, { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: 20000 });
+  const recents = messages.slice(1, -1);
+  assert.ok(recents.length > 10);
+  assert.equal(recents.at(-1)!.content, ctx.messagesRecents.at(-1)!.content);
+  assert.equal(messages.at(-1)!.content, ctx.messageJoueur);
+});
+
+test('un long message récent n’est jamais coupé en plein milieu', () => {
+  const long = 'Narration complète. '.repeat(300);
+  const ctx = {
+    ...contexte(),
+    messagesRecents: [{ id: 'long', role: 'assistant' as const, content: long, timestamp: 1 }],
+    messageJoueur: 'Je réponds.',
+  };
+  const messages = construireMessages(ctx, { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: 2000 });
+  assert.equal(messages[1].content, long);
+});
+
+test('la sélection récente est dynamique selon le budget global', () => {
+  const messages = Array.from({ length: 30 }, (_, i) => ({
+    id: `m-${i}`,
+    role: i % 2 ? 'assistant' as const : 'user' as const,
+    content: `court-${i}`,
+    timestamp: i,
+  }));
+  const large = selectionnerMessagesRecents(messages, 5000);
+  const petit = selectionnerMessagesRecents(messages, 150);
+  assert.equal(large.length, 30);
+  assert.ok(petit.length < large.length);
+  assert.equal(petit.at(-1)!.id, 'm-29');
+});
+
+test('aucun marqueur technique de contexte tronqué n’est injecté dans le prompt', () => {
+  const messages = construireMessages({ ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(1000) }, { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: BUDGET_CONVERSATION_LOCAL });
+  assert.ok(messages.every((message) => !message.content.includes('contexte tronqué')));
 });
 
 test('identité narrative en tête et style jamais tronqué, même en budget local saturé', () => {
-  const [systeme] = construireMessages({ ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(400) }, { budgetSysteme: BUDGET_SYSTEM_LOCAL });
+  const [systeme] = construireMessages({ ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(400) }, { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: BUDGET_CONVERSATION_LOCAL });
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);
   assert.match(systeme.content, /POINT DE VUE: dans la narration uniquement/);
   assert.match(systeme.content, /\[STYLE\][\s\S]*Format des dialogues des PNJ/);
