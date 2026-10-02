@@ -14,9 +14,12 @@ import {
   construireSystemPrompt,
   maxTokensPourLongueur,
   temperaturePourCreativite,
-  NB_MESSAGES_RECENTS,
+  selectionnerMessagesRecents,
+  budgetMessagesRecents,
   BUDGET_SYSTEM_LOCAL,
   BUDGET_SYSTEM_DISTANT,
+  BUDGET_CONVERSATION_LOCAL,
+  BUDGET_CONVERSATION_DISTANT,
   type ContexteConstruction,
 } from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
@@ -76,6 +79,12 @@ const MARGE_TOKENS_ETAT = 350;
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
+
+function budgetConversationPourApp(appSettings: AppSettings): number {
+  return appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
+    ? BUDGET_CONVERSATION_LOCAL
+    : BUDGET_CONVERSATION_DISTANT;
+}
 
 /** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
 export function corpusCanonHistoire(story: StoryState, messageJoueur: string): string {
@@ -157,7 +166,19 @@ export async function calculerSelectionLore(
         (e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
       );
 
-  const messagesAnciensBruts = story.messages.slice(0, Math.max(0, story.messages.length - NB_MESSAGES_RECENTS));
+  // La frontière entre contexte direct et recherche historique n'est plus
+  // un nombre fixe de messages. Elle dépend du budget réel de conversation
+  // du moteur utilisé. Tout ce qui ne tient pas dans le contexte direct
+  // devient automatiquement consultable par la recherche historique.
+  const budgetConversation = budgetConversationPourApp(appSettings);
+  const messagesRecentsDirects = selectionnerMessagesRecents(
+    story.messages,
+    budgetMessagesRecents(messageJoueur, budgetConversation),
+  );
+  const messagesAnciensBruts = story.messages.slice(
+    0,
+    Math.max(0, story.messages.length - messagesRecentsDirects.length),
+  );
   const messagesAnciens = profilAdulte
     ? messagesAnciensBruts
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
@@ -391,12 +412,14 @@ export async function genererTour(
   // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
   // il rognait la scène ou arrivait coupé.
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
-  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const moteurEtroit = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur';
+  const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
 
   commencerMesureTokens();
   const premiere = extraireEnveloppeEtat(await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
+    messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
     temperature,
     maxTokens,
   }));
@@ -449,7 +472,7 @@ export async function genererTour(
       // celui de la nouvelle apparaître dans le récit.
       const regeneree = extraireEnveloppeEtat(await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
-        messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt }),
+        messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
       }));
