@@ -1,9 +1,9 @@
 import type { LoreEntry, Message } from '../types';
 
-// Recherche lexicale locale (reprise de la V13) : repli quand aucun
-// fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
-// serveur local sans clé OpenRouter. Sans elle, le tour partait sans aucun
-// lore ni souvenir ; ici on classe par mots communs, sans appel réseau.
+// Recherche lexicale locale : repli quand aucun fournisseur d'embeddings
+// n'est réellement utilisable. Le repli doit rester suffisamment riche pour
+// conserver un contexte exploitable, sans prétendre remplacer la recherche
+// sémantique.
 
 export interface BudgetRecherche {
   maxResultats: number;
@@ -17,7 +17,11 @@ export interface ResultatLexical<T> {
   extrait: string;
 }
 
-export const BUDGET_LORE: BudgetRecherche = { maxResultats: 4, maxCaracteres: 1800, maxCaracteresParResultat: 520 };
+// Le précédent plafond à 4 résultats expliquait directement les diagnostics
+// à 5 entrées après ajout d'une ancre canon. Le repli peut désormais retenir
+// jusqu'à 14 fiches pertinentes ; le constructeur de prompt décidera ensuite
+// lesquelles tiennent réellement dans le budget final.
+export const BUDGET_LORE: BudgetRecherche = { maxResultats: 14, maxCaracteres: 5600, maxCaracteresParResultat: 480 };
 export const BUDGET_HISTORIQUE: BudgetRecherche = { maxResultats: 3, maxCaracteres: 1500, maxCaracteresParResultat: 520 };
 
 const MOTS_VIDES = new Set([
@@ -66,7 +70,10 @@ function extraire(texte: string, termes: string[], max: number): string {
     const i = normalise.indexOf(terme);
     if (i >= 0 && (premier < 0 || i < premier)) premier = i;
   }
-  const depart = Math.min(premier < 0 ? 0 : Math.max(0, premier - Math.floor(max * 0.35)), Math.max(0, texte.length - max));
+  const depart = Math.min(
+    premier < 0 ? 0 : Math.max(0, premier - Math.floor(max * 0.35)),
+    Math.max(0, texte.length - max),
+  );
   return `${depart > 0 ? '…' : ''}${texte.slice(depart, depart + max).trim()}${depart + max < texte.length ? '…' : ''}`;
 }
 
@@ -82,8 +89,7 @@ export interface OptionsClassement<T> {
 
 /**
  * Score = part des termes de la requête présents (×5) + fréquence amortie
- * + bonus titre + bonus expression exacte + léger bonus de fraîcheur. Les
- * résultats sont ensuite plafonnés en nombre et en caractères.
+ * + bonus titre + bonus expression exacte + léger bonus de fraîcheur.
  */
 export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexical<T>[] {
   const { items, texteDe, titreDe, dateDe, budget } = options;
@@ -125,9 +131,10 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   let total = 0;
   for (const note of notes.sort((a, b) => b.score - a.score)) {
     if (note.score <= 0 || retenus.length >= budget.maxResultats) break;
-    if (retenus.length && total + note.extrait.length + 2 > budget.maxCaracteres) break;
-    const extrait = note.extrait.slice(0, Math.max(0, budget.maxCaracteres - total));
-    if (!extrait) break;
+    const restant = budget.maxCaracteres - total;
+    if (restant <= 0) break;
+    const extrait = note.extrait.slice(0, restant);
+    if (!extrait) continue;
     retenus.push({ ...note, extrait });
     total += extrait.length + 2;
   }
