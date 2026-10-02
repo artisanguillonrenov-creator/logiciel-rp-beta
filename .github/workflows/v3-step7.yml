@@ -1,0 +1,50 @@
+name: Elyndor V3 Etape 7
+
+on:
+  push:
+    branches:
+      - claude/new-session-glwy6e
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-step7:
+    if: ${{ !contains(github.event.head_commit.message, 'V3 étape 7') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Appliquer étape 7
+        run: node scripts/v3-step7-cultures.js
+      - name: Validation TypeScript
+        run: npx tsc --noEmit
+      - name: Garde-fous finaux
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('src/data/elyndorLore.json', 'utf8'));
+          const cultures = data.entries.filter(e => e.category === 'CULTURE' && String(e.title).startsWith('[CULTURE]['));
+          if (data.entry_count !== 214 || data.entries.length !== 214) throw new Error('entry_count invalide');
+          if (cultures.length !== 14) throw new Error(`14 cultures attendues, trouvé ${cultures.length}`);
+          const cities = ['PARIS','TOKYO','DELHI','OSLO','ISTANBUL','LAGOS','JOHANNESBURG','MEXICO','NEW YORK','BOGOTÁ','SYDNEY','AUCKLAND','ZURICH','KATMANDOU'];
+          for (const city of cities) if (!cultures.some(e => e.title.includes(`[${city}]`))) throw new Error(`Culture absente: ${city}`);
+          console.log('Garde-fous Step 7 OK');
+          NODE
+      - name: Commit étape 7
+        run: |
+          git config user.name "artisanguillonrenov-creator"
+          git config user.email "artisanguillonrenov@gmail.com"
+          git add src/data/elyndorLore.json docs/v3/STEP7_CULTURES_DISTINCTES_V3.md
+          git diff --cached --exit-code && { echo 'Aucun changement à committer'; exit 1; } || true
+          git commit -m "V3 étape 7 — cultures réellement distinctes"
+          git push origin HEAD:claude/new-session-glwy6e
