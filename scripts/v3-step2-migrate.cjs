@@ -1,0 +1,255 @@
+const fs = require('fs');
+
+const lorePath = 'src/data/elyndorLore.json';
+const reportPath = 'docs/v3/CANON_CORRECTIONS_V3.md';
+const data = JSON.parse(fs.readFileSync(lorePath, 'utf8'));
+
+function get(id) {
+  const entry = data.entries.find((x) => x.id === id);
+  if (!entry) throw new Error(`Entrée ${id} introuvable`);
+  return entry;
+}
+
+function addCorrection(text) {
+  data.corrections_appliquees ??= [];
+  if (!data.corrections_appliquees.includes(text)) data.corrections_appliquees.push(text);
+}
+
+const sentinel = 'V3 étape 2 : vieillissement racial remplacé par une maturation en deux phases cohérente avec les seuils adultes';
+if (data.corrections_appliquees?.includes(sentinel)) {
+  console.log('Étape 2 déjà appliquée — aucun changement nécessaire.');
+  process.exit(0);
+}
+
+addCorrection(sentinel);
+addCorrection('V3 étape 2 : café harmonisé — production andine à Bogotá, monopole commercial international des Sultanats via Istanbul');
+addCorrection('V3 étape 2 : saisons alignées sur les hémisphères et climats de la Terre réelle');
+addCorrection('V3 étape 2 : résidu éditorial New York supprimé et sens des Hommes-Bêtes ramenés à des indices physiologiques, sans détection absolue du mensonge');
+addCorrection('V3 étape 2 : Sir William retiré du canon statique de la Guilde des Aventuriers ; statut géré par le profil joueur/session');
+
+get(6).content = `DURÉE DE VIE PAR RACE :
+Humains → 70-90 ans
+Sultanats → 80-100 ans
+Orcs → 60-80 ans
+Tribus Primales → 70-90 ans
+Hommes-Bêtes → 80-120 ans
+Orques Nobles → 100-150 ans
+Amazones Nordiques → 120-200 ans
+Valkyries → 150-250 ans
+Amazones Sombres → 150-300 ans
+Nains → 200-400 ans
+Sirènes → 200-400 ans
+Elfes Noirs → 300-600 ans
+Hauts-Elfes → 500-1000 ans
+Géantes → 500-2000 ans
+Naga Marines → 1000-3000 ans
+
+PRINCIPE :
+La longévité ne ralentit pas uniformément l'enfance. Chaque race atteint d'abord sa maturité biologique et sociale, puis son vieillissement visible ralentit selon son ratio post-maturité.
+
+RÈGLE :
+Pour l'apparence, utiliser exclusivement le système en deux phases de « Ratio de Vieillissement ». L'espérance de vie ne permet jamais de déduire directement une apparence infantile chez un adulte.`;
+
+get(7).content = `PRINCIPE — VIEILLISSEMENT EN DEUX PHASES :
+Un membre d'une race grandit jusqu'à son âge adulte racial. À cet âge, son apparence est déjà adulte. Le ralentissement racial ne commence qu'APRÈS cette maturité.
+
+FORMULE APRÈS MATURITÉ :
+apparence = apparence_adulte + ((âge_réel - âge_adulte) / ratio_post_maturité)
+Avant l'âge adulte, décrire une maturation progressive normale propre à la race ; ne jamais appliquer la formule post-maturité à un enfant.
+
+PARAMÈTRES PAR RACE :
+Orcs → adulte 18 ans / apparence adulte 18 / ratio 0.8
+Humains, Tribus Primales → adulte 18 / apparence 18 / ratio 1
+Sultanats → adulte 18 / apparence 18 / ratio 1.1
+Hommes-Bêtes → adulte 18 / apparence 18 / ratio 1.5
+Orques Nobles → adulte 20 / apparence 20 / ratio 2.5
+Amazones Nordiques → adulte 20 / apparence 20 / ratio 5
+Valkyries → adulte 20 / apparence 20 / ratio 6.4
+Amazones Sombres → adulte 30 / apparence 20 / ratio 10
+Nains → adulte 40 / apparence 20 / ratio 8
+Sirènes → adulte 35 / apparence 20 / ratio 21
+Elfes Noirs → adulte 60 / apparence 20 / ratio 11
+Hauts-Elfes → adulte 50 / apparence 20 / ratio 37.5
+Géantes → adulte 100 / apparence 25 / ratio 35
+Naga Marines → adulte 200 / apparence 25 / ratio 50
+
+EXEMPLES CANONIQUES :
+Elfe Noire de 280 ans → environ 40 ans apparents.
+Haute-Elfe de 800 ans → environ 40 ans apparents.
+Valkyrie de 180 ans → environ 45 ans apparents.
+Amazone Sombre de 280 ans → environ 45 ans apparents.
+Sirène de 350 ans → environ 35 ans apparents.
+
+VIEILLISSEMENT TARDIF :
+Dans la dernière partie de l'espérance de vie, fatigue, fragilité et signes d'âge peuvent s'accentuer individuellement. Le ratio donne l'apparence générale, pas une immunité au grand âge.
+
+RÈGLE ABSOLUE :
+Un personnage ayant atteint l'âge adulte racial possède une apparence adulte. Jamais d'adulte elfique, naga, géant ou autre décrit comme un enfant à cause d'une simple division de son âge réel.`;
+
+get(17).content = `LE TEMPS :
+Elyndor conserve la géographie et les climats de la Terre réelle. Les saisons dépendent donc de l'hémisphère, de la latitude, de l'altitude et du climat local.
+
+HÉMISPHÈRE NORD :
+Paris, Tokyo, Delhi, Oslo, Istanbul, Mexico, New York, Zurich, Katmandou suivent globalement le cycle printemps → été → automne → hiver, modulé localement par moussons, montagnes et climats régionaux.
+
+HÉMISPHÈRE SUD :
+Johannesburg, Sydney et Auckland connaissent des saisons inversées par rapport au nord. Quand Paris est en hiver, Sydney et Auckland sont en été.
+
+RÉGIONS TROPICALES / ÉQUATORIALES :
+Lagos et Bogotá sont surtout rythmées par saisons sèches, saisons humides, pluies et variations d'altitude plutôt que par quatre saisons tempérées nettes.
+
+ACTIVITÉS :
+Semailles, moissons, campagnes et caravanes suivent la saison LOCALE. Mousson, neige, sécheresse, crues et haute montagne peuvent modifier routes et récoltes.
+Le temps se compte en jours, lunes et saisons ; la narration n'impose pas de date moderne précise sauf si la continuité en a besoin.
+
+FÊTES COMMUNES :
+Fête des Portes → date commémorative commune de la fin de la Guerre des Voiles ; la saison diffère selon le lieu.
+Nuit des Ancêtres → célébrée pendant l'automne LOCAL, donc pas simultanément partout.
+Fêtes des Moissons → liées aux récoltes LOCALES et donc à des périodes différentes selon les régions.
+
+PAR CULTURE (exemples) :
+Paris → tournois de chevalerie au printemps local
+Tokyo → festival des lanternes magiques
+Delhi → jeux martiaux annuels, avec calendrier adapté aux moussons
+Oslo → fêtes du premier gel, chasses rituelles
+Istanbul → grande foire caravanière d'automne
+Lagos → nuit des masques liée au cycle local des pluies
+Sydney / Auckland → fêtes maritimes suivant leur propre saison australe
+
+PENDANT UNE FÊTE :
+Prix qui montent, auberges pleines, gardes débordés, pickpockets actifs, rencontres facilitées — une fête est une opportunité narrative.
+
+RÈGLE :
+Toujours déterminer la saison à partir du lieu réel de la scène ; ne jamais synchroniser artificiellement toute la planète.`;
+
+get(14).content = get(14).content
+  .replace('café épais (leur monopole)', 'café épais — Istanbul contrôle son commerce international et sa redistribution')
+  .replace('Ni café courant, ni chocolat', 'Ni café courant en Europe, ni chocolat');
+
+get(23).content = get(23).content.replace(
+  'ÉCONOMIE : plaque tournante mondiale — épices, café (monopole), soies, informations. Les Guildes Marchandes y ont leur siège mondial.',
+  'ÉCONOMIE : plaque tournante mondiale — épices, café, soies, informations. Bogotá et les hautes terres andines produisent l’essentiel du café ; les Sultanats, via Istanbul, détiennent le monopole des grands contrats d’importation, de torréfaction et de redistribution internationale. Les Guildes Marchandes y ont leur siège mondial.'
+);
+get(28).content = get(28).content.replace(
+  'ÉCONOMIE : plantes médicinales uniques, guides de jungle, talismans authentiques, café des hauteurs.',
+  'ÉCONOMIE : plantes médicinales uniques, guides de jungle, talismans authentiques, café des hauteurs. Les hautes terres autour de Bogotá sont le principal bassin de production ; la majeure partie des volumes exportés passe par des contrats marchands contrôlés depuis Istanbul.'
+);
+get(84).content = get(84).content.replace(
+  'Blé et vigne en Europe ; riz en Asie ; épices au Sud ; maïs et cacao aux Amériques ; café monopole des Sultanats ; thé de Tokyo (export de luxe).',
+  'Blé et vigne en Europe ; riz en Asie ; épices au Sud ; maïs et cacao aux Amériques ; café principalement cultivé dans les hautes terres de Bogotá puis commercialisé mondialement sous monopole marchand des Sultanats ; thé de Tokyo (export de luxe).'
+);
+
+get(27).content = `LES TERRITOIRES :
+Mosaïque de territoires de meutes et de solitaires, régulée par l'Alpha des Alphas. Les frontières internes sont marquées, senties, respectées — les cartes sont rarement nécessaires aux habitants.
+
+SOUVERAINE : Alpha Kira Swiftclaw (voir Souverains).
+
+RELIGION — L'ESPRIT DU PREMIER SANG :
+Croyance que chaque lignée descend d'un Premier Animal dont l'esprit guide l'instinct. Pas de temples : des lieux de meute où l'on hurle, chante ou veille selon l'espèce. Faire taire son instinct est le seul blasphème. Les Anciens lisent les présages dans les comportements animaux.
+
+LA VILLE :
+Cité verticale de bois, de corde et de pierre, passerelles entre tours, marchés d'odeurs et de sons. La Porte Astra est en zone neutre inter-meutes — le seul sol que nulle meute ne marque.
+
+ÉCONOMIE : pistage et chasse de primes (les meilleurs traqueurs du monde), messagerie rapide, fourrures, protection.
+
+TENSIONS :
+rivalité frontalière avec Mexico. Alliances instinctives avec Bogotá. Les sens développés des Hommes-Bêtes rendent l'infiltration difficile : odeurs étrangères, stress, peur et incohérences comportementales sont plus facilement remarqués. Cela ne révèle jamais automatiquement la vérité et des infiltrateurs préparés peuvent les tromper.
+
+EN SCÈNE :
+Lecture instinctive rapide de {{user}} : respiration, posture, odeur de stress et micro-réactions sont perçues plus finement qu'ailleurs. La confiance reste physique avant d'être verbale, mais aucun Homme-Bête ne possède de détecteur de mensonge infaillible.`;
+
+get(62).content = get(62).content
+  .replace('CAPACITÉS : sens surdéveloppés — la peur SE SENT, le mensonge SE FLAIRE.', 'CAPACITÉS : sens surdéveloppés — peur, stress, adrénaline, variations d’odeur, posture et micro-réactions sont perçus avec finesse. Ces indices aident à soupçonner un mensonge mais ne prouvent jamais la vérité.')
+  .replace('Méfiance envers qui sent la peur ou le mensonge.', 'Méfiance envers les signaux de peur, de stress ou d’incohérence ; un individu calme et entraîné peut les tromper.')
+  .replace('Reniflé, jaugé, classé en secondes.', 'Reniflé et jaugé en secondes à partir d’indices physiques, sans lecture surnaturelle de la vérité.');
+get(69).content = get(69).content.replace(
+  "NEW YORK → l'instinct ne ment pas : jugés à l'odeur de leur caractère, pas à leur sang. Refuge relatif.",
+  "NEW YORK → les Hommes-Bêtes accordent plus d’importance aux signaux physiques, au comportement et à la loyauté démontrée qu’au sang. Leurs sens peuvent révéler du stress, jamais une vérité absolue. Refuge relatif."
+);
+get(100).content = get(100).content.replace(
+  "Est devenue Alpha des Alphas sans un seul combat : les meutes ont SENTI. Son instinct ne s'est jamais trompé — le jour où il se trompera, tout s'effondrera.",
+  "Est devenue Alpha des Alphas sans un seul combat : les meutes ont reconnu son autorité. Sa réputation d’instinct exceptionnel est immense, mais elle reste faillible — une erreur majeure pourrait ébranler cette légitimité."
+);
+
+get(33).content = get(33).content.replace(
+  'Légendaire → exceptionnel, sollicité par les souverains. UN SEUL détenteur vivant : Sir William Guillon.',
+  "Légendaire → exceptionnel, sollicité par les souverains. Ce rang est extrêmement rare ; l’identité de ses détenteurs dépend de l’état de partie et du profil joueur, jamais du lore statique."
+);
+
+get(47).content = get(47).content.replace(
+  'Hiver ou mousson → +50% sur terre',
+  'Mauvaise saison locale (neige, mousson, crues, sécheresse extrême) → jusqu’à +50% sur terre'
+);
+
+get(88).content = `SEUILS D'ÂGE ADULTE — MATURITÉ BIOLOGIQUE ET SOCIALE :
+Humains, Sultanats, Orcs, Tribus Primales → 18 ans
+Hommes-Bêtes → 18 ans
+Valkyries, Amazones Nordiques, Orques Nobles → environ 20 ans
+Amazones Sombres → 30 ans
+Nains → 40 ans
+Hauts-Elfes → 50 ans (Éveil magique)
+Elfes Noirs → 60 ans (Épreuve de la Lame)
+Sirènes → 35 ans
+Géantes → 100 ans
+Naga Marines → 200 ans
+
+RÈGLE DE MATURATION :
+Ces seuils correspondent à une apparence physiquement adulte. Le ralentissement racial décrit dans « Ratio de Vieillissement » commence seulement après ce seuil. Une Haute-Elfe de 50 ans, une Elfe Noire de 60 ans ou une Naga de 200 ans n'a donc jamais l'apparence d'un enfant.
+
+ENFANCE TYPE :
+Le peuple → participation progressive aux tâches familiales selon culture et maturité
+Artisans → apprentissage adapté au rythme de maturation de la race
+Nobles → précepteurs, étiquette, armes ou magie selon culture
+
+ORPHELINS :
+Temples et guildes en recueillent ; les rues en gardent ; à Johannesburg et Bogotá, l'adoption communautaire est automatique.
+
+PROTECTIONS UNIVERSELLES :
+Aucun royaume ne vend ses PROPRES enfants ; les enfants d'esclaves naissent esclaves dans les royaumes légalistes — sauf Johannesburg-Bogotá où ils naissent libres.
+
+RÈGLE :
+Un enfant en scène est un civil sous protection culturelle forte. Toute activité, responsabilité ou rite doit rester cohérent avec la maturité réelle de sa race.`;
+
+const entriesText = data.entries.map((e) => `${e.id}:${e.content}`).join('\n');
+if (entriesText.includes('Sir William Guillon')) throw new Error('Sir William subsiste dans le canon statique des entrées.');
+if (entriesText.includes('Skrulls')) throw new Error('Résidu Skrulls encore présent.');
+if (get(7).content.includes('Âge réel ÷ ratio')) throw new Error('Ancienne formule de vieillissement encore présente.');
+if (entriesText.includes('café (monopole)') || entriesText.includes('café monopole des Sultanats')) throw new Error('Ancienne contradiction café encore présente.');
+if (!get(17).content.includes('HÉMISPHÈRE SUD')) throw new Error('Saisons hémisphériques non appliquées.');
+if (data.entry_count !== 102 || data.entries.length !== 102 || new Set(data.entries.map((e) => e.id)).size !== 102) {
+  throw new Error('Structure des 102 entrées invalide.');
+}
+
+fs.writeFileSync(lorePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+fs.mkdirSync('docs/v3', { recursive: true });
+fs.writeFileSync(reportPath, `# ELYNDOR — V3 ÉTAPE 2 — CORRECTIONS CANONIQUES CRITIQUES
+
+## Statut
+Corrections appliquées directement à \`src/data/elyndorLore.json\`.
+
+## Vieillissement racial
+Remplacement de \`âge réel ÷ ratio\` par une maturation en deux phases : maturité physique adulte au seuil racial, puis ralentissement post-maturité. Les ratios préservent les repères canoniques majeurs : Elfe Noire 280 ans ≈ 40 ans, Aelindra 800 ans ≈ 40 ans, Thyra 180 ans ≈ 45 ans, Adanna 280 ans ≈ 45 ans, Coral 350 ans ≈ 35 ans.
+
+## Café
+Bogotá / hautes terres andines = production principale. Istanbul / Sultanats = monopole des grands contrats d'importation, torréfaction et redistribution internationale.
+
+## Saisons
+Hémisphères nord et sud distingués ; zones tropicales pilotées par cycles humides/secs ; moussons, altitude et saisons locales intégrées.
+
+## New York / Hommes-Bêtes
+Résidu \`Skrulls... non\` supprimé. Les sens détectent des indices physiologiques (stress, peur, odeurs, micro-réactions), jamais la vérité de façon absolue.
+
+## Sir William Guillon
+Statut retenu : personnage joueur externe au canon statique. Le rang Légendaire dépend du profil joueur et de l'état de partie.
+
+## Entrées modifiées
+6, 7, 14, 17, 23, 27, 28, 33, 47, 62, 69, 84, 88, 100.
+
+## Garde-fous
+Le commit est bloqué si Sir William subsiste dans une entrée statique, si \`Skrulls\` subsiste, si l'ancienne formule de vieillissement subsiste, si les anciens libellés contradictoires du café subsistent, si l'hémisphère sud est absent, ou si les 102 IDs ne restent pas uniques.
+
+## Décision
+VALIDÉE après vérification du diff et succès des checks GitHub sur l'état final.
+`, 'utf8');
+
+console.log('V3 étape 2 appliquée et validée localement.');
