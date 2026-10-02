@@ -39,10 +39,7 @@ export function chargerMetamoteurs(raw: RisuLorebook): MetamoteurEntry[] {
 }
 
 // Métamoteurs toujours retenus car ils gouvernent COMMENT toute réponse est
-// produite, indépendamment du contenu de la scène (voir brief section 1 :
-// "chargés et sélectionnés par pertinence de scène" — ce socle minimal reste
-// nécessaire à chaque tour pour que le protocole Consulter/Sélectionner/
-// Vérifier et l'agentivité du joueur s'appliquent systématiquement).
+// produite, indépendamment du contenu de la scène.
 const METAMOTEURS_SOCLE = [
   '[MÉTA] Production de la Réponse',
   '[MÉTA] Continuité',
@@ -51,21 +48,14 @@ const METAMOTEURS_SOCLE = [
 ];
 
 /**
- * Sélectionne les métamoteurs pertinents à la scène par similarité
- * sémantique (embeddings) : le socle toujours actif + les autres
- * métamoteurs les plus proches de la requête, plafonnés pour ne pas tout
- * injecter systématiquement (brief Phase 2 : remplace la correspondance
- * de mots-clés).
+ * L'ancien pipeline reste actif jusqu'à la bascule V2.1. Pendant cette
+ * transition, les 15 entrées sont conservées à chaque tour ; le score sert
+ * uniquement à ordonner les entrées hors socle, jamais à les supprimer.
  */
 export function selectionnerMetamoteursSemantique(
   entries: MetamoteurEntry[],
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
-  // Infinity plutôt qu'un plafond : demande explicite de l'utilisateur, les
-  // 15 métamoteurs (le socle + tout le reste) sont désormais TOUJOURS actifs
-  // à chaque tour plutôt qu'un tri par pertinence n'en retenant que 9 — ce
-  // sont les règles qui gouvernent COMMENT toute réponse est produite, pas
-  // du contenu de scène ponctuel, donc rien à gagner à en exclure certaines.
   maxSupplementaires = Infinity,
 ): LoreEntry[] {
   const socle = entries.filter((e) => METAMOTEURS_SOCLE.includes(e.titre));
@@ -86,10 +76,6 @@ export function selectionnerMetamoteursSemantique(
 }
 
 // --- Lore Elyndor -----------------------------------------------------
-// Structure dédiée (id, category, primary_keys, secondary_keys,
-// negative_keys, priority, constant), distincte du format RISU des
-// métamoteurs ci-dessus. Les *_keys ne servent plus qu'à l'exclusion
-// négative explicite ; le déclenchement se fait par similarité sémantique.
 
 interface ElyndorEntryBrute {
   id: number;
@@ -128,26 +114,15 @@ export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] 
 }
 
 // Une entrée non couverte par "constant" mais dont l'absence casse la
-// cohérence du monde : la table race → territoire. Un PNJ improvisé se voit
-// attribuer une race à la volée par le modèle (voir [MÉTA] Esprit des
-// Personnages / Archétypes Universels) ; sans cette table toujours en
-// contexte, rien ne l'ancre à un territoire canon (ex. une "elfe noire"
-// inventée sans lien avec Delhi). Coût négligeable (~900 caractères).
+// cohérence du monde : la table race → territoire.
 const LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE = ['[MONDE] Géographie et Races'];
 
-/**
- * Sélectionne les entrées du lore Elyndor pertinentes à la scène par
- * similarité sémantique (brief Phase 2 : remplace la correspondance de
- * mots-clés — c'est le correctif direct au cas observé où une elfe noire
- * mentionnée sans les mots-clés exacts du lorebook n'ancrait plus rien) :
- * - les entrées "constant" et la table Géographie et Races restent
- *   toujours actives, comme le socle des métamoteurs ;
- * - une entrée dont un mot-clé négatif apparaît littéralement dans le
- *   texte de la requête reste exclue (règle déterministe, indépendante de
- *   la similarité) ;
- * - les autres sont classées par similarité cosinus avec la requête et
- *   plafonnées.
- */
+// Les fiches de lore sont plus longues et plus générales que les messages
+// historiques. Un seuil légèrement inférieur à celui des souvenirs (0,30)
+// évite de remplir le prompt avec les « moins mauvaises » fiches tout en
+// conservant les rapprochements sémantiques utiles.
+export const SEUIL_PERTINENCE_LORE = 0.22;
+
 function piocherAleatoirement<T>(items: T[], n: number): T[] {
   const copie = [...items];
   for (let i = copie.length - 1; i > 0; i--) {
@@ -158,30 +133,29 @@ function piocherAleatoirement<T>(items: T[], n: number): T[] {
 }
 
 export interface OptionsSelectionLore {
-  // Ouverture d'histoire (chantier enrichissement automatique) : au lieu de
-  // toujours remonter les entrées les mieux notées, pioche au hasard parmi
-  // un bassin plus large des entrées pertinentes — pour que deux histoires
-  // avec le même monde/lieu de départ ne convoquent pas systématiquement
-  // les mêmes détails les plus évidents.
   aleatoire?: boolean;
   tailleBassinAleatoire?: number;
+  seuilPertinence?: number;
 }
 
+/**
+ * Sélection sémantique du lore :
+ * - les entrées constantes et Géographie et Races sont obligatoires ;
+ * - les exclusions négatives restent déterministes ;
+ * - les entrées supplémentaires doivent franchir un vrai seuil de
+ *   pertinence avant d'être classées ;
+ * - maxSupplementaires reste un plafond, jamais un objectif à remplir.
+ */
 export function selectionnerLoreElyndorSemantique(
   entries: ElyndorEntryChargee[],
   texteRequete: string,
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
-  // Plafond relevé (demande explicite) : 4 → 18, pour qu'avec les entrées
-  // toujours actives (6 "constant" du lorebook statique + la table
-  // Géographie et Races, soit 7 actuellement) le total puisse monter
-  // jusqu'à ~25 entrées quand le tour s'y prête, sans que ce soit un
-  // plancher — un tour dont peu d'entrées dépassent le seuil de pertinence
-  // continue d'en injecter moins.
   maxSupplementaires = 18,
   options?: OptionsSelectionLore,
 ): LoreEntry[] {
   const texteNormalise = normalise(texteRequete);
+  const seuil = options?.seuilPertinence ?? SEUIL_PERTINENCE_LORE;
   const toujoursActives = entries.filter(
     (e) => e.constant || LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre),
   );
@@ -195,10 +169,14 @@ export function selectionnerLoreElyndorSemantique(
       entry,
       score: vecteursEntrees[entry.id] ? similariteCosinus(vecteurRequete, vecteursEntrees[entry.id]) : -1,
     }))
+    .filter((c) => c.score >= seuil)
     .sort((a, b) => b.score - a.score || a.entry.priority - b.entry.priority);
 
   const classement = options?.aleatoire
-    ? piocherAleatoirement(classementComplet.slice(0, Math.max(options.tailleBassinAleatoire ?? 10, maxSupplementaires)), maxSupplementaires)
+    ? piocherAleatoirement(
+        classementComplet.slice(0, Math.max(options.tailleBassinAleatoire ?? 10, maxSupplementaires)),
+        maxSupplementaires,
+      )
     : classementComplet.slice(0, maxSupplementaires);
 
   return [
@@ -211,13 +189,16 @@ const PREFIXE_ROYAUME = '[ROYAUME] ';
 const MAX_ANCRES_CANON = 2;
 
 /**
- * Priorité canon (V13) : un royaume nommé dans la scène (« Paris »,
- * « Tokyo »…) a toujours sa fiche en contexte, même si la recherche
- * sémantique ou lexicale l'a classée trop bas — c'est ce qui empêche le
- * modèle d'improviser un souverain ou des institutions. Viennent ensuite
- * les entrées classées par pertinence, puis le socle toujours actif.
+ * Priorité canon : les royaumes explicitement nommés et le socle permanent
+ * sont injectés avant le lore sémantique. Ainsi, une fiche « toujours active »
+ * ne peut plus se retrouver derrière des résultats scorés puis disparaître
+ * faute de budget dans le constructeur de prompt.
  */
-export function prioriserLoreCanon(texteRequete: string, selection: LoreEntry[], entrees: ElyndorEntryChargee[]): LoreEntry[] {
+export function prioriserLoreCanon(
+  texteRequete: string,
+  selection: LoreEntry[],
+  entrees: ElyndorEntryChargee[],
+): LoreEntry[] {
   const requete = normalise(texteRequete);
   const ancres: LoreEntry[] = [];
   for (const entree of entrees) {
@@ -228,9 +209,14 @@ export function prioriserLoreCanon(texteRequete: string, selection: LoreEntry[],
       ancres.push({ id: entree.id, titre: entree.titre, contenu: entree.contenu, score: 2 });
     }
   }
+
+  const socle: LoreEntry[] = entrees
+    .filter((e) => e.constant || LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre))
+    .map((e) => ({ id: e.id, titre: e.titre, contenu: e.contenu }));
+
   const vus = new Set<string>();
   const resultat: LoreEntry[] = [];
-  for (const e of [...ancres, ...selection.filter((s) => s.score !== undefined), ...selection.filter((s) => s.score === undefined)]) {
+  for (const e of [...ancres, ...socle, ...selection]) {
     if (vus.has(e.id)) continue;
     vus.add(e.id);
     resultat.push(e);
