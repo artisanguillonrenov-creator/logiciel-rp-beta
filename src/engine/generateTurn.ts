@@ -183,10 +183,16 @@ export async function calculerSelectionLore(
     ? messagesAnciensBruts
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
-  if (!embeddingsDisponibles(appSettings)) {
-    // Repli lexical (V13) : sans fournisseur d'embeddings, on classe le lore
-    // et l'historique par mots communs plutôt que de partir sans rien.
-    const loreElyndor = prioriserLoreCanon(texteRequete, rechercherLoreLexical(poolElyndor, texteRequete), LORE_ELYNDOR);
+  // Les embeddings améliorent le classement, mais ils ne doivent jamais
+  // empêcher un tour narratif. Ce repli local reste disponible aussi bien
+  // lorsqu'aucun fournisseur n'est configuré que lorsqu'un endpoint
+  // d'embeddings configuré refuse ou échoue pendant l'appel.
+  const selectionLexicale = (): SelectionLore => {
+    const loreElyndor = prioriserLoreCanon(
+      texteRequete,
+      rechercherLoreLexical(poolElyndor, texteRequete),
+      LORE_ELYNDOR,
+    );
     const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
     return {
       metamoteursSelectionnes: [],
@@ -198,43 +204,49 @@ export async function calculerSelectionLore(
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
     };
-  }
-
-  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
-    assurerEmbeddings(
-      metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-      appSettings,
-    ),
-    assurerEmbeddings(
-      poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
-      appSettings,
-    ),
-    obtenirEmbeddings([texteRequete], appSettings),
-    embedderMessagesAnciens(messagesAnciens, appSettings),
-  ]);
-
-  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-    metamoteursDisponibles,
-    vecteurRequete,
-    vecteursMetamoteurs,
-  );
-  const loreElyndor = prioriserLoreCanon(
-    texteRequete,
-    selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
-    LORE_ELYNDOR,
-  );
-  const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
-
-  return {
-    metamoteursSelectionnes,
-    loreElyndor,
-    souvenirs,
-    debugLore: {
-      metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
-      loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
-      souvenirs: formaterSouvenirsDebug(souvenirs),
-    },
   };
+
+  if (!embeddingsDisponibles(appSettings)) return selectionLexicale();
+
+  try {
+    const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
+      assurerEmbeddings(
+        metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
+        appSettings,
+      ),
+      assurerEmbeddings(
+        poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
+        appSettings,
+      ),
+      obtenirEmbeddings([texteRequete], appSettings),
+      embedderMessagesAnciens(messagesAnciens, appSettings),
+    ]);
+
+    const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
+      metamoteursDisponibles,
+      vecteurRequete,
+      vecteursMetamoteurs,
+    );
+    const loreElyndor = prioriserLoreCanon(
+      texteRequete,
+      selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
+      LORE_ELYNDOR,
+    );
+    const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
+
+    return {
+      metamoteursSelectionnes,
+      loreElyndor,
+      souvenirs,
+      debugLore: {
+        metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
+        loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+        souvenirs: formaterSouvenirsDebug(souvenirs),
+      },
+    };
+  } catch {
+    return selectionLexicale();
+  }
 }
 
 function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
