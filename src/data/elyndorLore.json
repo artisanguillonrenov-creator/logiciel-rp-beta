@@ -16,9 +16,10 @@
     "V3 étape 4 : entrées récurrentes 94-100 atomisées en 84 fiches PNJ + index de rôle et 14 index de capitale",
     "V3 étape 5 : hiérarchie de lore explicite (niveaux 0-3) et priorités recalibrées par fonction narrative",
     "V3 étape 7 : 14 cultures de capitales distinguées (identité, normes sociales, vie quotidienne et tensions culturelles), sans développer les conflits persistants réservés à l’étape 8",
-    "V3 étape 8 : 42 conflits internes persistants ajoutés, 3 par capitale ; Katmandou conserve zéro tension externe mais possède désormais des désaccords internes non militaires"
+    "V3 étape 8 : 42 conflits internes persistants ajoutés, 3 par capitale ; Katmandou conserve zéro tension externe mais possède désormais des désaccords internes non militaires",
+    "V3 étape 9 : 9 relations bilatérales importantes structurées en blocs diplomatiques compacts, sans inventer de nouvelles alliances ou guerres"
   ],
-  "entry_count": 256,
+  "entry_count": 265,
   "entries": [
     {
       "id": 0,
@@ -6187,6 +6188,231 @@
       "negative_keys": [],
       "content": "ACTEURS : Géantes plus jeunes voulant observer directement les signes du Réveil contre anciennes pour qui descendre doit rester exceptionnel.\nOBJECTIFS : les jeunes veulent comprendre avant qu’il soit trop tard ; les anciennes veulent éviter qu’une présence géante devienne intervention politique ou panique.\nRESSOURCES : mobilité, curiosité, liens avec pèlerins contre mémoire des Ères, prestige et autorité d’Oya.\nÉTAT ACTUEL : quelques descentes individuelles sont tolérées pour raisons précises.\nAGGRAVATION : signe majeur des Voiles, disparition d’une Géante ou exploitation politique de sa présence.\nAPAISEMENT : mission limitée, témoin neutre, retour avec preuve vérifiable.\nCONSÉQUENCES JOUEUR : servir de guide, être observateur, transporter un message ou devenir responsable d’une descente exceptionnelle.",
       "priority": 28,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 272,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][PARIS_TOKYO] Paris ↔ Tokyo — Rivalité commerciale et Portes Astra",
+      "primary_keys": [
+        "Paris Tokyo",
+        "Tokyo Paris",
+        "rivalité commerciale Paris Tokyo",
+        "Portes Astra Paris Tokyo",
+        "diplomatie Paris Tokyo"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : maintenir ouverts les échanges de prestige et les liaisons Astra entre deux grands centres de pouvoir.\n\nCONFLIT : rivalité commerciale et compétition autour de l’influence liée aux Portes Astra.\n\nDÉPENDANCE : échanges inter-capitales et circulation par les Portes ; aucune des deux puissances n’a intérêt à une rupture totale.\n\nPEUR : qu’un incident commercial, un acte d’espionnage ou un sabotage Astra transforme la rivalité en crise ouverte.\n\nRESSOURCE STRATÉGIQUE : Portes Astra, routes commerciales, artisanat de luxe parisien et artefacts magiques de Tokyo.\n\nDETTE : aucune dette bilatérale formelle n’est établie dans le canon actuel.\n\nLIGNE ROUGE : sabotage direct d’une Porte majeure.\n\nÉTAT DIPLOMATIQUE : rivalité commerciale active ; espionnage élevé ; guerre ouverte indésirable.\n\nCONSÉQUENCES NARRATIVES : contrôles, soupçons, contrats concurrents et pressions diplomatiques augmentent avec chaque incident ; toute escalade militaire doit être jouée et préparée.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 273,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][TOKYO_DELHI] Tokyo ↔ Delhi — Frontière elfique contestée",
+      "primary_keys": [
+        "Tokyo Delhi",
+        "Delhi Tokyo",
+        "frontière Tokyo Delhi",
+        "rivalité elfique",
+        "diplomatie Tokyo Delhi"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : empêcher les incidents frontaliers de devenir une guerre générale entre deux puissances elfiques.\n\nCONFLIT : mépris mutuel, frontière contestée et captures régulières de soldats des deux côtés.\n\nDÉPENDANCE : aucune dépendance économique bilatérale forte n’est explicitement établie ; la stabilité de la frontière impose néanmoins des contacts et des arbitrages.\n\nPEUR : spirale de représailles après capture, exécution ou incursion majeure.\n\nRESSOURCE STRATÉGIQUE : contrôle des passages frontaliers, forces militaires d’élite et accès sécurisé aux routes régionales.\n\nDETTE : aucune dette bilatérale canonique établie.\n\nLIGNE ROUGE : aucune ligne rouge diplomatique formalisée dans le canon ; une incursion militaire majeure briserait l’équilibre actuel.\n\nÉTAT DIPLOMATIQUE : hostilité contenue, incidents réguliers, pas de guerre ouverte.\n\nCONSÉQUENCES NARRATIVES : prisonniers, patrouilles, escortes et incidents de frontière peuvent créer des missions, représailles ou négociations.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 274,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][TOKYO_LAGOS] Tokyo ↔ Lagos — Rancune des Voiles",
+      "primary_keys": [
+        "Tokyo Lagos",
+        "Lagos Tokyo",
+        "Voiles Tokyo Lagos",
+        "hostilité Tokyo Lagos",
+        "diplomatie Tokyo Lagos"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : éviter qu’une crise autour des Voiles ne déstabilise les Portes Astra et les échanges mondiaux.\n\nCONFLIT : Tokyo nourrit une rancune liée aux Voiles ; Lagos subit une surveillance internationale et rejette la culpabilité collective qui lui est imputée.\n\nDÉPENDANCE : aucune dépendance bilatérale majeure n’est établie ; les deux restent reliées au même système Astra mondial.\n\nPEUR : reprise visible d’activités liées aux Voiles, accusation publique ou action préventive mal interprétée.\n\nRESSOURCE STRATÉGIQUE : informations sur les Voiles, surveillance des Portes et savoirs rares de Lagos.\n\nDETTE : aucune dette bilatérale canonique établie.\n\nLIGNE ROUGE : aucune ligne rouge formalisée ; toute action directe autour d’une ouverture des Voiles constitue le cœur évident du risque diplomatique.\n\nÉTAT DIPLOMATIQUE : hostilité latente et méfiance durable.\n\nCONSÉQUENCES NARRATIVES : inspections, filatures, refus de coopération et soupçons peuvent s’intensifier sans devenir automatiquement une guerre.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 275,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][OSLO_ISTANBUL] Oslo ↔ Istanbul — Alliance commerciale",
+      "primary_keys": [
+        "Oslo Istanbul",
+        "Istanbul Oslo",
+        "alliance commerciale Oslo Istanbul",
+        "commerce Oslo Istanbul",
+        "diplomatie Oslo Istanbul"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : commerce maritime et caravanier stable, circulation de marchandises et sécurité des routes.\n\nCONFLIT : aucun conflit bilatéral majeur n’est explicitement établi dans le canon actuel.\n\nDÉPENDANCE : Oslo apporte navires, fourrures et capacité maritime ; Istanbul apporte marchés, réseaux de caravanes et redistribution mondiale.\n\nPEUR : rupture des routes ou incident qui rendrait l’alliance commercialement coûteuse.\n\nRESSOURCE STRATÉGIQUE : flotte d’Oslo, Grand Bazar, routes commerciales et réseau de la Guilde des Marchands.\n\nDETTE : aucune dette bilatérale formelle n’est établie.\n\nLIGNE ROUGE : aucune ligne rouge spécifique n’est canonisée.\n\nÉTAT DIPLOMATIQUE : alliance commerciale solide.\n\nCONSÉQUENCES NARRATIVES : une crise commerciale affecte convois, prix, contrats et disponibilité de certaines marchandises dans les deux capitales.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 276,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][ISTANBUL_ZURICH] Istanbul ↔ Zurich — Routes montagneuses disputées",
+      "primary_keys": [
+        "Istanbul Zurich",
+        "Zurich Istanbul",
+        "routes montagneuses",
+        "commerce Istanbul Zurich",
+        "diplomatie Istanbul Zurich"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : maintenir les flux commerciaux à travers l’Europe et les axes alpins sans interrompre le crédit ni les caravanes.\n\nCONFLIT : contrôle et conditions d’usage des routes montagneuses disputées depuis longtemps.\n\nDÉPENDANCE : Istanbul dépend des routes et du crédit pour certains flux ; Zurich profite du commerce, des lettres de crédit et du passage par ses infrastructures.\n\nPEUR : blocage durable des routes, défaut de paiement ou guerre commerciale qui pénaliserait les deux économies.\n\nRESSOURCE STRATÉGIQUE : routes alpines, tunnels, crédit nain et grands contrats marchands.\n\nDETTE : aucune dette bilatérale précise n’est établie ; Zurich conserve toutefois une culture de dette transgénérationnelle.\n\nLIGNE ROUGE : aucune ligne rouge bilatérale explicite n’est canonisée.\n\nÉTAT DIPLOMATIQUE : négociation compétitive et dispute commerciale séculaire, sans guerre ouverte.\n\nCONSÉQUENCES NARRATIVES : péages, retards, arbitrages, contrats concurrents ou blocages peuvent affecter directement caravanes et missions.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 277,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][JOHANNESBURG_BOGOTA] Johannesburg ↔ Bogotá — Respect ancien",
+      "primary_keys": [
+        "Johannesburg Bogotá",
+        "Bogotá Johannesburg",
+        "respect ancien",
+        "alliance Johannesburg Bogotá",
+        "diplomatie Johannesburg Bogotá"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : préserver une relation fondée sur le respect, l’autonomie des peuples et le refus de l’esclavage sur leurs territoires.\n\nCONFLIT : aucun conflit bilatéral majeur n’est établi dans le canon actuel.\n\nDÉPENDANCE : aucune dépendance économique structurante n’est explicitement canonisée.\n\nPEUR : qu’une pression extérieure, une exploitation abusive ou un incident impliquant des captifs force l’un des deux à choisir entre neutralité et solidarité.\n\nRESSOURCE STRATÉGIQUE : minerais et arbitrage de Johannesburg ; plantes médicinales, guides et savoirs spirituels de Bogotá.\n\nDETTE : aucune dette bilatérale formelle n’est établie.\n\nLIGNE ROUGE : aucune ligne rouge diplomatique explicite n’est canonisée ; l’asservissement sur leurs sols est incompatible avec leurs règles locales.\n\nÉTAT DIPLOMATIQUE : respect ancien et relation favorable.\n\nCONSÉQUENCES NARRATIVES : entraide, arbitrage ou soutien ponctuel sont plausibles, mais ne doivent pas devenir automatiquement une alliance militaire.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 278,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][MEXICO_NEW_YORK] Mexico ↔ New York — Rivalité frontalière",
+      "primary_keys": [
+        "Mexico New York",
+        "New York Mexico",
+        "frontière Mexico New York",
+        "rivalité frontalière",
+        "diplomatie Mexico New York"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : empêcher les incidents de frontière de dégénérer en guerre ouverte et préserver les passages utiles aux populations et aux contrats.\n\nCONFLIT : incidents frontaliers permanents et rivalité quasi sportive qui dégénère régulièrement.\n\nDÉPENDANCE : aucune dépendance économique forte n’est explicitement établie ; la proximité géographique impose cependant une gestion constante des frontières.\n\nPEUR : mort d’une figure importante, raid mal attribué ou série de représailles incontrôlées.\n\nRESSOURCE STRATÉGIQUE : zones frontalières, pistes, réseaux de chasseurs et contrats de mercenariat.\n\nDETTE : aucune dette bilatérale canonique établie.\n\nLIGNE ROUGE : aucune ligne rouge formelle n’est documentée ; l’escalade doit rester graduelle avant toute guerre ouverte.\n\nÉTAT DIPLOMATIQUE : rivalité tendue avec incidents récurrents.\n\nCONSÉQUENCES NARRATIVES : contrôles, primes, poursuites, accusations et représailles locales peuvent évoluer selon les événements joués.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 279,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][NEW_YORK_BOGOTA] New York ↔ Bogotá — Alliance instinctive",
+      "primary_keys": [
+        "New York Bogotá",
+        "Bogotá New York",
+        "alliance New York Bogotá",
+        "Hommes-Bêtes Bogotá",
+        "diplomatie New York Bogotá"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : coopération entre sociétés proches de la nature, circulation de guides, pisteurs et informations de terrain.\n\nCONFLIT : aucun conflit bilatéral important n’est établi dans le canon actuel.\n\nDÉPENDANCE : aucune dépendance institutionnelle forte n’est canonisée ; la relation est décrite comme instinctivement favorable plutôt que contractuelle.\n\nPEUR : qu’une puissance extérieure exploite ou rompe cette proximité par manipulation, trafic ou atteinte aux territoires naturels.\n\nRESSOURCE STRATÉGIQUE : réseaux de pisteurs de New York, guides de jungle et savoirs naturels de Bogotá.\n\nDETTE : aucune dette bilatérale formelle n’est établie.\n\nLIGNE ROUGE : aucune ligne rouge diplomatique explicite n’est canonisée.\n\nÉTAT DIPLOMATIQUE : alliance instinctive et confiance favorable.\n\nCONSÉQUENCES NARRATIVES : entraide locale, partage d’informations et missions conjointes peuvent émerger, sans transformer automatiquement la relation en traité formel.",
+      "priority": 27,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 1
+    },
+    {
+      "id": 280,
+      "category": "RELATION_ROYAUME",
+      "title": "[RELATION][SYDNEY_AUCKLAND] Sydney ↔ Auckland — Alliance maritime et rivalité de prestige",
+      "primary_keys": [
+        "Sydney Auckland",
+        "Auckland Sydney",
+        "alliance maritime",
+        "contrôle des mers",
+        "diplomatie Sydney Auckland"
+      ],
+      "secondary_keys": [
+        "relation diplomatique",
+        "diplomatie",
+        "royaumes",
+        "tension internationale"
+      ],
+      "negative_keys": [],
+      "content": "INTÉRÊT COMMUN : contrôle stable des routes maritimes du Pacifique et sécurité des passages océaniques.\n\nCONFLIT : rivalité de prestige entre deux puissances marines alliées.\n\nDÉPENDANCE : contrôle conjoint des mers ; la stabilité maritime repose sur leur coopération.\n\nPEUR : qu’une compétition symbolique ou une décision unilatérale fragilise l’alliance et les routes maritimes.\n\nRESSOURCE STRATÉGIQUE : routes océaniques, ports, savoirs des profondeurs et capacité de contrôle maritime.\n\nDETTE : aucune dette bilatérale formelle n’est établie.\n\nLIGNE ROUGE : aucune ligne rouge spécifique n’est canonisée ; rompre le contrôle conjoint des mers constituerait un changement majeur à jouer explicitement.\n\nÉTAT DIPLOMATIQUE : alliance solide avec rivalité de prestige.\n\nCONSÉQUENCES NARRATIVES : accès maritime, sauvetages, péages, navigation et coopération navale reflètent l’état de cette relation.",
+      "priority": 27,
       "sticky": 0,
       "cooldown": 0,
       "constant": false,
