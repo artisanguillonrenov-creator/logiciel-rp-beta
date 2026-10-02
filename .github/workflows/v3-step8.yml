@@ -1,0 +1,72 @@
+name: Elyndor V3 Etape 8
+
+on:
+  push:
+    branches:
+      - claude/new-session-glwy6e
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-step8:
+    if: ${{ github.event.head_commit.message != 'V3 étape 8 — conflits internes persistants' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dépendances
+        run: npm ci
+      - name: Appliquer étape 8
+        run: node scripts/v3-step8-conflits.js
+      - name: Validation TypeScript
+        run: npx tsc --noEmit
+      - name: Garde-fous finaux
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('src/data/elyndorLore.json', 'utf8'));
+          const conflicts = data.entries.filter(e => e.category === 'CONFLIT_INTERNE');
+          if (data.entry_count !== 256 || data.entries.length !== 256) throw new Error(`entry_count invalide ${data.entry_count}/${data.entries.length}`);
+          if (conflicts.length !== 42) throw new Error(`42 conflits attendus, trouvé ${conflicts.length}`);
+          const cities = ['PARIS','TOKYO','DELHI','OSLO','ISTANBUL','LAGOS','JOHANNESBURG','MEXICO','NEW_YORK','BOGOTA','SYDNEY','AUCKLAND','ZURICH','KATMANDOU'];
+          for (const city of cities) {
+            const count = conflicts.filter(e => String(e.title).startsWith(`[CONFLIT_INTERNE][${city}]`)).length;
+            if (count !== 3) throw new Error(`${city}: 3 conflits attendus, trouvé ${count}`);
+          }
+          const required = ['ACTEURS :','OBJECTIFS :','RESSOURCES :','ÉTAT ACTUEL :','AGGRAVATION :','APAISEMENT :','CONSÉQUENCES JOUEUR :'];
+          for (const e of conflicts) {
+            for (const field of required) if (!e.content.includes(field)) throw new Error(`${e.id}: champ absent ${field}`);
+            if (e.lore_level !== 1 || e.priority !== 28 || e.constant !== false) throw new Error(`${e.id}: métadonnées invalides`);
+          }
+          const ids = data.entries.map(e => e.id);
+          if (new Set(ids).size !== ids.length) throw new Error('UID dupliqués');
+          for (let id = 102; id <= 117; id++) if (ids.includes(id)) throw new Error(`UID réservé utilisé ${id}`);
+          const kat = data.entries.find(e => e.id === 32);
+          if (!kat || !kat.content.includes('TENSIONS EXTERNES : aucune — neutralité absolue et respectée.')) throw new Error('Clarification Katmandou absente');
+          console.log('Garde-fous Step 8 OK');
+          NODE
+      - name: Finaliser le rapport
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'docs/v3/STEP8_CONFLITS_INTERNES_V3.md';
+          let s = fs.readFileSync(p, 'utf8');
+          s = s.replace('**VALIDÉE** si le workflow Step 8, TypeScript et les garde-fous finaux passent avant le commit.', '**VALIDÉE**\n\nMigration Step 8 : **PASS**. Validation TypeScript : **PASS**. Garde-fous structurels : **PASS**.');
+          fs.writeFileSync(p, s);
+          NODE
+      - name: Commit étape 8
+        run: |
+          git config user.name "artisanguillonrenov-creator"
+          git config user.email "artisanguillonrenov@gmail.com"
+          git add src/data/elyndorLore.json docs/v3/STEP8_CONFLITS_INTERNES_V3.md
+          git diff --cached --exit-code && { echo 'Aucun changement à committer'; exit 1; } || true
+          git commit -m "V3 étape 8 — conflits internes persistants"
+          git push origin HEAD:claude/new-session-glwy6e
