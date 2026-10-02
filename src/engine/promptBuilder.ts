@@ -4,22 +4,56 @@ import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
 
-// Fenêtre de messages bruts envoyée systématiquement (L0). Exportée : sert
-// aussi de frontière pour la recherche sémantique de secours dans
-// l'historique (src/engine/searchHistorique.ts).
-export const NB_MESSAGES_RECENTS = 10;
-
 // Les modèles locaux ont une fenêtre plus étroite que les modèles distants.
 // Ces plafonds sont exprimés en caractères, volontairement conservateurs :
 // ils laissent de la place à la réponse et évitent de dépasser la fenêtre
 // après tokenisation, qui varie selon le fournisseur.
 export const BUDGET_SYSTEM_DISTANT = 24000;
 export const BUDGET_SYSTEM_LOCAL = 12000;
-export const BUDGET_MESSAGE_RECENT = 900;
+
+// Budget global réservé au fil de conversation brut (message joueur courant
+// compris). Il remplace l'ancienne frontière arbitraire « 10 messages » et
+// l'ancienne coupe de 900 caractères par message.
+export const BUDGET_CONVERSATION_DISTANT = 18000;
+export const BUDGET_CONVERSATION_LOCAL = 9000;
 
 function tronquer(texte: string, longueur: number): string {
+  if (longueur <= 0) return '';
   if (texte.length <= longueur) return texte;
-  return `${texte.slice(0, Math.max(0, longueur - 34)).trimEnd()}\n[… contexte tronqué …]`;
+  // Troncature interne silencieuse : ne jamais injecter un marqueur technique
+  // du type « contexte tronqué » dans le prompt, car le modèle peut le répéter.
+  return texte.slice(0, longueur).trimEnd();
+}
+
+/**
+ * Sélectionne un suffixe de messages complets selon un budget global.
+ * Aucun message retenu n'est tronqué. Si le dernier message dépasse à lui
+ * seul le budget, il est tout de même conservé intégralement : la continuité
+ * immédiate prime sur une coupe arbitraire au milieu d'une scène.
+ */
+export function selectionnerMessagesRecents(messages: Message[], budgetCaracteres: number): Message[] {
+  if (messages.length === 0) return [];
+
+  const selection: Message[] = [];
+  let total = 0;
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    const cout = message.content.length + 32; // petite marge pour rôle/structure du payload
+
+    if (selection.length > 0 && total + cout > budgetCaracteres) break;
+
+    selection.unshift(message);
+    total += cout;
+
+    if (total >= budgetCaracteres) break;
+  }
+
+  return selection;
+}
+
+export function budgetMessagesRecents(messageJoueur: string, budgetConversation: number): number {
+  return Math.max(0, budgetConversation - messageJoueur.length - 64);
 }
 
 function formaterFaits(faits: Fact[], budget = 3200): string {
@@ -133,6 +167,7 @@ export interface ContexteConstruction {
 
 export interface OptionsPrompt {
   budgetSysteme?: number;
+  budgetConversation?: number;
 }
 
 export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
@@ -178,19 +213,22 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   // consigne de correction. Seul le milieu est rogné, par la fin — les
   // métamoteurs, règles de mise en scène générales, partent en premier.
   const milieu = tronquer(
-  `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
-  Math.max(0, budget - entete.length),
-);
-return tronquer(`${entete}${milieu}`, budget);
+    `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
+    Math.max(0, budget - entete.length),
+  );
+  return tronquer(`${entete}${milieu}`, budget);
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
   const systemPrompt = construireSystemPrompt(ctx, options);
-  const recents = ctx.messagesRecents.slice(-NB_MESSAGES_RECENTS).map((m) => ({
+  const budgetConversation = options.budgetConversation ?? BUDGET_CONVERSATION_DISTANT;
+  const budgetRecents = budgetMessagesRecents(ctx.messageJoueur, budgetConversation);
+  const recents = selectionnerMessagesRecents(ctx.messagesRecents, budgetRecents).map((m) => ({
     role: m.role,
-    content: tronquer(m.content, BUDGET_MESSAGE_RECENT),
+    content: m.content,
   } as ChatMessage));
-  return [{ role: 'system', content: systemPrompt }, ...recents, { role: 'user', content: tronquer(ctx.messageJoueur, 2000) }];
+
+  return [{ role: 'system', content: systemPrompt }, ...recents, { role: 'user', content: ctx.messageJoueur }];
 }
 
 export function temperaturePourCreativite(creativite: StorySettings['creativite']): number {
