@@ -1,0 +1,53 @@
+name: Elyndor V3 Etape 5
+
+on:
+  push:
+    branches:
+      - claude/new-session-glwy6e
+    paths:
+      - 'scripts/v3-step5.cjs'
+      - '.github/workflows/v3-step5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  hierarchy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: claude/new-session-glwy6e
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Appliquer Elyndor V3 étape 5
+        run: node scripts/v3-step5.cjs
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier TypeScript
+        run: npx tsc --noEmit
+
+      - name: Vérifier le diff
+        run: |
+          git diff --check
+          git status --short
+
+      - name: Commit étape 5
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/elyndorLore.json docs/v3/STEP5_HIERARCHIE_LORE_V3.md
+          if git diff --cached --quiet; then
+            echo "Aucun changement à committer"
+            exit 0
+          fi
+          git commit -m "V3 étape 5 — hiérarchiser le lore"
+          git push origin HEAD:claude/new-session-glwy6e
