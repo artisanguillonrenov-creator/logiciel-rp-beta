@@ -64,9 +64,13 @@ function formaterEntrees(
   }
 
   const garantirToutes = options.garantirToutes ?? false;
-  const minContenu = Math.max(40, options.minContenu ?? 160);
-  const maxContenu = Math.max(minContenu, options.maxContenu ?? 650);
+  const minContenuDemande = Math.max(40, options.minContenu ?? 160);
+  const maxContenu = Math.max(minContenuDemande, options.maxContenu ?? 650);
   let restant = budget - enteteSection.length;
+  const totalEntetes = entries.reduce((total, entry) => total + coutEnteteEntree(entry), 0);
+  const minContenuGaranti = garantirToutes
+    ? Math.max(24, Math.min(minContenuDemande, Math.floor(Math.max(0, restant - totalEntetes) / entries.length)))
+    : minContenuDemande;
   const blocs: string[] = [];
   const injectees: string[] = [];
   const tronquees: string[] = [];
@@ -77,11 +81,11 @@ function formaterEntrees(
     const enteteEntree = `### ${entry.titre}\n`;
     const restantes = entries.slice(i + 1);
     const reserveRestantes = garantirToutes
-      ? restantes.reduce((total, e) => total + coutEnteteEntree(e) + minContenu, 0)
+      ? restantes.reduce((total, e) => total + coutEnteteEntree(e) + minContenuGaranti, 0)
       : 0;
     const disponibleContenu = Math.min(maxContenu, restant - enteteEntree.length - reserveRestantes);
 
-    if (disponibleContenu < (garantirToutes ? 24 : minContenu)) {
+    if (disponibleContenu < (garantirToutes ? 24 : minContenuDemande)) {
       excluesBudget.push(entry.titre, ...restantes.map((e) => e.titre));
       break;
     }
@@ -272,7 +276,7 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquerSilencieusement(ctx.no
   const bEtat = Math.floor(disponible * 0.07);
   const bSouvenirs = Math.max(0, disponible - bMeta - bLoreObligatoire - bLoreOptionnel - bBlocs - bFaits - bResume - bEtat);
 
-  const loreObligatoire = ctx.loreElyndor.filter((e) => e.score === undefined || (e.score ?? 0) > 1.5);
+  const loreObligatoire = ctx.loreElyndor.filter((e) => e.score === undefined);
   const idsObligatoires = new Set(loreObligatoire.map((e) => e.id));
   const loreOptionnel = ctx.loreElyndor.filter((e) => !idsObligatoires.has(e.id));
 
