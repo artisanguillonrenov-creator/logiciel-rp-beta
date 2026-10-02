@@ -12,9 +12,10 @@
     "V3 étape 2 : saisons alignées sur les hémisphères et climats de la Terre réelle",
     "V3 étape 2 : résidu éditorial New York supprimé et sens des Hommes-Bêtes ramenés à des indices physiologiques, sans détection absolue du mensonge",
     "V3 étape 2 : Sir William retiré du canon statique de la Guilde des Aventuriers ; statut géré par le profil joueur/session",
-    "V3 étape 3 : séparation canon / M08 / paramètres de session ; suppression de l’intensité maximale permanente"
+    "V3 étape 3 : séparation canon / M08 / paramètres de session ; suppression de l’intensité maximale permanente",
+    "V3 étape 4 : entrées récurrentes 94-100 atomisées en 84 fiches PNJ + index de rôle et 14 index de capitale"
   ],
-  "entry_count": 102,
+  "entry_count": 200,
   "entries": [
     {
       "id": 0,
@@ -2004,8 +2005,8 @@
     },
     {
       "id": 94,
-      "category": "RÉCURRENT",
-      "title": "Maîtresses de Guilde — Toutes Capitales",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Directions des Guildes",
       "primary_keys": [
         "maîtresse de guilde",
         "maître de guilde",
@@ -2014,9 +2015,24 @@
         "guilde de Delhi",
         "bureau de la guilde"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Séraphine Duvall",
+        "Yui Frostveil",
+        "Priya Duskblade",
+        "Sigrid Bearclaw",
+        "Emre Goldtongue",
+        "Zola Nightbloom",
+        "Themba Ironvow",
+        "Nahual Skullbreaker",
+        "Marcus Nightprowl",
+        "Yamile Windsinger",
+        "Marina Pearltide",
+        "Kaito Deepcurrent",
+        "Bjorn Stonebeard",
+        "Tenzin Skyreach"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nMaîtresse de Guilde citée = toujours le personnage listé. Jamais d'improvisation sur les noms. Chaque tenue suit la culture de SA capitale.\n\nParis : Séraphine Duvall — Humaine, 45 ans, cicatrice discrète sur la joue gauche, chignon brun strict. Corsage de cuir noir ouvert et jupe fendue, élégance sobre de femme de pouvoir. Autorité naturelle, mémoire parfaite des contrats et des manquements. Directe, posée — son silence vaut avertissement.\n\nTokyo : Yui Frostveil — Haute-Elfe, apparence 35 ans, chignon argenté impeccable, kimono de soie quasi transparente porté avec rigueur cérémonielle. Froide, exigeante, teste la compétence avant toute mission — un échec ferme sa porte pour des mois.\n\nDelhi : Priya Duskblade — Elfe Noire, apparence 40 ans, tresse argentée jusqu'aux reins, brûlures de combat aux avant-bras. Sangles de cuir croisées, lame à la hanche. Ancienne officière : dirige comme une caserne, vouvoie tout le monde.\n\nOslo : Sigrid Bearclaw — Valkyrie, 55 ans, carrure massive, cheveux roux tressés de perles de fer, oreille déchirée. Fourrure d'ours, torse harnaché. Rit fort, jauge la valeur au combat, tape l'épaule à faire plier.\n\nIstanbul : Emre Goldtongue — Sultanat, 50 ans, barbe huilée, doigts bagués, caftan brodé d'or ouvert. Charmeur redoutable, négocie chaque clause avec gourmandise. Refuser son thé est une insulte.\n\nLagos : Zola Nightbloom — Amazone Sombre, apparence 45 ans, grande, anguleuse, yeux gris. Perles sombres sur tissu minimal, manches longues cachant ses cicatrices de Zones Corrompues — trois expéditions, trois retours. Parle peu, sait tout.\n\nJohannesburg : Themba Ironvow — Orque Noble, 70 ans, défenses aux anneaux de bronze, crinière grise, pagne d'apparat et plastron clanique. Refuse tout contrat douteux. Sa parole vaut tous les papiers d'Elyndor.\n\nMexico : Nahual Skullbreaker — Orc, 45 ans, borgne, crâne scarifié de victoires, harnais clouté, trophées d'os. Primes généreuses parce que les missions tuent. Respecte ceux qui reviennent.\n\nNew York : Marcus Nightprowl — Homme-Bête félin, 40 ans, pelage tacheté grisonnant, long manteau de cuir sur torse nu, gestes de prédateur au repos. Jauge la fiabilité d'un regard. Aucune deuxième chance.\n\nBogotá : Yamile Windsinger — Tribu Primale, 60 ans, plumes et os dans les cheveux, iris presque blancs, peintures rituelles. Consulte les esprits avant chaque mission majeure — elle a toujours eu raison.\n\nSydney : Marina Pearltide — Sirène, apparence 30 ans, peau nacrée, cheveux turquoise humides, filet de perles en guise de tenue. Séductrice par nature, professionnelle par choix. Paie double les missions maritimes refusées.\n\nAuckland : Kaito Deepcurrent — Naga, âge inconnu, écailles noir et or ornées d'anneaux, immobile des heures. Missions rares, longues à obtenir, payées comme des trésors.\n\nZurich : Bjorn Stonebeard — Nain, 250 ans, barbe grise aux fils de cuivre, lunettes de forge, tablier de cuir. Chaque contrat depuis un siècle archivé. Cite les manquements de mémoire, dates comprises.\n\nKatmandou : Tenzin Skyreach — Géante, âge inconnu, quatre mètres assise, drapée de laines de montagne. Ne descend que pour l'exceptionnel — la voir est déjà un événement.",
+      "content": "[INDEX][RÔLE] Directions des Guildes — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Séraphine Duvall\nTokyo → Yui Frostveil\nDelhi → Priya Duskblade\nOslo → Sigrid Bearclaw\nIstanbul → Emre Goldtongue\nLagos → Zola Nightbloom\nJohannesburg → Themba Ironvow\nMexico → Nahual Skullbreaker\nNew York → Marcus Nightprowl\nBogotá → Yamile Windsinger\nSydney → Marina Pearltide\nAuckland → Kaito Deepcurrent\nZurich → Bjorn Stonebeard\nKatmandou → Tenzin Skyreach",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2024,17 +2040,32 @@
     },
     {
       "id": 95,
-      "category": "RÉCURRENT",
-      "title": "Réceptionnistes de Guilde",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Réceptionnistes de Guilde",
       "primary_keys": [
         "réceptionniste",
         "accueil de la guilde",
         "guichet",
         "enregistrement des contrats"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Margaux Fontaine",
+        "Sachi Moonwhisper",
+        "Ashira Steelsong",
+        "Freya Stormaxe",
+        "Leyla Sandwhisper",
+        "Adaeze Voidwhisper",
+        "Nomvula Ironsong",
+        "Xochitl Bloodclaw",
+        "Jasmine Nightpaw",
+        "Amaru Windwalker",
+        "Coralie Tidewhisper",
+        "Nerezza Deepvoice",
+        "Greta Ironquill",
+        "Pemba Highwind"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nRéceptionniste citée = toujours le personnage listé. Enregistre contrats et rapports — les décisions exceptionnelles reviennent à la Maîtresse. Se souvient des contrats actifs de {{user}} même s'il les a oubliés.\n\nParis : Margaux Fontaine — Humaine, 28 ans, lunettes rondes, chignon d'où s'échappent des mèches. Mémoire d'archive vivante, rougit facilement, ne perd jamais un dossier.\nTokyo : Sachi Moonwhisper — Haute-Elfe, apparence 25 ans, gestes de cérémonie. Une pièce manquante = retour à la file.\nDelhi : Ashira Steelsong — Elfe Noire, apparence 35 ans, ancienne guerrière au genou brisé. Jauge la carrure et le dit : « Cette mission te tuera. Prends celle-ci. »\nOslo : Freya Stormaxe — Valkyrie, 30 ans, tatouages runiques. Mission, prime, signature — sourit uniquement aux récits de bataille.\nIstanbul : Leyla Sandwhisper — Sultanat, 26 ans, khôl parfait. Négocie même les formulaires, propose toujours « un peu mieux payé » contre un petit service.\nLagos : Adaeze Voidwhisper — Amazone Sombre, 30 ans, crâne mi-rasé. Reconnaît un visage croisé une fois, cinq ans plus tôt.\nJohannesburg : Nomvula Ironsong — Orque Noble, 40 ans, rire tonitruant. Connaît chaque habitué, son plat préféré et le prénom de ses enfants.\nMexico : Xochitl Bloodclaw — Orc, 25 ans, dents limées. « La mission part dans une heure, tu signes ou tu dégages. »\nNew York : Jasmine Nightpaw — féline, 22 ans, oreilles noires mobiles, queue qui trahit tout. Flaire les mauvais payeurs — et le note.\nBogotá : Amaru Windwalker — Tribu Primale, 35 ans, colliers de graines. Consulte parfois les esprits sur un dossier — le guichet ferme dix minutes, nul ne proteste.\nSydney : Coralie Tidewhisper — Sirène, apparence 24 ans, voix qui fait patienter la file sans qu'elle s'en rende compte.\nAuckland : Nerezza Deepvoice — Naga, âge inconnu, comptoir surélevé. Une heure par dossier, zéro erreur.\nZurich : Greta Ironquill — Naine, 180 ans, plume d'acier gravée. « La virgule, c'est la différence entre payé et mort. »\nKatmandou : Pemba Highwind — Géante jeune, deux mètres cinquante « seulement », assise en tailleur. Peu de choses l'impressionnent, et elle le montre.",
+      "content": "[INDEX][RÔLE] Réceptionnistes de Guilde — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Margaux Fontaine\nTokyo → Sachi Moonwhisper\nDelhi → Ashira Steelsong\nOslo → Freya Stormaxe\nIstanbul → Leyla Sandwhisper\nLagos → Adaeze Voidwhisper\nJohannesburg → Nomvula Ironsong\nMexico → Xochitl Bloodclaw\nNew York → Jasmine Nightpaw\nBogotá → Amaru Windwalker\nSydney → Coralie Tidewhisper\nAuckland → Nerezza Deepvoice\nZurich → Greta Ironquill\nKatmandou → Pemba Highwind",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2042,8 +2073,8 @@
     },
     {
       "id": 96,
-      "category": "RÉCURRENT",
-      "title": "Tavernières",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Taverniers récurrents",
       "primary_keys": [
         "tavernière",
         "aubergiste",
@@ -2051,9 +2082,24 @@
         "comptoir de l'auberge",
         "sanglier doré"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Odette Vinchamps",
+        "Hana Silverleaf",
+        "Kavita Ashblade",
+        "Astrid Frostbrew",
+        "Nazli Spiceheart",
+        "Chidinma Emberlight",
+        "Busisiwe Warmhearth",
+        "Itzel Fireclaw",
+        "Raven Duskrunner",
+        "Quilla Earthsong",
+        "Nerida Saltbreeze",
+        "Vashti Coldcurrent",
+        "Helga Stonewarm",
+        "Lhamo Windwhisper"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nTavernière citée = toujours le personnage listé. Source de rumeurs — des pistes, jamais des faits confirmés.\n\nParis : Odette Vinchamps — Humaine, 50 ans, joues rouges, tablier taché, tient « Le Sanglier Doré ». Sait tout du quartier, le raconte à la deuxième tournée.\nTokyo : Hana Silverleaf — Haute-Elfe, apparence 30 ans, maison de thé aux cloisons de papier. Ce qui se dit chez elle y reste — les puissants s'y retrouvent pour ça.\nDelhi : Kavita Ashblade — Elfe Noire, apparence 45 ans, cimeterre au-dessus du comptoir « au cas où ». Arbitre les paris des mercenaires, connaît le prix de chaque lame en ville.\nOslo : Astrid Frostbrew — Valkyrie, 40 ans, biceps de brasseuse. Sa brune est légendaire ; une chope offerte pour les meilleures histoires de bataille.\nIstanbul : Nazli Spiceheart — Sultanat, 45 ans, voiles vifs, caravansérail bruissant. Chaque caravane lui laisse ses secrets avec la poussière.\nLagos : Chidinma Emberlight — Amazone Sombre, 35 ans, lanternes basses, alcôves sombres. On vient chez elle pour ne pas être vu.\nJohannesburg : Busisiwe Warmhearth — Orque Noble, 55 ans, marmites énormes. Jamais un affamé refusé — « on rembourse quand on peut, on rembourse toujours. »\nMexico : Itzel Fireclaw — Orc, 35 ans, arcade fendue, gourdin sous le comptoir. Arbitre les bagarres quotidiennes — et les termine parfois.\nNew York : Raven Duskrunner — Homme-Bête canin, 30 ans, pelage noir, oreille cassée. Receleurs, informateurs et gardes en civil s'y croisent sans se saluer.\nBogotá : Quilla Earthsong — Tribu Primale, 50 ans, bocaux d'herbes au plafond. Sa soupe « répare tout sauf les cœurs brisés ».\nSydney : Nerida Saltbreeze — Sirène, apparence 28 ans, taverne sur pilotis. Elle chante à la fermeture et personne ne veut partir.\nAuckland : Vashti Coldcurrent — Naga, âge inconnu, établissement semi-immergé. On n'y entre que recommandé.\nZurich : Helga Stonewarm — Naine, 200 ans, taverne dans la roche. Bière naine authentique — les humains la coupent d'eau, les nains rient.\nKatmandou : Lhamo Windwhisper — Géante, âge inconnu, refuge aux plafonds de dix mètres. On ne monte pas jusqu'à elle par hasard.",
+      "content": "[INDEX][RÔLE] Taverniers récurrents — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Odette Vinchamps\nTokyo → Hana Silverleaf\nDelhi → Kavita Ashblade\nOslo → Astrid Frostbrew\nIstanbul → Nazli Spiceheart\nLagos → Chidinma Emberlight\nJohannesburg → Busisiwe Warmhearth\nMexico → Itzel Fireclaw\nNew York → Raven Duskrunner\nBogotá → Quilla Earthsong\nSydney → Nerida Saltbreeze\nAuckland → Vashti Coldcurrent\nZurich → Helga Stonewarm\nKatmandou → Lhamo Windwhisper",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2061,8 +2107,8 @@
     },
     {
       "id": 97,
-      "category": "RÉCURRENT",
-      "title": "Forgeronnes",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Forgerons récurrents",
       "primary_keys": [
         "forgeronne",
         "forge de",
@@ -2070,9 +2116,24 @@
         "réparer l'équipement",
         "enclume"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Camille Ferrand",
+        "Emiko Steelwhisper",
+        "Ranjana Battleforge",
+        "Ingrid Frostforge",
+        "Fatima Goldsmith",
+        "Folake Shadowforge",
+        "Lindiwe Ironheart",
+        "Citlali Skullforge",
+        "Whitney Clawsmith",
+        "Sisa Stoneheart",
+        "Marella Coralforge",
+        "Sythia Voidforge",
+        "Brunhild Deepforge",
+        "Yangchen Skyhammer"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nForgeronne citée = toujours le personnage listé. Un équipement endommagé le reste jusqu'à réparation.\n\nParis : Camille Ferrand — Humaine, 35 ans, avant-bras brûlés, cheveux roussis. « Du solide, pas du joli. » Devis honnête, délai tenu.\nTokyo : Emiko Steelwhisper — Haute-Elfe, apparence 40 ans, gestes de calligraphe. Runes de précision — triple prix, quintuple valeur.\nDelhi : Ranjana Battleforge — Elfe Noire, apparence 50 ans, épaules de lutteuse. Teste chaque lame elle-même contre mannequin blindé avant livraison.\nOslo : Ingrid Frostforge — Valkyrie, 45 ans, cheveux blancs précoces. Armures lourdes uniquement : « une armure légère est un linceul confortable. »\nIstanbul : Fatima Goldsmith — Sultanat, 40 ans, loupe d'orfèvre vissée à l'œil. Gardes damasquinées — des bijoux qui tuent.\nLagos : Folake Shadowforge — Amazone Sombre, 38 ans, forge en sous-sol. Ses alliages sombres absorbent la lumière. Sur recommandation.\nJohannesburg : Lindiwe Ironheart — Orque Noble, 60 ans, mains comme des enclumes, douceur surprenante. Trois mois d'attente, aucune exception.\nMexico : Citlali Skullforge — Orc, 30 ans, crête rouge, percussions en travaillant. « La beauté, c'est l'ennemi mort. »\nNew York : Whitney Clawsmith — Homme-Bête, 28 ans, doigts griffus agiles. Répare sur le pouce à toute heure — prix de nuit majoré.\nBogotá : Sisa Stoneheart — Tribu Primale, 55 ans, forge à ciel ouvert, chants au martelage. Ses armes semblent vivantes en main.\nSydney : Marella Coralforge — Sirène, apparence 35 ans, forge à marée basse. Alliages inoxydables uniques — tout l'équipement maritime en rêve.\nAuckland : Sythia Voidforge — Naga, âge inconnu, techniques d'avant les Ères. Une commande par an, choisie par elle.\nZurich : Brunhild Deepforge — Naine, 300 ans, barbe aux fils d'or. LA référence d'Elyndor. « Le métal ne connaît pas les titres. »\nKatmandou : Yangchen Skyhammer — Géante, âge inconnu, marteau plus lourd qu'un homme. Portes de citadelles, chaînes de pont — rarement pour un seul individu.",
+      "content": "[INDEX][RÔLE] Forgerons récurrents — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Camille Ferrand\nTokyo → Emiko Steelwhisper\nDelhi → Ranjana Battleforge\nOslo → Ingrid Frostforge\nIstanbul → Fatima Goldsmith\nLagos → Folake Shadowforge\nJohannesburg → Lindiwe Ironheart\nMexico → Citlali Skullforge\nNew York → Whitney Clawsmith\nBogotá → Sisa Stoneheart\nSydney → Marella Coralforge\nAuckland → Sythia Voidforge\nZurich → Brunhild Deepforge\nKatmandou → Yangchen Skyhammer",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2080,17 +2141,32 @@
     },
     {
       "id": 98,
-      "category": "RÉCURRENT",
-      "title": "Passeuses Astra",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Gardiens des Portes Astra",
       "primary_keys": [
         "passeuse",
         "contrôle de la porte",
         "gardienne du portail",
         "laissez-passer astra"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Bernadette Portier",
+        "Reiko Voidwalker",
+        "Meera Threadweaver",
+        "Solveig Frostgate",
+        "Selin Doorward",
+        "Ngozi Voidkeeper",
+        "Palesa Ironward",
+        "Malinalli Boneguard",
+        "Sable Nightward",
+        "Chaska Spiritgate",
+        "Talise Tidegate",
+        "Ixora Depthward",
+        "Ursula Stoneward",
+        "Dolma Cloudward"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nPasseuse citée = toujours le personnage listé. Incorruptibles par défaut. Toute traversée laisse une trace consultable.\n\nParis : Bernadette Portier — Humaine, 55 ans, uniforme impeccable, registre de cuir. Remarque immédiatement les nouveaux visages.\nTokyo : Reiko Voidwalker — Haute-Elfe, apparence 30 ans, immobile comme une statue. Un prince a attendu son tour — l'histoire est célèbre.\nDelhi : Meera Threadweaver — Elfe Noire, apparence 40 ans, ancienne éclaireuse, œil balafré. « Vos papiers disent marchand, vos mains disent soldat. »\nOslo : Solveig Frostgate — Valkyrie, 50 ans, deux mètres, hache cérémonielle jamais dégainée : sa présence suffit.\nIstanbul : Selin Doorward — Sultanat, 35 ans, courtoisie parfaite. « Le Conseil fixe les prix, je fixe les départs. »\nLagos : Ngozi Voidkeeper — Amazone Sombre, 45 ans, tatouages de protection. Sa Porte est la plus proche des Zones — elle vérifie AUSSI ce qui revient.\nJohannesburg : Palesa Ironward — Orque Noble, 50 ans, voix posée. Juste envers tous — mais rien ne passe, jamais.\nMexico : Malinalli Boneguard — Orc, 35 ans, collier d'osselets. Le dernier resquilleur a traversé la place sans toucher le sol.\nNew York : Sable Nightward — Homme-Bête, 32 ans, truffe frémissante, avis de recherche mémorisés. Les primes de capture arrondissent ses mois.\nBogotá : Chaska Spiritgate — Tribu Primale, 60 ans, bâton à plumes. Un voyageur refusé par les esprits ne passe pas, quelle que soit sa bourse.\nSydney : Talise Tidegate — Sirène, apparence 26 ans, vue sur le port. Rien ne quitte Sydney sans qu'elle le sache.\nAuckland : Ixora Depthward — Naga, âge inconnu, mémoire millénaire. Se souvient de voyageurs morts depuis des siècles.\nZurich : Ursula Stoneward — Naine, 220 ans, lorgnons, tampons au millimètre. « La première vérification pour vous, la seconde pour moi. »\nKatmandou : Dolma Cloudward — Géante, âge inconnu, assise près de l'arche qu'elle dépasse. On ne discute pas avec une montagne.",
+      "content": "[INDEX][RÔLE] Gardiens des Portes Astra — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Bernadette Portier\nTokyo → Reiko Voidwalker\nDelhi → Meera Threadweaver\nOslo → Solveig Frostgate\nIstanbul → Selin Doorward\nLagos → Ngozi Voidkeeper\nJohannesburg → Palesa Ironward\nMexico → Malinalli Boneguard\nNew York → Sable Nightward\nBogotá → Chaska Spiritgate\nSydney → Talise Tidegate\nAuckland → Ixora Depthward\nZurich → Ursula Stoneward\nKatmandou → Dolma Cloudward",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2098,8 +2174,8 @@
     },
     {
       "id": 99,
-      "category": "RÉCURRENT",
-      "title": "Souverains d'Elyndor — Partie 1",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Souverains — 1",
       "primary_keys": [
         "roi",
         "reine",
@@ -2113,9 +2189,17 @@
         "Adanna",
         "Okoro"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Henri Valmonde",
+        "Aelindra Dawnveil",
+        "Olga Discordia",
+        "Thyra Ironblood",
+        "Karim Al-Rashid",
+        "Adanna Umbrathorn",
+        "Okoro Stoneheart"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nSouverain cité = toujours le personnage listé. Jamais d'improvisation sur les noms.\n\nPARIS : Roi Henri Valmonde — Humain, 52 ans, barbe grise taillée, regard las de qui arbitre depuis trente ans. Fin diplomate, joue les maisons nobles les unes contre les autres. Publiquement pieux, privément pragmatique sur l'Église.\n\nTOKYO : Impératrice Aelindra Dawnveil — Haute-Elfe, 800 ans, apparence 40, beauté glaciale parfaite. Patience de siècles, mémoire des affronts intacte. Considère les autres souverains comme des enfants éphémères — et négocie quand même : les enfants ont des armées.\n\nDELHI : Olga Discordia — Elfe Noire, stature imposante, peau brun foncé, cheveux blanc argenté, yeux rouge et or. Exception vivante : maîtrise arc, lame ET magie — cette rareté fonde son autorité. Calculatrice, protectrice de son peuple, redoutée de ses ennemis. A gagné son trône par le mérite, le tient par le respect.\n\nOSLO : Grande Reine Thyra Ironblood — Valkyrie, 180 ans, apparence 45, bras nus couverts de tatouages de victoires. Préside le Conseil des Guerrières par droit de gloire. Franche jusqu'à la brutalité diplomatique — les ambassadeurs la craignent plus que ses armées.\n\nISTANBUL : Sultan Karim Al-Rashid — Sultanat, 60 ans, embonpoint majestueux, esprit d'échiquier. Règne par le commerce : chaque royaume lui doit quelque chose. Sa devise privée : « la guerre est un échec de négociation. »\n\nLAGOS : Reine-Mère Adanna Umbrathorn — Amazone Sombre, 280 ans, apparence 45, port de reine offensée par l'Histoire. Dirige un peuple ostracisé avec une dignité de fer. Ce qu'elle sait des Voiles — et du Réveil — reste son arme secrète.\n\nJOHANNESBURG : Grand Chef Okoro Stoneheart — Orque Noble, 120 ans, colosse aux défenses ornées de trois anneaux d'or (trois serments majeurs tenus). Sa parole engage la confédération entière — il parle donc peu, et le monde écoute.",
+      "content": "[INDEX][RÔLE] Souverains — 1 — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nParis → Henri Valmonde\nTokyo → Aelindra Dawnveil\nDelhi → Olga Discordia\nOslo → Thyra Ironblood\nIstanbul → Karim Al-Rashid\nLagos → Adanna Umbrathorn\nJohannesburg → Okoro Stoneheart",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2123,8 +2207,8 @@
     },
     {
       "id": 100,
-      "category": "RÉCURRENT",
-      "title": "Souverains d'Elyndor — Partie 2",
+      "category": "INDEX",
+      "title": "[INDEX][RÔLE] Souverains — 2",
       "primary_keys": [
         "warchief",
         "alpha",
@@ -2138,9 +2222,17 @@
         "Oya",
         "matriarche"
       ],
-      "secondary_keys": [],
+      "secondary_keys": [
+        "Tloc Bloodfang",
+        "Kira Swiftclaw",
+        "Inti Spiritborn",
+        "Coral Deepsung",
+        "Ssythar Abysswhisper",
+        "Durin Anvilborn",
+        "Oya Cloudpeak"
+      ],
       "negative_keys": [],
-      "content": "RÈGLE :\nSouverain cité = toujours le personnage listé. Jamais d'improvisation sur les noms.\n\nMEXICO : Warchief Tloc Bloodfang — Orc, 50 ans, montagne de muscles scarifiés, quatorze défis repoussés. Règne tant qu'il est le plus fort — et s'entraîne chaque aube en public pour le rappeler.\n\nNEW YORK : Alpha Kira Swiftclaw — Homme-Bête féline, 45 ans, pelage argenté, économie de gestes absolue. Est devenue Alpha des Alphas sans un seul combat : les meutes ont reconnu son autorité. Sa réputation d’instinct exceptionnel est immense, mais elle reste faillible — une erreur majeure pourrait ébranler cette légitimité.\n\nBOGOTÁ : Grande Chamane Inti Spiritborn — Tribu Primale, 70 ans, silhouette frêle, présence immense. Traverse le Monde-Miroir plus loin que quiconque. Depuis des lunes, elle en revient troublée : les esprits proches des zones se taisent.\n\nSYDNEY : Reine Coral Deepsung — Sirène, 350 ans, apparence 35, voix qui apaise une émeute ou soulève une flotte. Règne mi-immergée depuis son palais de corail. Sa politique : que toutes les mers chantent son nom.\n\nAUCKLAND : Ancien Ssythar Abysswhisper — Naga, plus de 2000 ans, écailles pâlies par les siècles. A VU la fin de l'Ère 2. Ne remonte en surface que pour l'essentiel — sa dernière remontée date d'un siècle. S'il remonte, le monde devrait s'inquiéter.\n\nZURICH : Roi-Forgeron Durin Anvilborn — Nain, 350 ans, mains-enclumes, couronne qu'il a forgée lui-même (tradition : un roi indigne de forger sa couronne est indigne de la porter). Tient les registres de dettes du monde — ce qui vaut toutes les armées.\n\nKATMANDOU : Matriarche Oya Cloudpeak — Géante, âge estimé 1500 ans, assise face à l'horizon depuis des décennies. Sa dernière intervention : clore la Guerre des Voiles. Les royaumes prient pour qu'elle n'ait jamais à se relever — car cela signifierait que c'est grave.",
+      "content": "[INDEX][RÔLE] Souverains — 2 — index canonique compact. Chaque nom renvoie à une fiche PNJ individuelle.\nMexico → Tloc Bloodfang\nNew York → Kira Swiftclaw\nBogotá → Inti Spiritborn\nSydney → Coral Deepsung\nAuckland → Ssythar Abysswhisper\nZurich → Durin Anvilborn\nKatmandou → Oya Cloudpeak",
       "priority": 30,
       "sticky": 0,
       "cooldown": 0,
@@ -2162,6 +2254,2372 @@
       "negative_keys": [],
       "content": "CANON UNIVERSEL :\nLes femmes d'Elyndor, toutes races confondues, présentent des physiques marqués : poitrines généreuses, tailles fines, hanches larges, jambes dessinées. La norme du monde — assumée, entretenue, célébrée par les mœurs vestimentaires.\n\nVARIATIONS RACIALES SUR LE CANON :\nHumaines, Sultanats → courbes pleines classiques\nHauts-Elfes → élancées, courbes hautes, port aristocratique\nElfes Noirs → athlétiques ET voluptueuses — muscles dessinés sous les courbes\nValkyries, Am. Nordiques → puissantes, épaules larges, poitrines lourdes\nAmazones Sombres → longilignes, hanches hautes\nOrques (les deux) → massives, poitrines énormes, force visible\nHommes-Bêtes → souples, félines, courbes nerveuses\nSirènes → courbes fluides, peau nacrée\nNaga → buste voluptueux sur corps serpentin\nNaines → compactes, poitrines opulentes sur petites tailles\nGéantes → le canon à l'échelle ×3\n\nANATOMIE SEXUELLE :\nUne chatte aux lèvres longue et fine et un gros clitoris imberbe \n\n\nPORTÉE CANONIQUE :\nCe canon décrit une tendance esthétique du monde, avec variations raciales et individuelles. Il s'applique lorsqu'une description physique est réellement pertinente ; il ne déclenche pas à lui seul une scène sensuelle et ne fixe jamais l'intensité narrative.",
       "priority": 100,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 118,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Séraphine Duvall — Direction guilde",
+      "primary_keys": [
+        "Séraphine Duvall",
+        "Paris",
+        "Séraphine Duvall Paris",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Séraphine Duvall\nLIEU : Paris\nFONCTION : Direction de la Guilde des Aventuriers de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumaine, 45 ans, cicatrice discrète sur la joue gauche, chignon brun strict. Corsage de cuir noir ouvert et jupe fendue, élégance sobre de femme de pouvoir. Autorité naturelle, mémoire parfaite des contrats et des manquements. Directe, posée — son silence vaut avertissement.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Paris, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 119,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Yui Frostveil — Direction guilde",
+      "primary_keys": [
+        "Yui Frostveil",
+        "Tokyo",
+        "Yui Frostveil Tokyo",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Yui Frostveil\nLIEU : Tokyo\nFONCTION : Direction de la Guilde des Aventuriers de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, apparence 35 ans, chignon argenté impeccable, kimono de soie quasi transparente porté avec rigueur cérémonielle. Froide, exigeante, teste la compétence avant toute mission — un échec ferme sa porte pour des mois.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Tokyo, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 120,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Priya Duskblade — Direction guilde",
+      "primary_keys": [
+        "Priya Duskblade",
+        "Delhi",
+        "Priya Duskblade Delhi",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Priya Duskblade\nLIEU : Delhi\nFONCTION : Direction de la Guilde des Aventuriers de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, apparence 40 ans, tresse argentée jusqu'aux reins, brûlures de combat aux avant-bras. Sangles de cuir croisées, lame à la hanche. Ancienne officière : dirige comme une caserne, vouvoie tout le monde.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Delhi, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 121,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Sigrid Bearclaw — Direction guilde",
+      "primary_keys": [
+        "Sigrid Bearclaw",
+        "Oslo",
+        "Sigrid Bearclaw Oslo",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Sigrid Bearclaw\nLIEU : Oslo\nFONCTION : Direction de la Guilde des Aventuriers de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 55 ans, carrure massive, cheveux roux tressés de perles de fer, oreille déchirée. Fourrure d'ours, torse harnaché. Rit fort, jauge la valeur au combat, tape l'épaule à faire plier.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Oslo, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 122,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Emre Goldtongue — Direction guilde",
+      "primary_keys": [
+        "Emre Goldtongue",
+        "Istanbul",
+        "Emre Goldtongue Istanbul",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Emre Goldtongue\nLIEU : Istanbul\nFONCTION : Direction de la Guilde des Aventuriers de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 50 ans, barbe huilée, doigts bagués, caftan brodé d'or ouvert. Charmeur redoutable, négocie chaque clause avec gourmandise. Refuser son thé est une insulte.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Istanbul, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 123,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Zola Nightbloom — Direction guilde",
+      "primary_keys": [
+        "Zola Nightbloom",
+        "Lagos",
+        "Zola Nightbloom Lagos",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Zola Nightbloom\nLIEU : Lagos\nFONCTION : Direction de la Guilde des Aventuriers de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, apparence 45 ans, grande, anguleuse, yeux gris. Perles sombres sur tissu minimal, manches longues cachant ses cicatrices de Zones Corrompues — trois expéditions, trois retours. Parle peu, sait tout.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Lagos, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 124,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Themba Ironvow — Direction guilde",
+      "primary_keys": [
+        "Themba Ironvow",
+        "Johannesburg",
+        "Themba Ironvow Johannesburg",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Themba Ironvow\nLIEU : Johannesburg\nFONCTION : Direction de la Guilde des Aventuriers de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 70 ans, défenses aux anneaux de bronze, crinière grise, pagne d'apparat et plastron clanique. Refuse tout contrat douteux. Sa parole vaut tous les papiers d'Elyndor.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Johannesburg, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 125,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Nahual Skullbreaker — Direction guilde",
+      "primary_keys": [
+        "Nahual Skullbreaker",
+        "Mexico",
+        "Nahual Skullbreaker Mexico",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Nahual Skullbreaker\nLIEU : Mexico\nFONCTION : Direction de la Guilde des Aventuriers de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 45 ans, borgne, crâne scarifié de victoires, harnais clouté, trophées d'os. Primes généreuses parce que les missions tuent. Respecte ceux qui reviennent.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Mexico, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 126,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Marcus Nightprowl — Direction guilde",
+      "primary_keys": [
+        "Marcus Nightprowl",
+        "New York",
+        "Marcus Nightprowl New York",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Marcus Nightprowl\nLIEU : New York\nFONCTION : Direction de la Guilde des Aventuriers de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHomme-Bête félin, 40 ans, pelage tacheté grisonnant, long manteau de cuir sur torse nu, gestes de prédateur au repos. Jauge la fiabilité d'un regard. Aucune deuxième chance.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de New York, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 127,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Yamile Windsinger — Direction guilde",
+      "primary_keys": [
+        "Yamile Windsinger",
+        "Bogotá",
+        "Yamile Windsinger Bogotá",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Yamile Windsinger\nLIEU : Bogotá\nFONCTION : Direction de la Guilde des Aventuriers de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 60 ans, plumes et os dans les cheveux, iris presque blancs, peintures rituelles. Consulte les esprits avant chaque mission majeure — elle a toujours eu raison.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Bogotá, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 128,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Marina Pearltide — Direction guilde",
+      "primary_keys": [
+        "Marina Pearltide",
+        "Sydney",
+        "Marina Pearltide Sydney",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Marina Pearltide\nLIEU : Sydney\nFONCTION : Direction de la Guilde des Aventuriers de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, apparence 30 ans, peau nacrée, cheveux turquoise humides, filet de perles en guise de tenue. Séductrice par nature, professionnelle par choix. Paie double les missions maritimes refusées.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Sydney, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 129,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Kaito Deepcurrent — Direction guilde",
+      "primary_keys": [
+        "Kaito Deepcurrent",
+        "Auckland",
+        "Kaito Deepcurrent Auckland",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Kaito Deepcurrent\nLIEU : Auckland\nFONCTION : Direction de la Guilde des Aventuriers de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, âge inconnu, écailles noir et or ornées d'anneaux, immobile des heures. Missions rares, longues à obtenir, payées comme des trésors.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Auckland, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 130,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Bjorn Stonebeard — Direction guilde",
+      "primary_keys": [
+        "Bjorn Stonebeard",
+        "Zurich",
+        "Bjorn Stonebeard Zurich",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Bjorn Stonebeard\nLIEU : Zurich\nFONCTION : Direction de la Guilde des Aventuriers de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNain, 250 ans, barbe grise aux fils de cuivre, lunettes de forge, tablier de cuir. Chaque contrat depuis un siècle archivé. Cite les manquements de mémoire, dates comprises.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Zurich, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 131,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Tenzin Skyreach — Direction guilde",
+      "primary_keys": [
+        "Tenzin Skyreach",
+        "Katmandou",
+        "Tenzin Skyreach Katmandou",
+        "maîtresse de guilde",
+        "maître de guilde",
+        "direction de guilde"
+      ],
+      "secondary_keys": [
+        "Direction guilde",
+        "Direction de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Tenzin Skyreach\nLIEU : Katmandou\nFONCTION : Direction de la Guilde des Aventuriers de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante, âge inconnu, quatre mètres assise, drapée de laines de montagne. Ne descend que pour l'exceptionnel — la voir est déjà un événement.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Katmandou, réception locale, contractants et autorités de la capitale.\n\nRÔLE NARRATIF :\nAutorité canonique pour les contrats exceptionnels, sanctions et décisions de la Guilde locale. Son nom et son profil ne sont jamais improvisés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 132,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Margaux Fontaine — Réception",
+      "primary_keys": [
+        "Margaux Fontaine",
+        "Paris",
+        "Margaux Fontaine Paris",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Margaux Fontaine\nLIEU : Paris\nFONCTION : Réception de la Guilde des Aventuriers de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumaine, 28 ans, lunettes rondes, chignon d'où s'échappent des mèches. Mémoire d'archive vivante, rougit facilement, ne perd jamais un dossier.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Paris, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 133,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Sachi Moonwhisper — Réception",
+      "primary_keys": [
+        "Sachi Moonwhisper",
+        "Tokyo",
+        "Sachi Moonwhisper Tokyo",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Sachi Moonwhisper\nLIEU : Tokyo\nFONCTION : Réception de la Guilde des Aventuriers de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, apparence 25 ans, gestes de cérémonie. Une pièce manquante = retour à la file.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Tokyo, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 134,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Ashira Steelsong — Réception",
+      "primary_keys": [
+        "Ashira Steelsong",
+        "Delhi",
+        "Ashira Steelsong Delhi",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ashira Steelsong\nLIEU : Delhi\nFONCTION : Réception de la Guilde des Aventuriers de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, apparence 35 ans, ancienne guerrière au genou brisé. Jauge la carrure et le dit : « Cette mission te tuera. Prends celle-ci. »\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Delhi, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 135,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Freya Stormaxe — Réception",
+      "primary_keys": [
+        "Freya Stormaxe",
+        "Oslo",
+        "Freya Stormaxe Oslo",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Freya Stormaxe\nLIEU : Oslo\nFONCTION : Réception de la Guilde des Aventuriers de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 30 ans, tatouages runiques. Mission, prime, signature — sourit uniquement aux récits de bataille.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Oslo, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 136,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Leyla Sandwhisper — Réception",
+      "primary_keys": [
+        "Leyla Sandwhisper",
+        "Istanbul",
+        "Leyla Sandwhisper Istanbul",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Leyla Sandwhisper\nLIEU : Istanbul\nFONCTION : Réception de la Guilde des Aventuriers de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 26 ans, khôl parfait. Négocie même les formulaires, propose toujours « un peu mieux payé » contre un petit service.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Istanbul, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 137,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Adaeze Voidwhisper — Réception",
+      "primary_keys": [
+        "Adaeze Voidwhisper",
+        "Lagos",
+        "Adaeze Voidwhisper Lagos",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Adaeze Voidwhisper\nLIEU : Lagos\nFONCTION : Réception de la Guilde des Aventuriers de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, 30 ans, crâne mi-rasé. Reconnaît un visage croisé une fois, cinq ans plus tôt.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Lagos, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 138,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Nomvula Ironsong — Réception",
+      "primary_keys": [
+        "Nomvula Ironsong",
+        "Johannesburg",
+        "Nomvula Ironsong Johannesburg",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Nomvula Ironsong\nLIEU : Johannesburg\nFONCTION : Réception de la Guilde des Aventuriers de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 40 ans, rire tonitruant. Connaît chaque habitué, son plat préféré et le prénom de ses enfants.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Johannesburg, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 139,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Xochitl Bloodclaw — Réception",
+      "primary_keys": [
+        "Xochitl Bloodclaw",
+        "Mexico",
+        "Xochitl Bloodclaw Mexico",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Xochitl Bloodclaw\nLIEU : Mexico\nFONCTION : Réception de la Guilde des Aventuriers de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 25 ans, dents limées. « La mission part dans une heure, tu signes ou tu dégages. »\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Mexico, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 140,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Jasmine Nightpaw — Réception",
+      "primary_keys": [
+        "Jasmine Nightpaw",
+        "New York",
+        "Jasmine Nightpaw New York",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Jasmine Nightpaw\nLIEU : New York\nFONCTION : Réception de la Guilde des Aventuriers de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nféline, 22 ans, oreilles noires mobiles, queue qui trahit tout. Flaire les mauvais payeurs — et le note.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de New York, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 141,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Amaru Windwalker — Réception",
+      "primary_keys": [
+        "Amaru Windwalker",
+        "Bogotá",
+        "Amaru Windwalker Bogotá",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Amaru Windwalker\nLIEU : Bogotá\nFONCTION : Réception de la Guilde des Aventuriers de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 35 ans, colliers de graines. Consulte parfois les esprits sur un dossier — le guichet ferme dix minutes, nul ne proteste.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Bogotá, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 142,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Coralie Tidewhisper — Réception",
+      "primary_keys": [
+        "Coralie Tidewhisper",
+        "Sydney",
+        "Coralie Tidewhisper Sydney",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Coralie Tidewhisper\nLIEU : Sydney\nFONCTION : Réception de la Guilde des Aventuriers de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, apparence 24 ans, voix qui fait patienter la file sans qu'elle s'en rende compte.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Sydney, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 143,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Nerezza Deepvoice — Réception",
+      "primary_keys": [
+        "Nerezza Deepvoice",
+        "Auckland",
+        "Nerezza Deepvoice Auckland",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Nerezza Deepvoice\nLIEU : Auckland\nFONCTION : Réception de la Guilde des Aventuriers de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, âge inconnu, comptoir surélevé. Une heure par dossier, zéro erreur.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Auckland, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 144,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Greta Ironquill — Réception",
+      "primary_keys": [
+        "Greta Ironquill",
+        "Zurich",
+        "Greta Ironquill Zurich",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Greta Ironquill\nLIEU : Zurich\nFONCTION : Réception de la Guilde des Aventuriers de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaine, 180 ans, plume d'acier gravée. « La virgule, c'est la différence entre payé et mort. »\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Zurich, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 145,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Pemba Highwind — Réception",
+      "primary_keys": [
+        "Pemba Highwind",
+        "Katmandou",
+        "Pemba Highwind Katmandou",
+        "réceptionniste",
+        "accueil de la guilde",
+        "guichet"
+      ],
+      "secondary_keys": [
+        "Réception",
+        "Réception de la Guilde des Aventuriers"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Pemba Highwind\nLIEU : Katmandou\nFONCTION : Réception de la Guilde des Aventuriers de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante jeune, deux mètres cinquante « seulement », assise en tailleur. Peu de choses l'impressionnent, et elle le montre.\n\nRELATIONS IMPORTANTES :\nGuilde des Aventuriers de Katmandou, direction locale, aventuriers et contractants enregistrés.\n\nRÔLE NARRATIF :\nAccueil, enregistrement des contrats et rapports. Se souvient des contrats actifs de {user} ; les décisions exceptionnelles remontent à la direction de guilde.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 146,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Odette Vinchamps — Taverne",
+      "primary_keys": [
+        "Odette Vinchamps",
+        "Paris",
+        "Odette Vinchamps Paris",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Odette Vinchamps\nLIEU : Paris\nFONCTION : Tavernier ou tavernière récurrent(e) de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumaine, 50 ans, joues rouges, tablier taché, tient « Le Sanglier Doré ». Sait tout du quartier, le raconte à la deuxième tournée.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Paris.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 147,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Hana Silverleaf — Taverne",
+      "primary_keys": [
+        "Hana Silverleaf",
+        "Tokyo",
+        "Hana Silverleaf Tokyo",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Hana Silverleaf\nLIEU : Tokyo\nFONCTION : Tavernier ou tavernière récurrent(e) de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, apparence 30 ans, maison de thé aux cloisons de papier. Ce qui se dit chez elle y reste — les puissants s'y retrouvent pour ça.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Tokyo.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 148,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Kavita Ashblade — Taverne",
+      "primary_keys": [
+        "Kavita Ashblade",
+        "Delhi",
+        "Kavita Ashblade Delhi",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Kavita Ashblade\nLIEU : Delhi\nFONCTION : Tavernier ou tavernière récurrent(e) de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, apparence 45 ans, cimeterre au-dessus du comptoir « au cas où ». Arbitre les paris des mercenaires, connaît le prix de chaque lame en ville.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Delhi.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 149,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Astrid Frostbrew — Taverne",
+      "primary_keys": [
+        "Astrid Frostbrew",
+        "Oslo",
+        "Astrid Frostbrew Oslo",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Astrid Frostbrew\nLIEU : Oslo\nFONCTION : Tavernier ou tavernière récurrent(e) de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 40 ans, biceps de brasseuse. Sa brune est légendaire ; une chope offerte pour les meilleures histoires de bataille.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Oslo.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 150,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Nazli Spiceheart — Taverne",
+      "primary_keys": [
+        "Nazli Spiceheart",
+        "Istanbul",
+        "Nazli Spiceheart Istanbul",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Nazli Spiceheart\nLIEU : Istanbul\nFONCTION : Tavernier ou tavernière récurrent(e) de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 45 ans, voiles vifs, caravansérail bruissant. Chaque caravane lui laisse ses secrets avec la poussière.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Istanbul.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 151,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Chidinma Emberlight — Taverne",
+      "primary_keys": [
+        "Chidinma Emberlight",
+        "Lagos",
+        "Chidinma Emberlight Lagos",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Chidinma Emberlight\nLIEU : Lagos\nFONCTION : Tavernier ou tavernière récurrent(e) de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, 35 ans, lanternes basses, alcôves sombres. On vient chez elle pour ne pas être vu.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Lagos.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 152,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Busisiwe Warmhearth — Taverne",
+      "primary_keys": [
+        "Busisiwe Warmhearth",
+        "Johannesburg",
+        "Busisiwe Warmhearth Johannesburg",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Busisiwe Warmhearth\nLIEU : Johannesburg\nFONCTION : Tavernier ou tavernière récurrent(e) de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 55 ans, marmites énormes. Jamais un affamé refusé — « on rembourse quand on peut, on rembourse toujours. »\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Johannesburg.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 153,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Itzel Fireclaw — Taverne",
+      "primary_keys": [
+        "Itzel Fireclaw",
+        "Mexico",
+        "Itzel Fireclaw Mexico",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Itzel Fireclaw\nLIEU : Mexico\nFONCTION : Tavernier ou tavernière récurrent(e) de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 35 ans, arcade fendue, gourdin sous le comptoir. Arbitre les bagarres quotidiennes — et les termine parfois.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Mexico.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 154,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Raven Duskrunner — Taverne",
+      "primary_keys": [
+        "Raven Duskrunner",
+        "New York",
+        "Raven Duskrunner New York",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Raven Duskrunner\nLIEU : New York\nFONCTION : Tavernier ou tavernière récurrent(e) de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHomme-Bête canin, 30 ans, pelage noir, oreille cassée. Receleurs, informateurs et gardes en civil s'y croisent sans se saluer.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de New York.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 155,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Quilla Earthsong — Taverne",
+      "primary_keys": [
+        "Quilla Earthsong",
+        "Bogotá",
+        "Quilla Earthsong Bogotá",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Quilla Earthsong\nLIEU : Bogotá\nFONCTION : Tavernier ou tavernière récurrent(e) de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 50 ans, bocaux d'herbes au plafond. Sa soupe « répare tout sauf les cœurs brisés ».\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Bogotá.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 156,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Nerida Saltbreeze — Taverne",
+      "primary_keys": [
+        "Nerida Saltbreeze",
+        "Sydney",
+        "Nerida Saltbreeze Sydney",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Nerida Saltbreeze\nLIEU : Sydney\nFONCTION : Tavernier ou tavernière récurrent(e) de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, apparence 28 ans, taverne sur pilotis. Elle chante à la fermeture et personne ne veut partir.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Sydney.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 157,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Vashti Coldcurrent — Taverne",
+      "primary_keys": [
+        "Vashti Coldcurrent",
+        "Auckland",
+        "Vashti Coldcurrent Auckland",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Vashti Coldcurrent\nLIEU : Auckland\nFONCTION : Tavernier ou tavernière récurrent(e) de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, âge inconnu, établissement semi-immergé. On n'y entre que recommandé.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Auckland.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 158,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Helga Stonewarm — Taverne",
+      "primary_keys": [
+        "Helga Stonewarm",
+        "Zurich",
+        "Helga Stonewarm Zurich",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Helga Stonewarm\nLIEU : Zurich\nFONCTION : Tavernier ou tavernière récurrent(e) de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaine, 200 ans, taverne dans la roche. Bière naine authentique — les humains la coupent d'eau, les nains rient.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Zurich.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 159,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Lhamo Windwhisper — Taverne",
+      "primary_keys": [
+        "Lhamo Windwhisper",
+        "Katmandou",
+        "Lhamo Windwhisper Katmandou",
+        "tavernière",
+        "tavernier",
+        "aubergiste"
+      ],
+      "secondary_keys": [
+        "Taverne",
+        "Tavernier / Tavernière récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Lhamo Windwhisper\nLIEU : Katmandou\nFONCTION : Tavernier ou tavernière récurrent(e) de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante, âge inconnu, refuge aux plafonds de dix mètres. On ne monte pas jusqu'à elle par hasard.\n\nRELATIONS IMPORTANTES :\nClientèle locale, voyageurs et réseaux de rumeurs de Katmandou.\n\nRÔLE NARRATIF :\nPoint récurrent de rumeurs et de rencontres. Fournit des pistes ou bruits sociaux, jamais une confirmation automatique d’un fait.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 160,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Camille Ferrand — Forge",
+      "primary_keys": [
+        "Camille Ferrand",
+        "Paris",
+        "Camille Ferrand Paris",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Camille Ferrand\nLIEU : Paris\nFONCTION : Forgeron ou forgeronne récurrent(e) de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumaine, 35 ans, avant-bras brûlés, cheveux roussis. « Du solide, pas du joli. » Devis honnête, délai tenu.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Paris.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 161,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Emiko Steelwhisper — Forge",
+      "primary_keys": [
+        "Emiko Steelwhisper",
+        "Tokyo",
+        "Emiko Steelwhisper Tokyo",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Emiko Steelwhisper\nLIEU : Tokyo\nFONCTION : Forgeron ou forgeronne récurrent(e) de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, apparence 40 ans, gestes de calligraphe. Runes de précision — triple prix, quintuple valeur.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Tokyo.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 162,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Ranjana Battleforge — Forge",
+      "primary_keys": [
+        "Ranjana Battleforge",
+        "Delhi",
+        "Ranjana Battleforge Delhi",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ranjana Battleforge\nLIEU : Delhi\nFONCTION : Forgeron ou forgeronne récurrent(e) de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, apparence 50 ans, épaules de lutteuse. Teste chaque lame elle-même contre mannequin blindé avant livraison.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Delhi.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 163,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Ingrid Frostforge — Forge",
+      "primary_keys": [
+        "Ingrid Frostforge",
+        "Oslo",
+        "Ingrid Frostforge Oslo",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ingrid Frostforge\nLIEU : Oslo\nFONCTION : Forgeron ou forgeronne récurrent(e) de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 45 ans, cheveux blancs précoces. Armures lourdes uniquement : « une armure légère est un linceul confortable. »\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Oslo.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 164,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Fatima Goldsmith — Forge",
+      "primary_keys": [
+        "Fatima Goldsmith",
+        "Istanbul",
+        "Fatima Goldsmith Istanbul",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Fatima Goldsmith\nLIEU : Istanbul\nFONCTION : Forgeron ou forgeronne récurrent(e) de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 40 ans, loupe d'orfèvre vissée à l'œil. Gardes damasquinées — des bijoux qui tuent.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Istanbul.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 165,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Folake Shadowforge — Forge",
+      "primary_keys": [
+        "Folake Shadowforge",
+        "Lagos",
+        "Folake Shadowforge Lagos",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Folake Shadowforge\nLIEU : Lagos\nFONCTION : Forgeron ou forgeronne récurrent(e) de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, 38 ans, forge en sous-sol. Ses alliages sombres absorbent la lumière. Sur recommandation.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Lagos.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 166,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Lindiwe Ironheart — Forge",
+      "primary_keys": [
+        "Lindiwe Ironheart",
+        "Johannesburg",
+        "Lindiwe Ironheart Johannesburg",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Lindiwe Ironheart\nLIEU : Johannesburg\nFONCTION : Forgeron ou forgeronne récurrent(e) de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 60 ans, mains comme des enclumes, douceur surprenante. Trois mois d'attente, aucune exception.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Johannesburg.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 167,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Citlali Skullforge — Forge",
+      "primary_keys": [
+        "Citlali Skullforge",
+        "Mexico",
+        "Citlali Skullforge Mexico",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Citlali Skullforge\nLIEU : Mexico\nFONCTION : Forgeron ou forgeronne récurrent(e) de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 30 ans, crête rouge, percussions en travaillant. « La beauté, c'est l'ennemi mort. »\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Mexico.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 168,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Whitney Clawsmith — Forge",
+      "primary_keys": [
+        "Whitney Clawsmith",
+        "New York",
+        "Whitney Clawsmith New York",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Whitney Clawsmith\nLIEU : New York\nFONCTION : Forgeron ou forgeronne récurrent(e) de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHomme-Bête, 28 ans, doigts griffus agiles. Répare sur le pouce à toute heure — prix de nuit majoré.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de New York.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 169,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Sisa Stoneheart — Forge",
+      "primary_keys": [
+        "Sisa Stoneheart",
+        "Bogotá",
+        "Sisa Stoneheart Bogotá",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Sisa Stoneheart\nLIEU : Bogotá\nFONCTION : Forgeron ou forgeronne récurrent(e) de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 55 ans, forge à ciel ouvert, chants au martelage. Ses armes semblent vivantes en main.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Bogotá.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 170,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Marella Coralforge — Forge",
+      "primary_keys": [
+        "Marella Coralforge",
+        "Sydney",
+        "Marella Coralforge Sydney",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Marella Coralforge\nLIEU : Sydney\nFONCTION : Forgeron ou forgeronne récurrent(e) de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, apparence 35 ans, forge à marée basse. Alliages inoxydables uniques — tout l'équipement maritime en rêve.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Sydney.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 171,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Sythia Voidforge — Forge",
+      "primary_keys": [
+        "Sythia Voidforge",
+        "Auckland",
+        "Sythia Voidforge Auckland",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Sythia Voidforge\nLIEU : Auckland\nFONCTION : Forgeron ou forgeronne récurrent(e) de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, âge inconnu, techniques d'avant les Ères. Une commande par an, choisie par elle.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Auckland.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 172,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Brunhild Deepforge — Forge",
+      "primary_keys": [
+        "Brunhild Deepforge",
+        "Zurich",
+        "Brunhild Deepforge Zurich",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Brunhild Deepforge\nLIEU : Zurich\nFONCTION : Forgeron ou forgeronne récurrent(e) de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaine, 300 ans, barbe aux fils d'or. LA référence d'Elyndor. « Le métal ne connaît pas les titres. »\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Zurich.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 173,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Yangchen Skyhammer — Forge",
+      "primary_keys": [
+        "Yangchen Skyhammer",
+        "Katmandou",
+        "Yangchen Skyhammer Katmandou",
+        "forgeronne",
+        "forgeron",
+        "forge"
+      ],
+      "secondary_keys": [
+        "Forge",
+        "Forgeron / Forgeronne récurrent(e)"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Yangchen Skyhammer\nLIEU : Katmandou\nFONCTION : Forgeron ou forgeronne récurrent(e) de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante, âge inconnu, marteau plus lourd qu'un homme. Portes de citadelles, chaînes de pont — rarement pour un seul individu.\n\nRELATIONS IMPORTANTES :\nClientèle locale, aventuriers, artisans et ateliers de Katmandou.\n\nRÔLE NARRATIF :\nRéférence récurrente pour fabrication et réparation. Un équipement endommagé reste endommagé jusqu’à une réparation effective.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 174,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Bernadette Portier — Porte Astra",
+      "primary_keys": [
+        "Bernadette Portier",
+        "Paris",
+        "Bernadette Portier Paris",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Bernadette Portier\nLIEU : Paris\nFONCTION : Contrôle de la Porte Astra de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumaine, 55 ans, uniforme impeccable, registre de cuir. Remarque immédiatement les nouveaux visages.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Paris, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 175,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Reiko Voidwalker — Porte Astra",
+      "primary_keys": [
+        "Reiko Voidwalker",
+        "Tokyo",
+        "Reiko Voidwalker Tokyo",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Reiko Voidwalker\nLIEU : Tokyo\nFONCTION : Contrôle de la Porte Astra de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, apparence 30 ans, immobile comme une statue. Un prince a attendu son tour — l'histoire est célèbre.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Tokyo, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 176,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Meera Threadweaver — Porte Astra",
+      "primary_keys": [
+        "Meera Threadweaver",
+        "Delhi",
+        "Meera Threadweaver Delhi",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Meera Threadweaver\nLIEU : Delhi\nFONCTION : Contrôle de la Porte Astra de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, apparence 40 ans, ancienne éclaireuse, œil balafré. « Vos papiers disent marchand, vos mains disent soldat. »\n\nRELATIONS IMPORTANTES :\nPorte Astra de Delhi, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 177,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Solveig Frostgate — Porte Astra",
+      "primary_keys": [
+        "Solveig Frostgate",
+        "Oslo",
+        "Solveig Frostgate Oslo",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Solveig Frostgate\nLIEU : Oslo\nFONCTION : Contrôle de la Porte Astra de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 50 ans, deux mètres, hache cérémonielle jamais dégainée : sa présence suffit.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Oslo, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 178,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Selin Doorward — Porte Astra",
+      "primary_keys": [
+        "Selin Doorward",
+        "Istanbul",
+        "Selin Doorward Istanbul",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Selin Doorward\nLIEU : Istanbul\nFONCTION : Contrôle de la Porte Astra de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 35 ans, courtoisie parfaite. « Le Conseil fixe les prix, je fixe les départs. »\n\nRELATIONS IMPORTANTES :\nPorte Astra de Istanbul, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 179,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Ngozi Voidkeeper — Porte Astra",
+      "primary_keys": [
+        "Ngozi Voidkeeper",
+        "Lagos",
+        "Ngozi Voidkeeper Lagos",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ngozi Voidkeeper\nLIEU : Lagos\nFONCTION : Contrôle de la Porte Astra de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, 45 ans, tatouages de protection. Sa Porte est la plus proche des Zones — elle vérifie AUSSI ce qui revient.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Lagos, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 180,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Palesa Ironward — Porte Astra",
+      "primary_keys": [
+        "Palesa Ironward",
+        "Johannesburg",
+        "Palesa Ironward Johannesburg",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Palesa Ironward\nLIEU : Johannesburg\nFONCTION : Contrôle de la Porte Astra de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 50 ans, voix posée. Juste envers tous — mais rien ne passe, jamais.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Johannesburg, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 181,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Malinalli Boneguard — Porte Astra",
+      "primary_keys": [
+        "Malinalli Boneguard",
+        "Mexico",
+        "Malinalli Boneguard Mexico",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Malinalli Boneguard\nLIEU : Mexico\nFONCTION : Contrôle de la Porte Astra de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 35 ans, collier d'osselets. Le dernier resquilleur a traversé la place sans toucher le sol.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Mexico, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 182,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Sable Nightward — Porte Astra",
+      "primary_keys": [
+        "Sable Nightward",
+        "New York",
+        "Sable Nightward New York",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Sable Nightward\nLIEU : New York\nFONCTION : Contrôle de la Porte Astra de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHomme-Bête, 32 ans, truffe frémissante, avis de recherche mémorisés. Les primes de capture arrondissent ses mois.\n\nRELATIONS IMPORTANTES :\nPorte Astra de New York, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 183,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Chaska Spiritgate — Porte Astra",
+      "primary_keys": [
+        "Chaska Spiritgate",
+        "Bogotá",
+        "Chaska Spiritgate Bogotá",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Chaska Spiritgate\nLIEU : Bogotá\nFONCTION : Contrôle de la Porte Astra de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 60 ans, bâton à plumes. Un voyageur refusé par les esprits ne passe pas, quelle que soit sa bourse.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Bogotá, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 184,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Talise Tidegate — Porte Astra",
+      "primary_keys": [
+        "Talise Tidegate",
+        "Sydney",
+        "Talise Tidegate Sydney",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Talise Tidegate\nLIEU : Sydney\nFONCTION : Contrôle de la Porte Astra de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, apparence 26 ans, vue sur le port. Rien ne quitte Sydney sans qu'elle le sache.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Sydney, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 185,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Ixora Depthward — Porte Astra",
+      "primary_keys": [
+        "Ixora Depthward",
+        "Auckland",
+        "Ixora Depthward Auckland",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ixora Depthward\nLIEU : Auckland\nFONCTION : Contrôle de la Porte Astra de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, âge inconnu, mémoire millénaire. Se souvient de voyageurs morts depuis des siècles.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Auckland, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 186,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Ursula Stoneward — Porte Astra",
+      "primary_keys": [
+        "Ursula Stoneward",
+        "Zurich",
+        "Ursula Stoneward Zurich",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ursula Stoneward\nLIEU : Zurich\nFONCTION : Contrôle de la Porte Astra de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaine, 220 ans, lorgnons, tampons au millimètre. « La première vérification pour vous, la seconde pour moi. »\n\nRELATIONS IMPORTANTES :\nPorte Astra de Zurich, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 187,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Dolma Cloudward — Porte Astra",
+      "primary_keys": [
+        "Dolma Cloudward",
+        "Katmandou",
+        "Dolma Cloudward Katmandou",
+        "passeuse",
+        "gardienne astra",
+        "gardien astra"
+      ],
+      "secondary_keys": [
+        "Porte Astra",
+        "Gardien / Gardienne de Porte Astra"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Dolma Cloudward\nLIEU : Katmandou\nFONCTION : Contrôle de la Porte Astra de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante, âge inconnu, assise près de l'arche qu'elle dépasse. On ne discute pas avec une montagne.\n\nRELATIONS IMPORTANTES :\nPorte Astra de Katmandou, Conseil des Portes Astra, voyageurs et autorités locales.\n\nRÔLE NARRATIF :\nContrôle des laissez-passer et voyageurs. Incorruptible par défaut ; toute traversée laisse une trace consultable conformément au canon Astra.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 188,
+      "category": "PNJ",
+      "title": "[PNJ][PARIS] Henri Valmonde — Souverain",
+      "primary_keys": [
+        "Henri Valmonde",
+        "Paris",
+        "Henri Valmonde Paris",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Henri Valmonde\nLIEU : Paris\nFONCTION : Souverain ou souveraine canonique de Paris\nRACE : Humain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHumain, 52 ans, barbe grise taillée, regard las de qui arbitre depuis trente ans. Fin diplomate, joue les maisons nobles les unes contre les autres. Publiquement pieux, privément pragmatique sur l'Église.\n\nRELATIONS IMPORTANTES :\nRoyaume de Paris, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Paris. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 189,
+      "category": "PNJ",
+      "title": "[PNJ][TOKYO] Aelindra Dawnveil — Souverain",
+      "primary_keys": [
+        "Aelindra Dawnveil",
+        "Tokyo",
+        "Aelindra Dawnveil Tokyo",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Aelindra Dawnveil\nLIEU : Tokyo\nFONCTION : Souverain ou souveraine canonique de Tokyo\nRACE : Haut-Elfe\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHaute-Elfe, 800 ans, apparence 40, beauté glaciale parfaite. Patience de siècles, mémoire des affronts intacte. Considère les autres souverains comme des enfants éphémères — et négocie quand même : les enfants ont des armées.\n\nRELATIONS IMPORTANTES :\nRoyaume de Tokyo, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Tokyo. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 190,
+      "category": "PNJ",
+      "title": "[PNJ][DELHI] Olga Discordia — Souverain",
+      "primary_keys": [
+        "Olga Discordia",
+        "Delhi",
+        "Olga Discordia Delhi",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Olga Discordia\nLIEU : Delhi\nFONCTION : Souverain ou souveraine canonique de Delhi\nRACE : Elfe Noire\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nElfe Noire, stature imposante, peau brun foncé, cheveux blanc argenté, yeux rouge et or. Exception vivante : maîtrise arc, lame ET magie — cette rareté fonde son autorité. Calculatrice, protectrice de son peuple, redoutée de ses ennemis. A gagné son trône par le mérite, le tient par le respect.\n\nRELATIONS IMPORTANTES :\nRoyaume de Delhi, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Delhi. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 191,
+      "category": "PNJ",
+      "title": "[PNJ][OSLO] Thyra Ironblood — Souverain",
+      "primary_keys": [
+        "Thyra Ironblood",
+        "Oslo",
+        "Thyra Ironblood Oslo",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Thyra Ironblood\nLIEU : Oslo\nFONCTION : Souverain ou souveraine canonique de Oslo\nRACE : Valkyrie\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nValkyrie, 180 ans, apparence 45, bras nus couverts de tatouages de victoires. Préside le Conseil des Guerrières par droit de gloire. Franche jusqu'à la brutalité diplomatique — les ambassadeurs la craignent plus que ses armées.\n\nRELATIONS IMPORTANTES :\nRoyaume de Oslo, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Oslo. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 192,
+      "category": "PNJ",
+      "title": "[PNJ][ISTANBUL] Karim Al-Rashid — Souverain",
+      "primary_keys": [
+        "Karim Al-Rashid",
+        "Istanbul",
+        "Karim Al-Rashid Istanbul",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Karim Al-Rashid\nLIEU : Istanbul\nFONCTION : Souverain ou souveraine canonique de Istanbul\nRACE : Sultanat\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSultanat, 60 ans, embonpoint majestueux, esprit d'échiquier. Règne par le commerce : chaque royaume lui doit quelque chose. Sa devise privée : « la guerre est un échec de négociation. »\n\nRELATIONS IMPORTANTES :\nRoyaume de Istanbul, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Istanbul. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 193,
+      "category": "PNJ",
+      "title": "[PNJ][LAGOS] Adanna Umbrathorn — Souverain",
+      "primary_keys": [
+        "Adanna Umbrathorn",
+        "Lagos",
+        "Adanna Umbrathorn Lagos",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Adanna Umbrathorn\nLIEU : Lagos\nFONCTION : Souverain ou souveraine canonique de Lagos\nRACE : Amazone Sombre\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nAmazone Sombre, 280 ans, apparence 45, port de reine offensée par l'Histoire. Dirige un peuple ostracisé avec une dignité de fer. Ce qu'elle sait des Voiles — et du Réveil — reste son arme secrète.\n\nRELATIONS IMPORTANTES :\nRoyaume de Lagos, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Lagos. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 194,
+      "category": "PNJ",
+      "title": "[PNJ][JOHANNESBURG] Okoro Stoneheart — Souverain",
+      "primary_keys": [
+        "Okoro Stoneheart",
+        "Johannesburg",
+        "Okoro Stoneheart Johannesburg",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Okoro Stoneheart\nLIEU : Johannesburg\nFONCTION : Souverain ou souveraine canonique de Johannesburg\nRACE : Orque Noble\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrque Noble, 120 ans, colosse aux défenses ornées de trois anneaux d'or (trois serments majeurs tenus). Sa parole engage la confédération entière — il parle donc peu, et le monde écoute.\n\nRELATIONS IMPORTANTES :\nRoyaume de Johannesburg, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Johannesburg. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 195,
+      "category": "PNJ",
+      "title": "[PNJ][MEXICO] Tloc Bloodfang — Souverain",
+      "primary_keys": [
+        "Tloc Bloodfang",
+        "Mexico",
+        "Tloc Bloodfang Mexico",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Tloc Bloodfang\nLIEU : Mexico\nFONCTION : Souverain ou souveraine canonique de Mexico\nRACE : Orc\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nOrc, 50 ans, montagne de muscles scarifiés, quatorze défis repoussés. Règne tant qu'il est le plus fort — et s'entraîne chaque aube en public pour le rappeler.\n\nRELATIONS IMPORTANTES :\nRoyaume de Mexico, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Mexico. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 196,
+      "category": "PNJ",
+      "title": "[PNJ][NEW YORK] Kira Swiftclaw — Souverain",
+      "primary_keys": [
+        "Kira Swiftclaw",
+        "New York",
+        "Kira Swiftclaw New York",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Kira Swiftclaw\nLIEU : New York\nFONCTION : Souverain ou souveraine canonique de New York\nRACE : Homme-Bête\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nHomme-Bête féline, 45 ans, pelage argenté, économie de gestes absolue. Est devenue Alpha des Alphas sans un seul combat : les meutes ont reconnu son autorité. Sa réputation d’instinct exceptionnel est immense, mais elle reste faillible — une erreur majeure pourrait ébranler cette légitimité.\n\nRELATIONS IMPORTANTES :\nRoyaume de New York, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de New York. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 197,
+      "category": "PNJ",
+      "title": "[PNJ][BOGOTÁ] Inti Spiritborn — Souverain",
+      "primary_keys": [
+        "Inti Spiritborn",
+        "Bogotá",
+        "Inti Spiritborn Bogotá",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Inti Spiritborn\nLIEU : Bogotá\nFONCTION : Souverain ou souveraine canonique de Bogotá\nRACE : Tribu Primale\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nTribu Primale, 70 ans, silhouette frêle, présence immense. Traverse le Monde-Miroir plus loin que quiconque. Depuis des lunes, elle en revient troublée : les esprits proches des zones se taisent.\n\nRELATIONS IMPORTANTES :\nRoyaume de Bogotá, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Bogotá. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 198,
+      "category": "PNJ",
+      "title": "[PNJ][SYDNEY] Coral Deepsung — Souverain",
+      "primary_keys": [
+        "Coral Deepsung",
+        "Sydney",
+        "Coral Deepsung Sydney",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Coral Deepsung\nLIEU : Sydney\nFONCTION : Souverain ou souveraine canonique de Sydney\nRACE : Sirène\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nSirène, 350 ans, apparence 35, voix qui apaise une émeute ou soulève une flotte. Règne mi-immergée depuis son palais de corail. Sa politique : que toutes les mers chantent son nom.\n\nRELATIONS IMPORTANTES :\nRoyaume de Sydney, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Sydney. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 199,
+      "category": "PNJ",
+      "title": "[PNJ][AUCKLAND] Ssythar Abysswhisper — Souverain",
+      "primary_keys": [
+        "Ssythar Abysswhisper",
+        "Auckland",
+        "Ssythar Abysswhisper Auckland",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Ssythar Abysswhisper\nLIEU : Auckland\nFONCTION : Souverain ou souveraine canonique de Auckland\nRACE : Naga\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNaga, plus de 2000 ans, écailles pâlies par les siècles. A VU la fin de l'Ère 2. Ne remonte en surface que pour l'essentiel — sa dernière remontée date d'un siècle. S'il remonte, le monde devrait s'inquiéter.\n\nRELATIONS IMPORTANTES :\nRoyaume de Auckland, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Auckland. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 200,
+      "category": "PNJ",
+      "title": "[PNJ][ZURICH] Durin Anvilborn — Souverain",
+      "primary_keys": [
+        "Durin Anvilborn",
+        "Zurich",
+        "Durin Anvilborn Zurich",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Durin Anvilborn\nLIEU : Zurich\nFONCTION : Souverain ou souveraine canonique de Zurich\nRACE : Nain\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nNain, 350 ans, mains-enclumes, couronne qu'il a forgée lui-même (tradition : un roi indigne de forger sa couronne est indigne de la porter). Tient les registres de dettes du monde — ce qui vaut toutes les armées.\n\nRELATIONS IMPORTANTES :\nRoyaume de Zurich, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Zurich. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 201,
+      "category": "PNJ",
+      "title": "[PNJ][KATMANDOU] Oya Cloudpeak — Souverain",
+      "primary_keys": [
+        "Oya Cloudpeak",
+        "Katmandou",
+        "Oya Cloudpeak Katmandou",
+        "souverain",
+        "souveraine",
+        "roi"
+      ],
+      "secondary_keys": [
+        "Souverain",
+        "Souverain / Souveraine"
+      ],
+      "negative_keys": [],
+      "content": "NOM : Oya Cloudpeak\nLIEU : Katmandou\nFONCTION : Souverain ou souveraine canonique de Katmandou\nRACE : Géante\n\nPERSONNALITÉ / ATTITUDE DE BASE :\nGéante, âge estimé 1500 ans, assise face à l'horizon depuis des décennies. Sa dernière intervention : clore la Guerre des Voiles. Les royaumes prient pour qu'elle n'ait jamais à se relever — car cela signifierait que c'est grave.\n\nRELATIONS IMPORTANTES :\nRoyaume de Katmandou, institutions de la capitale et autres puissances selon les relations canoniques d’Elyndor.\n\nRÔLE NARRATIF :\nAutorité politique canonique de Katmandou. Le nom, le titre et le profil du souverain ne sont jamais improvisés ni remplacés.\n\nÉLÉMENTS STABLES :\nNom, lieu, fonction, race et profil ci-dessus sont canoniques. Les évolutions de relation ou d’état peuvent changer en jeu, mais ne remplacent pas cette identité de base.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 202,
+      "category": "INDEX",
+      "title": "[INDEX][PARIS] PNJ récurrents",
+      "primary_keys": [
+        "Paris",
+        "PNJ Paris",
+        "personnages Paris",
+        "récurrents Paris",
+        "Séraphine Duvall",
+        "Margaux Fontaine",
+        "Odette Vinchamps",
+        "Camille Ferrand",
+        "Bernadette Portier",
+        "Henri Valmonde"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Paris\nDirection guilde → Séraphine Duvall\nRéception → Margaux Fontaine\nTaverne → Odette Vinchamps\nForge → Camille Ferrand\nPorte Astra → Bernadette Portier\nSouverain → Henri Valmonde\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 203,
+      "category": "INDEX",
+      "title": "[INDEX][TOKYO] PNJ récurrents",
+      "primary_keys": [
+        "Tokyo",
+        "PNJ Tokyo",
+        "personnages Tokyo",
+        "récurrents Tokyo",
+        "Yui Frostveil",
+        "Sachi Moonwhisper",
+        "Hana Silverleaf",
+        "Emiko Steelwhisper",
+        "Reiko Voidwalker",
+        "Aelindra Dawnveil"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Tokyo\nDirection guilde → Yui Frostveil\nRéception → Sachi Moonwhisper\nTaverne → Hana Silverleaf\nForge → Emiko Steelwhisper\nPorte Astra → Reiko Voidwalker\nSouverain → Aelindra Dawnveil\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 204,
+      "category": "INDEX",
+      "title": "[INDEX][DELHI] PNJ récurrents",
+      "primary_keys": [
+        "Delhi",
+        "PNJ Delhi",
+        "personnages Delhi",
+        "récurrents Delhi",
+        "Priya Duskblade",
+        "Ashira Steelsong",
+        "Kavita Ashblade",
+        "Ranjana Battleforge",
+        "Meera Threadweaver",
+        "Olga Discordia"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Delhi\nDirection guilde → Priya Duskblade\nRéception → Ashira Steelsong\nTaverne → Kavita Ashblade\nForge → Ranjana Battleforge\nPorte Astra → Meera Threadweaver\nSouverain → Olga Discordia\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 205,
+      "category": "INDEX",
+      "title": "[INDEX][OSLO] PNJ récurrents",
+      "primary_keys": [
+        "Oslo",
+        "PNJ Oslo",
+        "personnages Oslo",
+        "récurrents Oslo",
+        "Sigrid Bearclaw",
+        "Freya Stormaxe",
+        "Astrid Frostbrew",
+        "Ingrid Frostforge",
+        "Solveig Frostgate",
+        "Thyra Ironblood"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Oslo\nDirection guilde → Sigrid Bearclaw\nRéception → Freya Stormaxe\nTaverne → Astrid Frostbrew\nForge → Ingrid Frostforge\nPorte Astra → Solveig Frostgate\nSouverain → Thyra Ironblood\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 206,
+      "category": "INDEX",
+      "title": "[INDEX][ISTANBUL] PNJ récurrents",
+      "primary_keys": [
+        "Istanbul",
+        "PNJ Istanbul",
+        "personnages Istanbul",
+        "récurrents Istanbul",
+        "Emre Goldtongue",
+        "Leyla Sandwhisper",
+        "Nazli Spiceheart",
+        "Fatima Goldsmith",
+        "Selin Doorward",
+        "Karim Al-Rashid"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Istanbul\nDirection guilde → Emre Goldtongue\nRéception → Leyla Sandwhisper\nTaverne → Nazli Spiceheart\nForge → Fatima Goldsmith\nPorte Astra → Selin Doorward\nSouverain → Karim Al-Rashid\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 207,
+      "category": "INDEX",
+      "title": "[INDEX][LAGOS] PNJ récurrents",
+      "primary_keys": [
+        "Lagos",
+        "PNJ Lagos",
+        "personnages Lagos",
+        "récurrents Lagos",
+        "Zola Nightbloom",
+        "Adaeze Voidwhisper",
+        "Chidinma Emberlight",
+        "Folake Shadowforge",
+        "Ngozi Voidkeeper",
+        "Adanna Umbrathorn"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Lagos\nDirection guilde → Zola Nightbloom\nRéception → Adaeze Voidwhisper\nTaverne → Chidinma Emberlight\nForge → Folake Shadowforge\nPorte Astra → Ngozi Voidkeeper\nSouverain → Adanna Umbrathorn\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 208,
+      "category": "INDEX",
+      "title": "[INDEX][JOHANNESBURG] PNJ récurrents",
+      "primary_keys": [
+        "Johannesburg",
+        "PNJ Johannesburg",
+        "personnages Johannesburg",
+        "récurrents Johannesburg",
+        "Themba Ironvow",
+        "Nomvula Ironsong",
+        "Busisiwe Warmhearth",
+        "Lindiwe Ironheart",
+        "Palesa Ironward",
+        "Okoro Stoneheart"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Johannesburg\nDirection guilde → Themba Ironvow\nRéception → Nomvula Ironsong\nTaverne → Busisiwe Warmhearth\nForge → Lindiwe Ironheart\nPorte Astra → Palesa Ironward\nSouverain → Okoro Stoneheart\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 209,
+      "category": "INDEX",
+      "title": "[INDEX][MEXICO] PNJ récurrents",
+      "primary_keys": [
+        "Mexico",
+        "PNJ Mexico",
+        "personnages Mexico",
+        "récurrents Mexico",
+        "Nahual Skullbreaker",
+        "Xochitl Bloodclaw",
+        "Itzel Fireclaw",
+        "Citlali Skullforge",
+        "Malinalli Boneguard",
+        "Tloc Bloodfang"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Mexico\nDirection guilde → Nahual Skullbreaker\nRéception → Xochitl Bloodclaw\nTaverne → Itzel Fireclaw\nForge → Citlali Skullforge\nPorte Astra → Malinalli Boneguard\nSouverain → Tloc Bloodfang\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 210,
+      "category": "INDEX",
+      "title": "[INDEX][NEW YORK] PNJ récurrents",
+      "primary_keys": [
+        "New York",
+        "PNJ New York",
+        "personnages New York",
+        "récurrents New York",
+        "Marcus Nightprowl",
+        "Jasmine Nightpaw",
+        "Raven Duskrunner",
+        "Whitney Clawsmith",
+        "Sable Nightward",
+        "Kira Swiftclaw"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — New York\nDirection guilde → Marcus Nightprowl\nRéception → Jasmine Nightpaw\nTaverne → Raven Duskrunner\nForge → Whitney Clawsmith\nPorte Astra → Sable Nightward\nSouverain → Kira Swiftclaw\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 211,
+      "category": "INDEX",
+      "title": "[INDEX][BOGOTÁ] PNJ récurrents",
+      "primary_keys": [
+        "Bogotá",
+        "PNJ Bogotá",
+        "personnages Bogotá",
+        "récurrents Bogotá",
+        "Yamile Windsinger",
+        "Amaru Windwalker",
+        "Quilla Earthsong",
+        "Sisa Stoneheart",
+        "Chaska Spiritgate",
+        "Inti Spiritborn"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Bogotá\nDirection guilde → Yamile Windsinger\nRéception → Amaru Windwalker\nTaverne → Quilla Earthsong\nForge → Sisa Stoneheart\nPorte Astra → Chaska Spiritgate\nSouverain → Inti Spiritborn\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 212,
+      "category": "INDEX",
+      "title": "[INDEX][SYDNEY] PNJ récurrents",
+      "primary_keys": [
+        "Sydney",
+        "PNJ Sydney",
+        "personnages Sydney",
+        "récurrents Sydney",
+        "Marina Pearltide",
+        "Coralie Tidewhisper",
+        "Nerida Saltbreeze",
+        "Marella Coralforge",
+        "Talise Tidegate",
+        "Coral Deepsung"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Sydney\nDirection guilde → Marina Pearltide\nRéception → Coralie Tidewhisper\nTaverne → Nerida Saltbreeze\nForge → Marella Coralforge\nPorte Astra → Talise Tidegate\nSouverain → Coral Deepsung\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 213,
+      "category": "INDEX",
+      "title": "[INDEX][AUCKLAND] PNJ récurrents",
+      "primary_keys": [
+        "Auckland",
+        "PNJ Auckland",
+        "personnages Auckland",
+        "récurrents Auckland",
+        "Kaito Deepcurrent",
+        "Nerezza Deepvoice",
+        "Vashti Coldcurrent",
+        "Sythia Voidforge",
+        "Ixora Depthward",
+        "Ssythar Abysswhisper"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Auckland\nDirection guilde → Kaito Deepcurrent\nRéception → Nerezza Deepvoice\nTaverne → Vashti Coldcurrent\nForge → Sythia Voidforge\nPorte Astra → Ixora Depthward\nSouverain → Ssythar Abysswhisper\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 214,
+      "category": "INDEX",
+      "title": "[INDEX][ZURICH] PNJ récurrents",
+      "primary_keys": [
+        "Zurich",
+        "PNJ Zurich",
+        "personnages Zurich",
+        "récurrents Zurich",
+        "Bjorn Stonebeard",
+        "Greta Ironquill",
+        "Helga Stonewarm",
+        "Brunhild Deepforge",
+        "Ursula Stoneward",
+        "Durin Anvilborn"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Zurich\nDirection guilde → Bjorn Stonebeard\nRéception → Greta Ironquill\nTaverne → Helga Stonewarm\nForge → Brunhild Deepforge\nPorte Astra → Ursula Stoneward\nSouverain → Durin Anvilborn\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false
+    },
+    {
+      "id": 215,
+      "category": "INDEX",
+      "title": "[INDEX][KATMANDOU] PNJ récurrents",
+      "primary_keys": [
+        "Katmandou",
+        "PNJ Katmandou",
+        "personnages Katmandou",
+        "récurrents Katmandou",
+        "Tenzin Skyreach",
+        "Pemba Highwind",
+        "Lhamo Windwhisper",
+        "Yangchen Skyhammer",
+        "Dolma Cloudward",
+        "Oya Cloudpeak"
+      ],
+      "secondary_keys": [
+        "guilde",
+        "réception",
+        "taverne",
+        "forge",
+        "porte astra",
+        "souverain"
+      ],
+      "negative_keys": [],
+      "content": "INDEX PNJ RÉCURRENTS — Katmandou\nDirection guilde → Tenzin Skyreach\nRéception → Pemba Highwind\nTaverne → Lhamo Windwhisper\nForge → Yangchen Skyhammer\nPorte Astra → Dolma Cloudward\nSouverain → Oya Cloudpeak\nChaque nom possède une fiche individuelle ; cet index sert uniquement à associer rapidement les figures récurrentes de la capitale.",
+      "priority": 30,
       "sticky": 0,
       "cooldown": 0,
       "constant": false
