@@ -15,34 +15,7 @@ concurrency:
   group: eas-preview
   cancel-in-progress: true
 
-permissions:
-  contents: write
-
 jobs:
-  v3-step2-migrate:
-    if: github.ref_name == 'claude/new-session-glwy6e'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Apply Elyndor V3 step 2
-        run: node scripts/v3-step2-migrate.cjs
-
-      - name: Commit canonical corrections
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/data/elyndorLore.json docs/v3/CANON_CORRECTIONS_V3.md
-          if git diff --cached --quiet; then
-            echo "Aucune correction à committer."
-            exit 0
-          fi
-          git diff --cached --check
-          git commit -m "V3 étape 2 — corrections canoniques critiques"
-          git push origin HEAD:"${GITHUB_REF_NAME}"
-
   update:
     runs-on: ubuntu-latest
     steps:
