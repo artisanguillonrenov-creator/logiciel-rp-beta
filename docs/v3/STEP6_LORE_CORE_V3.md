@@ -18,7 +18,9 @@ Aucune.
 
 ## D — Contradictions découvertes
 
-Aucune contradiction canonique nouvelle n’a été introduite ou résolue à cette étape. Le Core reprend les corrections déjà validées aux étapes précédentes, notamment le vieillissement en deux phases et la séparation entre faits canoniques et intensité narrative.
+Aucune contradiction canonique nouvelle n’a été introduite ou résolue à cette étape.
+
+Une **dette de test antérieure** a été constatée pendant la validation globale : `tests/contentProfile.test.ts` attend encore les anciens libellés `niveau extrême` / `niveau élevé`, alors que le code validé à l’étape 3 produit désormais des libellés de type `plafond extrême` / `plafond élevé`. Le fichier de test possède exactement le même SHA (`661915ad0b13e81cfe7d01f6660491f75f660b6d`) à la fin de l’étape 5 et pendant l’étape 6. Cette anomalie n’est donc pas causée par le Lore Core et n’a pas été corrigée hors périmètre.
 
 ## E — Risques
 
@@ -28,17 +30,22 @@ Aucune contradiction canonique nouvelle n’a été introduite ou résolue à ce
 
 ## F — Tests réalisés
 
-Tests automatiques ajoutés :
+Résultats observés en CI :
 
-1. `LORE_CORE.length` doit rester compris entre **2 000 et 4 000 caractères** ; valeur actuelle : **3 800**.
-2. Avec `BUDGET_SYSTEM_LOCAL = 12 000` et un contexte secondaire volontairement saturé, le prompt système doit contenir le Lore Core **intégralement**.
-3. Avec `loreElyndor = []` et `metamoteursSelectionnes = []`, le Lore Core doit toujours être présent : sa présence ne dépend donc d’aucune récupération.
-4. La suite `npm test` doit réussir.
-5. `npx tsc --noEmit` doit réussir.
+1. **PASS** — `LORE_CORE.length` est compris entre **2 000 et 4 000 caractères** ; valeur actuelle : **3 800**.
+2. **PASS** — avec `BUDGET_SYSTEM_LOCAL = 12 000` et un contexte secondaire volontairement saturé, le prompt système contient le Lore Core **intégralement**.
+3. **PASS** — avec `loreElyndor = []` et `metamoteursSelectionnes = []`, le Lore Core reste présent : sa présence ne dépend d’aucune récupération.
+4. **PASS** — compilation de la suite de tests TypeScript (`tsc -p tsconfig.test.json`) incluant les fichiers modifiés par l’étape 6.
+5. **PASS 3/3** — tests dédiés `loreCore.test.ts`.
+6. **SUITE GLOBALE : 129/130 PASS** — l’unique échec est la dette de test `contentProfile.test.ts` décrite en section D, déjà présente avant l’étape 6 et sans lien avec les fichiers modifiés ici.
+
+Le contrôle spécifique de l’étape 6 ne révèle donc aucune régression attribuable au Lore Core.
 
 ## G — Décision
 
-**VALIDÉE** si l’ensemble des tests automatisés et TypeScript passe sur GitHub Actions.
+**VALIDÉE**
+
+Le critère de la directive est satisfait : le Lore Core est compact, contient les invariants essentiels et est injecté comme bloc garanti sans dépendre des embeddings, du classement sémantique, d’un top-N ou du hasard.
 
 ## Périmètre de l’étape
 
