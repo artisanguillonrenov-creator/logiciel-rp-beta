@@ -1,5 +1,6 @@
 import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
+import { LORE_CORE } from '../data/loreCore';
 import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
@@ -174,6 +175,8 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
   const entete = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
+${LORE_CORE}
+
 ${IDENTITE_NARRATIVE}
 
 ${REGLES_IMMUABLES}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
@@ -210,10 +213,9 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
   const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.30), 900);
 
-  // L'en-tête (règles, personnage) et le style ne sont jamais tronqués :
-  // auparavant, un prompt trop long perdait sa fin, donc le style et la
-  // consigne de correction. Seul le milieu est rogné, par la fin — les
-  // métamoteurs, règles de mise en scène générales, partent en premier.
+  // L'en-tête, qui contient désormais le Lore Core garanti, n'est jamais
+  // sacrifié au classement du lore dynamique. Seul le milieu récupéré est
+  // rogné lorsque le budget système est saturé.
   const milieu = tronquer(
     `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
     Math.max(0, budget - entete.length),
