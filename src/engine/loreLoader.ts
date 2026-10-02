@@ -190,9 +190,9 @@ const MAX_ANCRES_CANON = 2;
 
 /**
  * Priorité canon : les royaumes explicitement nommés et le socle permanent
- * sont injectés avant le lore sémantique. Ainsi, une fiche « toujours active »
- * ne peut plus se retrouver derrière des résultats scorés puis disparaître
- * faute de budget dans le constructeur de prompt.
+ * sont injectés avant le lore sémantique. Les ancres n'ont volontairement
+ * pas de score : `score === undefined` signifie « obligatoire » pour le
+ * constructeur de prompt, quel que soit le mode sémantique ou lexical.
  */
 export function prioriserLoreCanon(
   texteRequete: string,
@@ -206,7 +206,7 @@ export function prioriserLoreCanon(
     if (!entree.titre.startsWith(PREFIXE_ROYAUME)) continue;
     const lieu = normalise(entree.titre.slice(PREFIXE_ROYAUME.length).split('—')[0].trim());
     if (lieu.length >= 3 && requete.includes(lieu)) {
-      ancres.push({ id: entree.id, titre: entree.titre, contenu: entree.contenu, score: 2 });
+      ancres.push({ id: entree.id, titre: entree.titre, contenu: entree.contenu });
     }
   }
 
