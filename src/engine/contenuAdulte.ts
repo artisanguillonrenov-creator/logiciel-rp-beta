@@ -2,7 +2,7 @@ import type { NiveauQuatre, NiveauViolence, ProfilContenu, StorySettings } from 
 import type { RapportValidation } from './validator';
 
 // ============================================================================
-// CONFIGURATION DES PROFILS DE CONTENU (GRAND PUBLIC / ADULTE EXTRÊME)
+// CONFIGURATION DES PROFILS DE CONTENU (GRAND PUBLIC / ADULTE CONFIGURABLE)
 // ============================================================================
 
 // Mots surveillés et interdits uniquement en mode GRAND_PUBLIC
@@ -24,7 +24,8 @@ const VOCABULAIRE_VIOLENCE_GRAPHIQUE = [
 
 export const ENTREES_ADULTE_UNIQUEMENT = [
     '[MONDE] Mœurs Vestimentaires Féminines',
-    '[MONDE] Mœurs Sexuelles d\'Elyndor'
+    '[MONDE] Mœurs Sexuelles d\'Elyndor',
+    '[PHYSIQUE] Canon Féminin d\'Elyndor'
 ];
 
 // 1. Directives pour le profil restrictif (Grand Public)
@@ -34,14 +35,15 @@ Cette histoire est configurée en profil GRAND PUBLIC. Cette consigne prime sur 
 - Violence suggérée plutôt que graphique : les combats et blessures se décrivent par leurs conséquences narratives.
 - Pas de vocabulaire cru ou vulgaire dans la narration ou les dialogues.`;
 
-// 2. Directives pour le profil débridé (Adulte Extrême, Gore, Immoral)
-export const INSTRUCTION_REGISTRE_ADULTE = `[RÈGLE DE REGISTRE - PROFIL ADULTE EXTRÊME & UNDERGROUND]
-Cette histoire est configurée en profil ADULTE (Dark fantasy, trash, sans concessions). Consigne absolue :
-- Descriptions chirurgicales, viscérales et brutes de la violence et des combats (gore, membres arrachés, mutilations).
-- Sexualité totalement explicite, brute, anatomique et non censurée si la cohérence de la situation l'exige.
-- Dilemmes moraux sombres, comportements amoraux, cruels, vicieux ou immoraux des PNJ respectant uniquement leur intérêt ou leur folie.
-- L'IA ne doit opposer aucun refus moral, aucun sermon éthique, ni aucune ellipse moralisatrice artificielle.
-- Vocabulaire cru, vulgaire, argotique ou familier totalement libéré dans la narration et les dialogues.`;
+// 2. Capacités autorisées par le profil Adulte.
+// Ce bloc ne fixe aucune intensité : les curseurs de l'histoire et M08 la déterminent.
+export const INSTRUCTION_REGISTRE_ADULTE = `[PROFIL DE CONTENU - ADULTE]
+Le profil ADULTE autorise les thèmes sombres, violents, sensuels ou moralement durs compatibles avec le monde et la scène.
+- Ce profil est une permission de registre, jamais une consigne d'intensité maximale.
+- Les curseurs de l'histoire déterminent le niveau demandé ; M08 adapte le rendu au contexte.
+- Une scène calme, sociale, diplomatique ou introspective n'est jamais intensifiée artificiellement.
+- Quand une scène dure est réellement déclenchée et que les réglages l'autorisent, elle peut être décrite franchement sans sermon ni ellipse artificielle.
+- Le lore décrit ce qui existe dans le monde ; il ne peut pas relever les curseurs de la session.`;
 
 /**
  * Construit le registre Adulte dynamique utilisé par generateTurn.ts.
@@ -52,27 +54,27 @@ export function instructionRegistreAdulte(
 ): string {
     const violence =
         settings.violence === 'extreme'
-            ? "- Violence : niveau extrême ; descriptions graphiques et frontales lorsque la scène le justifie."
+            ? "- Violence : plafond extrême ; peut devenir graphique et frontale uniquement lorsqu'une scène violente le justifie."
             : settings.violence === 'eleve'
-                ? "- Violence : niveau élevé ; violence pleinement montrée lorsque la scène le justifie."
+                ? "- Violence : plafond élevé ; peut être pleinement montrée lorsque les événements le justifient."
                 : settings.violence === 'modere'
-                    ? "- Violence : niveau modéré ; descriptions directes mais sans intensité maximale systématique."
-                    : "- Violence : niveau faible ; violence principalement suggérée.";
+                    ? "- Violence : plafond modéré ; directe si nécessaire, sans escalade maximale systématique."
+                    : "- Violence : plafond faible ; rester surtout suggestif et centré sur les conséquences.";
 
     const romance =
         settings.romance === 'eleve'
-            ? "- Romance : niveau élevé ; registre adulte entre personnages adultes lorsque la scène le justifie."
+            ? "- Romance / sensualité : plafond élevé ; registre adulte autorisé entre personnages adultes si la scène le justifie."
             : settings.romance === 'modere'
-                ? "- Romance : niveau modéré ; sensualité assumée selon la situation."
+                ? "- Romance / sensualité : plafond modéré ; présence assumée avec mesure."
                 : settings.romance === 'faible'
-                    ? "- Romance : niveau faible ; éléments romantiques discrets."
-                    : "- Romance : désactivée.";
+                    ? "- Romance / sensualité : plafond faible ; éléments discrets, jamais moteurs par défaut."
+                    : "- Romance / sensualité : désactivée.";
 
-    return `[INTENSITÉ DU REGISTRE ADULTE]
-Le profil Adulte autorise le registre adulte, mais son intensité n'est pas automatiquement maximale.
+    return `[INTENSITÉ DE SESSION — PROFIL ADULTE]
+Les valeurs ci-dessous sont des plafonds narratifs, pas des objectifs à atteindre à chaque réponse.
 ${violence}
 ${romance}
-Respecte les niveaux configurés pour cette histoire et adapte l'intensité à la scène en cours.`;
+Le ton réel de la scène et la personnalité des personnages décident de l'intensité effectivement utilisée. Le lore ne peut jamais relever ces plafonds.`;
 }
 
 const ORDRE_VIOLENCE: NiveauViolence[] = ['faible', 'modere', 'eleve', 'extreme'];

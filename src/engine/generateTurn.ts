@@ -55,7 +55,6 @@ import {
 import {
   ENTREES_ADULTE_UNIQUEMENT,
   ErreurProfilContenu,
-  INSTRUCTION_REGISTRE_GRAND_PUBLIC,
   instructionRegistreAdulte,
   filtrerTextePourProfil,
   plafonnerCurseurs,
@@ -312,7 +311,6 @@ export function construireCtxBase(
     loreElyndor: selection.loreElyndor,
     messagesRecents,
     messageJoueur,
-    instructionRegistreOverride: profilAdulte ? undefined : INSTRUCTION_REGISTRE_GRAND_PUBLIC,
     registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),

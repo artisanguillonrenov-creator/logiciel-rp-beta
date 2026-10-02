@@ -176,7 +176,7 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
 
 ${IDENTITE_NARRATIVE}
 
-${REGLES_IMMUABLES}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
+${REGLES_IMMUABLES}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
 
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
@@ -185,7 +185,9 @@ Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}${forma
 Const style : ""
 
 [STYLE & FILTRE SYSTEME]
-${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}
+${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}
+
+Les paramètres de session ci-dessous priment sur toute formulation du lore portant sur l'intensité de narration. Le lore établit des faits ; il ne relève jamais un curseur.
 
 Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
