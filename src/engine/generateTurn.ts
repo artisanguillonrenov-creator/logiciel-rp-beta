@@ -10,7 +10,7 @@ import {
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
-  construireMessages,
+  construireMessagesAvecDiagnostic,
   construireSystemPrompt,
   maxTokensPourLongueur,
   temperaturePourCreativite,
@@ -18,6 +18,7 @@ import {
   BUDGET_SYSTEM_LOCAL,
   BUDGET_SYSTEM_DISTANT,
   type ContexteConstruction,
+  type DiagnosticPrompt,
 } from './promptBuilder';
 import { configurationLLM, appellerModele } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
@@ -105,21 +106,33 @@ function formaterDebug(titre: string, score?: number): string {
   return score === undefined ? titre : `${titre} (${score.toFixed(2)})`;
 }
 
-function construireTexteRequete(story: StoryState, messageJoueur: string, appSettings: AppSettings): string {
-  const profil = appSettings.profilContenu;
-  return [
-    story.meta.personnageDescription,
-    story.meta.pointDeDepart,
-    story.meta.contexte.lieu,
-    story.meta.contexte.ambiance,
-    story.meta.contexte.objectifs,
-    story.memoire.resume,
-    ...story.memoire.faits.map((f) => f.texte),
-    ...story.messages.slice(-4).map((m) => m.content),
+function textesCompatibles(textes: Array<string | undefined>, appSettings: AppSettings): string[] {
+  return textes.filter(
+    (texte): texte is string => !!texte && texteCompatibleAvecProfil(texte, appSettings.profilContenu),
+  );
+}
+
+/**
+ * Requête ciblée pour le lore : priorité à ce qui se passe maintenant, au
+ * lieu de diluer le signal dans toute la fiche personnage, tout le résumé et
+ * tous les faits de l'histoire.
+ */
+function construireRequeteLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): string {
+  return textesCompatibles([
     messageJoueur,
-  ]
-    .filter((texte): texte is string => !!texte && texteCompatibleAvecProfil(texte, profil))
-    .join('\n');
+    story.meta.contexte.lieu,
+    ...story.messages.slice(-2).map((m) => m.content),
+    story.meta.contexte.objectifs,
+  ], appSettings).join('\n');
+}
+
+/** La mémoire historique reçoit une requête distincte, centrée sur l'échange. */
+function construireRequeteSouvenirs(story: StoryState, messageJoueur: string, appSettings: AppSettings): string {
+  return textesCompatibles([
+    messageJoueur,
+    ...story.messages.slice(-4).map((m) => m.content),
+    story.meta.contexte.lieu,
+  ], appSettings).join('\n');
 }
 
 interface SelectionLore {
@@ -127,6 +140,45 @@ interface SelectionLore {
   loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
   souvenirs: Souvenir[];
   debugLore: DebugLore;
+  modeRecherche: string;
+  raisonRepli?: string;
+}
+
+function selectionLexicale(
+  metamoteursDisponibles: ReturnType<typeof chargerMetamoteurs>,
+  poolElyndor: ReturnType<typeof chargerLoreElyndor>,
+  messagesAnciens: Message[],
+  requeteLore: string,
+  requeteSouvenirs: string,
+  modeRecherche: string,
+  raisonRepli?: string,
+): SelectionLore {
+  // Tant que le nouveau Kernel V2.1 n'est pas branché, le repli lexical ne
+  // doit jamais supprimer les anciens métamoteurs : ils restent tous actifs.
+  const metamoteursSelectionnes = metamoteursDisponibles.map((e) => ({
+    id: e.id,
+    titre: e.titre,
+    contenu: e.contenu,
+  }));
+  const loreElyndor = prioriserLoreCanon(
+    requeteLore,
+    rechercherLoreLexical(poolElyndor, requeteLore),
+    LORE_ELYNDOR,
+  );
+  const souvenirs = rechercherSouvenirsLexical(messagesAnciens, requeteSouvenirs);
+
+  return {
+    metamoteursSelectionnes,
+    loreElyndor,
+    souvenirs,
+    debugLore: {
+      metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
+      loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+      souvenirs: formaterSouvenirsDebug(souvenirs),
+    },
+    modeRecherche,
+    raisonRepli,
+  };
 }
 
 export async function calculerSelectionLore(
@@ -137,7 +189,8 @@ export async function calculerSelectionLore(
 ): Promise<SelectionLore> {
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
-  const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
+  const requeteLore = construireRequeteLore(story, messageJoueur, appSettings);
+  const requeteSouvenirs = construireRequeteSouvenirs(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
 
   const metamoteursDisponibles = profilAdulte
@@ -163,70 +216,132 @@ export async function calculerSelectionLore(
     : messagesAnciensBruts.filter((m) => texteCompatibleAvecProfil(m.content, profil));
 
   if (!embeddingsDisponibles(appSettings)) {
-    // Repli lexical (V13) : sans fournisseur d'embeddings, on classe le lore
-    // et l'historique par mots communs plutôt que de partir sans rien.
-    const loreElyndor = prioriserLoreCanon(texteRequete, rechercherLoreLexical(poolElyndor, texteRequete), LORE_ELYNDOR);
-    const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
+    return selectionLexicale(
+      metamoteursDisponibles,
+      poolElyndor as ReturnType<typeof chargerLoreElyndor>,
+      messagesAnciens,
+      requeteLore,
+      requeteSouvenirs,
+      'lexicale · aucune configuration embeddings',
+    );
+  }
+
+  try {
+    const [vecteursMetamoteurs, vecteursElyndor, resultatRequetes, vecteursMessagesAnciens] = await Promise.all([
+      assurerEmbeddings(
+        metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
+        appSettings,
+      ),
+      assurerEmbeddings(
+        poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
+        appSettings,
+      ),
+      obtenirEmbeddings([requeteLore, requeteSouvenirs], appSettings),
+      embedderMessagesAnciens(messagesAnciens, appSettings),
+    ]);
+
+    const [vecteurLore, vecteurSouvenirs] = resultatRequetes.vecteurs;
+    const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
+      metamoteursDisponibles,
+      vecteurLore,
+      vecteursMetamoteurs,
+    );
+    const loreElyndor = prioriserLoreCanon(
+      requeteLore,
+      selectionnerLoreElyndorSemantique(
+        poolElyndor,
+        requeteLore,
+        vecteurLore,
+        vecteursElyndor,
+        undefined,
+        optionsLoreElyndor,
+      ),
+      LORE_ELYNDOR,
+    );
+    const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurSouvenirs, vecteursMessagesAnciens);
+
     return {
-      metamoteursSelectionnes: [],
+      metamoteursSelectionnes,
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: [],
+        metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
+      modeRecherche: `sémantique · ${resultatRequetes.fournisseur}`,
     };
+  } catch (erreur) {
+    const raison = erreur instanceof Error ? erreur.message : 'échec embeddings non identifié';
+    return selectionLexicale(
+      metamoteursDisponibles,
+      poolElyndor as ReturnType<typeof chargerLoreElyndor>,
+      messagesAnciens,
+      requeteLore,
+      requeteSouvenirs,
+      'lexicale · repli après échec embeddings',
+      raison,
+    );
   }
+}
 
-  const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
-    assurerEmbeddings(
-      metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-      appSettings,
-    ),
-    assurerEmbeddings(
-      poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
-      appSettings,
-    ),
-    obtenirEmbeddings([texteRequete], appSettings),
-    embedderMessagesAnciens(messagesAnciens, appSettings),
-  ]);
-
-  const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-    metamoteursDisponibles,
-    vecteurRequete,
-    vecteursMetamoteurs,
-  );
-  const loreElyndor = prioriserLoreCanon(
-    texteRequete,
-    selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
-    LORE_ELYNDOR,
-  );
-  const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
-
+function debugMemoireNarrative(
+  nbEvenements: number,
+  blocs: ResultatBlocs,
+  selection?: SelectionLore,
+  diagnostic?: DiagnosticPrompt,
+): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
+  const details = diagnostic && selection
+    ? ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · métamoteurs ${diagnostic.metamoteursSelectionnes} sélectionnés/${diagnostic.metamoteursInjectes.length} injectés · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
+    : '';
+  const lignes = debugBlocsContexte(blocs.blocs);
+  if (selection && diagnostic) {
+    lignes.push(`[CONTEXTE] ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget}`);
+    if (selection.raisonRepli) lignes.push(`[REPLI] ${selection.raisonRepli}`);
+    if (diagnostic.metamoteursExclusBudget.length) {
+      lignes.push(`[BUDGET] ${diagnostic.metamoteursExclusBudget.length} métamoteur(s) non injecté(s)`);
+    }
+    if (diagnostic.loreExclusBudget.length) {
+      lignes.push(`[BUDGET] ${diagnostic.loreExclusBudget.length} entrée(s) lore non injectée(s)`);
+    }
+  }
   return {
-    metamoteursSelectionnes,
-    loreElyndor,
-    souvenirs,
-    debugLore: {
-      metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
-      loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
-      souvenirs: formaterSouvenirsDebug(souvenirs),
-    },
+    blocsContexte: lignes,
+    memoireNarrative: `${nbEvenements} événements indexés · ${blocs.totalCaracteres} caractères sélectionnés${details}`,
   };
 }
 
-function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
+function debugAvecInjection(
+  selection: SelectionLore,
+  diagnostic: DiagnosticPrompt,
+  nbEvenements: number,
+  blocs: ResultatBlocs,
+): DebugLore {
+  const metaParTitre = new Map(
+    selection.metamoteursSelectionnes.map((e) => [e.titre, formaterDebug(e.titre, e.score)]),
+  );
+  const loreParTitre = new Map(
+    selection.loreElyndor.map((e) => [e.titre, formaterDebug(e.titre, e.score)]),
+  );
+  const memoire = debugMemoireNarrative(nbEvenements, blocs, selection, diagnostic);
   return {
-    blocsContexte: debugBlocsContexte(blocs.blocs),
-    memoireNarrative: `${nbEvenements} événements indexés · ${blocs.totalCaracteres} caractères sélectionnés`,
+    metamoteurs: diagnostic.metamoteursInjectes.map((titre) => metaParTitre.get(titre) ?? titre),
+    loreElyndor: diagnostic.loreInjecte.map((titre) => loreParTitre.get(titre) ?? titre),
+    souvenirs: selection.debugLore.souvenirs,
+    ...memoire,
   };
 }
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
-  const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  const selection = await calculerSelectionLore(story, messageJoueur, appSettings);
   const evenements = synchroniserMemoireNarrative(story);
-  return { ...debugLore, ...debugMemoireNarrative(evenements.length, construireBlocsContexte(story, messageJoueur, evenements)) };
+  const blocs = construireBlocsContexte(story, messageJoueur, evenements);
+  const ctx = construireCtxBase(story, messageJoueur, appSettings, selection, blocs);
+  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
+    ? BUDGET_SYSTEM_LOCAL
+    : BUDGET_SYSTEM_DISTANT;
+  const { diagnostic } = construireMessagesAvecDiagnostic(ctx, { budgetSysteme: budgetPrompt });
+  return debugAvecInjection(selection, diagnostic, evenements.length, blocs);
 }
 
 export function construireCtxBase(
@@ -295,8 +410,8 @@ export async function construirePromptDebug(
   messageJoueur: string,
   appSettings: AppSettings,
 ): Promise<string> {
-  const { metamoteursSelectionnes, loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
+  const selection = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, selection));
 }
 
 function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
@@ -373,14 +488,17 @@ export async function genererTour(
   const evenements = synchroniserMemoireNarrative(storyRafraichie);
   const storyCourante = assurerNoyau(storyRafraichie, evenements);
 
-  const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
+  const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings);
+  const { metamoteursSelectionnes, loreElyndor, souvenirs } = selection;
+
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  const ctxBase = construireCtxBase(
     storyCourante,
     messageJoueur,
     appSettings,
+    { metamoteursSelectionnes, loreElyndor, souvenirs },
+    blocs,
   );
-
-  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -391,12 +509,17 @@ export async function genererTour(
   // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
   // il rognait la scène ou arrivait coupé.
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
-  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
+    ? BUDGET_SYSTEM_LOCAL
+    : BUDGET_SYSTEM_DISTANT;
+
+  let constructionPrompt = construireMessagesAvecDiagnostic(ctxBase, { budgetSysteme: budgetPrompt });
+  let diagnosticPrompt = constructionPrompt.diagnostic;
 
   commencerMesureTokens();
   const premiere = extraireEnveloppeEtat(await appellerModele({
     ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt }),
+    messages: constructionPrompt.messages,
     temperature,
     maxTokens,
   }));
@@ -410,9 +533,6 @@ export async function genererTour(
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
-  // V13 : l'appel de validation au modèle (un second appel complet, très
-  // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
-  // passés et que la réponse semble défaire un fait établi.
   const llm = controlesLocaux.ok && contradictionProbable(reponse, storyCourante)
     ? await validerReponseLLM({
         ...configurationLLM(appSettings, modelePourAppel),
@@ -445,11 +565,14 @@ export async function genererTour(
       .map((c) => c.raison)
       .join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
     try {
-      // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
-      // celui de la nouvelle apparaître dans le récit.
+      constructionPrompt = construireMessagesAvecDiagnostic(
+        { ...ctxBase, noteCorrection },
+        { budgetSysteme: budgetPrompt },
+      );
+      diagnosticPrompt = constructionPrompt.diagnostic;
       const regeneree = extraireEnveloppeEtat(await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
-        messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt }),
+        messages: constructionPrompt.messages,
         temperature,
         maxTokens,
       }));
@@ -501,12 +624,15 @@ export async function genererTour(
     { ...storyCourante, messages },
     { messageJoueur: messageUtilisateur, messageNarrateur: messageAssistant, delta: deltaEtat, corrige: aEteCorrige },
   );
-  const debugMemoire = debugMemoireNarrative(evenements.length, blocs);
+  const debugFinal = debugAvecInjection(selection, diagnosticPrompt, evenements.length, blocs);
 
   return {
     story: storyFinale,
     aEteCorrige,
-    debugLore: { ...debugLore, ...debugMemoire, blocsContexte: [...(debugMemoire.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)] },
+    debugLore: {
+      ...debugFinal,
+      blocsContexte: [...(debugFinal.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)],
+    },
   };
 }
 
