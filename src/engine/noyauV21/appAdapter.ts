@@ -17,7 +17,7 @@ import {
 } from '../contenuAdulte';
 import { classerLexical, normaliserRecherche } from '../rechercheLexicale';
 import type { PermissionMortM06 } from './m06-lois-monde-scene';
-import type { InitiativeJoueurM07, ProfilPnjM09 } from './m07-agentivite-joueur';
+import type { InitiativeJoueurM07 } from './m07-agentivite-joueur';
 import type { ProfilPnjM09 as ProfilPnjM09Exact } from './m09-archetypes-universels';
 import type { SignalJoueurM13 } from './m13-consentement-limites-signaux';
 import type { DonneesResolutionM14 } from './m14-resolution-actions';
