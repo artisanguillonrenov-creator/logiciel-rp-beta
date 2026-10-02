@@ -36,7 +36,9 @@ Aucune contradiction critique nouvelle n’a été détectée lors de la migrati
 - Chaque nouvelle entrée : niveau 1, priorité 25, non constante.
 - Chaque nouvelle entrée contient les quatre blocs et les champs culturels exigés par la directive.
 - Taille maximale imposée à **1 900 caractères** par fiche afin d’éviter de recréer de gros blocs encyclopédiques.
-- Validation TypeScript exécutée après migration.
+- `npx tsc --noEmit` : **PASS**.
+- Garde-fous structurels Step 7 : **PASS**.
+- Commit/push fonctionnel : **PASS** (`bbd032a5f59c1b0596cb4e2a2491dab64b2f27c4`).
 
 ### Nouvelles entrées
 
@@ -59,7 +61,9 @@ Aucune contradiction critique nouvelle n’a été détectée lors de la migrati
 
 ## G — Décision
 
-**VALIDÉE** si le script de migration, les garde-fous structurels et `npx tsc --noEmit` passent.
+**VALIDÉE**
+
+L’étape 7 satisfait la directive : les 14 capitales disposent désormais de variantes culturelles locales explicites sans que les règles globales les rendent interchangeables. La migration, TypeScript, les garde-fous structurels et le commit ont tous réussi.
 
 ## Frontière avec l’étape 8
 
