@@ -1,4 +1,5 @@
 name: Déployer la version web (GitHub Pages)
+# Déclenchement manuel du build web — 2026-10-03
 
 on:
   push:
