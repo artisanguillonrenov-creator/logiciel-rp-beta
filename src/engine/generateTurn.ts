@@ -1,12 +1,9 @@
-import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
-  chargerMetamoteurs,
   prioriserLoreCanon,
   selectionnerLoreElyndorSemantique,
-  selectionnerMetamoteursSemantique,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
@@ -76,11 +73,9 @@ import { executerKernelV21, type SortieKernelV21 } from './noyauV21/kernel';
 import { formaterNarrativeContractV21 } from './noyauV21/narrativeContractPrompt';
 import { validerReponseAvecContratV21 } from './noyauV21/validationReponseV21';
 
-const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
 const TITRE_CONTRAT_KERNEL_V21 = '[NOYAU V2.1] Contrat narratif du tour';
 
-const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
@@ -219,7 +214,15 @@ function construireRequeteSouvenirs(story: StoryState, messageJoueur: string, ap
 }
 
 interface SelectionLore {
-  metamoteursSelectionnes: ReturnType<typeof selectionnerMetamoteursSemantique>;
+  // Compatibilité avec le constructeur de prompt : les anciens métamoteurs
+  // ne sont plus sélectionnés ici. Le seul élément injecté dans ce canal est
+  // le contrat compact produit par le Kernel V2.1 au moment du tour.
+  metamoteursSelectionnes: Array<{
+    id: string;
+    titre: string;
+    contenu: string;
+    score?: number;
+  }>;
   loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
   souvenirs: Souvenir[];
   debugLore: DebugLore;
@@ -228,7 +231,6 @@ interface SelectionLore {
 }
 
 function selectionLexicale(
-  metamoteursDisponibles: ReturnType<typeof chargerMetamoteurs>,
   poolElyndor: ReturnType<typeof chargerLoreElyndor>,
   messagesAnciens: Message[],
   requeteLore: string,
@@ -236,14 +238,6 @@ function selectionLexicale(
   modeRecherche: string,
   raisonRepli?: string,
 ): SelectionLore {
-  // Compatibilité de la sélection héritée : les anciens métamoteurs restent
-  // disponibles pour les outils de diagnostic, mais genererTour les remplace
-  // désormais par le contrat compact produit par le Kernel V2.1.
-  const metamoteursSelectionnes = metamoteursDisponibles.map((e) => ({
-    id: e.id,
-    titre: e.titre,
-    contenu: e.contenu,
-  }));
   const loreElyndor = prioriserLoreCanon(
     requeteLore,
     rechercherLoreLexical(poolElyndor, requeteLore),
@@ -252,11 +246,11 @@ function selectionLexicale(
   const souvenirs = rechercherSouvenirsLexical(messagesAnciens, requeteSouvenirs);
 
   return {
-    metamoteursSelectionnes,
+    metamoteursSelectionnes: [],
     loreElyndor,
     souvenirs,
     debugLore: {
-      metamoteurs: metamoteursSelectionnes.map((e) => e.titre),
+      metamoteurs: [],
       loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
       souvenirs: formaterSouvenirsDebug(souvenirs),
     },
@@ -277,12 +271,6 @@ export async function calculerSelectionLore(
   const requeteSouvenirs = construireRequeteSouvenirs(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
 
-  const metamoteursDisponibles = profilAdulte
-    ? METAMOTEURS
-    : METAMOTEURS.filter(
-        (e) => e.titre !== METAMOTEUR_REGISTRE && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
-      );
-
   const poolElyndorBrut = [
     ...LORE_ELYNDOR,
     ...convertirLoreEmergentPourSelection(story.loreEmergent),
@@ -301,7 +289,6 @@ export async function calculerSelectionLore(
 
   if (!embeddingsDisponibles(appSettings)) {
     return selectionLexicale(
-      metamoteursDisponibles,
       poolElyndor as ReturnType<typeof chargerLoreElyndor>,
       messagesAnciens,
       requeteLore,
@@ -311,11 +298,7 @@ export async function calculerSelectionLore(
   }
 
   try {
-    const [vecteursMetamoteurs, vecteursElyndor, resultatRequetes, vecteursMessagesAnciens] = await Promise.all([
-      assurerEmbeddings(
-        metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-        appSettings,
-      ),
+    const [vecteursElyndor, resultatRequetes, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
         appSettings,
@@ -325,11 +308,6 @@ export async function calculerSelectionLore(
     ]);
 
     const [vecteurLore, vecteurSouvenirs] = resultatRequetes.vecteurs;
-    const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-      metamoteursDisponibles,
-      vecteurLore,
-      vecteursMetamoteurs,
-    );
     const loreElyndor = prioriserLoreCanon(
       requeteLore,
       selectionnerLoreElyndorSemantique(
@@ -345,11 +323,11 @@ export async function calculerSelectionLore(
     const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurSouvenirs, vecteursMessagesAnciens);
 
     return {
-      metamoteursSelectionnes,
+      metamoteursSelectionnes: [],
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
+        metamoteurs: [],
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
@@ -358,7 +336,6 @@ export async function calculerSelectionLore(
   } catch (erreur) {
     const raison = erreur instanceof Error ? erreur.message : 'échec embeddings non identifié';
     return selectionLexicale(
-      metamoteursDisponibles,
       poolElyndor as ReturnType<typeof chargerLoreElyndor>,
       messagesAnciens,
       requeteLore,
@@ -379,14 +356,14 @@ function debugMemoireNarrative(
   const details = diagnostic && selection
     ? kernelActif
       ? ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · Kernel V2.1 injecté · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
-      : ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · métamoteurs ${diagnostic.metamoteursSelectionnes} sélectionnés/${diagnostic.metamoteursInjectes.length} injectés · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
+      : ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · contrat narratif absent · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
     : '';
   const lignes = debugBlocsContexte(blocs.blocs);
   if (selection && diagnostic) {
     lignes.push(`[CONTEXTE] ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget}`);
     if (selection.raisonRepli) lignes.push(`[REPLI] ${selection.raisonRepli}`);
     if (!kernelActif && diagnostic.metamoteursExclusBudget.length) {
-      lignes.push(`[BUDGET] ${diagnostic.metamoteursExclusBudget.length} métamoteur(s) non injecté(s)`);
+      lignes.push(`[BUDGET] ${diagnostic.metamoteursExclusBudget.length} contrat(s) narratif(s) non injecté(s)`);
     }
     if (diagnostic.loreExclusBudget.length) {
       lignes.push(`[BUDGET] ${diagnostic.loreExclusBudget.length} entrée(s) lore non injectée(s)`);
@@ -404,15 +381,12 @@ function debugAvecInjection(
   nbEvenements: number,
   blocs: ResultatBlocs,
 ): DebugLore {
-  const metaParTitre = new Map(
-    selection.metamoteursSelectionnes.map((e) => [e.titre, formaterDebug(e.titre, e.score)]),
-  );
   const loreParTitre = new Map(
     selection.loreElyndor.map((e) => [e.titre, formaterDebug(e.titre, e.score)]),
   );
   const memoire = debugMemoireNarrative(nbEvenements, blocs, selection, diagnostic);
   return {
-    metamoteurs: diagnostic.metamoteursInjectes.map((titre) => metaParTitre.get(titre) ?? titre),
+    metamoteurs: diagnostic.metamoteursInjectes,
     loreElyndor: diagnostic.loreInjecte.map((titre) => loreParTitre.get(titre) ?? titre),
     souvenirs: selection.debugLore.souvenirs,
     ...memoire,
