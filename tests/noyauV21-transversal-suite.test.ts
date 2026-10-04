@@ -308,7 +308,11 @@ test('C15/M04+M15 — un démenti reçu seulement par une communauté ne corrige
       sourceIds: ['preuve-dementi'],
     }],
   });
-  assert.ok(info.savoirsPourM01.some((savoir) => savoir.acteurId === 'guilde-a' && savoir.affirmationId === undefined) || info.savoirsPourM01.some((savoir) => savoir.acteurId === 'guilde-a'));
+  assert.ok(
+    info.savoirsPourM01.some(
+      (savoir) => savoir.acteurId === 'guilde-a' && savoir.contenu === dementi.contenu,
+    ),
+  );
 
   const social = executerM04({
     contexte: base,
