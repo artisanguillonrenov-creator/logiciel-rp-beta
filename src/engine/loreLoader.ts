@@ -1,5 +1,6 @@
 import type { LoreEntry } from '../types';
 import { similariteCosinus } from './embeddings';
+import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, type ScopeLore } from './loreScoring';
 
 function normalise(texte: string): string {
   return texte
@@ -86,21 +87,20 @@ export function selectionnerMetamoteursSemantique(
 }
 
 // --- Lore Elyndor -----------------------------------------------------
-// Structure dédiée (id, category, primary_keys, secondary_keys,
-// negative_keys, priority, constant), distincte du format RISU des
-// métamoteurs ci-dessus. Les *_keys ne servent plus qu'à l'exclusion
-// négative explicite ; le déclenchement se fait par similarité sémantique.
+// V3 étape 10 : les métadonnées positives du lore sont conservées au
+// chargement et participent réellement au classement hybride.
 
 interface ElyndorEntryBrute {
   id: number;
   category: string;
   title: string;
-  primary_keys: string[];
-  secondary_keys: string[];
-  negative_keys: string[];
+  primary_keys?: string[];
+  secondary_keys?: string[];
+  negative_keys?: string[];
   content: string;
   priority: number;
   constant: boolean;
+  scope?: ScopeLore;
 }
 
 interface ElyndorLorebook {
@@ -111,20 +111,39 @@ export interface ElyndorEntryChargee {
   id: string;
   titre: string;
   contenu: string;
+  motsClesPrimaires?: string[];
+  motsClesSecondaires?: string[];
   motsClesNegatifs: string[];
+  primaryKeys?: string[];
+  secondaryKeys?: string[];
+  negativeKeys?: string[];
   priority: number;
   constant: boolean;
+  category?: string;
+  scope?: ScopeLore;
 }
 
 export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] {
-  return raw.entries.map((entry) => ({
-    id: `elyndor-${entry.id}`,
-    titre: `[${entry.category}] ${entry.title}`,
-    contenu: entry.content,
-    motsClesNegatifs: entry.negative_keys.map(normalise),
-    priority: entry.priority,
-    constant: entry.constant,
-  }));
+  return raw.entries.map((entry) => {
+    const primaryKeys = (entry.primary_keys ?? []).map(normalise);
+    const secondaryKeys = (entry.secondary_keys ?? []).map(normalise);
+    const negativeKeys = (entry.negative_keys ?? []).map(normalise);
+    return {
+      id: `elyndor-${entry.id}`,
+      titre: `[${entry.category}] ${entry.title}`,
+      contenu: entry.content,
+      motsClesPrimaires: primaryKeys,
+      motsClesSecondaires: secondaryKeys,
+      motsClesNegatifs: negativeKeys,
+      primaryKeys,
+      secondaryKeys,
+      negativeKeys,
+      priority: entry.priority,
+      constant: entry.constant,
+      category: entry.category,
+      scope: entry.scope ?? infererScopeLore(entry.category),
+    };
+  });
 }
 
 // Une entrée non couverte par "constant" mais dont l'absence casse la
@@ -172,16 +191,9 @@ export function selectionnerLoreElyndorSemantique(
   texteRequete: string,
   vecteurRequete: number[],
   vecteursEntrees: Record<string, number[]>,
-  // Plafond relevé (demande explicite) : 4 → 18, pour qu'avec les entrées
-  // toujours actives (6 "constant" du lorebook statique + la table
-  // Géographie et Races, soit 7 actuellement) le total puisse monter
-  // jusqu'à ~25 entrées quand le tour s'y prête, sans que ce soit un
-  // plancher — un tour dont peu d'entrées dépassent le seuil de pertinence
-  // continue d'en injecter moins.
-  maxSupplementaires = 18,
+  maxSupplementaires = MAX_LORE_CONTEXTUEL,
   options?: OptionsSelectionLore,
 ): LoreEntry[] {
-  const texteNormalise = normalise(texteRequete);
   const toujoursActives = entries.filter(
     (e) => e.constant || LORE_ELYNDOR_SOCLE_SUPPLEMENTAIRE.includes(e.titre),
   );
@@ -190,16 +202,37 @@ export function selectionnerLoreElyndorSemantique(
   );
 
   const classementComplet = reste
-    .filter((entry) => !entry.motsClesNegatifs.some((mot) => texteNormalise.includes(mot)))
-    .map((entry) => ({
-      entry,
-      score: vecteursEntrees[entry.id] ? similariteCosinus(vecteurRequete, vecteursEntrees[entry.id]) : -1,
-    }))
+    .map((entry) => {
+      const similarite = vecteursEntrees[entry.id]
+        ? similariteCosinus(vecteurRequete, vecteursEntrees[entry.id])
+        : undefined;
+      const details = calculerScoreHybrideLore(
+        {
+          titre: entry.titre,
+          contenu: entry.contenu,
+          primaryKeys: entry.primaryKeys ?? entry.motsClesPrimaires,
+          secondaryKeys: entry.secondaryKeys ?? entry.motsClesSecondaires,
+          negativeKeys: entry.negativeKeys ?? entry.motsClesNegatifs,
+          priority: entry.priority,
+          category: entry.category,
+          scope: entry.scope,
+          constant: entry.constant,
+        },
+        texteRequete,
+        similarite,
+      );
+      return { entry, score: details.score };
+    })
+    .filter((x) => x.score >= SEUIL_LORE_HYBRIDE)
     .sort((a, b) => b.score - a.score || a.entry.priority - b.entry.priority);
 
+  const plafond = Math.max(0, Math.min(MAX_LORE_CONTEXTUEL, maxSupplementaires));
   const classement = options?.aleatoire
-    ? piocherAleatoirement(classementComplet.slice(0, Math.max(options.tailleBassinAleatoire ?? 10, maxSupplementaires)), maxSupplementaires)
-    : classementComplet.slice(0, maxSupplementaires);
+    ? piocherAleatoirement(
+        classementComplet.slice(0, Math.max(options.tailleBassinAleatoire ?? 10, plafond)),
+        plafond,
+      )
+    : classementComplet.slice(0, plafond);
 
   return [
     ...toujoursActives.map((e) => ({ id: e.id, titre: e.titre, contenu: e.contenu })),
