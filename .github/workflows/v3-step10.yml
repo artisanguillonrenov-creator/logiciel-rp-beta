@@ -27,6 +27,26 @@ jobs:
       - name: Installer les dépendances
         run: npm ci
 
+      - name: Corriger le générateur Step 10
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/v3-step10-retrieval.js')
+          s = p.read_text()
+          replacements = [
+              ("  const corps = normaliserLore(`${entry.titre} ${entry.contenu}`);", "  const corps = normaliserLore(entry.titre + ' ' + entry.contenu);"),
+              ("    titre: `[ROYAUME] Paris secteur ${i}`,", "    titre: '[ROYAUME] Paris secteur ' + i,"),
+              ("      id: `c${i}`, titre: `[ROYAUME] Paris ${i}`, contenu: 'Paris.', primaryKeys: ['Paris'], priority: i, category: 'ROYAUME', scope: 'CITY', constant: false,", "      id: 'c' + i, titre: '[ROYAUME] Paris ' + i, contenu: 'Paris.', primaryKeys: ['Paris'], priority: i, category: 'ROYAUME', scope: 'CITY', constant: false,"),
+              ("  const entries = Array.from({ length: 12 }, (_, i) => chargee(`e${i}`, `[MONDE] Entrée ${i}`, { category: 'MONDE', scope: 'GLOBAL' }));", "  const entries = Array.from({ length: 12 }, (_, i) => chargee('e' + i, '[MONDE] Entrée ' + i, { category: 'MONDE', scope: 'GLOBAL' }));"),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Bloc de correction introuvable: {old}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+          node --check scripts/v3-step10-retrieval.js
+
       - name: Appliquer étape 10
         run: node scripts/v3-step10-retrieval.js
 
