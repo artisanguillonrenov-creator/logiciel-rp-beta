@@ -71,9 +71,13 @@ import {
   validerAgentiviteHeuristique,
   validerReponseLLM,
 } from './validator';
+import { adapterApplicationVersContexteV21 } from './noyauV21/adapterApplication';
+import { executerKernelV21, type SortieKernelV21 } from './noyauV21/kernel';
+import { formaterNarrativeContractV21 } from './noyauV21/narrativeContractPrompt';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
+const TITRE_CONTRAT_KERNEL_V21 = '[NOYAU V2.1] Contrat narratif du tour';
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
@@ -100,6 +104,84 @@ export interface ResultatTour {
   story: StoryState;
   aEteCorrige: boolean;
   debugLore: DebugLore;
+}
+
+interface PreparationKernelV21 {
+  sortie: SortieKernelV21;
+  personnageJoueurId: string;
+  entreePrompt: {
+    id: string;
+    titre: string;
+    contenu: string;
+  };
+  diagnosticAdaptateur: {
+    noyauStructureDisponible: boolean;
+    participants: number;
+    evenements: number;
+    personnages: number;
+    relations: number;
+    reputations: number;
+    engagements: number;
+    connaissances: number;
+    affirmations: number;
+    filsNarratifs: number;
+    donneesAbsentesNonInventees: string[];
+  };
+}
+
+function preparerKernelV21(
+  story: StoryState,
+  messageJoueur: string,
+  appSettings: AppSettings,
+): PreparationKernelV21 {
+  const adaptation = adapterApplicationVersContexteV21(story, {
+    messageJoueur,
+    appSettings,
+  });
+  const personnageJoueurId = adaptation.diagnostic.personnageJoueurId;
+  const sortie = executerKernelV21({
+    contexte: adaptation.contexte,
+    moteurs: {
+      m03: { personnageJoueurId },
+      m07: { personnageJoueurId },
+      m09: { personnageJoueurId },
+    },
+  });
+
+  return {
+    sortie,
+    personnageJoueurId,
+    entreePrompt: {
+      id: 'noyau-v21-contrat-tour',
+      titre: TITRE_CONTRAT_KERNEL_V21,
+      contenu: formaterNarrativeContractV21(sortie.contrat, sortie.coordination.modeSortie),
+    },
+    diagnosticAdaptateur: {
+      noyauStructureDisponible: adaptation.diagnostic.noyauStructureDisponible,
+      participants: adaptation.diagnostic.participants,
+      evenements: adaptation.diagnostic.evenements,
+      personnages: adaptation.diagnostic.personnages,
+      relations: adaptation.diagnostic.relations,
+      reputations: adaptation.diagnostic.reputations,
+      engagements: adaptation.diagnostic.engagements,
+      connaissances: adaptation.diagnostic.connaissances,
+      affirmations: adaptation.diagnostic.affirmations,
+      filsNarratifs: adaptation.diagnostic.filsNarratifs,
+      donneesAbsentesNonInventees: adaptation.diagnostic.donneesAbsentesNonInventees,
+    },
+  };
+}
+
+function lignesDiagnosticKernelV21(preparation: PreparationKernelV21): string[] {
+  const d = preparation.sortie.diagnostic;
+  const a = preparation.diagnosticAdaptateur;
+  const absentes = a.donneesAbsentesNonInventees.length
+    ? ` · absentes non inventées: ${a.donneesAbsentesNonInventees.join(', ')}`
+    : '';
+  return [
+    `[KERNEL V2.1] ${d.moteursExecutes.length} moteurs exécutés · ${d.moteursContributeurs.length} contributeurs · ${d.nombreTransitionsProposees} transition(s) proposée(s) · ${d.nombreAlertes} alerte(s) · sortie ${d.modeSortie}`,
+    `[ADAPTATEUR V2.1] ${a.personnages} personnage(s) · ${a.evenements} événement(s) · ${a.relations} relation(s) · ${a.engagements} engagement(s) · ${a.connaissances} connaissance(s)${absentes}`,
+  ];
 }
 
 function formaterDebug(titre: string, score?: number): string {
@@ -153,8 +235,9 @@ function selectionLexicale(
   modeRecherche: string,
   raisonRepli?: string,
 ): SelectionLore {
-  // Tant que le nouveau Kernel V2.1 n'est pas branché, le repli lexical ne
-  // doit jamais supprimer les anciens métamoteurs : ils restent tous actifs.
+  // Compatibilité de la sélection héritée : les anciens métamoteurs restent
+  // disponibles pour les outils de diagnostic, mais genererTour les remplace
+  // désormais par le contrat compact produit par le Kernel V2.1.
   const metamoteursSelectionnes = metamoteursDisponibles.map((e) => ({
     id: e.id,
     titre: e.titre,
@@ -291,14 +374,17 @@ function debugMemoireNarrative(
   selection?: SelectionLore,
   diagnostic?: DiagnosticPrompt,
 ): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
+  const kernelActif = diagnostic?.metamoteursInjectes.includes(TITRE_CONTRAT_KERNEL_V21) ?? false;
   const details = diagnostic && selection
-    ? ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · métamoteurs ${diagnostic.metamoteursSelectionnes} sélectionnés/${diagnostic.metamoteursInjectes.length} injectés · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
+    ? kernelActif
+      ? ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · Kernel V2.1 injecté · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
+      : ` · recherche ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget} caractères · métamoteurs ${diagnostic.metamoteursSelectionnes} sélectionnés/${diagnostic.metamoteursInjectes.length} injectés · lore ${diagnostic.loreSelectionne} sélectionnées/${diagnostic.loreInjecte.length} injectées`
     : '';
   const lignes = debugBlocsContexte(blocs.blocs);
   if (selection && diagnostic) {
     lignes.push(`[CONTEXTE] ${selection.modeRecherche} · prompt ${diagnostic.caracteres}/${diagnostic.budget}`);
     if (selection.raisonRepli) lignes.push(`[REPLI] ${selection.raisonRepli}`);
-    if (diagnostic.metamoteursExclusBudget.length) {
+    if (!kernelActif && diagnostic.metamoteursExclusBudget.length) {
       lignes.push(`[BUDGET] ${diagnostic.metamoteursExclusBudget.length} métamoteur(s) non injecté(s)`);
     }
     if (diagnostic.loreExclusBudget.length) {
@@ -334,14 +420,30 @@ function debugAvecInjection(
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
   const selection = await calculerSelectionLore(story, messageJoueur, appSettings);
+  const kernel = preparerKernelV21(story, messageJoueur, appSettings);
   const evenements = synchroniserMemoireNarrative(story);
   const blocs = construireBlocsContexte(story, messageJoueur, evenements);
-  const ctx = construireCtxBase(story, messageJoueur, appSettings, selection, blocs);
+  const ctx = construireCtxBase(
+    story,
+    messageJoueur,
+    appSettings,
+    {
+      metamoteursSelectionnes: [kernel.entreePrompt],
+      loreElyndor: selection.loreElyndor,
+      souvenirs: selection.souvenirs,
+    },
+    blocs,
+  );
   const budgetPrompt = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
     ? BUDGET_SYSTEM_LOCAL
     : BUDGET_SYSTEM_DISTANT;
   const { diagnostic } = construireMessagesAvecDiagnostic(ctx, { budgetSysteme: budgetPrompt });
-  return debugAvecInjection(selection, diagnostic, evenements.length, blocs);
+  const debug = debugAvecInjection(selection, diagnostic, evenements.length, blocs);
+  return {
+    ...debug,
+    metamoteurs: kernel.sortie.diagnostic.moteursExecutes.map((moteur) => `${moteur} · Kernel V2.1`),
+    blocsContexte: [...(debug.blocsContexte ?? []), ...lignesDiagnosticKernelV21(kernel)],
+  };
 }
 
 export function construireCtxBase(
@@ -411,7 +513,17 @@ export async function construirePromptDebug(
   appSettings: AppSettings,
 ): Promise<string> {
   const selection = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, selection));
+  const kernel = preparerKernelV21(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(
+    story,
+    messageJoueur,
+    appSettings,
+    {
+      metamoteursSelectionnes: [kernel.entreePrompt],
+      loreElyndor: selection.loreElyndor,
+      souvenirs: selection.souvenirs,
+    },
+  ));
 }
 
 function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
@@ -489,7 +601,9 @@ export async function genererTour(
   const storyCourante = assurerNoyau(storyRafraichie, evenements);
 
   const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings);
-  const { metamoteursSelectionnes, loreElyndor, souvenirs } = selection;
+  const kernel = preparerKernelV21(storyCourante, messageJoueur, appSettings);
+  const { loreElyndor, souvenirs } = selection;
+  const metamoteursSelectionnes = [kernel.entreePrompt];
 
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
   const ctxBase = construireCtxBase(
@@ -631,7 +745,12 @@ export async function genererTour(
     aEteCorrige,
     debugLore: {
       ...debugFinal,
-      blocsContexte: [...(debugFinal.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)],
+      metamoteurs: kernel.sortie.diagnostic.moteursExecutes.map((moteur) => `${moteur} · Kernel V2.1`),
+      blocsContexte: [
+        ...(debugFinal.blocsContexte ?? []),
+        ...lignesDiagnosticKernelV21(kernel),
+        ...diagnosticNoyau(storyFinale),
+      ],
     },
   };
 }
