@@ -74,6 +74,7 @@ import {
 import { adapterApplicationVersContexteV21 } from './noyauV21/adapterApplication';
 import { executerKernelV21, type SortieKernelV21 } from './noyauV21/kernel';
 import { formaterNarrativeContractV21 } from './noyauV21/narrativeContractPrompt';
+import { validerReponseAvecContratV21 } from './noyauV21/validationReponseV21';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
@@ -641,7 +642,13 @@ export async function genererTour(
   let deltaEtat = premiere.delta;
 
   const canon = corpusCanonHistoire(storyCourante, messageJoueur);
+  const validationContratInitiale = validerReponseAvecContratV21({
+    reponse,
+    contrat: kernel.sortie.contrat,
+    modeSortie: kernel.sortie.coordination.modeSortie,
+  });
   const controlesLocaux = fusionnerRapports(
+    validationContratInitiale.rapport,
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
     validerRepetitionHeuristique(reponse, storyCourante),
@@ -659,9 +666,13 @@ export async function genererTour(
 
   const strategie = determinerStrategie(rapport);
   let aEteCorrige = strategie !== 'aucune';
+  let correctionEchouee = false;
 
   if (strategie === 'patch_local') {
     reponse = appliquerPatchLocal(reponse, rapport);
+    // Un delta produit avec la version rejetée de la narration ne peut pas être
+    // considéré comme validé après une correction locale du texte.
+    deltaEtat = undefined;
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
     try {
       reponse = extraireEnveloppeEtat(await reparerReponse({
@@ -670,8 +681,12 @@ export async function genererTour(
         rapport,
         partiel: strategie === 'regeneration_partielle',
       })).texte;
+      // Le réparateur ne reconstruit pas l'enveloppe d'état : on refuse donc
+      // de réutiliser le delta de la proposition initialement rejetée.
+      deltaEtat = undefined;
     } catch {
       aEteCorrige = false;
+      correctionEchouee = true;
     }
   } else if (strategie === 'regeneration_complete') {
     const noteCorrection = `La tentative précédente a été rejetée pour la ou les raisons suivantes : ${rapport.checks
@@ -694,7 +709,13 @@ export async function genererTour(
       deltaEtat = regeneree.delta;
     } catch {
       aEteCorrige = false;
+      correctionEchouee = true;
     }
+  }
+
+  if (correctionEchouee) {
+    annulerMesureTokens();
+    throw new Error("La réponse proposée a échoué à la validation et n'a pas pu être corrigée. Aucun état n'a été canonisé.");
   }
 
   // Dernier filet : une entité inventée qui a survécu à la correction est
@@ -703,11 +724,41 @@ export async function genererTour(
   if (!canonFinal.ok) {
     reponse = appliquerPatchLocal(reponse, canonFinal);
     aEteCorrige = true;
+    deltaEtat = undefined;
   }
 
   if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
     const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
-    if (nettoyee) reponse = nettoyee;
+    if (nettoyee) {
+      reponse = nettoyee;
+      aEteCorrige = true;
+      deltaEtat = undefined;
+    }
+  }
+
+  const validationContratFinale = validerReponseAvecContratV21({
+    reponse,
+    contrat: kernel.sortie.contrat,
+    modeSortie: kernel.sortie.coordination.modeSortie,
+  });
+  const controlesFinaux = fusionnerRapports(
+    validationContratFinale.rapport,
+    validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
+    validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
+    validerRepetitionHeuristique(reponse, storyCourante),
+    verifierEntitesCanoniques(reponse, canon),
+  );
+
+  if (!controlesFinaux.ok) {
+    annulerMesureTokens();
+    const raisons = controlesFinaux.checks
+      .filter((check) => !check.ok)
+      .map((check) => check.raison)
+      .filter(Boolean)
+      .join(' ');
+    throw new Error(
+      `La réponse finale ne respecte pas le contrat narratif V2.1 et n'a pas été canonisée.${raisons ? ` ${raisons}` : ''}`,
+    );
   }
 
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
@@ -749,6 +800,7 @@ export async function genererTour(
       blocsContexte: [
         ...(debugFinal.blocsContexte ?? []),
         ...lignesDiagnosticKernelV21(kernel),
+        '[VALIDATION V2.1] réponse conforme au contrat avant canonisation',
         ...diagnosticNoyau(storyFinale),
       ],
     },
