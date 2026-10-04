@@ -249,6 +249,13 @@ function sujetCanoniqueTitre(titre: string): string {
   return sujet.split(/\s+[—–]\s+/)[0]?.trim() ?? sujet;
 }
 
+function normaliserAncre(texte: string): string {
+  return normalise(texte)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function estEntreeAncrable(entree: ElyndorEntryChargee): boolean {
   // Les index servent à relier des fiches ; ils ne doivent jamais remplacer
   // la fiche individuelle lorsqu'un nom propre est explicitement cité.
@@ -273,7 +280,7 @@ function contientExpressionCanonique(requeteNormalisee: string, aliasNormalise: 
 }
 
 function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
-  const sujet = normalise(sujetCanoniqueTitre(entree.titre));
+  const sujet = normaliserAncre(sujetCanoniqueTitre(entree.titre));
   if (!sujet) return [];
   const aliases = new Set<string>([sujet]);
 
@@ -282,7 +289,7 @@ function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
   // "Séraphine Duvall Paris" sans transformer un rôle générique comme
   // "maîtresse de guilde" en faux nom propre.
   for (const cle of [...(entree.primaryKeys ?? []), ...(entree.secondaryKeys ?? [])]) {
-    const alias = normalise(cle);
+    const alias = normaliserAncre(cle);
     if (!alias || alias.length < 3) continue;
     if (alias.includes(sujet) || sujet.includes(alias)) aliases.add(alias);
   }
@@ -299,7 +306,7 @@ export function extraireAncresCanoniques(
   texteRequete: string,
   entrees: ElyndorEntryChargee[],
 ): LoreEntry[] {
-  const requete = normalise(texteRequete);
+  const requete = normaliserAncre(texteRequete);
   const notes: { entree: ElyndorEntryChargee; position: number }[] = [];
 
   for (const entree of entrees) {
@@ -324,7 +331,7 @@ export function extraireAncresCanoniques(
     id: entree.id,
     titre: entree.titre,
     contenu: entree.contenu,
-    score: 3,
+    score: 2,
   }));
 }
 
