@@ -29,6 +29,9 @@ jobs:
 
       - run: npx tsc --noEmit
 
+      - name: Exécuter les tests automatiques
+        run: npm test
+
       - run: npm install --global eas-cli
 
       - name: Configurer la mémoire Gradle
