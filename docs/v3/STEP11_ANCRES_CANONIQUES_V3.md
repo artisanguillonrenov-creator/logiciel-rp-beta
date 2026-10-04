@@ -10,6 +10,7 @@
 - Déduplication conservée lorsqu’une fiche ancrée est déjà présente dans la sélection normale.
 - Les entrées `[INDEX]` sont explicitement exclues des ancres individuelles.
 - Les intitulés génériques présents dans les clés (ex. rôle de guilde) ne sont pas promus en noms propres.
+- La normalisation des ancres ignore accents, ponctuation et apostrophes afin que `Paris.`, `Séraphine Duvall,` ou `l’Ordre des Mages` déclenchent correctement leurs fiches.
 
 ## B — Informations déplacées
 
@@ -23,6 +24,7 @@ Aucune information de lore supprimée. L’ancien mécanisme limité aux `[ROYAU
 
 - Les fiches PNJ atomisées de l’étape 4 peuvent contenir plusieurs préfixes `[PNJ][VILLE]`; l’ancien extracteur de sujet n’aurait retiré qu’un seul préfixe.
 - Les index de PNJ contiennent eux aussi des noms propres ; ils doivent rester des aides d’association et ne jamais prendre la place de la fiche individuelle.
+- La première implémentation Step 11 traitait la ponctuation comme partie du nom ; les tests l’ont détecté avant validation. La normalisation a été corrigée sans modifier le canon.
 
 ## E — Risques
 
@@ -32,17 +34,20 @@ Aucune information de lore supprimée. L’ancien mécanisme limité aux `[ROYAU
 ## F — Tests réalisés
 
 - Royaume explicitement nommé malgré sélection vide.
-- Séraphine Duvall avec préfixes imbriqués.
+- Séraphine Duvall avec préfixes imbriqués et ponctuation.
 - Refus d’un faux ancrage sur rôle générique.
 - Plus de deux noms explicitement cités dans une même requête.
 - Exclusion des index.
 - Support religion / Porte Astra / artefact / Zone Corrompue nommés.
 - Déduplication d’une fiche déjà sélectionnée.
 - Ordre : ancres → contexte classé → socle.
-- `npm test`.
-- `npx tsc --noEmit`.
-- Garde-fou : `elyndorLore.json` reste inchangé pendant cette étape.
+- `npm test` : **144 tests, 144 PASS**.
+- `npx tsc --noEmit` : **PASS**.
+- Garde-fous Step 11 : **PASS**.
+- Garde-fou : `elyndorLore.json` reste à **265 entrées** et n’a pas été modifié par cette étape.
 
 ## G — Décision
 
-**EN ATTENTE DES TESTS**
+**VALIDÉE**
+
+Ancres canoniques : **PASS**. Tests unitaires : **PASS**. Validation TypeScript : **PASS**. Garde-fous structurels : **PASS**. Lore statique inchangé : **PASS**.
