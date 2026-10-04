@@ -51,7 +51,7 @@ test('les souvenirs retrouvent un vieux message pertinent', () => {
 const royaume = (id: string, titre: string): ElyndorEntryChargee =>
   ({ id, titre, contenu: `Fiche ${titre}`, motsClesNegatifs: [], priority: 1, constant: false });
 
-test('un royaume nommé dans la scène est ancré en tête, puis pertinence, puis socle', () => {
+test('un royaume nommé dans la scène est ancré en tête, puis socle, puis pertinence', () => {
   const entrees = [royaume('paris', '[ROYAUME] Paris — Royaume Humain'), royaume('tokyo', '[ROYAUME] Tokyo — Empire des Hauts-Elfes')];
   const selection = [
     { id: 'socle', titre: '[MONDE] Présentation', contenu: '…' },
@@ -59,6 +59,6 @@ test('un royaume nommé dans la scène est ancré en tête, puis pertinence, pui
     { id: 'paris', titre: '[ROYAUME] Paris — Royaume Humain', contenu: '…', score: 0.1 },
   ];
   const resultat = prioriserLoreCanon('Je franchis les portes de Paris', selection, entrees);
-  assert.deepEqual(resultat.map((e) => e.id), ['paris', 'guilde', 'socle']);
-  assert.equal(resultat[0].score, 2);
+  assert.deepEqual(resultat.map((e) => e.id), ['paris', 'socle', 'guilde']);
+  assert.equal(resultat[0].score, undefined);
 });

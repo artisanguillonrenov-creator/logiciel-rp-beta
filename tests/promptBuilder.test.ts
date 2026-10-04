@@ -48,6 +48,6 @@ test('identité narrative en tête et style jamais tronqué, même en budget loc
   const [systeme] = construireMessages({ ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(400) }, { budgetSysteme: BUDGET_SYSTEM_LOCAL });
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);
   assert.match(systeme.content, /POINT DE VUE: dans la narration uniquement/);
-  assert.match(systeme.content, /\[STYLE\][\s\S]*Format des dialogues des PNJ/);
+  assert.match(systeme.content, /\[STYLE & FILTRE SYSTEME\][\s\S]*Format des dialogues des PNJ/);
   assert.match(systeme.content, /\[MÉMOIRE NARRATIVE PERTINENTE\]/);
 });
