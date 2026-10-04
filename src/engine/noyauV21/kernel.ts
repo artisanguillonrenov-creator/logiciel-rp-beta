@@ -186,7 +186,12 @@ export function executerKernelV21(entree: EntreeKernelV21): SortieKernelV21 {
   const m04 = executerM04({ contexte, ...(parametres.m04 ?? {}) });
   const m05 = executerM05({ contexte, ...(parametres.m05 ?? {}) });
   const m12 = executerM12({ contexte, ...(parametres.m12 ?? {}) });
-  const m14 = executerM14({ contexte, ...(parametres.m14 ?? {}) });
+  const m14 = executerM14({
+    contexte,
+    tentatives: parametres.m14?.tentatives ?? [],
+    donnees: parametres.m14?.donnees ?? [],
+    perimetreM13: parametres.m14?.perimetreM13,
+  });
   const m11 = executerM11({ contexte, ...(parametres.m11 ?? {}) });
   const m08 = executerM08({ contexte, ...(parametres.m08 ?? {}) });
 
