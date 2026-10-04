@@ -38,6 +38,7 @@ jobs:
               ("    titre: `[ROYAUME] Paris secteur ${i}`,", "    titre: '[ROYAUME] Paris secteur ' + i,"),
               ("      id: `c${i}`, titre: `[ROYAUME] Paris ${i}`, contenu: 'Paris.', primaryKeys: ['Paris'], priority: i, category: 'ROYAUME', scope: 'CITY', constant: false,", "      id: 'c' + i, titre: '[ROYAUME] Paris ' + i, contenu: 'Paris.', primaryKeys: ['Paris'], priority: i, category: 'ROYAUME', scope: 'CITY', constant: false,"),
               ("  const entries = Array.from({ length: 12 }, (_, i) => chargee(`e${i}`, `[MONDE] Entrée ${i}`, { category: 'MONDE', scope: 'GLOBAL' }));", "  const entries = Array.from({ length: 12 }, (_, i) => chargee('e' + i, '[MONDE] Entrée ' + i, { category: 'MONDE', scope: 'GLOBAL' }));"),
+              (": 0.42 * lexical + 0.25 * primary + 0.10 * secondary + 0.08 * explicite + 0.07 * scope + 0.05 * priorite + 0.03 * categorie;", ": 0.60 * lexical + 0.20 * primary + 0.08 * secondary + 0.05 * explicite + 0.04 * scope + 0.02 * priorite + 0.01 * categorie;"),
           ]
           for old, new in replacements:
               if old not in s:
@@ -46,6 +47,25 @@ jobs:
           p.write_text(s)
           PY
           node --check scripts/v3-step10-retrieval.js
+
+      - name: Mettre à jour le test de registre devenu obsolète
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tests/contentProfile.test.ts')
+          s = p.read_text()
+          replacements = [
+              ('/Violence : niveau extrême/', '/Violence : plafond extrême/'),
+              ('/Romance : niveau élevé/', '/Romance \/ sensualité : plafond élevé/'),
+              ('/Violence : niveau faible/', '/Violence : plafond faible/'),
+              ('/Romance : désactivée/', '/Romance \/ sensualité : désactivée/'),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Assertion obsolète introuvable: {old}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
 
       - name: Appliquer étape 10
         run: node scripts/v3-step10-retrieval.js
@@ -99,6 +119,7 @@ jobs:
           const p = 'docs/v3/STEP10_RECUPERATION_LORE_V3.md';
           let s = fs.readFileSync(p, 'utf8');
           s = s.replace('**EN ATTENTE DES TESTS DU WORKFLOW STEP 10**', '**VALIDÉE**\n\nMigration Step 10 : **PASS**. Tests unitaires : **PASS**. Validation TypeScript : **PASS**. Garde-fous structurels : **PASS**.');
+          s = s.replace('## D — Contradictions découvertes\n', '## D — Contradictions découvertes\n\n- Un ancien test du registre Adulte attendait encore le vocabulaire « niveau » alors que le moteur validé utilise désormais « plafond » ; assertion mise à jour sans modifier le comportement du moteur.\n');
           fs.writeFileSync(p, s);
           NODE
 
@@ -106,7 +127,7 @@ jobs:
         run: |
           git config user.name "artisanguillonrenov-creator"
           git config user.email "artisanguillonrenov@gmail.com"
-          git add src/data/elyndorLore.json src/engine/loreScoring.ts src/engine/loreLoader.ts src/engine/rechercheLexicale.ts tests/loreRetrievalStep10.test.ts docs/v3/STEP10_RECUPERATION_LORE_V3.md
+          git add src/data/elyndorLore.json src/engine/loreScoring.ts src/engine/loreLoader.ts src/engine/rechercheLexicale.ts tests/loreRetrievalStep10.test.ts tests/contentProfile.test.ts docs/v3/STEP10_RECUPERATION_LORE_V3.md
           git diff --cached --exit-code && { echo 'Aucun changement à committer'; exit 1; } || true
           git commit -m "V3 étape 10 — récupération hybride du lore"
           git push origin HEAD:claude/new-session-glwy6e
