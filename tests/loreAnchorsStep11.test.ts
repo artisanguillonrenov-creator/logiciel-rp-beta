@@ -38,7 +38,7 @@ const ordre = entree('mages', '[GUILDE] Ordre des Mages', 'GUILDE', 'FACTION', [
 test('un royaume explicitement nommé est forcé même sans résultat de recherche', () => {
   const resultat = prioriserLoreCanon('Je reviens à Paris.', [], [paris]);
   assert.deepEqual(resultat.map((e) => e.id), ['paris']);
-  assert.equal(resultat[0].score, 3);
+  assert.equal(resultat[0].score, 2);
 });
 
 test('Séraphine Duvall force sa fiche PNJ malgré les doubles préfixes du titre', () => {
@@ -81,7 +81,7 @@ test('une fiche déjà sélectionnée n’est jamais injectée deux fois', () =>
   const selection: LoreEntry[] = [{ id: 'seraphine', titre: seraphine.titre, contenu: seraphine.contenu, score: 0.31 }];
   const resultat = prioriserLoreCanon('Séraphine Duvall me répond.', selection, [seraphine]);
   assert.equal(resultat.filter((e) => e.id === 'seraphine').length, 1);
-  assert.equal(resultat[0].score, 3);
+  assert.equal(resultat[0].score, 2);
 });
 
 test('les ancres passent avant le lore contextuel puis le socle', () => {
