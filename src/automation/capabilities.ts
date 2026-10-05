@@ -1,13 +1,12 @@
 import type { AppSettings, MoteurInference } from '../types';
 
 /**
- * Conservé pour compatibilité avec les appelants existants. La plateforme et
- * la présence historique d'un modèle local n'influencent plus les capacités :
- * Elyndor utilise exclusivement Elyndor Cloud.
+ * L'environnement ne décrit plus que la plateforme d'exécution. Les moteurs
+ * sélectionnables et la présence d'un modèle local ont disparu avec le
+ * passage Elyndor Cloud-only.
  */
 export interface AutomationEnvironment {
   plateforme: 'web' | 'native';
-  modeleLocalPresent?: boolean;
 }
 
 export interface AppCapabilities {
