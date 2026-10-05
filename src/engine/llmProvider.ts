@@ -6,6 +6,7 @@ import { normaliserUrlServeur } from './serveurUrl';
 import { masquerSecrets } from './responseSanitizer';
 import { enregistrerUsageAppel } from './mesureTokens';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
+import { reglagesSontElyndorCloud } from './elyndorCloud';
 
 type FournisseurDistant = Exclude<FournisseurLLM, 'local' | 'serveur'>;
 
@@ -22,10 +23,14 @@ export function normaliserFournisseur(value: unknown): FournisseurLLM {
 /** Point unique de résolution clé/modèle, partagé par tous les méta-moteurs. */
 export function configurationLLM(settings: AppSettings, modeleOverride?: string) {
   const moteurInference = normaliserFournisseur(settings.moteurInference);
+  // Une histoire créée avant Elyndor Cloud peut contenir un override de
+  // modèle. Une fois les réglages normalisés sur le Cloud, cet override ne
+  // doit jamais pouvoir remplacer le modèle imposé par l'application.
+  const modeleEffectif = reglagesSontElyndorCloud(settings) ? undefined : modeleOverride;
   if (moteurInference === 'infermatic') {
     return {
       apiKey: settings.infermaticApiKey ?? '',
-      model: modeleOverride || settings.infermaticModel || '',
+      model: modeleEffectif || settings.infermaticModel || '',
       moteurInference,
     };
   }
@@ -35,12 +40,12 @@ export function configurationLLM(settings: AppSettings, modeleOverride?: string)
     // les réglages.
     return {
       apiKey: settings.serveurLocalApiKey ?? '',
-      model: modeleOverride || settings.serveurLocalModele || '',
+      model: modeleEffectif || settings.serveurLocalModele || '',
       moteurInference,
       baseUrl: normaliserUrlServeur(settings.serveurLocalUrl),
     };
   }
-  return { apiKey: settings.openRouterApiKey, model: modeleOverride || settings.model, moteurInference };
+  return { apiKey: settings.openRouterApiKey, model: modeleEffectif || settings.model, moteurInference };
 }
 
 export function modeleOverridePourFournisseur(
@@ -48,6 +53,7 @@ export function modeleOverridePourFournisseur(
   modeleOverride?: string,
   fournisseurOverride?: 'openrouter' | 'infermatic' | 'serveur',
 ): string | undefined {
+  if (reglagesSontElyndorCloud(settings)) return undefined;
   if (!modeleOverride?.trim()) return undefined;
   const fournisseurActuel = normaliserFournisseur(settings.moteurInference);
   // Migration sûre : tout override historique non étiqueté appartenait à
