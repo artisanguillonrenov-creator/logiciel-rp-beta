@@ -44,12 +44,22 @@ class ElyndorObjectBoxModule : Module() {
       searchLore(store, namespace, parseVector(vectorJson), maxCount).toString()
     }
 
+    Function("searchLoreSync") { namespace: String, vectorJson: String, maxCount: Int ->
+      val store = requireStore()
+      searchLore(store, namespace, parseVector(vectorJson), maxCount).toString()
+    }
+
     AsyncFunction("syncHistory") { storyId: String, entriesJson: String ->
       val store = requireStore()
       syncHistory(store, storyId, parseEntries(entriesJson))
     }
 
     AsyncFunction("searchHistory") { storyId: String, vectorJson: String, maxCount: Int ->
+      val store = requireStore()
+      searchHistory(store, storyId, parseVector(vectorJson), maxCount).toString()
+    }
+
+    Function("searchHistorySync") { storyId: String, vectorJson: String, maxCount: Int ->
       val store = requireStore()
       searchHistory(store, storyId, parseVector(vectorJson), maxCount).toString()
     }
