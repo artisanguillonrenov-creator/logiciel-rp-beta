@@ -8,7 +8,7 @@ import ActivationScreen from '../screens/ActivationScreen';
 import StartScreenStudio from '../screens/StartScreenStudio';
 import CreateScreenStudio from '../screens/CreateScreenStudio';
 import ConversationScreenStudio from '../screens/ConversationScreenStudio';
-import SettingsScreen from '../screens/SettingsScreen';
+import CloudOnlySettingsScreen from '../screens/CloudOnlySettingsScreen';
 import PluginsScreen from '../screens/PluginsScreen';
 import DesignerSettingsScreen from '../screens/DesignerSettingsScreen';
 import LoadConversationScreen from '../screens/LoadConversationScreen';
@@ -79,7 +79,7 @@ export default function RootNavigator() {
           component={ConversationScreenStudio}
           options={{ headerTitle: () => null }}
         />
-        <Stack.Screen name="Reglages" component={SettingsScreen} options={{ title: 'Réglages' }} />
+        <Stack.Screen name="Reglages" component={CloudOnlySettingsScreen} options={{ title: 'Réglages' }} />
         <Stack.Screen name="Plugins" component={PluginsScreen} options={{ title: 'Packs de contenu' }} />
         <Stack.Screen name="ReglagesConcepteur" component={DesignerSettingsScreen} options={{ title: 'Réglages concepteur' }} />
         <Stack.Screen name="ChargerConversation" component={LoadConversationScreen} options={{ title: 'Histoires' }} />
