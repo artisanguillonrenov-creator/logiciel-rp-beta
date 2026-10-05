@@ -14,6 +14,8 @@ import {
   identiteEmbeddingsConfiguree,
 } from '../src/engine/embeddings';
 
+// Invariant d'architecture : aucun ancien réglage ne doit pouvoir détourner
+// un appel narratif hors du client Elyndor Cloud unique.
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
 
