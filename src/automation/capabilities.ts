@@ -1,4 +1,4 @@
-import type { AppSettings, MoteurInference } from '../types';
+import type { AppSettings } from '../types';
 
 /**
  * L'environnement ne décrit plus que la plateforme d'exécution. Les moteurs
@@ -10,7 +10,7 @@ export interface AutomationEnvironment {
 }
 
 export interface AppCapabilities {
-  fournisseur: MoteurInference;
+  fournisseur: 'elyndor-cloud';
   narration: boolean;
   embeddings: boolean;
   images: boolean;
@@ -22,14 +22,7 @@ export interface AppCapabilities {
   raisons: Partial<Record<'narration' | 'embeddings' | 'images' | 'traduction' | 'inferenceLocale', string>>;
 }
 
-/**
- * Capacités réelles de l'application après le passage Cloud-only.
- *
- * Le type historique `MoteurInference` ne possède pas encore de valeur
- * `cloud` : `serveur` reste donc uniquement l'identifiant interne de
- * compatibilité utilisé par les anciennes sauvegardes. Il ne représente plus
- * un serveur local sélectionnable par l'utilisateur.
- */
+/** Capacités réelles de l'application après le passage Cloud-only. */
 export function calculerCapacites(
   settings: AppSettings,
   _env: AutomationEnvironment = { plateforme: 'native' },
@@ -41,7 +34,7 @@ export function calculerCapacites(
   };
 
   return {
-    fournisseur: 'serveur',
+    fournisseur: 'elyndor-cloud',
     // La disponibilité réelle du pod est une question d'exécution réseau,
     // pas une capacité configurable : aucun ancien réglage ne peut désactiver
     // ou détourner le narrateur Cloud.
