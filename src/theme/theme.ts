@@ -12,6 +12,8 @@ export const couleurs = {
   fondCarte: 'rgba(9, 20, 44, 0.92)',
   fondCarteDense: 'rgba(3, 9, 22, 0.96)',
   fondChampSaisie: 'rgba(5, 14, 32, 0.97)',
+  // Alias sémantique utilisé par les écrans de réglages.
+  surface: 'rgba(9, 20, 44, 0.92)',
 
   // Bordures et texte. La bordure froide reste discrète ; le liseré or
   // encadre les panneaux et les actions.
@@ -21,6 +23,7 @@ export const couleurs = {
   texte: '#F3ECDC',
   texteAtténué: '#B5BFD3',
   texteFaible: '#7F8CA8',
+  texteSecondaire: '#B5BFD3',
 
   // Bleu = magie / IA / focus / sélection technique.
   accent: '#4EAEF8',
@@ -139,6 +142,9 @@ export const polices = {
   // Texte courant et lecture narrative.
   corps: 'CormorantGaramond_400Regular',
   corpsMedium: 'CormorantGaramond_500Medium',
+  // Alias sémantiques conservés pour les écrans de réglages.
+  texte: 'CormorantGaramond_400Regular',
+  texteSemiGras: 'CormorantGaramond_500Medium',
 };
 
 export const stylePetitesCapitales = {
