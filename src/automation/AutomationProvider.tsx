@@ -31,9 +31,6 @@ function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>):
   setAutomationCapabilities(
     calculerCapacites(settings, {
       plateforme: Platform.OS === 'web' ? 'web' : 'native',
-      // Le runtime embarqué a été retiré : aucune capacité ne dépend plus
-      // de la présence d'un modèle local sur l'appareil.
-      modeleLocalPresent: false,
     }),
   );
 }
