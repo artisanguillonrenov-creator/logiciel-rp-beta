@@ -40,11 +40,23 @@ export function verrouillerSurElyndorCloud(settings: AppSettings): AppSettings {
   };
 }
 
+/**
+ * Vérifie la forme canonique complète, pas seulement la cible réseau. Cela
+ * force la migration à effacer aussi les anciens modèles, clés de secours et
+ * options OpenRouter qui pourraient encore dormir dans une installation mise
+ * à jour.
+ */
 export function reglagesSontElyndorCloud(settings: AppSettings): boolean {
   return settings.moteurInference === 'serveur'
+    && settings.model === ELYNDOR_CLOUD_MODELE
     && settings.serveurLocalUrl === ELYNDOR_CLOUD_URL
     && settings.serveurLocalModele === ELYNDOR_CLOUD_MODELE
     && !settings.serveurLocalApiKey
     && !settings.openRouterApiKey
-    && !settings.infermaticApiKey;
+    && !settings.infermaticApiKey
+    && !settings.infermaticModel
+    && !settings.embeddingsApiKey
+    && settings.conserverClesWeb !== true
+    && settings.genererImagesActive !== true
+    && settings.modeleImagesGratuit !== true;
 }
