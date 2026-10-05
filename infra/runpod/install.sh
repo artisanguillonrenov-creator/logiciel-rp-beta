@@ -37,7 +37,11 @@ mkdir -p /root/models/text /root/models/image
     --local-dir /root/models/ip-adapter
 
 # 5. bge-m3 (embeddings de la recherche sémantique ObjectBox, servi sur CPU).
-[ -f /root/models/bge-m3/config.json ] || \
-  hf download BAAI/bge-m3 --local-dir /root/models/bge-m3 --exclude "onnx/*" "*.onnx*" "imgs/*"
+#    Fichiers listés un à un : les motifs --exclude multiples de `hf` sont
+#    lus comme des noms de fichiers et téléchargeaient l'inverse.
+[ -f /root/models/bge-m3/pytorch_model.bin ] || \
+  hf download BAAI/bge-m3 config.json 1_Pooling/config.json config_sentence_transformers.json modules.json \
+    pytorch_model.bin sentence_bert_config.json sentencepiece.bpe.model special_tokens_map.json \
+    tokenizer.json tokenizer_config.json --local-dir /root/models/bge-m3
 
 echo "INSTALL_OK"
