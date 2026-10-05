@@ -28,7 +28,6 @@
     },
     "plugins": [
       "expo-font",
-      "./plugins/withLitertKotlinSkipVersionCheck.js",
       [
         "expo-speech-recognition",
         {
