@@ -24,18 +24,26 @@ export async function obtenirIllustrationScene(storyId: string, revision: string
   return fichier.exists ? fichier.uri : null;
 }
 
+/**
+ * Enregistre l'illustration d'une révision et applique l'historique glissant :
+ * seules `cible` et les révisions de `revisionsAConserver` (les 2 dernières
+ * scènes illustrées, voir ajouterSceneIllustree) restent sur l'appareil ;
+ * la plus ancienne est supprimée automatiquement.
+ */
 export async function enregistrerIllustrationScene(
   storyId: string,
   revision: string,
   dataUrl: string,
+  revisionsAConserver: readonly string[] = [],
 ): Promise<string> {
   const dossier = new Directory(Paths.document, DOSSIER_SCENES);
   if (!dossier.exists) dossier.create({ intermediates: true });
 
   const prefixe = prefixeHistoire(storyId);
   const cible = nomFichier(storyId, revision);
+  const conserves = new Set([cible, ...revisionsAConserver.map((r) => nomFichier(storyId, r))]);
   for (const entree of dossier.list()) {
-    if (entree instanceof File && entree.name.startsWith(prefixe) && entree.name !== cible) entree.delete();
+    if (entree instanceof File && entree.name.startsWith(prefixe) && !conserves.has(entree.name)) entree.delete();
   }
 
   const fichier = new File(dossier, cible);

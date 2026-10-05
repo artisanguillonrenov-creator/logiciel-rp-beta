@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { calculerCapacites } from '../src/automation/capabilities';
+import { imagesElyndorCloudDisponibles } from '../src/engine/elyndorCloudImages';
+import { embeddingsDisponibles } from '../src/engine/embeddings';
 import {
   abonnerReglages,
   lireReglagesCourants,
@@ -42,12 +44,12 @@ test('les capacités imposent Elyndor Cloud même avec d’anciens réglages Ope
 
   assert.equal(caps.fournisseur, 'elyndor-cloud');
   assert.equal(caps.narration, true);
-  assert.equal(caps.embeddings, false);
-  assert.equal(caps.images, false);
-  assert.equal(caps.avatars, false);
+  assert.equal(caps.embeddings, embeddingsDisponibles(baseSettings));
+  // Les images ne dépendent que du pod Elyndor Cloud, jamais d'un ancien réglage.
+  assert.equal(caps.images, imagesElyndorCloudDisponibles());
+  assert.equal(caps.avatars, imagesElyndorCloudDisponibles());
+  assert.deepEqual(caps, calculerCapacites(baseSettings, { plateforme: 'web' }));
   assert.equal(caps.inferenceLocale, false);
-  assert.match(caps.raisons.embeddings ?? '', /lexicale locale/);
-  assert.match(caps.raisons.images ?? '', /Elyndor Cloud/);
 });
 
 test('les anciens réglages Infermatic ou serveur local ne changent aucune capacité Cloud', () => {
@@ -65,8 +67,9 @@ test('les anciens réglages Infermatic ou serveur local ne changent aucune capac
   assert.equal(caps.fournisseur, 'elyndor-cloud');
   assert.equal(caps.narration, true);
   assert.equal(caps.traduction, true);
-  assert.equal(caps.embeddings, false);
-  assert.equal(caps.images, false);
+  assert.equal(caps.embeddings, embeddingsDisponibles(baseSettings));
+  assert.equal(caps.images, imagesElyndorCloudDisponibles());
+  assert.deepEqual(caps, calculerCapacites(baseSettings, { plateforme: 'native' }));
   assert.equal(caps.inferenceLocale, false);
   assert.match(caps.raisons.inferenceLocale ?? '', /moteur local a été retiré/);
 });

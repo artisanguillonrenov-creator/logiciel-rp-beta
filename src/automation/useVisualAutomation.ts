@@ -13,13 +13,10 @@ import {
 } from './visualRoutines';
 import { ID_AVATAR_JOUEUR_VISUEL } from './visualPlanning';
 import { calculerRevisionNarrative } from './storyRevision';
+import { listerPnjVisuels, type ModeIllustration } from '../engine/visualState';
 
 function filtrerPnj(story: StoryState | null): EntreeLoreEmergent[] {
-  if (!story) return [];
-  const nomJoueur = story.meta.personnageNom.trim().toLowerCase();
-  return story.loreEmergent.filter(
-    (entree) => entree.categorie === 'pnj' && entree.titre.trim().toLowerCase() !== nomJoueur,
-  );
+  return story ? listerPnjVisuels(story) : [];
 }
 
 export function useVisualAutomation(story: StoryState | null, appSettings: AppSettings | null) {
@@ -151,12 +148,12 @@ export function useVisualAutomation(story: StoryState | null, appSettings: AppSe
     [pnjConnus, avatarsPnj],
   );
 
-  const illustrerScene = useCallback(async () => {
+  const illustrerScene = useCallback(async (mode: ModeIllustration = 'nouvelle') => {
     if (!story || !imagesDisponibles || imageEnCours) return;
     setImageEnCours(true);
     setErreurImage('');
     try {
-      await enqueueVisualSceneGeneration(story);
+      await enqueueVisualSceneGeneration(story, mode);
     } catch (error) {
       setImageEnCours(false);
       setErreurImage(error instanceof Error ? error.message : 'Illustration impossible à planifier.');

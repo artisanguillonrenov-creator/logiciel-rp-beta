@@ -1,14 +1,12 @@
 import type { StoryState } from '../types';
+import { ID_ASSET_JOUEUR, listerPnjVisuels } from '../engine/visualState';
 import { calculerRevisionNarrative } from './storyRevision';
 
-export const ID_AVATAR_JOUEUR_VISUEL = '__joueur__';
+export const ID_AVATAR_JOUEUR_VISUEL = ID_ASSET_JOUEUR;
 
+/** Même critère unique que le prompt et les références (estPnjVisuel). */
 export function listerIdsPnjVisuels(story: StoryState): string[] {
-  const nomJoueur = story.meta.personnageNom.trim().toLowerCase();
-  return story.loreEmergent
-    .filter((entree) => entree.categorie === 'pnj')
-    .filter((entree) => entree.titre.trim().toLowerCase() !== nomJoueur)
-    .map((entree) => entree.id);
+  return listerPnjVisuels(story).map((entree) => entree.id);
 }
 
 export function cleDedupeSynchronisationAvatars(story: StoryState): string {

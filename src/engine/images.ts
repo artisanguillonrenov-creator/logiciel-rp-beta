@@ -1,58 +1,48 @@
 import { Image } from 'react-native';
-import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
-import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
+import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
+import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
+import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
 import { obtenirPortrait } from '../data/portraits';
+import {
+  ErreurImagesIndisponibles,
+  MAX_REFERENCES_IMAGE,
+  genererImageElyndorCloud,
+  imagesElyndorCloudDisponibles,
+  type GenerateurImage,
+} from './elyndorCloudImages';
+import {
+  STYLE_PORTRAIT_ELYNDOR,
+  construirePromptSdxl,
+  formaterPromptImage,
+  negatifAplati,
+  type PromptImageStructure,
+} from './visualBible';
+import { redigerPromptPortraitSdxl } from './directionArtistique';
+import {
+  ID_ASSET_JOUEUR,
+  ordonnerReferences,
+  selectionnerReferencesGenerateur,
+  type PersonnageVisibleResolu,
+  type ReferenceVisuelle,
+  type SceneIllustree,
+} from './visualState';
 
-const ANCRAGE_STYLE =
-  'digital painting, dark romantic fantasy illustration, cinematic dramatic lighting, painted texture, rich detail, no text, no watermark, no logo, no signature';
-const MAX_PNJ_DANS_PROMPT_SCENE = 3;
+// Couche image de l'application (V2). Les illustrations de scène SONT
+// persistées : sceneImagesStore conserve les 2 dernières scènes illustrées de
+// chaque histoire (historique glissant) et elles servent de références de
+// continuité à la génération suivante. Les avatars restent rangés par
+// identifiant dans pnjAvatarsStore. Le générateur lui-même est le modèle
+// image Elyndor Cloud (elyndorCloudImages.ts), injectable pour un futur
+// backend.
 
-export class ErreurImagesIndisponibles extends Error {
-  constructor() {
-    super('La génération d’images externe a été retirée. Elyndor Cloud n’expose pas encore de générateur d’images.');
-    this.name = 'ErreurImagesIndisponibles';
-  }
-}
+export { ErreurImagesIndisponibles };
+export { ID_ASSET_JOUEUR as ID_AVATAR_JOUEUR };
 
-export function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteSceneMinuscule: string): boolean {
-  const titre = pnj.titre.trim().toLowerCase();
-  if (!titre) return false;
-  if (texteSceneMinuscule.includes(titre)) return true;
-  const premierMot = titre.split(/\s+/)[0];
-  return premierMot.length > 2 && texteSceneMinuscule.includes(premierMot);
-}
+let generateurCourant: GenerateurImage = genererImageElyndorCloud;
 
-function construireBlocPnjPresents(story: StoryState, texteScene: string): string {
-  const texteMinuscule = texteScene.toLowerCase();
-  const presents = story.loreEmergent
-    .filter((e) => e.categorie === 'pnj' && e.statut === 'permanent')
-    .filter((pnj) => pnjMentionneDansTexte(pnj, texteMinuscule))
-    .slice(0, MAX_PNJ_DANS_PROMPT_SCENE);
-  if (presents.length === 0) return '';
-  const lignes = presents.map((pnj) => `- ${pnj.titre} : ${pnj.contenu.slice(0, 150)}`).join('\n');
-  return `Personnages secondaires présents — respecter leur apparence :\n${lignes}\n\n`;
-}
-
-/**
- * Construit localement le prompt visuel de la scène. Il n'entraîne aucun
- * appel réseau et reste disponible pour un futur moteur image Elyndor Cloud.
- */
-export function construirePromptScene(story: StoryState): string {
-  const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
-  const texteScene = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).slice(0, 600);
-  const ficheJoueur = story.meta.personnageDescription?.trim();
-  const blocPersonnage = ficheJoueur
-    ? `Personnage principal (${story.meta.personnageNom}) — respecter strictement cette apparence :\n${ficheJoueur.slice(0, 400)}\n\n`
-    : '';
-  const blocPnj = construireBlocPnjPresents(story, texteScene);
-  return `${blocPersonnage}${blocPnj}Scène :\n${texteScene}\n\nStyle : ${ANCRAGE_STYLE}.`;
-}
-
-export async function obtenirPromptScene(
-  story: StoryState,
-  _appSettings: AppSettings,
-): Promise<string> {
-  return construirePromptScene(story);
+/** Point d'extension : un autre backend image peut remplacer Elyndor Cloud. */
+export function definirGenerateurImage(generateur: GenerateurImage | null): void {
+  generateurCourant = generateur ?? genererImageElyndorCloud;
 }
 
 async function assetVersDataUrl(source: ReturnType<typeof obtenirPortrait>): Promise<string | null> {
@@ -77,56 +67,153 @@ export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise
   return assetVersDataUrl(portrait);
 }
 
+async function versReference(uri: string | null): Promise<string | null> {
+  if (!uri) return null;
+  try {
+    return await preparerImageReference(uri);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Point d'extension réservé au futur générateur d'images Elyndor Cloud.
- * Aucun identifiant de fournisseur, clé API ou mode de facturation hérité ne
- * traverse plus ce contrat.
+ * Rassemble les références de la scène, uniquement pour les personnages
+ * réellement visibles, puis les ordonne par priorité : joueur, PNJ
+ * principaux, autres PNJ, scène précédente, avant-dernière scène.
  */
+export async function collecterReferencesScene(
+  story: StoryState,
+  visibles: readonly PersonnageVisibleResolu[],
+  scenesPrecedentes: readonly SceneIllustree[],
+): Promise<ReferenceVisuelle[]> {
+  const candidats: ReferenceVisuelle[] = [];
+  for (const personnage of visibles) {
+    if (personnage.type === 'joueur') {
+      const portrait = await obtenirPortraitReferenceJoueur(story);
+      if (portrait) candidats.push({ type: 'joueur-portrait', uri: portrait, libelle: `visage de référence de ${personnage.nom} (portrait de création)` });
+      const avatar = await versReference(await obtenirAvatarPnj(story.meta.id, ID_ASSET_JOUEUR).catch(() => null));
+      if (avatar) candidats.push({ type: 'joueur-avatar', uri: avatar, libelle: `avatar de ${personnage.nom}` });
+    } else if (personnage.type === 'pnj' && personnage.assetId) {
+      const avatar = await versReference(await obtenirAvatarPnj(story.meta.id, personnage.assetId).catch(() => null));
+      if (avatar) {
+        candidats.push({
+          type: personnage.principal ? 'pnj-principal' : 'pnj-secondaire',
+          uri: avatar,
+          libelle: `avatar de ${personnage.nom}`,
+        });
+      }
+    }
+  }
+
+  const recentes = [...scenesPrecedentes].reverse();
+  for (const [rang, scene] of recentes.slice(0, 2).entries()) {
+    const uri = await versReference(await obtenirIllustrationScene(story.meta.id, scene.revision).catch(() => null));
+    if (!uri) continue;
+    candidats.push({
+      type: rang === 0 ? 'scene-precedente' : 'scene-avant-derniere',
+      uri,
+      libelle: rang === 0 ? 'scène illustrée précédente (continuité)' : 'avant-dernière scène illustrée (continuité)',
+    });
+  }
+  return ordonnerReferences(candidats, MAX_REFERENCES_IMAGE);
+}
+
+// Lustify SDXL sait produire du contenu explicite : hors profil Adulte, il
+// est exclu par le prompt négatif, en plus du filtrage du texte en amont.
+const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
+
+function negatifPourProfil(profil: ProfilContenu | undefined): string {
+  return profil === 'adulte' ? negatifAplati() : `${negatifAplati()}, ${NEGATIF_GRAND_PUBLIC}`;
+}
+
+/** Prompt final + génération 16:9 d'une scène. */
 export async function genererImageScene(
-  _prompt: string,
-  _imagesReference?: (string | null | undefined)[],
+  structure: PromptImageStructure,
+  references: readonly ReferenceVisuelle[],
+  profil?: ProfilContenu,
 ): Promise<string> {
-  throw new ErreurImagesIndisponibles();
+  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
+    throw new ErreurImagesIndisponibles();
+  }
+  return generateurCourant({
+    prompt: formaterPromptImage(structure, references),
+    promptCourt: construirePromptSdxl(structure),
+    negatif: negatifPourProfil(profil),
+    references: selectionnerReferencesGenerateur(references),
+    format: '16:9',
+  });
 }
 
 export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
   return (
     `Portrait (buste, cadrage serré sur le visage et les épaules) de ${pnj.titre}.\n` +
     `Description : ${pnj.contenu.slice(0, 400)}\n\n` +
-    `Style : ${ANCRAGE_STYLE}, character portrait, plain dark background.`
+    `Style : ${STYLE_PORTRAIT_ELYNDOR}.`
   );
 }
-
-/**
- * Les avatars déjà générés restent lisibles. S'il n'en existe pas, aucune
- * génération externe de remplacement n'est tentée.
- */
-export async function obtenirOuGenererAvatarPnj(
-  story: StoryState,
-  pnj: EntreeLoreEmergent,
-  _appSettings: AppSettings,
-): Promise<string> {
-  const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
-  if (existant) return existant;
-  throw new ErreurImagesIndisponibles();
-}
-
-export const ID_AVATAR_JOUEUR = '__joueur__';
 
 export function construirePromptAvatarJoueur(story: StoryState): string {
   const fiche = story.meta.personnageDescription?.trim();
   return (
     `Portrait (buste, cadrage serré sur le visage et les épaules) de ${story.meta.personnageNom}.\n` +
     `Description : ${(fiche || 'Personnage principal de l\'histoire.').slice(0, 400)}\n\n` +
-    `Style : ${ANCRAGE_STYLE}, character portrait, plain dark background.`
+    `Style : ${STYLE_PORTRAIT_ELYNDOR}.`
   );
 }
 
-export async function obtenirOuGenererAvatarJoueur(
-  story: StoryState,
-  _appSettings: AppSettings,
+async function genererPortrait(
+  prompt: string,
+  promptCourt: string | undefined,
+  references: (string | null)[],
+  profil?: ProfilContenu,
 ): Promise<string> {
-  const existant = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR);
+  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
+    throw new ErreurImagesIndisponibles();
+  }
+  return generateurCourant({
+    prompt,
+    promptCourt,
+    negatif: negatifPourProfil(profil),
+    references: references.filter((r): r is string => !!r).map((image) => ({ role: 'personnage' as const, image })),
+    format: '3:4',
+  });
+}
+
+/** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
+/** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
+async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings) {
+  try {
+    return await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function obtenirOuGenererAvatarPnj(
+  story: StoryState,
+  pnj: EntreeLoreEmergent,
+  settings: AppSettings,
+): Promise<string> {
+  const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
-  throw new ErreurImagesIndisponibles();
+  const dataUrl = await genererPortrait(
+    construirePromptAvatarPnj(pnj),
+    await promptPortraitSdxl(story, pnj.titre, pnj.contenu, settings),
+    [],
+    settings.profilContenu,
+  );
+  return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
+}
+
+export async function obtenirOuGenererAvatarJoueur(story: StoryState, settings: AppSettings): Promise<string> {
+  const existant = await obtenirAvatarPnj(story.meta.id, ID_ASSET_JOUEUR);
+  if (existant) return existant;
+  const portrait = await obtenirPortraitReferenceJoueur(story);
+  const dataUrl = await genererPortrait(
+    construirePromptAvatarJoueur(story),
+    await promptPortraitSdxl(story, story.meta.personnageNom, story.meta.personnageDescription || story.meta.personnageNom, settings),
+    [portrait],
+    settings.profilContenu,
+  );
+  return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);
 }

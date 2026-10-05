@@ -35,5 +35,6 @@ export function fusionnerEtatDerivePersistant(
     loreEmergent: persistee.loreEmergent,
     loreEmergentDernierIndex: persistee.loreEmergentDernierIndex,
     narrativeCore: persistee.narrativeCore ?? courante.narrativeCore,
+    etatVisuel: persistee.etatVisuel ?? courante.etatVisuel,
   };
 }

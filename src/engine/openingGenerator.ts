@@ -7,7 +7,8 @@ import {
   BUDGET_SYSTEM_LOCAL,
   BUDGET_SYSTEM_DISTANT,
 } from './promptBuilder';
-import { configurationLLM, appellerModele } from './openrouter';
+import { configurationLLM } from './openrouter';
+import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
@@ -61,23 +62,24 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   ])].slice(0, 6);
 
   commencerMesureTokens();
-  let contenu = await appellerModele({
+  // Pas de bloc d'état à l'ouverture : seule la phrase coupée est complétée.
+  let contenu = await genererReponseComplete({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, { budgetSysteme }),
     temperature,
     maxTokens,
-  });
+  }, undefined, false);
 
   const aCorriger = ecarts(contenu);
   if (aCorriger.length) {
     const correction = `\n\n[CORRECTION OBLIGATOIRE DE L'OUVERTURE]\nLa première tentative ne respecte pas entièrement le contrat d'ouverture. Réécris LA SCÈNE ENTIÈRE sans commenter la correction. Corrige précisément :\n- ${aCorriger.join('\n- ')}\nConserve le lieu, la situation, le lore canonique et le style choisis.`;
     try {
-      contenu = await appellerModele({
+      contenu = await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
         messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection, undefined, false), { budgetSysteme }),
         temperature,
         maxTokens,
-      });
+      }, undefined, false);
     } catch {
       // La première version reste utilisable : mieux vaut une ouverture
       // imparfaite qu'un écran vide.

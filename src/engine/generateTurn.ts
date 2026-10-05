@@ -22,7 +22,7 @@ import {
   BUDGET_CONVERSATION_DISTANT,
   type ContexteConstruction,
 } from './promptBuilder';
-import { configurationLLM, appellerModele } from './openrouter';
+import { configurationLLM } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { embeddingsDisponibles, obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
@@ -35,6 +35,7 @@ import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './s
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
+import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { contradictionProbable, corpusCanon, validerRepetitionHeuristique, verifierEntitesCanoniques } from './verificationCanon';
 import { annulerTour, assurerNoyau, construireContexteNoyau, diagnosticNoyau, extraireEnveloppeEtat, validerTour } from './noyauNarratif';
@@ -137,6 +138,13 @@ interface SelectionLore {
   debugLore: DebugLore;
 }
 
+/**
+ * Métamoteurs texte injectés dans le prompt : désactivés temporairement,
+ * leur logique est codée dans l'application (à valider avant de retirer
+ * définitivement la version texte). Vaut pour la voie sémantique comme lexicale.
+ */
+const METAMOTEURS_DANS_LE_PROMPT = false;
+
 export async function calculerSelectionLore(
   story: StoryState,
   messageJoueur: string,
@@ -208,11 +216,12 @@ export async function calculerSelectionLore(
   if (!embeddingsDisponibles(appSettings)) return selectionLexicale();
 
   try {
-    const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
-      assurerEmbeddings(
-        metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-        appSettings,
-      ),
+    // Métamoteurs volontairement inactifs dans le prompt : ils sont désormais
+    // codés dans l'application et seront retirés du texte une fois validés.
+    const vecteursMetamoteurs = METAMOTEURS_DANS_LE_PROMPT
+      ? await assurerEmbeddings(metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })), appSettings)
+      : {};
+    const [vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
         appSettings,
@@ -221,11 +230,9 @@ export async function calculerSelectionLore(
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
-    const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-      metamoteursDisponibles,
-      vecteurRequete,
-      vecteursMetamoteurs,
-    );
+    const metamoteursSelectionnes = METAMOTEURS_DANS_LE_PROMPT
+      ? selectionnerMetamoteursSemantique(metamoteursDisponibles, vecteurRequete, vecteursMetamoteurs)
+      : [];
     const loreElyndor = prioriserLoreCanon(
       texteRequete,
       selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
@@ -427,7 +434,9 @@ export async function genererTour(
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
 
   commencerMesureTokens();
-  const premiere = extraireEnveloppeEtat(await appellerModele({
+  // Une réponse coupée par le plafond est complétée par le modèle plutôt que
+  // laissée en suspens (voir completionReponse.ts).
+  const premiere = extraireEnveloppeEtat(await genererReponseComplete({
     ...configurationLLM(appSettings, modelePourAppel),
     messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
     temperature,
@@ -480,7 +489,7 @@ export async function genererTour(
     try {
       // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
       // celui de la nouvelle apparaître dans le récit.
-      const regeneree = extraireEnveloppeEtat(await appellerModele({
+      const regeneree = extraireEnveloppeEtat(await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,

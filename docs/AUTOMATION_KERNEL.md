@@ -22,7 +22,7 @@ Le résolveur calcule les capacités effectives suivantes :
 - profil adulte ;
 - mode concepteur.
 
-Une capacité est dérivée des réglages ET des prérequis réels. Exemple : `genererImagesActive=true` ne suffit pas ; la génération d’images actuelle exige aussi une clé OpenRouter.
+Une capacité est dérivée des prérequis réels, pas des anciens réglages. Exemple : `genererImagesActive` n’est plus lu ; les images et portraits ne sont disponibles que lorsque le modèle image Elyndor Cloud est publié (`ELYNDOR_CLOUD_MODELE_IMAGE`, voir `docs/ILLUSTRATION_V2.md`).
 
 ## File persistante
 
