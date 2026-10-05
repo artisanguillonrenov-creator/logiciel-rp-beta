@@ -6,6 +6,7 @@ on:
       - claude/new-session-glwy6e
       - claude/focused-carson-wgfz3x
       - integration/noyau-narratif-v21
+      - integration/v3-kernel-reconciliation
     # Un APK à chaque modification de l'application : la mise à jour OTA
     # n'arrive pas toujours sur l'appareil. Seuls les changements de
     # documentation n'en déclenchent pas.
