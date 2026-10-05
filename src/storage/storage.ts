@@ -10,7 +10,6 @@ import { publierReglages } from '../automation/settingsStore';
 import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
-import { CONFIG_CLOUD } from '../cloud/configCloud';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -18,11 +17,8 @@ const KEYS = {
   personas: '@rp_beta/personas',
   plugins: '@rp_beta/plugins',
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
-  runtimeBehemothV2: '@rp_beta/runtime_behemoth_v2',
+  correctionAncienRunpodV3: '@rp_beta/correction_ancien_runpod_v3',
 };
-
-const SERVEUR_BEHEMOTH_ANDROID = 'https://gzy9xft10gb3me-8888.proxy.runpod.net/v1';
-const MODELE_BEHEMOTH_ANDROID = 'TheDrummer/Behemoth-X-123B-v2.1-GGUF:Q4_K_M';
 
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
@@ -36,25 +32,25 @@ const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS
 export async function getSettings(): Promise<AppSettings> {
   let settings = await reglages.lire();
 
-  // Android/iOS : migration locale autonome. Elle ne dépend d'aucun compte
-  // Elyndor et s'applique aussi lors d'une mise à jour d'une installation
-  // existante. L'utilisateur retrouve donc immédiatement Serveur local,
-  // l'URL RunPod et Behemoth déjà renseignés dans Réglages.
+  // Correction unique de la mauvaise migration RunPod V2 : elle avait
+  // enregistré le proxy Jupyter (port 8888) dans les champs réservés au
+  // « Serveur local ». On ne touche qu'à cette URL précise afin de ne jamais
+  // effacer une vraie configuration LM Studio/Ollama de l'utilisateur.
   if (Platform.OS !== 'web') {
-    const migrationFaite = await AsyncStorage.getItem(KEYS.runtimeBehemothV2);
-    if (migrationFaite !== '1') {
-      settings = {
-        ...settings,
-        moteurInference: 'serveur',
-        serveurLocalUrl: SERVEUR_BEHEMOTH_ANDROID,
-        serveurLocalModele: MODELE_BEHEMOTH_ANDROID,
-        // Le proxy RunPod exposé sur 8888 exige un bearer. On réutilise la
-        // clé publishable Supabase déjà publique de l'application : aucune
-        // clé privée RunPod n'est embarquée dans l'APK.
-        serveurLocalApiKey: CONFIG_CLOUD.cle,
-      };
-      await reglages.enregistrer(settings);
-      await AsyncStorage.setItem(KEYS.runtimeBehemothV2, '1');
+    const correctionFaite = await AsyncStorage.getItem(KEYS.correctionAncienRunpodV3);
+    if (correctionFaite !== '1') {
+      const ancienneUrl = settings.serveurLocalUrl ?? '';
+      if (ancienneUrl.includes('gzy9xft10gb3me-8888.proxy.runpod.net')) {
+        settings = {
+          ...settings,
+          moteurInference: 'openrouter',
+          serveurLocalUrl: undefined,
+          serveurLocalModele: undefined,
+          serveurLocalApiKey: undefined,
+        };
+        await reglages.enregistrer(settings);
+      }
+      await AsyncStorage.setItem(KEYS.correctionAncienRunpodV3, '1');
     }
   }
 
