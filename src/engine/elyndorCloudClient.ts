@@ -174,6 +174,16 @@ async function appelerChat(
   signal?: AbortSignal,
   tools?: unknown[],
 ): Promise<Record<string, any>> {
+  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools)).message;
+}
+
+async function appelerChatDetaille(
+  messages: ChatMessage[],
+  temperature: number,
+  maxTokens: number,
+  signal?: AbortSignal,
+  tools?: unknown[],
+): Promise<{ message: Record<string, any>; finishReason: string }> {
   const profil = resoudreProfilRaisonnement('serveur', ELYNDOR_CLOUD_MODELE);
 
   const response = await fetchCloud({
@@ -202,7 +212,8 @@ async function appelerChat(
   enregistrerUsageAppel(data?.usage);
   const message = data?.choices?.[0]?.message ?? data?.message ?? {};
   appliquerPolitiqueRaisonnement(message, profil);
-  return message;
+  const finishReason = String(data?.choices?.[0]?.finish_reason ?? data?.finish_reason ?? '');
+  return { message, finishReason };
 }
 
 export async function appellerModele({
@@ -218,6 +229,27 @@ export async function appellerModele({
     if (tentative === TENTATIVES_REPONSE_VIDE) {
       throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
     }
+  }
+  throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
+}
+
+export interface ReponseModele {
+  contenu: string;
+  /** true si la génération s'est arrêtée sur le plafond de tokens (finish_reason « length »). */
+  coupee: boolean;
+}
+
+/** Comme appellerModele, mais indique si la réponse a été coupée par le plafond de tokens. */
+export async function appellerModeleDetaille({
+  messages,
+  temperature = 0.9,
+  maxTokens = 700,
+  signal,
+}: AppelModeleOptions): Promise<ReponseModele> {
+  for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
+    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal);
+    const contenu = typeof message.content === 'string' ? message.content.trim() : '';
+    if (contenu) return { contenu, coupee: finishReason === 'length' };
   }
   throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
 }

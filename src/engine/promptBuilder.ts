@@ -76,13 +76,19 @@ function formaterLore(entries: LoreEntry[], titre: string, budget: number, longu
   return blocs.length ? `\n\n[${titre}]\n${blocs.join('\n\n')}` : '';
 }
 
+// Cibles en mots cohérentes avec maxTokensPourLongueur (≈ 0,7 mot par jeton
+// en français) : la réponse tient dans le plafond avec de la marge, sans
+// être coupée au milieu d'une phrase.
 function instructionLongueur(longueur: StorySettings['longueur']): string {
   switch (longueur) {
-    case 'courte': return 'Réponses très courtes, une à deux répliques.';
-    case 'longue': return 'Réponses développées, exploration sensorielle plus riche quand la scène le justifie.';
-    default: return 'Réponses de longueur moyenne, adaptées au rythme du message du joueur.';
+    case 'courte': return 'Longueur : réponses très courtes, une à deux répliques, environ 80 à 150 mots.';
+    case 'longue': return 'Longueur : réponses développées, exploration sensorielle plus riche quand la scène le justifie, environ 400 à 550 mots.';
+    default: return 'Longueur : réponses de longueur moyenne, adaptées au rythme du message du joueur, environ 200 à 300 mots.';
   }
 }
+
+export const INSTRUCTION_FIN_DE_REPONSE =
+  'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
 
 export function libelleViolence(niveau: StorySettings['violence']): string {
   switch (niveau) {
@@ -194,6 +200,7 @@ Les paramètres de session ci-dessous priment sur toute formulation du lore port
 
 Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
+${INSTRUCTION_FIN_DE_REPONSE}
 Rythme : ${libelleRythme(ctx.settings.rythme)}.
 Liberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.
 Violence : ${libelleViolence(ctx.settings.violence)}.
