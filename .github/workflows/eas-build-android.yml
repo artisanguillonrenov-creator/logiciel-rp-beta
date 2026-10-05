@@ -26,6 +26,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Préparer Elyndor Cloud dans l'application Android
+        run: node scripts/patch-elyndor-cloud.js
+
       - run: npx tsc --noEmit
 
       - run: npm install --global eas-cli
