@@ -43,13 +43,24 @@ Le Kernel, la file de jobs, la déduplication, le contrôle de révision, les é
 - **Références**, dans cet ordre : portrait du joueur, avatar du joueur, PNJ principaux, autres PNJ, scène précédente, avant-dernière scène. La limite `MAX_REFERENCES_IMAGE` (6) élimine d'abord les scènes, jamais un visage. Les références ne concernent que les personnages visibles.
 - **Régénération** : réutilise la `PromptImageStructure` enregistrée pour la révision. Seule la caméra change, l'état visuel n'est pas réanalysé.
 
-## Activer la génération
+## Serveur Elyndor Cloud (pod Runpod)
 
-Positionner `ELYNDOR_CLOUD_MODELE_IMAGE` dans `src/engine/elyndorCloudImages.ts` quand le modèle image Elyndor Cloud est publié. Les capacités `images` et `avatars` s'activent alors automatiquement. Aligner au besoin `construireCorpsRequeteImage` et `extraireImageReponse` sur l'API réelle du pod.
+- Pod A40 48 Go (`ELYNDOR_CLOUD_POD` dans `src/engine/elyndorCloud.ts`) :
+  - narration : llama.cpp + Anubis 70B v1.2 Q3_K_M, port 8000 ;
+  - images : Lustify SDXL v4 + IP-Adapter, port 7860.
+- Installation et démarrage reproductibles : `infra/runpod/install.sh` puis `infra/runpod/start.sh`. Le disque conteneur est effacé à chaque arrêt du pod, il faut donc relancer les deux scripts après un redémarrage.
+- **Consigne permanente** : le modèle image ne voit jamais la conversation. Le modèle narratif rédige tout ce qu'il reçoit, en anglais : le `promptSdxl` des scènes (redemandé s'il est omis) et le prompt de chaque portrait.
+- **Références exploitées par le serveur** :
+  - le visage du personnage visible le plus prioritaire passe par IP-Adapter « plus-face » (poids 0,6) ;
+  - la scène illustrée la plus récente passe par IP-Adapter « plus » (poids 0,3, continuité du décor et de la lumière).
+- Hors profil Adulte, un prompt négatif exclut le contenu explicite.
+
+Pour désactiver les images, mettre `ELYNDOR_CLOUD_MODELE_IMAGE` à `null`.
 
 ## Limites connues
 
-- Tant que le modèle image n'est pas publié, la chaîne complète est testée mais aucune image n'est produite. Les boutons d'illustration restent masqués.
+- IP-Adapter ne guide qu'un seul visage par image. Avec plusieurs personnages, seul le plus prioritaire est ancré par l'image, les autres le sont par le texte. Un placement par masque viendra plus tard.
 - L'unique illustration conservée par l'ancienne version, par histoire, n'est pas reprise dans l'historique V2. Elle sera remplacée à la première illustration V2.
 - L'état visuel est analysé au moment d'illustrer, pas à chaque tour. Le modèle voit les 10 derniers messages : un changement plus ancien et jamais illustré peut être manqué.
 - Une branche copie l'état visuel du parent, mais pas ses fichiers image. Ses premières références de scène sont donc absentes.
+- Les adresses du pod sont publiques et sans clé d'accès.

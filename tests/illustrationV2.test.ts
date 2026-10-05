@@ -10,6 +10,7 @@ import {
   evenementEtabli,
   ordonnerReferences,
   resoudrePersonnagesVisibles,
+  selectionnerReferencesGenerateur,
   type ReferenceVisuelle,
   type SceneIllustree,
 } from '../src/engine/visualState';
@@ -25,6 +26,7 @@ import {
 import {
   analyserReponseDirection,
   directionDeRepli,
+  nettoyerPromptSdxl,
   textesNarratifsEtablis,
 } from '../src/engine/directionArtistique';
 import {
@@ -310,7 +312,8 @@ test('une régénération ne change que la mise en scène, jamais le canon visue
 
 test('la requête Elyndor Cloud demande le format 16:9 et borne les références', () => {
   const corps = construireCorpsRequeteImage({
-    prompt: 'p', negatif: 'n', references: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], format: '16:9',
+    prompt: 'p', negatif: 'n', format: '16:9',
+    references: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((image) => ({ role: 'personnage' as const, image })),
   }, 'modele-image');
   assert.equal(corps.aspect_ratio, '16:9');
   assert.equal(corps.size, '1344x768');
@@ -365,4 +368,38 @@ test('la requête porte le prompt court anglais et une régénération ne touche
   const corps = construireCorpsRequeteImage({ prompt: 'p', promptCourt: court, references: [], format: '16:9' }, 'lustify-sdxl-v4');
   assert.equal(corps.prompt_sdxl, court);
   assert.equal(corps.reference_images, undefined);
+});
+
+test('le serveur reçoit un visage prioritaire et la scène la plus récente, avec leur rôle', () => {
+  const refs: ReferenceVisuelle[] = [
+    { type: 'scene-avant-derniere', uri: 'data:s2', libelle: 's2' },
+    { type: 'scene-precedente', uri: 'data:s1', libelle: 's1' },
+    { type: 'pnj-secondaire', uri: 'data:sylvana', libelle: 'sylvana' },
+    { type: 'joueur-avatar', uri: 'data:avatar', libelle: 'avatar' },
+    { type: 'joueur-portrait', uri: 'data:portrait', libelle: 'portrait' },
+  ];
+  assert.deepEqual(selectionnerReferencesGenerateur(refs), [
+    { role: 'personnage', image: 'data:portrait' },
+    { role: 'scene', image: 'data:s1' },
+  ]);
+  assert.deepEqual(selectionnerReferencesGenerateur(refs.slice(0, 2)), [{ role: 'scene', image: 'data:s1' }]);
+  assert.deepEqual(selectionnerReferencesGenerateur([]), []);
+
+  const corps = construireCorpsRequeteImage({
+    prompt: 'p', format: '16:9', references: selectionnerReferencesGenerateur(refs),
+  }, 'lustify-sdxl-v4');
+  assert.deepEqual(corps.reference_images, [
+    { role: 'personnage', image: 'data:portrait' },
+    { role: 'scene', image: 'data:s1' },
+  ]);
+});
+
+test('le prompt anglais rédigé par le modèle narratif est extrait et nettoyé', () => {
+  const direction = analyserReponseDirection(
+    '{"profil":"dialogue","personnagesVisibles":[{"nom":"William"}],"promptSdxl":"medium shot, 1 man, scarred human, black leather coat"}',
+    histoire(),
+  );
+  assert.equal(direction?.structure.promptSdxl, 'medium shot, 1 man, scarred human, black leather coat');
+  assert.equal(nettoyerPromptSdxl('Prompt: "close-up, dark elf woman, white braided hair"\nautre ligne'), 'close-up, dark elf woman, white braided hair');
+  assert.equal(nettoyerPromptSdxl('\n\n'), undefined);
 });

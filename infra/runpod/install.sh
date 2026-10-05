@@ -7,9 +7,11 @@ set -euo pipefail
 export HF_HUB_ENABLE_HF_TRANSFER=1
 
 # 1. Dépendances Python (tokenizers en roue précompilée : pas de Rust sur l'image).
+#    Pas d'extra « huggingface_hub[hf_transfer] » : il n'existe plus en 2.x et
+#    fait boucler le résolveur de pip.
 pip install -q -U --prefer-binary --only-binary=tokenizers \
-  "huggingface_hub[hf_transfer]" hf_transfer diffusers transformers accelerate \
-  safetensors compel fastapi "uvicorn[standard]" pillow
+  huggingface_hub hf_transfer diffusers transformers accelerate safetensors fastapi "uvicorn[standard]" pillow
+pip install -q --prefer-binary compel
 
 # 2. llama.cpp compilé avec CUDA (serveur OpenAI-compatible).
 if [ ! -x /root/llama.cpp/build/bin/llama-server ]; then
@@ -26,5 +28,12 @@ mkdir -p /root/models/text /root/models/image
     --local-dir /root/models/text
 [ -f /root/models/image/lustify-v4/model_index.json ] || \
   hf download John6666/lustify-sdxl-nsfwsfw-v4-sdxl --local-dir /root/models/image/lustify-v4
+
+# 4. IP-Adapter SDXL (visage + continuité de scène) et son encodeur ViT-H.
+[ -f /root/models/ip-adapter/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors ] || \
+  hf download h94/IP-Adapter \
+    sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors \
+    models/image_encoder/config.json models/image_encoder/model.safetensors \
+    --local-dir /root/models/ip-adapter
 
 echo "INSTALL_OK"

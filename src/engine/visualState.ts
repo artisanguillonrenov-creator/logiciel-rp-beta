@@ -471,6 +471,25 @@ export interface ReferenceVisuelle {
 }
 
 /**
+ * Ce que le serveur image sait exploiter : un visage (IP-Adapter « face »)
+ * et une scène de continuité (IP-Adapter général, faible poids). On envoie
+ * donc la référence de personnage la plus prioritaire et la scène la plus
+ * récente, rien de plus : chaque image pèse plusieurs centaines de Ko.
+ */
+export function selectionnerReferencesGenerateur(
+  references: readonly ReferenceVisuelle[],
+): { role: 'personnage' | 'scene'; image: string }[] {
+  const estScene = (ref: ReferenceVisuelle) => ref.type === 'scene-precedente' || ref.type === 'scene-avant-derniere';
+  const ordonnees = ordonnerReferences(references, references.length);
+  const visage = ordonnees.find((ref) => !estScene(ref));
+  const scene = ordonnees.find(estScene);
+  return [
+    ...(visage ? [{ role: 'personnage' as const, image: visage.uri }] : []),
+    ...(scene ? [{ role: 'scene' as const, image: scene.uri }] : []),
+  ];
+}
+
+/**
  * Trie les références par priorité (identité des personnages visibles
  * d'abord, continuité de décor ensuite) puis tronque à la limite du
  * fournisseur : une scène précédente ne peut jamais évincer un visage.

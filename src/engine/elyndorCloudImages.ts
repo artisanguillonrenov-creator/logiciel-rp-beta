@@ -31,13 +31,23 @@ export const DIMENSIONS_FORMAT: Record<FormatImage, { width: number; height: num
   '3:4': { width: 896, height: 1152 },
 };
 
+/**
+ * Image de référence envoyée au serveur (IP-Adapter) : `personnage` guide le
+ * visage du personnage principal visible, `scene` la continuité du décor,
+ * de la lumière et de l'ambiance.
+ */
+export interface ReferenceImage {
+  role: 'personnage' | 'scene';
+  image: string;
+}
+
 export interface RequeteImage {
   prompt: string;
   /** Version courte en anglais pour les modèles à encodeur CLIP (SDXL). */
   promptCourt?: string;
   negatif?: string;
-  /** Data URLs, déjà triées par priorité. */
-  references: string[];
+  /** Déjà triées par priorité (voir selectionnerReferencesGenerateur). */
+  references: ReferenceImage[];
   format: FormatImage;
 }
 
@@ -56,7 +66,7 @@ export function imagesElyndorCloudDisponibles(): boolean {
 
 export function construireCorpsRequeteImage(requete: RequeteImage, modele: string): Record<string, unknown> {
   const { width, height } = DIMENSIONS_FORMAT[requete.format];
-  const references = requete.references.filter(Boolean).slice(0, MAX_REFERENCES_IMAGE);
+  const references = requete.references.filter((ref) => !!ref.image).slice(0, MAX_REFERENCES_IMAGE);
   return {
     model: modele,
     prompt: requete.prompt,
@@ -66,7 +76,7 @@ export function construireCorpsRequeteImage(requete: RequeteImage, modele: strin
     size: `${width}x${height}`,
     aspect_ratio: requete.format,
     response_format: 'b64_json',
-    ...(references.length ? { reference_images: references } : {}),
+    ...(references.length ? { reference_images: references.map((ref) => ({ role: ref.role, image: ref.image })) } : {}),
   };
 }
 

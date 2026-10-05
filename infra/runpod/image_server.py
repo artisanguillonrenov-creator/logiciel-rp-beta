@@ -6,12 +6,18 @@ POST /v1/images/generations
    reference_images?: [data URLs], prompt_sdxl?: str}
 → {created, data: [{b64_json}]}
 
-`prompt_sdxl` (anglais, court) est prioritaire : le CLIP de SDXL est limité à
-77 jetons et comprend mal le français. Sinon le prompt complet est encodé par
-morceaux via compel. Les images de référence sont acceptées mais pas encore
-exploitées (IP-Adapter à venir).
+`prompt_sdxl` (anglais, court, rédigé par le modèle narratif) est
+prioritaire : le CLIP de SDXL est limité à 77 jetons et comprend mal le
+français. Sinon le prompt complet est encodé par morceaux via compel.
+
+`reference_images` : [{role: "personnage"|"scene", image: data URL}] (une
+chaîne seule vaut « personnage »). Deux IP-Adapter SDXL les exploitent :
+« plus-face » pour le visage du personnage principal, « plus » à faible poids
+pour la continuité du décor, de la lumière et de l'ambiance.
 """
 import base64, io, os, threading, time
+
+from PIL import Image
 
 import torch
 from compel import Compel, ReturnedEmbeddingsType
@@ -24,12 +30,27 @@ MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", "/root/models/image/lustify-v4"
 MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
+IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", "/root/models/ip-adapter")
+POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
+POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
 NEGATIF_BASE = "text, logo, watermark, signature, duplicate, extra limbs, extra fingers, deformed hands, deformed face, bad anatomy, blurry, lowres, child, minor, underage"
 
 pipe = StableDiffusionXLPipeline.from_pretrained(MODELE_DIR, torch_dtype=torch.float16, use_safetensors=True)
 # DPM++ Karras plante avec la config de ce checkpoint (IndexError sur sigmas) :
 # Euler a, recommandé aussi pour Lustify, est stable.
 pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+# Ordre des adaptateurs : [scène (général), visage]. Chargés avant le
+# déchargement CPU pour que l'encodeur d'image soit géré comme le reste.
+IP_ADAPTER = os.path.isdir(os.path.join(IP_ADAPTER_DIR, "sdxl_models"))
+if IP_ADAPTER:
+    pipe.load_ip_adapter(
+        IP_ADAPTER_DIR,
+        subfolder="sdxl_models",
+        weight_name=["ip-adapter-plus_sdxl_vit-h.safetensors", "ip-adapter-plus-face_sdxl_vit-h.safetensors"],
+        image_encoder_folder="models/image_encoder",
+        torch_dtype=torch.float16,
+    )
+VIDE = Image.new("RGB", (224, 224))
 # Anubis occupe l'essentiel du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
 # n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
 pipe.enable_model_cpu_offload()
@@ -60,7 +81,7 @@ class Requete(BaseModel):
     aspect_ratio: str | None = None
     n: int = 1
     response_format: str = "b64_json"
-    reference_images: list[str] | None = None
+    reference_images: list[str | dict] | None = None
     seed: int | None = None
 
 
@@ -74,6 +95,28 @@ def dimensions(taille: str) -> tuple[int, int]:
     return l - l % 8, h - h % 8
 
 
+def lire_image(data_url: str) -> Image.Image | None:
+    try:
+        brut = data_url.split(",", 1)[1] if data_url.startswith("data:") else data_url
+        return Image.open(io.BytesIO(base64.b64decode(brut))).convert("RGB")
+    except Exception:
+        return None
+
+
+def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None]:
+    """Première référence de personnage (visage) et première scène."""
+    visage = scene = None
+    for ref in req.reference_images or []:
+        role, image = ("personnage", ref) if isinstance(ref, str) else (ref.get("role"), ref.get("image", ""))
+        if not isinstance(image, str):
+            continue
+        if role == "scene" and scene is None:
+            scene = lire_image(image)
+        elif role != "scene" and visage is None:
+            visage = lire_image(image)
+    return visage, scene
+
+
 @app.get("/v1/models")
 def modeles():
     return {"object": "list", "data": [{"id": MODELE_ID, "object": "model"}]}
@@ -81,7 +124,7 @@ def modeles():
 
 @app.get("/health")
 def sante():
-    return {"status": "ok"}
+    return {"status": "ok", "ip_adapter": IP_ADAPTER}
 
 
 @app.post("/v1/images/generations")
@@ -94,11 +137,17 @@ def generer(req: Requete):
         ncond, npooled = compel(negatif)
         cond, ncond = compel.pad_conditioning_tensors_to_same_length([cond, ncond])
         graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
+        options = {}
+        if IP_ADAPTER:
+            visage, scene = references(req)
+            pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
+            options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
         image = pipe(
             prompt_embeds=cond, pooled_prompt_embeds=pooled,
             negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
             width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
             generator=torch.Generator("cuda").manual_seed(graine),
+            **options,
         ).images[0]
     tampon = io.BytesIO()
     image.save(tampon, format="PNG")

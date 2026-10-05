@@ -1,5 +1,5 @@
 import { Image } from 'react-native';
-import type { EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
+import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
 import { obtenirPortrait } from '../data/portraits';
@@ -17,9 +17,11 @@ import {
   negatifAplati,
   type PromptImageStructure,
 } from './visualBible';
+import { redigerPromptPortraitSdxl } from './directionArtistique';
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
+  selectionnerReferencesGenerateur,
   type PersonnageVisibleResolu,
   type ReferenceVisuelle,
   type SceneIllustree,
@@ -137,7 +139,7 @@ export async function genererImageScene(
     prompt: formaterPromptImage(structure, references),
     promptCourt: construirePromptSdxl(structure),
     negatif: negatifPourProfil(profil),
-    references: references.map((ref) => ref.uri),
+    references: selectionnerReferencesGenerateur(references),
     format: '16:9',
   });
 }
@@ -161,6 +163,7 @@ export function construirePromptAvatarJoueur(story: StoryState): string {
 
 async function genererPortrait(
   prompt: string,
+  promptCourt: string | undefined,
   references: (string | null)[],
   profil?: ProfilContenu,
 ): Promise<string> {
@@ -169,28 +172,48 @@ async function genererPortrait(
   }
   return generateurCourant({
     prompt,
+    promptCourt,
     negatif: negatifPourProfil(profil),
-    references: references.filter((r): r is string => !!r),
+    references: references.filter((r): r is string => !!r).map((image) => ({ role: 'personnage' as const, image })),
     format: '3:4',
   });
 }
 
 /** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
+/** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
+async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings) {
+  try {
+    return await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function obtenirOuGenererAvatarPnj(
   story: StoryState,
   pnj: EntreeLoreEmergent,
-  profil?: ProfilContenu,
+  settings: AppSettings,
 ): Promise<string> {
   const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
-  const dataUrl = await genererPortrait(construirePromptAvatarPnj(pnj), [], profil);
+  const dataUrl = await genererPortrait(
+    construirePromptAvatarPnj(pnj),
+    await promptPortraitSdxl(story, pnj.titre, pnj.contenu, settings),
+    [],
+    settings.profilContenu,
+  );
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
 }
 
-export async function obtenirOuGenererAvatarJoueur(story: StoryState, profil?: ProfilContenu): Promise<string> {
+export async function obtenirOuGenererAvatarJoueur(story: StoryState, settings: AppSettings): Promise<string> {
   const existant = await obtenirAvatarPnj(story.meta.id, ID_ASSET_JOUEUR);
   if (existant) return existant;
   const portrait = await obtenirPortraitReferenceJoueur(story);
-  const dataUrl = await genererPortrait(construirePromptAvatarJoueur(story), [portrait], profil);
+  const dataUrl = await genererPortrait(
+    construirePromptAvatarJoueur(story),
+    await promptPortraitSdxl(story, story.meta.personnageNom, story.meta.personnageDescription || story.meta.personnageNom, settings),
+    [portrait],
+    settings.profilContenu,
+  );
   return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);
 }

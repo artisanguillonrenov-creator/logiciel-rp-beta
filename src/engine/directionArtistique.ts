@@ -4,6 +4,7 @@ import { filtrerTextePourProfil } from './contenuAdulte';
 import {
   PROFILS,
   estProfilCadrage,
+  formaterPromptImage,
   personnageSceneVide,
   structureDeRepli,
   type PersonnageScene,
@@ -281,6 +282,72 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
   return { structure, visibles, changements, parModele: true };
 }
 
+// Consigne permanente : le modèle image ne voit jamais la conversation. Tout
+// ce qu'il reçoit est rédigé par le modèle narratif, en anglais, sous la
+// forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
+const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image Stable Diffusion XL qui ne connaît rien de l'histoire et ne lit bien que l'anglais.
+Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, étiquettes courtes séparées par des virgules, 60 mots maximum.
+Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, sujet(s) et apparence physique précise (race, carnation, âge apparent, cheveux, yeux, tenue, blessures, armes, accessoires), action ou expression, décor, lumière.
+N'invente rien qui ne soit pas dans la description fournie.`;
+
+export function nettoyerPromptSdxl(sortie: string): string | undefined {
+  const ligne = (sortie.split('\n').map((l) => l.trim()).find(Boolean) ?? '')
+    .replace(/^(?:sdxl\s+)?prompt\s*:\s*/i, '')
+    .replace(/["`*]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return ligne ? ligne.slice(0, 600) : undefined;
+}
+
+/** Fait rédiger par le modèle narratif un prompt SDXL anglais à partir d'une description. */
+export async function redigerPromptSdxl(
+  settings: AppSettings,
+  description: string,
+  cadrage: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  const sortie = await appellerModele({
+    ...configurationLLM(settings),
+    temperature: 0.2,
+    maxTokens: 200,
+    signal,
+    messages: [
+      { role: 'system', content: CONSIGNE_PROMPT_SDXL },
+      { role: 'user', content: `Cadrage imposé : ${cadrage}\n\nDescription :\n${texteProfil(description, settings)}` },
+    ],
+  });
+  return nettoyerPromptSdxl(sortie);
+}
+
+/**
+ * Prompt anglais d'un portrait (avatar) : fiche du personnage + son état
+ * visuel persistant (tenue, blessures, coiffure…), rédigé par le modèle narratif.
+ */
+export async function redigerPromptPortraitSdxl(
+  story: StoryState,
+  nom: string,
+  fiche: string,
+  settings: AppSettings,
+): Promise<string | undefined> {
+  const persistant = lireEtatVisuel(story).personnages.find((p) => p.nom === nom);
+  const etat = persistant
+    ? [
+        persistant.tenue && `tenue : ${persistant.tenue}`,
+        persistant.armure && `armure : ${persistant.armure}`,
+        persistant.coiffure && `coiffure : ${persistant.coiffure}`,
+        persistant.blessures.length && `blessures : ${persistant.blessures.join(', ')}`,
+        persistant.cicatrices.length && `cicatrices : ${persistant.cicatrices.join(', ')}`,
+        persistant.transformations.length && `transformations : ${persistant.transformations.join(', ')}`,
+        persistant.accessoires.length && `accessoires : ${persistant.accessoires.join(', ')}`,
+      ].filter(Boolean).join('\n')
+    : '';
+  return redigerPromptSdxl(
+    settings,
+    [`Fiche : ${fiche}`, etat && `État visuel actuel :\n${etat}`].filter(Boolean).join('\n\n'),
+    'portrait en buste, cadrage serré visage et épaules, fond sombre uni',
+  );
+}
+
 /** Repli local, sans appel réseau : ancienne détection par nom. */
 export function directionDeRepli(story: StoryState): DirectionArtistique {
   const texteScene = texteDerniereScene(story);
@@ -328,6 +395,17 @@ export async function demanderDirectionArtistique(
       direction.structure.personnages = direction.structure.personnages.map((p) =>
         p.nom === story.meta.personnageNom && !p.apparence ? { ...p, apparence: fiche } : p,
       );
+      if (!direction.structure.promptSdxl) {
+        // Consigne permanente : le prompt image est toujours rédigé par le
+        // modèle narratif ; s'il l'a omis, on le lui redemande à partir de
+        // sa propre direction artistique.
+        direction.structure.promptSdxl = await redigerPromptSdxl(
+          settings,
+          formaterPromptImage(direction.structure).split('[STYLE VISUEL]')[0],
+          `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
+          signal,
+        ).catch(() => undefined);
+      }
       return direction;
     }
   } catch (erreur) {

@@ -60,12 +60,12 @@ async function genererAvatarSansCache(
   assetId: string,
 ): Promise<string> {
   if (assetId === ID_AVATAR_JOUEUR_VISUEL) {
-    return obtenirOuGenererAvatarJoueur(story, settings.profilContenu);
+    return obtenirOuGenererAvatarJoueur(story, settings);
   }
 
   const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
-  return obtenirOuGenererAvatarPnj(story, pnj, settings.profilContenu);
+  return obtenirOuGenererAvatarPnj(story, pnj, settings);
 }
 
 async function genererAvatar(
