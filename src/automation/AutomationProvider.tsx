@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import { getSettings, getStoriesIndex, getStory, updateStoryIf } from '../storage/storage';
-import { modeleLocalTelecharge } from '../storage/modeleLocalStore';
 import { abonnerReglages } from './settingsStore';
 import { abonnerSauvegardesNarratives } from './storyEvents';
 import { calculerCapacites } from './capabilities';
@@ -29,18 +28,12 @@ import {
 } from './lifecycleRoutines';
 
 function recalculerCapacites(settings: Awaited<ReturnType<typeof getSettings>>): void {
-  let modeleLocalPresent = false;
-  if (Platform.OS !== 'web') {
-    try {
-      modeleLocalPresent = modeleLocalTelecharge();
-    } catch {
-      modeleLocalPresent = false;
-    }
-  }
   setAutomationCapabilities(
     calculerCapacites(settings, {
       plateforme: Platform.OS === 'web' ? 'web' : 'native',
-      modeleLocalPresent,
+      // Le runtime embarqué a été retiré : aucune capacité ne dépend plus
+      // de la présence d'un modèle local sur l'appareil.
+      modeleLocalPresent: false,
     }),
   );
 }
