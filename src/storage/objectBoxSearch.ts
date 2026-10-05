@@ -8,9 +8,25 @@ export interface EntreeObjectBox {
 }
 
 export type ScoresObjectBox = Record<string, number>;
+export type TypeIndexObjectBox = 'lore' | 'history';
 
+const NAMESPACE_LORE_ACTIF = '__elyndor_lore_actif__';
+const STORY_HISTOIRE_ACTIVE = '__elyndor_histoire_active__';
 const snapshotsLore = new Map<string, string>();
 const snapshotsHistoire = new Map<string, string>();
+const cacheRequetes = new WeakMap<number[], Partial<Record<TypeIndexObjectBox, ScoresObjectBox>>>();
+
+interface VecteurAvecIndex extends Array<number> {
+  __elyndorObjectBox?: { type: TypeIndexObjectBox; id: string };
+}
+
+declare global {
+  // Pont volontairement minuscule : embeddings.ts reste indépendant d'Expo/
+  // React Native et les tests Node continuent donc de fonctionner sans module natif.
+  var __elyndorObjectBoxScore:
+    | ((type: TypeIndexObjectBox, id: string, vecteurRequete: number[]) => number | undefined)
+    | undefined;
+}
 
 function fnvAjouter(hash: number, valeur: number): number {
   hash ^= valeur;
@@ -66,6 +82,46 @@ function parserScores(raw: string): ScoresObjectBox {
   return scores;
 }
 
+function marquerVecteur(vecteur: number[], type: TypeIndexObjectBox, id: string): void {
+  Object.defineProperty(vecteur as VecteurAvecIndex, '__elyndorObjectBox', {
+    value: { type, id },
+    configurable: true,
+    enumerable: false,
+    writable: true,
+  });
+}
+
+function rechercherSync(type: TypeIndexObjectBox, vecteurRequete: number[]): ScoresObjectBox | undefined {
+  if (!ElyndorObjectBox || vecteurRequete.length === 0) return undefined;
+  let cache = cacheRequetes.get(vecteurRequete);
+  if (!cache) {
+    cache = {};
+    cacheRequetes.set(vecteurRequete, cache);
+  }
+  if (cache[type]) return cache[type];
+
+  try {
+    const raw = type === 'lore'
+      ? ElyndorObjectBox.searchLoreSync(NAMESPACE_LORE_ACTIF, JSON.stringify(vecteurRequete), 256)
+      : ElyndorObjectBox.searchHistorySync(STORY_HISTOIRE_ACTIVE, JSON.stringify(vecteurRequete), 128);
+    const scores = parserScores(raw);
+    cache[type] = scores;
+    return scores;
+  } catch {
+    return undefined;
+  }
+}
+
+// embeddings.ts appelle ce crochet uniquement quand un vecteur d'entrée a
+// été indexé par ObjectBox. Une recherche HNSW est exécutée une fois par
+// requête/type, puis toutes les comparaisons suivantes sont de simples accès
+// dans la table de scores au lieu d'un balayage cosinus de tout le corpus.
+globalThis.__elyndorObjectBoxScore = (type, id, vecteurRequete) => {
+  const scores = rechercherSync(type, vecteurRequete);
+  if (!scores) return undefined;
+  return scores[id] ?? -1;
+};
+
 export function objectBoxDisponible(): boolean {
   return ElyndorObjectBox !== null;
 }
@@ -86,6 +142,39 @@ export async function synchroniserHistoireObjectBox(storyId: string, entrees: En
   await ElyndorObjectBox.syncHistory(storyId, serialiserEntrees(entrees));
   snapshotsHistoire.set(storyId, snapshot);
   return true;
+}
+
+/**
+ * Branche automatiquement les lots déjà produits par le pipeline actuel :
+ * - msg-* => index Histoire ;
+ * - meta-* => volontairement ignorés (ancienne architecture) ;
+ * - le reste => index Lore.
+ *
+ * L'index "actif" est resynchronisé à chaque changement de corpus. Il ne peut
+ * donc pas faire remonter des éléments provenant d'une autre sauvegarde.
+ */
+export async function preparerIndexObjectBox(
+  entrees: Array<{ id: string; contenu: string }>,
+  vecteurs: Record<string, number[]>,
+): Promise<void> {
+  if (!ElyndorObjectBox || entrees.length === 0) return;
+  if (entrees.every((e) => e.id.startsWith('meta-'))) return;
+
+  const type: TypeIndexObjectBox = entrees.every((e) => e.id.startsWith('msg-')) ? 'history' : 'lore';
+  const payload: EntreeObjectBox[] = [];
+  for (const entree of entrees) {
+    const vecteur = vecteurs[entree.id];
+    if (!vecteur?.length) continue;
+    marquerVecteur(vecteur, type, entree.id);
+    payload.push({ id: entree.id, contenu: entree.contenu, vecteur });
+  }
+  if (payload.length === 0) return;
+
+  if (type === 'history') {
+    await synchroniserHistoireObjectBox(STORY_HISTOIRE_ACTIVE, payload);
+  } else {
+    await synchroniserLoreObjectBox(NAMESPACE_LORE_ACTIF, payload);
+  }
 }
 
 export async function rechercherLoreObjectBox(
