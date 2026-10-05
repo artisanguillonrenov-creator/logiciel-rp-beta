@@ -15,7 +15,8 @@ import {
 } from '../src/engine/embeddings';
 
 // Invariant d'architecture : aucun ancien réglage ne doit pouvoir détourner
-// un appel narratif hors du client Elyndor Cloud unique.
+// un appel narratif hors du client Elyndor Cloud unique. Ce test constitue
+// le garde-fou final contre la réintroduction d'un fournisseur historique.
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; });
 
