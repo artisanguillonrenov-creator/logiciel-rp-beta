@@ -10,7 +10,7 @@ import { publierReglages } from '../automation/settingsStore';
 import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
-import { chargerConfigurationRuntimeElyndor } from '../cloud/runtimeConfig';
+import { CONFIG_CLOUD } from '../cloud/configCloud';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -18,8 +18,11 @@ const KEYS = {
   personas: '@rp_beta/personas',
   plugins: '@rp_beta/plugins',
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
-  runtimeBehemothV1: '@rp_beta/runtime_behemoth_v1',
+  runtimeBehemothV2: '@rp_beta/runtime_behemoth_v2',
 };
+
+const SERVEUR_BEHEMOTH_ANDROID = 'https://gzy9xft10gb3me-8888.proxy.runpod.net/v1';
+const MODELE_BEHEMOTH_ANDROID = 'TheDrummer/Behemoth-X-123B-v2.1-GGUF:Q4_K_M';
 
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
@@ -33,26 +36,25 @@ const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS
 export async function getSettings(): Promise<AppSettings> {
   let settings = await reglages.lire();
 
-  // Android/iOS : au premier lancement de cette version, récupère une seule
-  // fois la configuration privée de l'utilisateur depuis Supabase puis la
-  // range via le coffre de clés existant. Une mise à jour APK conserve donc
-  // les histoires tout en basculant automatiquement sur Behemoth, sans écran
-  // de réglage à remplir. Le web n'est volontairement pas concerné.
+  // Android/iOS : migration locale autonome. Elle ne dépend d'aucun compte
+  // Elyndor et s'applique aussi lors d'une mise à jour d'une installation
+  // existante. L'utilisateur retrouve donc immédiatement Serveur local,
+  // l'URL RunPod et Behemoth déjà renseignés dans Réglages.
   if (Platform.OS !== 'web') {
-    const migrationFaite = await AsyncStorage.getItem(KEYS.runtimeBehemothV1);
+    const migrationFaite = await AsyncStorage.getItem(KEYS.runtimeBehemothV2);
     if (migrationFaite !== '1') {
-      const runtime = await chargerConfigurationRuntimeElyndor();
-      if (runtime) {
-        settings = {
-          ...settings,
-          moteurInference: 'serveur',
-          serveurLocalUrl: runtime.runpodUrl,
-          serveurLocalModele: runtime.modele,
-          serveurLocalApiKey: runtime.apiKey,
-        };
-        await reglages.enregistrer(settings);
-        await AsyncStorage.setItem(KEYS.runtimeBehemothV1, '1');
-      }
+      settings = {
+        ...settings,
+        moteurInference: 'serveur',
+        serveurLocalUrl: SERVEUR_BEHEMOTH_ANDROID,
+        serveurLocalModele: MODELE_BEHEMOTH_ANDROID,
+        // Le proxy RunPod exposé sur 8888 exige un bearer. On réutilise la
+        // clé publishable Supabase déjà publique de l'application : aucune
+        // clé privée RunPod n'est embarquée dans l'APK.
+        serveurLocalApiKey: CONFIG_CLOUD.cle,
+      };
+      await reglages.enregistrer(settings);
+      await AsyncStorage.setItem(KEYS.runtimeBehemothV2, '1');
     }
   }
 
@@ -162,6 +164,10 @@ export async function getCatalogueTraduction(langue: string): Promise<Record<str
 }
 
 export async function fusionnerCatalogueTraduction(langue: string, ajout: Record<string, string>): Promise<void> {
-  const existant = await getCatalogueTraduction(langue);
-  await AsyncStorage.setItem(KEYS.catalogueTraduction(langue), JSON.stringify({ ...existant, ...ajout }));
+  const existant = await AsyncStorage.getItem(KEYS.catalogueTraduction(langue));
+  let base: Record<string, string> = {};
+  if (existant) {
+    try { base = JSON.parse(existant); } catch { base = {}; }
+  }
+  await AsyncStorage.setItem(KEYS.catalogueTraduction(langue), JSON.stringify({ ...base, ...ajout }));
 }
