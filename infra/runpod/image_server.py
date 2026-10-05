@@ -72,7 +72,7 @@ verrou_embeddings = threading.Lock()
 # Anubis occupe l'essentiel du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
 # n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
 pipe.enable_model_cpu_offload()
-pipe.enable_vae_tiling()
+pipe.vae.enable_tiling()
 compel = Compel(
     tokenizer=[pipe.tokenizer, pipe.tokenizer_2],
     text_encoder=[pipe.text_encoder, pipe.text_encoder_2],
