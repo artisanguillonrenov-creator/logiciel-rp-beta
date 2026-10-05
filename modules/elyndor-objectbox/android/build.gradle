@@ -1,0 +1,29 @@
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath "io.objectbox:objectbox-gradle-plugin:5.4.2"
+  }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'expo-module-gradle-plugin'
+apply plugin: 'org.jetbrains.kotlin.kapt'
+apply plugin: 'io.objectbox'
+
+group = 'expo.modules.elyndorobjectbox'
+version = '1.0.0'
+
+expoModule {
+  canBePublished false
+}
+
+android {
+  namespace "expo.modules.elyndorobjectbox"
+
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
