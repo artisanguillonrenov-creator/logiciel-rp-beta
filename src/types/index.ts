@@ -1,4 +1,5 @@
 import type { NarrativeCoreState } from '../engine/noyauNarratif';
+import type { EtatVisuelHistoire } from '../engine/visualState';
 
 export type Creativite = 'faible' | 'moyenne' | 'elevee';
 export type Longueur = 'courte' | 'moyenne' | 'longue';
@@ -27,9 +28,10 @@ export interface StorySettings {
 
 // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
 // objectifs en prose. Collecté à l'étape "Histoire" du parcours de
-// création en 5 étapes, affiché ensuite dans la conversation. Pas
-// d'"image" ici — génération d'images explicitement hors périmètre pour
-// cette phase.
+// création en 5 étapes, affiché ensuite dans la conversation. Il sert aussi
+// de contexte à la direction artistique des illustrations (voir
+// src/engine/directionArtistique.ts) ; l'état visuel lui-même vit dans
+// StoryState.etatVisuel.
 export interface ContexteHistoire {
   lieu: string;
   ambiance: string;
@@ -65,9 +67,9 @@ export interface StoryMeta {
   // Race (id, ex. "elfes-noirs") et sexe choisis à la création — dupliqués
   // ici hors de personnageDescription (simple texte) pour retrouver le
   // portrait peint correspondant (src/data/portraits.ts) et l'envoyer comme
-  // image de référence au générateur d'illustration de scène (voir
-  // src/engine/images.ts). Optionnels : histoires déjà sauvegardées sans,
-  // pas de génération d'image de référence pour elles, c'est tout.
+  // image de référence prioritaire au générateur d'illustration de scène
+  // (voir src/engine/images.ts). Optionnels : sans eux, l'avatar généré du
+  // joueur reste la seule référence de son visage.
   raceOrigineId?: string;
   sexe?: string;
 }
@@ -312,6 +314,13 @@ export interface StoryState {
   // structuré, croyances des PNJ, rumeurs, dettes. Absent tant que
   // l'histoire n'a pas joué de tour depuis son ajout ; format V13.
   narrativeCore?: NarrativeCoreState;
+  // État visuel persistant (refonte V2 des illustrations) : apparence
+  // courante des personnages, décor courant et les 2 dernières scènes
+  // illustrées. Seule source de vérité visuelle ; modifié uniquement par des
+  // changements justifiés par le récit (src/engine/visualState.ts).
+  // Optionnel, sans bump de VERSION_SCHEMA_HISTOIRE : absent = état vide
+  // (lireEtatVisuel), ce qui garde les sauvegardes compatibles avec la V13.
+  etatVisuel?: EtatVisuelHistoire;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
@@ -376,16 +385,12 @@ export interface AppSettings {
   // les cas (prompt système, lore, mémoire) ; seul l'affichage (interface +
   // messages du narrateur) est traduit à la volée — voir src/i18n/.
   langueInterface?: string;
-  // Génération d'images de scène à la demande (voir src/engine/images.ts) —
-  // désactivée par défaut : appel réseau supplémentaire, coût, et pas tous
-  // les comptes OpenRouter n'ont accès aux modèles d'image. Un modèle
-  // ouvert (FLUX) via le même fournisseur/la même clé que le texte, pas de
-  // second service à configurer.
+  // Réglages hérités de l'ancien générateur d'images tiers, retiré. Ils ne
+  // sont plus lus : verrouillerSurElyndorCloud les force à false et la
+  // disponibilité des images dépend uniquement du modèle image Elyndor
+  // Cloud (src/engine/elyndorCloudImages.ts). Conservés pour relire les
+  // anciennes sauvegardes de réglages.
   genererImagesActive?: boolean;
-  // Variante gratuite du modèle d'image (flux.2-flex:free) plutôt que la
-  // version payante — undefined/false = payant par défaut (plus fiable,
-  // coût négligeable ~0,05-0,08 $/image) ; true = gratuite mais limitée en
-  // requêtes/minute et sans garantie de disponibilité, voir images.ts.
   modeleImagesGratuit?: boolean;
 }
 

@@ -1,12 +1,21 @@
 import type { AppSettings, StoryState } from '../types';
 import {
+  collecterReferencesScene,
   genererImageScene,
   obtenirOuGenererAvatarJoueur,
   obtenirOuGenererAvatarPnj,
-  obtenirPortraitReferenceJoueur,
-  obtenirPromptScene,
-  pnjMentionneDansTexte,
 } from '../engine/images';
+import { demanderDirectionArtistique, textesNarratifsEtablis } from '../engine/directionArtistique';
+import { appliquerModeRegeneration, consoliderAvecEtatVisuel } from '../engine/visualBible';
+import {
+  ajouterSceneIllustree,
+  appliquerChangementsVisuels,
+  lireEtatVisuel,
+  resoudrePersonnagesVisibles,
+  type EtatVisuelHistoire,
+  type ModeIllustration,
+  type SceneIllustree,
+} from '../engine/visualState';
 import {
   enregistrerAvatarPnj,
   obtenirAvatarPnj,
@@ -26,11 +35,18 @@ import {
 } from './visualPlanning';
 import { publierEvenementVisuel } from './visualEvents';
 
-const MAX_PNJ_REFERENCE_SCENE = 2;
+const MODES_ILLUSTRATION: readonly ModeIllustration[] = [
+  'nouvelle', 'regenerer', 'autre-cadrage', 'autre-angle', 'autre-composition',
+];
 
 export interface VisualAutomationDeps {
   getSettings(): Promise<AppSettings>;
   getStory(id: string): Promise<StoryState | null>;
+  updateStoryIf(
+    id: string,
+    predicate: (story: StoryState) => boolean,
+    updater: (story: StoryState) => StoryState,
+  ): Promise<StoryState | null>;
 }
 
 function verifierCapaciteImages(settings: AppSettings): void {
@@ -40,16 +56,16 @@ function verifierCapaciteImages(settings: AppSettings): void {
 
 async function genererAvatarSansCache(
   story: StoryState,
-  settings: AppSettings,
+  _settings: AppSettings,
   assetId: string,
 ): Promise<string> {
   if (assetId === ID_AVATAR_JOUEUR_VISUEL) {
-    return obtenirOuGenererAvatarJoueur(story, settings);
+    return obtenirOuGenererAvatarJoueur(story);
   }
 
   const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
-  return obtenirOuGenererAvatarPnj(story, pnj, settings);
+  return obtenirOuGenererAvatarPnj(story, pnj);
 }
 
 async function genererAvatar(
@@ -103,29 +119,84 @@ async function synchroniserAvatars(story: StoryState, settings: AppSettings): Pr
   }
 }
 
-async function genererScene(story: StoryState, settings: AppSettings): Promise<string> {
+/**
+ * Pipeline V2 d'une illustration de scène :
+ * état narratif + état visuel + personnages visibles + 2 dernières scènes
+ * → direction artistique (modèle narratif) → prompt structuré → image 16:9
+ * → mise à jour de l'état visuel → historique glissant des 2 dernières scènes.
+ *
+ * Une régénération (mode ≠ 'nouvelle') réutilise le canon visuel enregistré
+ * pour cette révision : mêmes personnages, apparences, lieu et moment ; seule
+ * la mise en scène change et l'état visuel n'est pas réanalysé.
+ */
+async function genererScene(
+  story: StoryState,
+  settings: AppSettings,
+  mode: ModeIllustration,
+  deps: VisualAutomationDeps,
+): Promise<string> {
   verifierCapaciteImages(settings);
-  const prompt = await obtenirPromptScene(story, settings);
-  const portraitReference = await obtenirPortraitReferenceJoueur(story);
-  const avatarJoueur = await obtenirAvatarPnj(story.meta.id, ID_AVATAR_JOUEUR_VISUEL);
-  const dernierMessageNarrateur = [...story.messages].reverse().find((m) => m.role === 'assistant');
-  const texteSceneMinuscule = (dernierMessageNarrateur?.content ?? story.meta.pointDeDepart).toLowerCase();
+  const revision = calculerRevisionNarrative(story);
+  const etatInitial = lireEtatVisuel(story);
+  const existante = etatInitial.scenesIllustrees.find((scene) => scene.revision === revision);
+  const precedentes = etatInitial.scenesIllustrees.filter((scene) => scene.revision !== revision);
 
-  const refsPnj: string[] = [];
-  for (const pnj of story.loreEmergent
-    .filter((entree) => entree.categorie === 'pnj')
-    .filter((entree) => pnjMentionneDansTexte(entree, texteSceneMinuscule))) {
-    const uri = await obtenirAvatarPnj(story.meta.id, pnj.id);
-    if (uri) refsPnj.push(uri);
-    if (refsPnj.length >= MAX_PNJ_REFERENCE_SCENE) break;
+  let etat: EtatVisuelHistoire;
+  let scene: SceneIllustree;
+  if (mode !== 'nouvelle' && existante) {
+    const variante = existante.regenerations + 1;
+    etat = etatInitial;
+    scene = {
+      ...existante,
+      // Les identités sont re-résolues pour retrouver un avatar créé depuis.
+      personnagesVisibles: resoudrePersonnagesVisibles(story, existante.personnagesVisibles.map((p) => p.nom)),
+      structure: appliquerModeRegeneration(existante.structure, mode, variante),
+      regenerations: variante,
+      creeLe: Date.now(),
+    };
+  } else {
+    const direction = await demanderDirectionArtistique(story, settings);
+    const resultat = appliquerChangementsVisuels(
+      etatInitial,
+      direction.changements,
+      textesNarratifsEtablis(story, etatInitial.derniereAnalyseIndex),
+      story.messages.length,
+      (nom) => resoudrePersonnagesVisibles(story, [nom])[0]?.assetId,
+    );
+    etat = { ...resultat.etat, derniereAnalyseIndex: story.messages.length };
+    scene = {
+      revision,
+      messageIndex: story.messages.length,
+      creeLe: Date.now(),
+      profil: direction.structure.profil,
+      personnagesVisibles: direction.visibles,
+      structure: consoliderAvecEtatVisuel(direction.structure, etat),
+      regenerations: 0,
+    };
   }
 
-  const dataUrl = await genererImageScene(
-    prompt,
-    [portraitReference, avatarJoueur, ...refsPnj],
-  );
-  const revision = calculerRevisionNarrative(story);
-  return enregistrerIllustrationScene(story.meta.id, revision, dataUrl);
+  const references = await collecterReferencesScene(story, scene.personnagesVisibles, precedentes);
+  const dataUrl = await genererImageScene(scene.structure, references);
+
+  const { scenes } = ajouterSceneIllustree(etat.scenesIllustrees, scene);
+  const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl, scenes.map((s) => s.revision));
+
+  // Mise à jour inconditionnelle (pas de garde de révision) : l'illustration
+  // existe désormais même si le joueur a poursuivi entre-temps, et l'état
+  // visuel ne dépend que des événements déjà analysés.
+  await deps.updateStoryIf(story.meta.id, () => true, (courante) => {
+    const actuel = lireEtatVisuel(courante);
+    const base = actuel.sequence > etatInitial.sequence ? actuel : etat;
+    return {
+      ...courante,
+      etatVisuel: {
+        ...base,
+        sequence: Math.max(actuel.sequence, etat.sequence) + 1,
+        scenesIllustrees: ajouterSceneIllustree(actuel.scenesIllustrees, scene).scenes,
+      },
+    };
+  });
+  return uri;
 }
 
 export async function enqueueVisualAvatarSync(story: StoryState): Promise<void> {
@@ -151,13 +222,16 @@ export async function enqueueVisualAvatarGeneration(
   });
 }
 
-export async function enqueueVisualSceneGeneration(story: StoryState): Promise<void> {
+export async function enqueueVisualSceneGeneration(
+  story: StoryState,
+  mode: ModeIllustration = 'nouvelle',
+): Promise<void> {
   const revision = calculerRevisionNarrative(story);
   const forceToken = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await enqueueAutomation('visual.scene.generate', {
     storyId: story.meta.id,
     dedupeKey: cleDedupeScene(story, forceToken),
-    payload: { revision },
+    payload: { revision, mode },
   });
 }
 
@@ -213,7 +287,8 @@ export function registerVisualAutomationHandlers(deps: VisualAutomationDeps): ()
       return;
     }
     try {
-      const uri = await genererScene(story, await deps.getSettings());
+      const mode = MODES_ILLUSTRATION.find((m) => m === job.payload?.mode) ?? 'nouvelle';
+      const uri = await genererScene(story, await deps.getSettings(), mode, deps);
       publierEvenementVisuel({ type: 'scene.ready', storyId: story.meta.id, revision, uri });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Illustration impossible à générer.';

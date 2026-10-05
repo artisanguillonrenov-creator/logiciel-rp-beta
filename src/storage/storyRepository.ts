@@ -1,6 +1,12 @@
 import type { StoryState } from '../types';
 import { creerFileSerie } from './serialQueue';
-import { reconstituerHistoire, serialiserHistoire, type HistoireStockee, type StockageHistoires } from './storySerialization';
+import {
+  conserverEtatVisuelRecent,
+  reconstituerHistoire,
+  serialiserHistoire,
+  type HistoireStockee,
+  type StockageHistoires,
+} from './storySerialization';
 
 interface AncienStockage {
   getAllKeys(): Promise<readonly string[]>;
@@ -57,7 +63,13 @@ export function creerDepotHistoires(ancien: AncienStockage, stockage: StockageHi
       // pendant qu'une sauvegarde précédente attend encore sa transaction.
       histoire.meta.updatedAt = Date.now();
       const capture = serialiserHistoire(histoire);
-      return operation(() => stockage.ecrire(capture));
+      return operation(async () => {
+        // L'écran peut sauvegarder une copie chargée avant la dernière
+        // illustration : l'état visuel persisté, s'il est plus récent, est
+        // conservé (seule source de vérité visuelle, écrite par le Kernel).
+        const persistee = await stockage.lire(capture.id);
+        await stockage.ecrire(persistee ? conserverEtatVisuelRecent(capture, persistee) : capture);
+      });
     },
     /**
      * Lecture + garde + écriture dans la même file série du dépôt. Sert aux

@@ -1,4 +1,5 @@
 import type { StoryMeta, StoryState } from '../types';
+import { etatVisuelLePlusRecent } from '../engine/visualState';
 
 export interface MessageStocke {
   id: string;
@@ -58,4 +59,23 @@ export function differencesMessages(anciens: MessageStocke[], nouveaux: MessageS
     restants.delete(message.id);
   }
   return { ecrire, supprimer: [...restants.keys()] };
+}
+
+/**
+ * Garde l'état visuel le plus récent entre une sauvegarde de l'écran et la
+ * version déjà persistée (compteur `sequence` monotone). Seul le champ
+ * etatVisuel peut être repris ; le reste de la sauvegarde est inchangé.
+ */
+export function conserverEtatVisuelRecent(capture: HistoireStockee, persistee: HistoireStockee): HistoireStockee {
+  let etatPersiste: any;
+  try {
+    etatPersiste = JSON.parse(persistee.etat);
+  } catch {
+    return capture;
+  }
+  if (!etatPersiste?.etatVisuel) return capture;
+  const etat = JSON.parse(capture.etat);
+  const retenu = etatVisuelLePlusRecent(etat.etatVisuel, etatPersiste.etatVisuel);
+  if (retenu === etat.etatVisuel) return capture;
+  return { ...capture, etat: JSON.stringify({ ...etat, etatVisuel: retenu }) };
 }

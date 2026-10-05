@@ -1,4 +1,5 @@
 import type { AppSettings } from '../types';
+import { imagesElyndorCloudDisponibles } from '../engine/elyndorCloudImages';
 
 /**
  * L'environnement ne décrit plus que la plateforme d'exécution. Les moteurs
@@ -27,11 +28,14 @@ export function calculerCapacites(
   settings: AppSettings,
   _env: AutomationEnvironment = { plateforme: 'native' },
 ): AppCapabilities {
+  // Les images suivent le même principe que la narration : un modèle
+  // servi par Elyndor Cloud, disponible dès que son endpoint est publié.
+  const images = imagesElyndorCloudDisponibles();
   const raisons: AppCapabilities['raisons'] = {
     embeddings: 'La recherche sémantique distante a été retirée ; Elyndor utilise la recherche lexicale locale.',
-    images: 'Elyndor Cloud n’expose pas encore de génération d’images.',
     inferenceLocale: 'Le moteur local a été retiré ; Elyndor utilise Elyndor Cloud.',
   };
+  if (!images) raisons.images = 'Elyndor Cloud n’expose pas encore de génération d’images.';
 
   return {
     fournisseur: 'elyndor-cloud',
@@ -40,8 +44,8 @@ export function calculerCapacites(
     // ou détourner le narrateur Cloud.
     narration: true,
     embeddings: false,
-    images: false,
-    avatars: false,
+    images,
+    avatars: images,
     traduction: true,
     inferenceLocale: false,
     contenuAdulte: settings.profilContenu === 'adulte',

@@ -714,7 +714,19 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     <Panneau style={styles.panneauImageGeneree}>
                       <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
                       <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" accessibilityLabel={t('Illustration générée pour cette scène')} />
-                      <Text style={styles.aideImageGeneree}>{t('Cette illustration est conservée localement pour cette histoire et sera supprimée avec elle.')}</Text>
+                      <Text style={styles.aideImageGeneree}>{t('Les deux dernières scènes illustrées sont conservées localement pour assurer la continuité visuelle, puis supprimées avec l’histoire.')}</Text>
+                      {imagesDisponibles && (
+                        <View style={styles.rangeeRegeneration}>
+                          {([
+                            ['regenerer', 'Régénérer'],
+                            ['autre-cadrage', 'Autre cadrage'],
+                            ['autre-angle', 'Autre angle'],
+                            ['autre-composition', 'Autre composition'],
+                          ] as const).map(([mode, titre]) => (
+                            <Bouton key={mode} titre={t(titre)} variante="secondaire" desactive={imageEnCours} onPress={() => { void illustrerScene(mode); }} style={styles.boutonRegeneration} />
+                          ))}
+                        </View>
+                      )}
                       <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setImageGeneree(null)} style={{ marginTop: espacement.sm }} />
                     </Panneau>
                   )
@@ -1293,9 +1305,20 @@ const styles = StyleSheet.create({
   },
   imageGeneree: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    // Les scènes sont demandées en 16:9 (format cinéma) ; les portraits
+    // gardent leur propre cadrage vertical.
+    aspectRatio: 16 / 9,
     marginTop: espacement.sm,
     borderRadius: 4,
+  },
+  rangeeRegeneration: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: espacement.xs,
+    marginTop: espacement.sm,
+  },
+  boutonRegeneration: {
+    flexGrow: 1,
   },
   aideImageGeneree: {
     color: couleurs.texteAtténué,

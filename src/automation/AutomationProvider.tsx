@@ -40,6 +40,7 @@ const getStoryIds = async () => (await getStoriesIndex()).map((meta) => meta.id)
 const visualDeps: VisualAutomationDeps = {
   getSettings,
   getStory,
+  updateStoryIf,
 };
 
 const narrativeDeps: NarrativeAutomationDeps = {
