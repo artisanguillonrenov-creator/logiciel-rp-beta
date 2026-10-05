@@ -78,14 +78,12 @@ export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise
 }
 
 /**
- * Conservé pour compatibilité avec l'interface existante. Aucun fournisseur
- * tiers n'est contacté : l'appel échoue explicitement tant qu'Elyndor Cloud
- * ne fournit pas d'endpoint image.
+ * Point d'extension réservé au futur générateur d'images Elyndor Cloud.
+ * Aucun identifiant de fournisseur, clé API ou mode de facturation hérité ne
+ * traverse plus ce contrat.
  */
 export async function genererImageScene(
-  _apiKey: string,
   _prompt: string,
-  _gratuit?: boolean,
   _imagesReference?: (string | null | undefined)[],
 ): Promise<string> {
   throw new ErreurImagesIndisponibles();
