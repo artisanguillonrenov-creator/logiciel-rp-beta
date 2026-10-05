@@ -33,42 +33,55 @@ test('le SettingsStore publie chaque configuration sauvegardée aux abonnés', (
   assert.equal(lireReglagesCourants()?.model, 'modele-c');
 });
 
-test('les capacités OpenRouter reflètent exactement clé, modèle et activation image', () => {
-  const sansCle = calculerCapacites({ ...baseSettings, genererImagesActive: true }, { plateforme: 'web' });
-  assert.equal(sansCle.narration, false);
-  assert.equal(sansCle.images, false);
-  assert.match(sansCle.raisons.images ?? '', /OpenRouter/);
+test('les capacités imposent Elyndor Cloud même avec d’anciens réglages OpenRouter', () => {
+  const caps = calculerCapacites({
+    ...baseSettings,
+    openRouterApiKey: 'ancienne-cle',
+    genererImagesActive: true,
+  }, { plateforme: 'web' });
 
-  const pret = calculerCapacites(
-    { ...baseSettings, openRouterApiKey: 'or-key', genererImagesActive: true },
-    { plateforme: 'web' },
-  );
-  assert.equal(pret.narration, true);
-  assert.equal(pret.embeddings, true);
-  assert.equal(pret.images, true);
-  assert.equal(pret.avatars, true);
+  assert.equal(caps.fournisseur, 'elyndor-cloud');
+  assert.equal(caps.narration, true);
+  assert.equal(caps.embeddings, false);
+  assert.equal(caps.images, false);
+  assert.equal(caps.avatars, false);
+  assert.equal(caps.inferenceLocale, false);
+  assert.match(caps.raisons.embeddings ?? '', /lexicale locale/);
+  assert.match(caps.raisons.images ?? '', /Elyndor Cloud/);
 });
 
-test('Infermatic peut narrer et fournir les embeddings sans rendre les images disponibles', () => {
+test('les anciens réglages Infermatic ou serveur local ne changent aucune capacité Cloud', () => {
   const caps = calculerCapacites({
     ...baseSettings,
     moteurInference: 'infermatic',
     infermaticApiKey: 'inf-key',
-    infermaticModel: 'rp-model',
+    infermaticModel: 'ancien-modele',
+    serveurLocalUrl: 'http://192.168.1.2:1234/v1',
+    serveurLocalModele: 'ancien-local',
+    embeddingsApiKey: 'ancienne-cle-embeddings',
     genererImagesActive: true,
   }, { plateforme: 'native' });
 
+  assert.equal(caps.fournisseur, 'elyndor-cloud');
   assert.equal(caps.narration, true);
-  assert.equal(caps.embeddings, true);
+  assert.equal(caps.traduction, true);
+  assert.equal(caps.embeddings, false);
   assert.equal(caps.images, false);
-  assert.match(caps.raisons.images ?? '', /OpenRouter/);
+  assert.equal(caps.inferenceLocale, false);
+  assert.match(caps.raisons.inferenceLocale ?? '', /moteur local a été retiré/);
 });
 
-test('le mode local exige un modèle réellement présent sur une plateforme native', () => {
-  const settings = { ...baseSettings, moteurInference: 'local' as const };
-  assert.equal(calculerCapacites(settings, { plateforme: 'web', modeleLocalPresent: true }).narration, false);
-  assert.equal(calculerCapacites(settings, { plateforme: 'native', modeleLocalPresent: false }).narration, false);
-  assert.equal(calculerCapacites(settings, { plateforme: 'native', modeleLocalPresent: true }).narration, true);
+test('les capacités Cloud conservent seulement les choix fonctionnels du profil', () => {
+  const caps = calculerCapacites({
+    ...baseSettings,
+    profilContenu: 'adulte',
+    modeConcepteur: true,
+  }, { plateforme: 'native' });
+
+  assert.equal(caps.contenuAdulte, true);
+  assert.equal(caps.concepteur, true);
+  assert.equal(caps.narration, true);
+  assert.equal(caps.traduction, true);
 });
 
 function memoryStorage() {

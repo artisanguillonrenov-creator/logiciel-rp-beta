@@ -66,7 +66,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
     setMessageCache('');
     try {
       await viderCacheEmbeddings();
-      setMessageCache('Cache d’embeddings vidé — recalcul complet au prochain tour.');
+      setMessageCache('Ancien cache vectoriel vidé. La recherche lexicale locale reste active.');
     } catch (e) {
       setMessageCache(e instanceof Error ? e.message : 'Impossible de vider le cache d’embeddings.');
     }
@@ -166,9 +166,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
                 <EtatLigne label="Embeddings" ok={caps.embeddings} detail={caps.raisons.embeddings} />
                 <EtatLigne label="Images & portraits" ok={caps.images} detail={caps.raisons.images} />
                 <EtatLigne label="Traduction" ok={caps.traduction} detail={caps.raisons.traduction} />
-                {caps.fournisseur === 'local' ? (
-                  <EtatLigne label="Modèle local" ok={caps.inferenceLocale} detail={caps.raisons.inferenceLocale} />
-                ) : null}
+                <EtatLigne label="Fournisseur" ok={caps.narration} detail="Elyndor Cloud" />
               </View>
             ) : (
               <Text style={styles.statut}>Capacités en cours d’initialisation…</Text>
@@ -182,13 +180,13 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
 
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>MAINTENANCE SÉMANTIQUE</Text>
-            <Text style={styles.titreBloc}>Cache d’embeddings</Text>
+            <Text style={styles.titreBloc}>Ancien cache vectoriel</Text>
             <Text style={styles.texteBloc}>
-              Efface les vecteurs de lore calculés localement. À utiliser après une modification importante du
-              contenu lorsque vous voulez forcer une reconstruction complète de la sélection sémantique.
+              Efface les anciens vecteurs conservés par les versions précédentes. Elyndor utilise désormais
+              la recherche lexicale locale ; aucun nouvel embedding distant n’est généré.
             </Text>
             <Bouton
-              titre="Vider le cache d’embeddings"
+              titre="Vider l’ancien cache vectoriel"
               variante="secondaire"
               onPress={viderCache}
               style={styles.boutonAction}

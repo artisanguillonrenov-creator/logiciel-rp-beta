@@ -63,7 +63,7 @@ async function genererAvatar(
 
   // Les fonctions historiques de images.ts renvoient le cache s'il existe.
   // Pour une vraie régénération il faut donc le retirer temporairement, mais
-  // sans perdre le portrait précédent si l'appel réseau échoue.
+  // sans perdre le portrait précédent si la génération échoue.
   const existant = await obtenirAvatarPnj(story.meta.id, assetId);
   const sauvegarde = existant ? await preparerImageReference(existant) : null;
   if (existant) await supprimerAvatarPnj(story.meta.id, assetId);
@@ -121,9 +121,7 @@ async function genererScene(story: StoryState, settings: AppSettings): Promise<s
   }
 
   const dataUrl = await genererImageScene(
-    settings.openRouterApiKey,
     prompt,
-    settings.modeleImagesGratuit,
     [portraitReference, avatarJoueur, ...refsPnj],
   );
   const revision = calculerRevisionNarrative(story);

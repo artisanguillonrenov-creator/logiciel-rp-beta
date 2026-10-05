@@ -8,7 +8,7 @@ import {
   enregistrerUsageAppel,
   terminerMesureTokens,
 } from '../src/engine/mesureTokens';
-import { appelerChatDistant } from '../src/engine/llmProvider';
+import { appellerModele } from '../src/engine/elyndorCloudClient';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; annulerMesureTokens(); });
@@ -33,10 +33,19 @@ test('un appel sans usage rend la mesure partielle ; aucune mesure hors tour', (
   assert.equal(terminerMesureTokens(), undefined);
 });
 
-test('les appels distants alimentent la mesure du tour', async () => {
-  globalThis.fetch = async () => Response.json({ choices: [{ message: { content: 'ok' } }], usage: { prompt_tokens: 10, completion_tokens: 5 } });
+test('les appels Elyndor Cloud alimentent la mesure du tour', async () => {
+  globalThis.fetch = async () => Response.json({
+    choices: [{ message: { content: 'ok' } }],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  });
   commencerMesureTokens();
-  await appelerChatDistant({ fournisseur: 'openrouter', apiKey: 'k', model: 'm', messages: [], temperature: 1, maxTokens: 5 });
+  await appellerModele({
+    apiKey: '',
+    model: '',
+    messages: [],
+    temperature: 1,
+    maxTokens: 5,
+  });
   assert.equal(terminerMesureTokens()?.totalTokens, 15);
 });
 
