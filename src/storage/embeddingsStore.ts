@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings } from '../types';
 import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddings';
 import { planifierTransactionCache } from './embeddingsCacheMutex';
+import { preparerIndexObjectBox } from './objectBoxSearch';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -189,10 +190,20 @@ async function assurerEmbeddingsTransaction(
   );
 }
 
-/** Sérialise lecture, calcul et écriture pour empêcher toute mise à jour perdue. */
-export function assurerEmbeddings(
+/**
+ * Sérialise lecture/calcul/écriture puis prépare l'index HNSW Android.
+ * ObjectBox est une optimisation : une absence du module natif ou une erreur
+ * d'indexation ne doit jamais empêcher le tour narratif de continuer.
+ */
+export async function assurerEmbeddings(
   entrees: EntreeAEmbeder[],
   appSettings: AppSettings,
 ): Promise<Record<string, number[]>> {
-  return planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings));
+  const vecteurs = await planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings));
+  try {
+    await preparerIndexObjectBox(entrees, vecteurs);
+  } catch {
+    // Le classement cosinus existant reste le filet de secours.
+  }
+  return vecteurs;
 }
