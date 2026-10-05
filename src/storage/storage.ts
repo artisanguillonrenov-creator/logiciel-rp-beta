@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings, Persona, Plugin, StoryState } from '../types';
 import { migrerHistoire } from './storyMigration';
@@ -18,6 +19,9 @@ const KEYS = {
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
 };
 
+const SERVEUR_WEB_ELYNDOR = 'https://gzy9xft10gb3me-8000.proxy.runpod.net/v1';
+const MODELE_WEB_ELYNDOR = 'TheDrummer/Behemoth-X-123B-v2.1-GGUF:Q4_K_M';
+
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
@@ -29,7 +33,16 @@ const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS
 
 export async function getSettings(): Promise<AppSettings> {
   const settings = await reglages.lire();
-  return publierReglages(settings);
+  const effectifs: AppSettings = Platform.OS === 'web'
+    ? {
+        ...settings,
+        moteurInference: 'serveur',
+        serveurLocalUrl: SERVEUR_WEB_ELYNDOR,
+        serveurLocalModele: MODELE_WEB_ELYNDOR,
+        serveurLocalApiKey: '',
+      }
+    : settings;
+  return publierReglages(effectifs);
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
