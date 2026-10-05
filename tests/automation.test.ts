@@ -40,7 +40,7 @@ test('les capacités imposent Elyndor Cloud même avec d’anciens réglages Ope
     genererImagesActive: true,
   }, { plateforme: 'web' });
 
-  assert.equal(caps.fournisseur, 'serveur');
+  assert.equal(caps.fournisseur, 'elyndor-cloud');
   assert.equal(caps.narration, true);
   assert.equal(caps.embeddings, false);
   assert.equal(caps.images, false);
@@ -62,7 +62,7 @@ test('les anciens réglages Infermatic ou serveur local ne changent aucune capac
     genererImagesActive: true,
   }, { plateforme: 'native' });
 
-  assert.equal(caps.fournisseur, 'serveur');
+  assert.equal(caps.fournisseur, 'elyndor-cloud');
   assert.equal(caps.narration, true);
   assert.equal(caps.traduction, true);
   assert.equal(caps.embeddings, false);
