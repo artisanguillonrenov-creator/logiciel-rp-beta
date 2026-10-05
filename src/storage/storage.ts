@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppSettings, Persona, Plugin, StoryState } from '../types';
 import { migrerHistoire } from './storyMigration';
@@ -10,6 +9,7 @@ import { publierReglages } from '../automation/settingsStore';
 import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
+import { reglagesSontElyndorCloud, verrouillerSurElyndorCloud } from '../engine/elyndorCloud';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -17,49 +17,37 @@ const KEYS = {
   personas: '@rp_beta/personas',
   plugins: '@rp_beta/plugins',
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
-  correctionAncienRunpodV3: '@rp_beta/correction_ancien_runpod_v3',
 };
 
-const DEFAULT_SETTINGS: AppSettings = {
+const DEFAULT_SETTINGS: AppSettings = verrouillerSurElyndorCloud({
   openRouterApiKey: '',
-  model: 'anthropic/claude-sonnet-4.5',
-  moteurInference: 'openrouter',
+  model: '',
   profilContenu: 'grand_public',
-};
+});
 
 const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS);
 
 export async function getSettings(): Promise<AppSettings> {
-  let settings = await reglages.lire();
+  const settingsLus = await reglages.lire();
+  const settings = verrouillerSurElyndorCloud(settingsLus);
 
-  // Correction unique de la mauvaise migration RunPod V2 : elle avait
-  // enregistré le proxy Jupyter (port 8888) dans les champs réservés au
-  // « Serveur local ». On ne touche qu'à cette URL précise afin de ne jamais
-  // effacer une vraie configuration LM Studio/Ollama de l'utilisateur.
-  if (Platform.OS !== 'web') {
-    const correctionFaite = await AsyncStorage.getItem(KEYS.correctionAncienRunpodV3);
-    if (correctionFaite !== '1') {
-      const ancienneUrl = settings.serveurLocalUrl ?? '';
-      if (ancienneUrl.includes('gzy9xft10gb3me-8888.proxy.runpod.net')) {
-        settings = {
-          ...settings,
-          moteurInference: 'openrouter',
-          serveurLocalUrl: undefined,
-          serveurLocalModele: undefined,
-          serveurLocalApiKey: undefined,
-        };
-        await reglages.enregistrer(settings);
-      }
-      await AsyncStorage.setItem(KEYS.correctionAncienRunpodV3, '1');
-    }
+  // Migration silencieuse des installations existantes : dès la première
+  // lecture après mise à jour, les anciennes clés et anciennes cibles sont
+  // retirées du coffre et la connexion unique Elyndor Cloud devient canonique.
+  if (!reglagesSontElyndorCloud(settingsLus)
+    || settingsLus.embeddingsApiKey
+    || settingsLus.genererImagesActive
+    || settingsLus.conserverClesWeb) {
+    await reglages.enregistrer(settings);
   }
 
   return publierReglages(settings);
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  await reglages.enregistrer(settings);
-  publierReglages(settings);
+  const normalises = verrouillerSurElyndorCloud(settings);
+  await reglages.enregistrer(normalises);
+  publierReglages(normalises);
 }
 
 const histoires = creerDepotHistoires(AsyncStorage, stockageHistoires, migrerHistoire);
