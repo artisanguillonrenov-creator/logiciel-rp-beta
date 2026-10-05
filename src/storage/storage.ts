@@ -10,6 +10,7 @@ import { publierReglages } from '../automation/settingsStore';
 import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
+import { chargerConfigurationRuntimeElyndor } from '../cloud/runtimeConfig';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -17,10 +18,8 @@ const KEYS = {
   personas: '@rp_beta/personas',
   plugins: '@rp_beta/plugins',
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
+  runtimeBehemothV1: '@rp_beta/runtime_behemoth_v1',
 };
-
-const SERVEUR_WEB_ELYNDOR = 'https://gzy9xft10gb3me-8000.proxy.runpod.net/v1';
-const MODELE_WEB_ELYNDOR = 'TheDrummer/Behemoth-X-123B-v2.1-GGUF:Q4_K_M';
 
 const DEFAULT_SETTINGS: AppSettings = {
   openRouterApiKey: '',
@@ -32,17 +31,32 @@ const DEFAULT_SETTINGS: AppSettings = {
 const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS);
 
 export async function getSettings(): Promise<AppSettings> {
-  const settings = await reglages.lire();
-  const effectifs: AppSettings = Platform.OS === 'web'
-    ? {
-        ...settings,
-        moteurInference: 'serveur',
-        serveurLocalUrl: SERVEUR_WEB_ELYNDOR,
-        serveurLocalModele: MODELE_WEB_ELYNDOR,
-        serveurLocalApiKey: '',
+  let settings = await reglages.lire();
+
+  // Android/iOS : au premier lancement de cette version, récupère une seule
+  // fois la configuration privée de l'utilisateur depuis Supabase puis la
+  // range via le coffre de clés existant. Une mise à jour APK conserve donc
+  // les histoires tout en basculant automatiquement sur Behemoth, sans écran
+  // de réglage à remplir. Le web n'est volontairement pas concerné.
+  if (Platform.OS !== 'web') {
+    const migrationFaite = await AsyncStorage.getItem(KEYS.runtimeBehemothV1);
+    if (migrationFaite !== '1') {
+      const runtime = await chargerConfigurationRuntimeElyndor();
+      if (runtime) {
+        settings = {
+          ...settings,
+          moteurInference: 'serveur',
+          serveurLocalUrl: runtime.runpodUrl,
+          serveurLocalModele: runtime.modele,
+          serveurLocalApiKey: runtime.apiKey,
+        };
+        await reglages.enregistrer(settings);
+        await AsyncStorage.setItem(KEYS.runtimeBehemothV1, '1');
       }
-    : settings;
-  return publierReglages(effectifs);
+    }
+  }
+
+  return publierReglages(settings);
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
