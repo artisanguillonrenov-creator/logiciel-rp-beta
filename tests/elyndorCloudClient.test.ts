@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  analyserCorpsReponse,
   appellerModele,
   configurationLLM,
 } from '../src/engine/elyndorCloudClient';
@@ -116,5 +117,42 @@ test('un service d’embeddings injoignable lève une erreur, ce qui déclenche 
     await assert.rejects(obtenirEmbeddings(['x'], anciensReglages), /502/);
   } finally {
     globalThis.fetch = fetchOriginal;
+  }
+});
+
+test('une réponse en flux SSE est recomposée : contenu, finish_reason et usage', async () => {
+  const flux = [
+    'data: {"choices":[{"delta":{"role":"assistant"},"finish_reason":null}]}',
+    '',
+    'data: {"choices":[{"delta":{"content":"La pluie "},"finish_reason":null}]}',
+    'data: {"choices":[{"delta":{"content":"tombe sur"},"finish_reason":null}]}',
+    'data: {"choices":[{"delta":{},"finish_reason":"length"}]}',
+    'data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":5,"total_tokens":17}}',
+    'data: [DONE]',
+  ].join('\n');
+  const data = analyserCorpsReponse(flux);
+  assert.equal(data.choices[0].message.content, 'La pluie tombe sur');
+  assert.equal(data.choices[0].finish_reason, 'length');
+  assert.equal(data.usage.total_tokens, 17);
+
+  // Réponse JSON classique (serveur sans streaming) : inchangée.
+  assert.equal(analyserCorpsReponse('{"choices":[{"message":{"content":"ok"}}]}').choices[0].message.content, 'ok');
+  // Erreur transmise dans le flux.
+  assert.throws(() => analyserCorpsReponse('data: {"error":{"message":"context overflow"}}'), /context overflow/);
+});
+
+test('la narration est demandée en streaming, les appels à outils non', async () => {
+  const corps: any[] = [];
+  globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+    corps.push(JSON.parse(String(init?.body)));
+    return new Response('data: {"choices":[{"delta":{"content":"Bonjour."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n', { status: 200 });
+  }) as typeof fetch;
+  try {
+    const texte = await appellerModele({ ...configurationLLM(anciensReglages), messages: [{ role: 'user', content: 'x' }] });
+    assert.equal(texte, 'Bonjour.');
+    assert.equal(corps[0].stream, true);
+    assert.deepEqual(corps[0].stream_options, { include_usage: true });
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
