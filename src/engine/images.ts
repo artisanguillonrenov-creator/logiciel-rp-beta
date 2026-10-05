@@ -1,5 +1,5 @@
 import { Image } from 'react-native';
-import type { EntreeLoreEmergent, StoryState } from '../types';
+import type { EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
 import { obtenirPortrait } from '../data/portraits';
@@ -10,7 +10,13 @@ import {
   imagesElyndorCloudDisponibles,
   type GenerateurImage,
 } from './elyndorCloudImages';
-import { STYLE_PORTRAIT_ELYNDOR, formaterPromptImage, negatifAplati, type PromptImageStructure } from './visualBible';
+import {
+  STYLE_PORTRAIT_ELYNDOR,
+  construirePromptSdxl,
+  formaterPromptImage,
+  negatifAplati,
+  type PromptImageStructure,
+} from './visualBible';
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
@@ -110,17 +116,27 @@ export async function collecterReferencesScene(
   return ordonnerReferences(candidats, MAX_REFERENCES_IMAGE);
 }
 
+// Lustify SDXL sait produire du contenu explicite : hors profil Adulte, il
+// est exclu par le prompt négatif, en plus du filtrage du texte en amont.
+const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
+
+function negatifPourProfil(profil: ProfilContenu | undefined): string {
+  return profil === 'adulte' ? negatifAplati() : `${negatifAplati()}, ${NEGATIF_GRAND_PUBLIC}`;
+}
+
 /** Prompt final + génération 16:9 d'une scène. */
 export async function genererImageScene(
   structure: PromptImageStructure,
   references: readonly ReferenceVisuelle[],
+  profil?: ProfilContenu,
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
   }
   return generateurCourant({
     prompt: formaterPromptImage(structure, references),
-    negatif: negatifAplati(),
+    promptCourt: construirePromptSdxl(structure),
+    negatif: negatifPourProfil(profil),
     references: references.map((ref) => ref.uri),
     format: '16:9',
   });
@@ -143,30 +159,38 @@ export function construirePromptAvatarJoueur(story: StoryState): string {
   );
 }
 
-async function genererPortrait(prompt: string, references: (string | null)[]): Promise<string> {
+async function genererPortrait(
+  prompt: string,
+  references: (string | null)[],
+  profil?: ProfilContenu,
+): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
   }
   return generateurCourant({
     prompt,
-    negatif: negatifAplati(),
+    negatif: negatifPourProfil(profil),
     references: references.filter((r): r is string => !!r),
     format: '3:4',
   });
 }
 
 /** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
-export async function obtenirOuGenererAvatarPnj(story: StoryState, pnj: EntreeLoreEmergent): Promise<string> {
+export async function obtenirOuGenererAvatarPnj(
+  story: StoryState,
+  pnj: EntreeLoreEmergent,
+  profil?: ProfilContenu,
+): Promise<string> {
   const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
-  const dataUrl = await genererPortrait(construirePromptAvatarPnj(pnj), []);
+  const dataUrl = await genererPortrait(construirePromptAvatarPnj(pnj), [], profil);
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
 }
 
-export async function obtenirOuGenererAvatarJoueur(story: StoryState): Promise<string> {
+export async function obtenirOuGenererAvatarJoueur(story: StoryState, profil?: ProfilContenu): Promise<string> {
   const existant = await obtenirAvatarPnj(story.meta.id, ID_ASSET_JOUEUR);
   if (existant) return existant;
   const portrait = await obtenirPortraitReferenceJoueur(story);
-  const dataUrl = await genererPortrait(construirePromptAvatarJoueur(story), [portrait]);
+  const dataUrl = await genererPortrait(construirePromptAvatarJoueur(story), [portrait], profil);
   return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);
 }

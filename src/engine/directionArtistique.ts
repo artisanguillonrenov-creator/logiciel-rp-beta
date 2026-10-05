@@ -46,6 +46,7 @@ Règles :
 - "changementsVisuels" : uniquement les changements DURABLES survenus dans les messages récents (tenue, armure, armes visibles, accessoires, coiffure, blessures, cicatrices, sang, poussière, boue, propreté, transformations, objets portés ; pour le décor : lieu, type de lieu, architecture, disposition, heure, météo, lumière, sources lumineuses, dégâts, incendies, portes ouvertes/fermées, objets importants, mobilier, traces). Chaque changement cite dans "evenement" la phrase exacte du récit qui l'établit. Sans citation, n'ajoute pas le changement.
 - Choisis le profil de cadrage adapté : dialogue, combat, tension, decouverte, groupe, interieur ou paysage.
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
+- "promptSdxl" : la MÊME image résumée EN ANGLAIS pour un modèle SDXL, en étiquettes courtes séparées par des virgules, 60 mots maximum, dans cet ordre : type de plan et angle, nombre de personnages, puis pour chacun son apparence physique précise (race, carnation, cheveux, tenue, blessures, arme), l'action, le décor, la lumière, la météo. Aucun nom propre : SDXL ne connaît pas les personnages.
 
 Champs autorisés pour "champ" :
 - personnage : tenue, armure, coiffure, proprete, armesVisibles, accessoires, blessures, cicatrices, salissures, transformations, objetsPortes
@@ -61,6 +62,7 @@ Réponds UNIQUEMENT avec ce JSON strict :
 "camera":{"typePlan":"","angle":"","position":"","profondeur":"","composition":""},
 "lumiere":{"source":"","direction":"","intensite":"","heure":"","meteo":""},
 "ambiance":{"tension":"","emotion":"","rendu":""},
+"promptSdxl":"low angle medium shot, 1 man, ...",
 "changementsVisuels":[{"cible":"personnage|decor","nom":"","champ":"","operation":"definir|ajouter|retirer","valeur":"","evenement":"citation exacte"}]}`;
 
 function texteSur(valeur: unknown, max = 400): string {
@@ -258,6 +260,7 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
       emotion: texteSur(ambiance.emotion, 200),
       rendu: texteSur(ambiance.rendu, 200),
     },
+    promptSdxl: texteSur(brut.promptSdxl, 600) || undefined,
   };
 
   const changements: ChangementVisuel[] = (Array.isArray(brut.changementsVisuels) ? brut.changementsVisuels : [])

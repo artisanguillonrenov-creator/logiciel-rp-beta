@@ -17,6 +17,7 @@ import {
   SECTIONS_PROMPT_IMAGE,
   appliquerModeRegeneration,
   consoliderAvecEtatVisuel,
+  construirePromptSdxl,
   formaterPromptImage,
   structureDeRepli,
   personnageSceneVide,
@@ -30,6 +31,7 @@ import {
   DIMENSIONS_FORMAT,
   construireCorpsRequeteImage,
   extraireImageReponse,
+  imagesElyndorCloudDisponibles,
 } from '../src/engine/elyndorCloudImages';
 import { conserverEtatVisuelRecent, serialiserHistoire } from '../src/storage/storySerialization';
 import { listerIdsPnjVisuels } from '../src/automation/visualPlanning';
@@ -337,9 +339,30 @@ test('une sauvegarde de l’écran ne peut pas écraser un état visuel plus ré
   assert.equal(etatVisuelLePlusRecent({ ...etatVisuelVide(), sequence: 5 }, { ...etatVisuelVide(), sequence: 3 })?.sequence, 5);
 });
 
-test('sans modèle image Elyndor Cloud publié, images et avatars restent désactivés', () => {
+test('images et avatars suivent uniquement la publication du modèle image Elyndor Cloud', () => {
   const caps = calculerCapacites({ openRouterApiKey: '', model: 'x', profilContenu: 'grand_public' });
-  assert.equal(caps.images, false);
-  assert.equal(caps.avatars, false);
-  assert.match(caps.raisons.images ?? '', /Elyndor Cloud/);
+  assert.equal(caps.images, imagesElyndorCloudDisponibles());
+  assert.equal(caps.avatars, caps.images);
+  if (!caps.images) assert.match(caps.raisons.images ?? '', /Elyndor Cloud/);
+  else assert.equal(caps.raisons.images, undefined);
+});
+
+test('la requête porte le prompt court anglais et une régénération ne touche qu’à la caméra', () => {
+  const structure = {
+    ...structureDeRepli({ profil: 'combat', personnages: [personnageSceneVide('William')], texteScene: 'Combat.', lieu: 'Taverne' }),
+    promptSdxl: 'low angle medium shot, 1 man, black leather coat, sword',
+  };
+  const court = construirePromptSdxl(structure) ?? '';
+  assert.match(court, /^low angle medium shot, 1 man/);
+  assert.match(court, /cinematic film still/);
+  assert.equal(construirePromptSdxl({ ...structure, promptSdxl: undefined }), undefined);
+
+  const angle = appliquerModeRegeneration(structure, 'autre-angle', 1);
+  assert.equal(angle.promptSdxl, structure.promptSdxl);
+  assert.ok(angle.indiceCameraSdxl);
+  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`${angle.indiceCameraSdxl}, low angle medium shot`));
+
+  const corps = construireCorpsRequeteImage({ prompt: 'p', promptCourt: court, references: [], format: '16:9' }, 'lustify-sdxl-v4');
+  assert.equal(corps.prompt_sdxl, court);
+  assert.equal(corps.reference_images, undefined);
 });

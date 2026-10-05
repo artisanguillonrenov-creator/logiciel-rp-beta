@@ -194,6 +194,14 @@ export interface PromptImageStructure {
   camera: CameraScene;
   lumiere: { source: string; direction: string; intensite: string; heure: string; meteo: string };
   ambiance: { tension: string; emotion: string; rendu: string };
+  /**
+   * Version courte en anglais (étiquettes séparées par des virgules) pour les
+   * modèles à encodeur CLIP comme SDXL, limités à 77 jetons. Rédigée par le
+   * directeur artistique à partir du même canon ; absente en repli local.
+   */
+  promptSdxl?: string;
+  /** Indication de caméra en anglais posée par une régénération ciblée. */
+  indiceCameraSdxl?: string;
 }
 
 export const SECTIONS_PROMPT_IMAGE = [
@@ -277,6 +285,21 @@ function completerDecor(decor: PromptImageStructure['decor'], persistant: EtatVi
   };
 }
 
+const INDICES_CAMERA_ANGLAIS: Record<'autre-cadrage' | 'autre-angle' | 'autre-composition', string[]> = {
+  'autre-cadrage': ['close-up shot', 'wide establishing shot', 'medium shot', 'cowboy shot'],
+  'autre-angle': ['low angle shot', 'high angle shot', 'dutch angle', 'side view'],
+  'autre-composition': ['off-center composition', 'strong foreground framing', 'symmetrical composition', 'rule of thirds'],
+};
+
+const STYLE_SDXL_ELYNDOR = 'cinematic film still, dark fantasy, dramatic lighting, deep shadows, rich colors, painterly texture, highly detailed';
+
+/** Prompt court anglais envoyé aux modèles CLIP ; undefined s'il n'existe pas. */
+export function construirePromptSdxl(structure: PromptImageStructure): string | undefined {
+  const base = structure.promptSdxl?.trim();
+  if (!base) return undefined;
+  return [structure.indiceCameraSdxl, base, STYLE_SDXL_ELYNDOR].filter(Boolean).join(', ');
+}
+
 /** Variante de mise en scène pour une régénération : le canon reste identique. */
 export function appliquerModeRegeneration(
   structure: PromptImageStructure,
@@ -290,11 +313,12 @@ export function appliquerModeRegeneration(
   else if (mode === 'autre-angle') camera.angle = choisir(profil.anglesAlternatifs);
   else if (mode === 'autre-composition') camera.composition = choisir(profil.compositionsAlternatives);
   else if (mode !== 'regenerer') return structure;
+  const indiceCameraSdxl = mode === 'regenerer' ? structure.indiceCameraSdxl : choisir(INDICES_CAMERA_ANGLAIS[mode]);
   const consigne = 'même moment narratif, mêmes personnages, mêmes apparences, mêmes vêtements, mêmes blessures, même lieu, mêmes objets : seule la mise en scène change';
   const aConserver = structure.continuite.aConserver.includes(consigne)
     ? structure.continuite.aConserver
     : [...structure.continuite.aConserver, consigne];
-  return { ...structure, camera, continuite: { ...structure.continuite, aConserver } };
+  return { ...structure, camera, indiceCameraSdxl, continuite: { ...structure.continuite, aConserver } };
 }
 
 /**

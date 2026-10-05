@@ -56,16 +56,16 @@ function verifierCapaciteImages(settings: AppSettings): void {
 
 async function genererAvatarSansCache(
   story: StoryState,
-  _settings: AppSettings,
+  settings: AppSettings,
   assetId: string,
 ): Promise<string> {
   if (assetId === ID_AVATAR_JOUEUR_VISUEL) {
-    return obtenirOuGenererAvatarJoueur(story);
+    return obtenirOuGenererAvatarJoueur(story, settings.profilContenu);
   }
 
   const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
-  return obtenirOuGenererAvatarPnj(story, pnj);
+  return obtenirOuGenererAvatarPnj(story, pnj, settings.profilContenu);
 }
 
 async function genererAvatar(
@@ -176,7 +176,7 @@ async function genererScene(
   }
 
   const references = await collecterReferencesScene(story, scene.personnagesVisibles, precedentes);
-  const dataUrl = await genererImageScene(scene.structure, references);
+  const dataUrl = await genererImageScene(scene.structure, references, settings.profilContenu);
 
   const { scenes } = ajouterSceneIllustree(etat.scenesIllustrees, scene);
   const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl, scenes.map((s) => s.revision));

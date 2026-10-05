@@ -8,8 +8,15 @@ import type { AppSettings } from '../types';
  * une seule fois ici afin d'éviter les divergences entre les écrans et le
  * moteur narratif.
  */
-export const ELYNDOR_CLOUD_URL = 'https://gzy9xft10gb3me-8000.proxy.runpod.net/v1';
-export const ELYNDOR_CLOUD_MODELE = 'TheDrummer/Behemoth-X-123B-v2.1-GGUF:Q4_K_M';
+/**
+ * Pod Runpod (GPU A40) qui sert la narration (port 8000, llama.cpp +
+ * Anubis 70B v1.2 Q3_K_M) et les images (port 7860, Lustify SDXL v4).
+ * Installation reproductible : infra/runpod/.
+ */
+export const ELYNDOR_CLOUD_POD = 'aaled19oswvq6j';
+export const ELYNDOR_CLOUD_URL = `https://${ELYNDOR_CLOUD_POD}-8000.proxy.runpod.net/v1`;
+/** Alias exposé par llama-server (--alias). */
+export const ELYNDOR_CLOUD_MODELE = 'anubis-70b-v1.2';
 
 /**
  * Normalise aussi les anciennes sauvegardes. Les anciens secrets sont vidés :
@@ -33,8 +40,8 @@ export function verrouillerSurElyndorCloud(settings: AppSettings): AppSettings {
     serveurLocalUrl: ELYNDOR_CLOUD_URL,
     serveurLocalModele: ELYNDOR_CLOUD_MODELE,
     serveurLocalApiKey: undefined,
-    // Le générateur d'images existant dépend d'OpenRouter. Tant qu'Elyndor
-    // Cloud n'expose pas son propre endpoint image, il doit rester désactivé.
+    // Réglages hérités de l'ancien générateur d'images tiers : jamais relus.
+    // Les images dépendent uniquement du pod Elyndor Cloud (elyndorCloudImages.ts).
     genererImagesActive: false,
     modeleImagesGratuit: false,
   };

@@ -1,22 +1,23 @@
-import { ELYNDOR_CLOUD_URL } from './elyndorCloud';
+import { ELYNDOR_CLOUD_POD } from './elyndorCloud';
 
 /**
  * Générateur d'images Elyndor Cloud.
  *
  * Comme pour la narration, aucun fournisseur tiers n'est configurable :
- * le modèle image sera servi par Elyndor Cloud. Tant que
- * ELYNDOR_CLOUD_MODELE_IMAGE vaut null, l'endpoint n'est pas publié et la
- * capacité `images` reste désactivée (voir automation/capabilities.ts).
+ * Lustify SDXL v4 est servi par le pod Elyndor Cloud (infra/runpod/
+ * image_server.py, port 7860). Mettre ELYNDOR_CLOUD_MODELE_IMAGE à null
+ * désactive la capacité `images` (voir automation/capabilities.ts).
  *
- * Le contrat de requête ci-dessous (OpenAI-compatible `/images/generations`,
- * étendu par `aspect_ratio`, `negative_prompt` et `reference_images`) est le
- * contrat cible ; il sera aligné sur l'API réelle du pod à sa mise en ligne.
+ * Contrat : OpenAI-compatible `/images/generations`, étendu par
+ * `aspect_ratio`, `negative_prompt`, `reference_images` et `prompt_sdxl`
+ * (prompt court en anglais, prioritaire : le CLIP de SDXL est limité à 77
+ * jetons et comprend mal le français).
  * Toute la logique de continuité (prompt, références, état visuel) reste
  * indépendante de ce module : un autre backend (serveur GPU, modèle local…)
  * n'aura qu'à implémenter `GenerateurImage`.
  */
-export const ELYNDOR_CLOUD_IMAGES_URL = ELYNDOR_CLOUD_URL;
-export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = null;
+export const ELYNDOR_CLOUD_IMAGES_URL = `https://${ELYNDOR_CLOUD_POD}-7860.proxy.runpod.net/v1`;
+export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'lustify-sdxl-v4';
 
 /** Limite du nombre d'images de référence envoyées par requête. */
 export const MAX_REFERENCES_IMAGE = 6;
@@ -32,6 +33,8 @@ export const DIMENSIONS_FORMAT: Record<FormatImage, { width: number; height: num
 
 export interface RequeteImage {
   prompt: string;
+  /** Version courte en anglais pour les modèles à encodeur CLIP (SDXL). */
+  promptCourt?: string;
   negatif?: string;
   /** Data URLs, déjà triées par priorité. */
   references: string[];
@@ -57,6 +60,7 @@ export function construireCorpsRequeteImage(requete: RequeteImage, modele: strin
   return {
     model: modele,
     prompt: requete.prompt,
+    ...(requete.promptCourt ? { prompt_sdxl: requete.promptCourt } : {}),
     ...(requete.negatif ? { negative_prompt: requete.negatif } : {}),
     n: 1,
     size: `${width}x${height}`,
