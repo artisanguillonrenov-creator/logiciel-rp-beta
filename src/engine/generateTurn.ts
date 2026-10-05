@@ -138,6 +138,13 @@ interface SelectionLore {
   debugLore: DebugLore;
 }
 
+/**
+ * Métamoteurs texte injectés dans le prompt : désactivés temporairement,
+ * leur logique est codée dans l'application (à valider avant de retirer
+ * définitivement la version texte). Vaut pour la voie sémantique comme lexicale.
+ */
+const METAMOTEURS_DANS_LE_PROMPT = false;
+
 export async function calculerSelectionLore(
   story: StoryState,
   messageJoueur: string,
@@ -209,11 +216,12 @@ export async function calculerSelectionLore(
   if (!embeddingsDisponibles(appSettings)) return selectionLexicale();
 
   try {
-    const [vecteursMetamoteurs, vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
-      assurerEmbeddings(
-        metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })),
-        appSettings,
-      ),
+    // Métamoteurs volontairement inactifs dans le prompt : ils sont désormais
+    // codés dans l'application et seront retirés du texte une fois validés.
+    const vecteursMetamoteurs = METAMOTEURS_DANS_LE_PROMPT
+      ? await assurerEmbeddings(metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })), appSettings)
+      : {};
+    const [vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
         appSettings,
@@ -222,11 +230,9 @@ export async function calculerSelectionLore(
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
-    const metamoteursSelectionnes = selectionnerMetamoteursSemantique(
-      metamoteursDisponibles,
-      vecteurRequete,
-      vecteursMetamoteurs,
-    );
+    const metamoteursSelectionnes = METAMOTEURS_DANS_LE_PROMPT
+      ? selectionnerMetamoteursSemantique(metamoteursDisponibles, vecteurRequete, vecteursMetamoteurs)
+      : [];
     const loreElyndor = prioriserLoreCanon(
       texteRequete,
       selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),

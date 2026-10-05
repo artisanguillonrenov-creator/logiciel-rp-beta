@@ -48,6 +48,7 @@ Le Kernel, la file de jobs, la déduplication, le contrôle de révision, les é
 - Pod A40 48 Go (`ELYNDOR_CLOUD_POD` dans `src/engine/elyndorCloud.ts`) :
   - narration : llama.cpp + Anubis 70B v1.2 Q3_K_M, port 8000 ;
   - images : Lustify SDXL v4 + IP-Adapter, port 7860.
+  - embeddings : bge-m3 sur CPU, `/v1/embeddings` sur le port 7860. Ils alimentent la recherche sémantique ObjectBox, moteur principal du narrateur ; la recherche lexicale prend le relais si le service ne répond pas.
 - Installation et démarrage reproductibles : `infra/runpod/install.sh` puis `infra/runpod/start.sh`. Le disque conteneur est effacé à chaque arrêt du pod, il faut donc relancer les deux scripts après un redémarrage.
 - **Consigne permanente** : le modèle image ne voit jamais la conversation. Le modèle narratif rédige tout ce qu'il reçoit, en anglais : le `promptSdxl` des scènes (redemandé s'il est omis) et le prompt de chaque portrait.
 - **Références exploitées par le serveur** :

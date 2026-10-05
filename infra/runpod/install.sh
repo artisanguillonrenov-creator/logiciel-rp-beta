@@ -11,7 +11,7 @@ export HF_HUB_ENABLE_HF_TRANSFER=1
 #    fait boucler le résolveur de pip.
 pip install -q -U --prefer-binary --only-binary=tokenizers \
   huggingface_hub hf_transfer diffusers transformers accelerate safetensors fastapi "uvicorn[standard]" pillow
-pip install -q --prefer-binary compel
+pip install -q --prefer-binary compel sentence-transformers
 
 # 2. llama.cpp compilé avec CUDA (serveur OpenAI-compatible).
 if [ ! -x /root/llama.cpp/build/bin/llama-server ]; then
@@ -35,5 +35,9 @@ mkdir -p /root/models/text /root/models/image
     sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors \
     models/image_encoder/config.json models/image_encoder/model.safetensors \
     --local-dir /root/models/ip-adapter
+
+# 5. bge-m3 (embeddings de la recherche sémantique ObjectBox, servi sur CPU).
+[ -f /root/models/bge-m3/config.json ] || \
+  hf download BAAI/bge-m3 --local-dir /root/models/bge-m3 --exclude "onnx/*" "*.onnx*" "imgs/*"
 
 echo "INSTALL_OK"

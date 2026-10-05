@@ -1,5 +1,6 @@
 import type { AppSettings } from '../types';
 import { imagesElyndorCloudDisponibles } from '../engine/elyndorCloudImages';
+import { ELYNDOR_CLOUD_MODELE_EMBEDDINGS } from '../engine/elyndorCloud';
 
 /**
  * L'environnement ne décrit plus que la plateforme d'exécution. Les moteurs
@@ -31,10 +32,13 @@ export function calculerCapacites(
   // Les images suivent le même principe que la narration : un modèle
   // servi par Elyndor Cloud, disponible dès que son endpoint est publié.
   const images = imagesElyndorCloudDisponibles();
+  // Recherche sémantique (ObjectBox) via les embeddings Elyndor Cloud ; la
+  // recherche lexicale reste le relais automatique en cas d'échec réseau.
+  const embeddings = !!ELYNDOR_CLOUD_MODELE_EMBEDDINGS;
   const raisons: AppCapabilities['raisons'] = {
-    embeddings: 'La recherche sémantique distante a été retirée ; Elyndor utilise la recherche lexicale locale.',
     inferenceLocale: 'Le moteur local a été retiré ; Elyndor utilise Elyndor Cloud.',
   };
+  if (!embeddings) raisons.embeddings = 'Embeddings Elyndor Cloud désactivés ; Elyndor utilise la recherche lexicale locale.';
   if (!images) raisons.images = 'Elyndor Cloud n’expose pas encore de génération d’images.';
 
   return {
@@ -43,7 +47,7 @@ export function calculerCapacites(
     // pas une capacité configurable : aucun ancien réglage ne peut désactiver
     // ou détourner le narrateur Cloud.
     narration: true,
-    embeddings: false,
+    embeddings,
     images,
     avatars: images,
     traduction: true,

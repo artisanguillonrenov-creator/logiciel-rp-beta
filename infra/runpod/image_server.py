@@ -14,6 +14,10 @@ français. Sinon le prompt complet est encodé par morceaux via compel.
 chaîne seule vaut « personnage »). Deux IP-Adapter SDXL les exploitent :
 « plus-face » pour le visage du personnage principal, « plus » à faible poids
 pour la continuité du décor, de la lumière et de l'ambiance.
+
+POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
+normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
+laisse la mémoire vidéo à Anubis et à SDXL.
 """
 import base64, io, os, threading, time
 
@@ -30,6 +34,8 @@ MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", "/root/models/image/lustify-v4"
 MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
+EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", "/root/models/bge-m3")
+EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
 IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", "/root/models/ip-adapter")
 POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
 POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
@@ -51,6 +57,18 @@ if IP_ADAPTER:
         torch_dtype=torch.float16,
     )
 VIDE = Image.new("RGB", (224, 224))
+
+# Embeddings : chargés à part, pour qu'un échec ne bloque jamais les images.
+encodeur = None
+try:
+    if os.path.isdir(EMBEDDINGS_DIR):
+        from sentence_transformers import SentenceTransformer
+        torch.set_num_threads(int(os.environ.get("ELYNDOR_EMBEDDINGS_THREADS", "24")))
+        encodeur = SentenceTransformer(EMBEDDINGS_DIR, device="cpu")
+        encodeur.max_seq_length = 512
+except Exception as erreur:  # le service d'images reste disponible
+    print("embeddings indisponibles :", erreur)
+verrou_embeddings = threading.Lock()
 # Anubis occupe l'essentiel du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
 # n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
 pipe.enable_model_cpu_offload()
@@ -119,12 +137,36 @@ def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None]:
 
 @app.get("/v1/models")
 def modeles():
-    return {"object": "list", "data": [{"id": MODELE_ID, "object": "model"}]}
+    donnees = [{"id": MODELE_ID, "object": "model"}]
+    if encodeur is not None:
+        donnees.append({"id": EMBEDDINGS_ID, "object": "model"})
+    return {"object": "list", "data": donnees}
+
+
+class RequeteEmbeddings(BaseModel):
+    model: str | None = None
+    input: str | list[str]
+
+
+@app.post("/v1/embeddings")
+def embeddings(req: RequeteEmbeddings):
+    if encodeur is None:
+        raise HTTPException(503, "embeddings indisponibles")
+    textes = [req.input] if isinstance(req.input, str) else req.input
+    if not textes or len(textes) > 256:
+        raise HTTPException(400, "input : 1 à 256 textes")
+    with verrou_embeddings:
+        vecteurs = encodeur.encode(textes, batch_size=16, normalize_embeddings=True, convert_to_numpy=True)
+    return {
+        "object": "list",
+        "model": EMBEDDINGS_ID,
+        "data": [{"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecteurs)],
+    }
 
 
 @app.get("/health")
 def sante():
-    return {"status": "ok", "ip_adapter": IP_ADAPTER}
+    return {"status": "ok", "ip_adapter": IP_ADAPTER, "embeddings": encodeur is not None}
 
 
 @app.post("/v1/images/generations")

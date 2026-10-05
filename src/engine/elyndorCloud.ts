@@ -17,6 +17,12 @@ export const ELYNDOR_CLOUD_POD = 'aaled19oswvq6j';
 export const ELYNDOR_CLOUD_URL = `https://${ELYNDOR_CLOUD_POD}-8000.proxy.runpod.net/v1`;
 /** Alias exposé par llama-server (--alias). */
 export const ELYNDOR_CLOUD_MODELE = 'anubis-70b-v1.2';
+/**
+ * Embeddings de la recherche sémantique (ObjectBox) : bge-m3, servi par le
+ * même pod que les images (port 7860). null = recherche lexicale seule.
+ */
+export const ELYNDOR_CLOUD_EMBEDDINGS_URL = `https://${ELYNDOR_CLOUD_POD}-7860.proxy.runpod.net/v1`;
+export const ELYNDOR_CLOUD_MODELE_EMBEDDINGS: string | null = 'bge-m3';
 
 /**
  * Normalise aussi les anciennes sauvegardes. Les anciens secrets sont vidés :

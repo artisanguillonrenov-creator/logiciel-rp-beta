@@ -5,6 +5,7 @@ import {
   configurationLLM,
 } from '../src/engine/elyndorCloudClient';
 import {
+  ELYNDOR_CLOUD_EMBEDDINGS_URL,
   ELYNDOR_CLOUD_MODELE,
   ELYNDOR_CLOUD_URL,
 } from '../src/engine/elyndorCloud';
@@ -12,6 +13,7 @@ import {
   cacheEmbeddingsCompatible,
   embeddingsDisponibles,
   identiteEmbeddingsConfiguree,
+  obtenirEmbeddings,
 } from '../src/engine/embeddings';
 
 // Invariant d'architecture : aucun ancien réglage ne doit pouvoir détourner
@@ -72,9 +74,47 @@ test('un appel ignore les anciens fournisseurs et vise uniquement Elyndor Cloud'
   assert.equal(String(requete?.init?.body).includes('serveur-local-interdit'), false);
 });
 
-test('les embeddings distants restent définitivement désactivés', () => {
-  assert.equal(embeddingsDisponibles(anciensReglages), false);
-  assert.equal(identiteEmbeddingsConfiguree(anciensReglages), null);
+test('les embeddings ne passent que par Elyndor Cloud, jamais par un ancien fournisseur', () => {
+  assert.equal(embeddingsDisponibles(anciensReglages), true);
+  assert.equal(identiteEmbeddingsConfiguree(anciensReglages), 'elyndor-cloud:bge-m3');
+  // Un cache OpenRouter/Infermatic d'un autre modèle n'est jamais mélangé aux vecteurs bge-m3.
   assert.equal(cacheEmbeddingsCompatible('openrouter:ancien', anciensReglages), false);
+  assert.equal(cacheEmbeddingsCompatible('elyndor-cloud:bge-m3', anciensReglages), true);
   assert.equal(cacheEmbeddingsCompatible(null, anciensReglages), true);
+});
+
+test('les embeddings sont demandés au pod Elyndor Cloud, par lots, et remis dans l’ordre', async () => {
+  const appels: { url: string; body: any }[] = [];
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    appels.push({ url: String(url), body });
+    // Réponse volontairement dans le désordre : l'index fait foi.
+    const data = body.input.map((_: string, i: number) => ({ index: i, embedding: [i + 1, 0.5] })).reverse();
+    return new Response(JSON.stringify({ data }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const textes = Array.from({ length: 40 }, (_, i) => `texte ${i}`);
+    const resultat = await obtenirEmbeddings(textes, anciensReglages);
+    assert.equal(appels.length, 2);
+    assert.equal(appels[0].url, `${ELYNDOR_CLOUD_EMBEDDINGS_URL}/embeddings`);
+    assert.equal(appels[0].body.model, 'bge-m3');
+    assert.equal(appels[0].body.input.length, 32);
+    assert.equal(resultat.vecteurs.length, 40);
+    assert.deepEqual(resultat.vecteurs[0], [1, 0.5]);
+    assert.deepEqual(resultat.vecteurs[33], [2, 0.5]);
+    assert.equal(resultat.identiteCache, 'elyndor-cloud:bge-m3');
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
+});
+
+test('un service d’embeddings injoignable lève une erreur, ce qui déclenche le relais lexical', async () => {
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('bad gateway', { status: 502 })) as typeof fetch;
+  try {
+    await assert.rejects(obtenirEmbeddings(['x'], anciensReglages), /502/);
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
 });
