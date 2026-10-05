@@ -17,6 +17,7 @@ import torch
 from compel import Compel, ReturnedEmbeddingsType
 from diffusers import EulerAncestralDiscreteScheduler, StableDiffusionXLPipeline
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", "/root/models/image/lustify-v4")
@@ -45,6 +46,9 @@ compel = Compel(
 )
 verrou = threading.Lock()
 app = FastAPI()
+# La version web d'Elyndor (GitHub Pages) appelle ce serveur depuis le
+# navigateur : sans en-têtes CORS, la requête serait bloquée.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 
 
 class Requete(BaseModel):
