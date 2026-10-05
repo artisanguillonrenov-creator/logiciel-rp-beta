@@ -1,0 +1,63 @@
+name: Nettoyage concepteur Cloud ponctuel
+
+on:
+  push:
+    branches:
+      - refactor/elyndor-cloud-native-20261005
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/elyndor-cloud-native-20261005
+      - name: Nettoyer les diagnostics fournisseurs historiques
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'src/screens/DesignerSettingsScreen.tsx';
+          let s = fs.readFileSync(path, 'utf8');
+          function replaceOnce(from, to, label) {
+            if (!s.includes(from)) throw new Error(`Bloc introuvable: ${label}`);
+            s = s.replace(from, to);
+          }
+          replaceOnce(
+            `                {caps.fournisseur === 'local' ? (\n                  <EtatLigne label="Modèle local" ok={caps.inferenceLocale} detail={caps.raisons.inferenceLocale} />\n                ) : null}\n`,
+            `                <EtatLigne label="Fournisseur" ok={caps.narration} detail="Elyndor Cloud" />\n`,
+            'diagnostic local',
+          );
+          replaceOnce(
+            `      setMessageCache('Cache d’embeddings vidé — recalcul complet au prochain tour.');`,
+            `      setMessageCache('Ancien cache vectoriel vidé. La recherche lexicale locale reste active.');`,
+            'message cache',
+          );
+          replaceOnce(
+            `<Text style={styles.titreBloc}>Cache d’embeddings</Text>`,
+            `<Text style={styles.titreBloc}>Ancien cache vectoriel</Text>`,
+            'titre cache',
+          );
+          replaceOnce(
+            `              Efface les vecteurs de lore calculés localement. À utiliser après une modification importante du\n              contenu lorsque vous voulez forcer une reconstruction complète de la sélection sémantique.`,
+            `              Efface les anciens vecteurs conservés par les versions précédentes. Elyndor utilise désormais\n              la recherche lexicale locale ; aucun nouvel embedding distant n’est généré.`,
+            'description cache',
+          );
+          replaceOnce(
+            `titre="Vider le cache d’embeddings"`,
+            `titre="Vider l’ancien cache vectoriel"`,
+            'bouton cache',
+          );
+          fs.writeFileSync(path, s);
+          NODE
+          rm -f .github/workflows/designer-cloud-cleanup-once.yml
+      - name: Committer le nettoyage ciblé
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "cleanup: remove legacy provider diagnostics" || exit 0
+          git push origin HEAD:refactor/elyndor-cloud-native-20261005
