@@ -208,7 +208,29 @@ export function cacheEmbeddingsCompatible(identiteCache: string | null, appSetti
   return identiteCache === null || identitesEmbeddingsCompatibles(appSettings).includes(identiteCache);
 }
 
+type VecteurIndexeObjectBox = number[] & {
+  __elyndorObjectBox?: { type: 'lore' | 'history'; id: string };
+};
+
+type CrochetScoreObjectBox = (
+  type: 'lore' | 'history',
+  id: string,
+  vecteurRequete: number[],
+) => number | undefined;
+
+/**
+ * Sur Android, les vecteurs marqués par embeddingsStore sont classés par
+ * ObjectBox/HNSW. Sur web, dans les tests ou si ObjectBox échoue, ce crochet
+ * est absent et le calcul cosinus historique reste utilisé sans changement.
+ */
 export function similariteCosinus(a: number[], b: number[]): number {
+  const meta = (b as VecteurIndexeObjectBox).__elyndorObjectBox;
+  if (meta) {
+    const racine = globalThis as typeof globalThis & { __elyndorObjectBoxScore?: CrochetScoreObjectBox };
+    const score = racine.__elyndorObjectBoxScore?.(meta.type, meta.id, a);
+    if (typeof score === 'number') return score;
+  }
+
   let produit = 0;
   let normeA = 0;
   let normeB = 0;
