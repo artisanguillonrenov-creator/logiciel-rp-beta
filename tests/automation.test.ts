@@ -60,7 +60,7 @@ test('les anciens réglages Infermatic ou serveur local ne changent aucune capac
     serveurLocalModele: 'ancien-local',
     embeddingsApiKey: 'ancienne-cle-embeddings',
     genererImagesActive: true,
-  }, { plateforme: 'native', modeleLocalPresent: true });
+  }, { plateforme: 'native' });
 
   assert.equal(caps.fournisseur, 'serveur');
   assert.equal(caps.narration, true);
