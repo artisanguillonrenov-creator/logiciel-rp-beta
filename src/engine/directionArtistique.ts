@@ -181,6 +181,11 @@ function extraireJson(sortie: string): Record<string, unknown> | null {
   }
 }
 
+function nomCanonique(story: StoryState, nom: string): string | undefined {
+  if (!nom) return undefined;
+  return resoudrePersonnagesVisibles(story, [nom])[0]?.nom ?? nom;
+}
+
 function profilParDefaut(visibles: readonly unknown[]): ProfilCadrage {
   return visibles.length >= 3 ? 'groupe' : 'dialogue';
 }
@@ -259,7 +264,9 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
     .map(objetSur)
     .map((c) => ({
       cible: (c.cible === 'decor' ? 'decor' : 'personnage') as ChangementVisuel['cible'],
-      nom: texteSur(c.nom, 80) || undefined,
+      // Même résolveur que les personnages visibles : « Sylvana » et
+      // « Sylvana Nocturne » doivent viser la même entrée d'état visuel.
+      nom: nomCanonique(story, texteSur(c.nom, 80)),
       champ: texteSur(c.champ, 40),
       operation: (['definir', 'ajouter', 'retirer'].includes(String(c.operation)) ? c.operation : 'definir') as ChangementVisuel['operation'],
       valeur: texteSur(c.valeur, 160),

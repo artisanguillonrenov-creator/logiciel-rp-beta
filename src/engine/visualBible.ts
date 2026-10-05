@@ -255,9 +255,9 @@ export function consoliderAvecEtatVisuel(
   const lumiere = etat.decor
     ? {
         ...structure.lumiere,
-        heure: structure.lumiere.heure || etat.decor.heure,
-        meteo: structure.lumiere.meteo || etat.decor.meteo,
-        source: structure.lumiere.source || joindre(etat.decor.sourcesLumineuses) || etat.decor.lumiere,
+        heure: etat.decor.heure || structure.lumiere.heure,
+        meteo: etat.decor.meteo || structure.lumiere.meteo,
+        source: joindre(etat.decor.sourcesLumineuses) || etat.decor.lumiere || structure.lumiere.source,
       }
     : structure.lumiere;
   return { ...structure, personnages, decor, lumiere };
@@ -268,8 +268,9 @@ function completerDecor(decor: PromptImageStructure['decor'], persistant: EtatVi
     ...persistant.degats, ...persistant.incendies, ...persistant.ouvertures, ...persistant.traces,
   ]);
   return {
-    lieu: decor.lieu || joindre([persistant.lieu, persistant.typeLieu]),
-    architecture: joindre([decor.architecture || persistant.architecture, persistant.disposition]),
+    // Le canon persistant prime ; le modèle ne complète que l'inconnu.
+    lieu: joindre([persistant.lieu, persistant.typeLieu]) || decor.lieu,
+    architecture: joindre([persistant.architecture || decor.architecture, persistant.disposition]),
     objetsImportants: joindre([decor.objetsImportants, ...persistant.objetsImportants, ...persistant.mobilier, etatDuLieu]),
     premierPlan: decor.premierPlan,
     arrierePlan: decor.arrierePlan,

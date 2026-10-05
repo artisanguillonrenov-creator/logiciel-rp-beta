@@ -213,6 +213,8 @@ test('la direction artistique est validée : visibles explicites, noms canonique
   assert.equal(direction.structure.camera.angle, 'contre-plongée');
   assert.ok(direction.structure.camera.typePlan, 'les champs caméra manquants viennent du profil');
   assert.equal(direction.changements.length, 1);
+  // Nom court canonicalisé : l'état visuel et le prompt visent la même entrée.
+  assert.equal(direction.changements[0].nom, 'Sylvana Nocturne');
 
   const sansProfil = analyserReponseDirection('{"profil":"inconnu","personnagesVisibles":[{"nom":"A"},{"nom":"B"},{"nom":"C"}]}', story);
   assert.equal(sansProfil?.structure.profil, 'groupe');
@@ -266,6 +268,21 @@ test('l’état visuel persistant fait autorité sur la proposition du modèle',
   });
   const consolide = consoliderAvecEtatVisuel(structure, etat);
   assert.equal(consolide.personnages[0].tenue, 'robe de soie noire');
+
+  // Le décor et la lumière persistants priment aussi sur une proposition divergente.
+  const avecDecor = appliquerChangementsVisuels(etat, [
+    { cible: 'decor', champ: 'lieu', operation: 'definir', valeur: 'Taverne du Corbeau', evenement: 'la porte de la taverne claque et reste ouverte' },
+    { cible: 'decor', champ: 'meteo', operation: 'definir', valeur: 'pluie', evenement: 'la porte de la taverne claque et reste ouverte sur la pluie' },
+    { cible: 'decor', champ: 'architecture', operation: 'definir', valeur: 'poutres noircies', evenement: 'la porte de la taverne claque et reste ouverte' },
+  ], textesNarratifsEtablis(story, 0), 2).etat;
+  const divergente = consoliderAvecEtatVisuel({
+    ...structure,
+    decor: { ...structure.decor, lieu: 'Palais de marbre', architecture: 'colonnes dorées' },
+    lumiere: { ...structure.lumiere, meteo: 'grand soleil' },
+  }, avecDecor);
+  assert.equal(divergente.decor.lieu, 'Taverne du Corbeau');
+  assert.equal(divergente.decor.architecture, 'poutres noircies');
+  assert.equal(divergente.lumiere.meteo, 'pluie');
   assert.match(consolide.personnages[0].blessures, /coupure à la joue gauche/);
 });
 
