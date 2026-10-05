@@ -1,9 +1,10 @@
 import type { LoreEntry, Message } from '../types';
+import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, termesSignificatifsLore, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
 
-// Recherche lexicale locale : repli quand aucun fournisseur d'embeddings
-// n'est réellement utilisable. Le repli doit rester suffisamment riche pour
-// conserver un contexte exploitable, sans prétendre remplacer la recherche
-// sémantique.
+// Recherche lexicale locale (reprise de la V13) : repli quand aucun
+// fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
+// serveur local sans clé OpenRouter. Sans elle, le tour partait sans aucun
+// lore ni souvenir ; ici on classe par mots communs, sans appel réseau.
 
 export interface BudgetRecherche {
   maxResultats: number;
@@ -17,11 +18,7 @@ export interface ResultatLexical<T> {
   extrait: string;
 }
 
-// Le précédent plafond à 4 résultats expliquait directement les diagnostics
-// à 5 entrées après ajout d'une ancre canon. Le repli peut désormais retenir
-// jusqu'à 14 fiches pertinentes ; le constructeur de prompt décidera ensuite
-// lesquelles tiennent réellement dans le budget final.
-export const BUDGET_LORE: BudgetRecherche = { maxResultats: 14, maxCaracteres: 5600, maxCaracteresParResultat: 480 };
+export const BUDGET_LORE: BudgetRecherche = { maxResultats: MAX_LORE_CONTEXTUEL, maxCaracteres: 3600, maxCaracteresParResultat: 520 };
 export const BUDGET_HISTORIQUE: BudgetRecherche = { maxResultats: 3, maxCaracteres: 1500, maxCaracteresParResultat: 520 };
 
 const MOTS_VIDES = new Set([
@@ -70,10 +67,7 @@ function extraire(texte: string, termes: string[], max: number): string {
     const i = normalise.indexOf(terme);
     if (i >= 0 && (premier < 0 || i < premier)) premier = i;
   }
-  const depart = Math.min(
-    premier < 0 ? 0 : Math.max(0, premier - Math.floor(max * 0.35)),
-    Math.max(0, texte.length - max),
-  );
+  const depart = Math.min(premier < 0 ? 0 : Math.max(0, premier - Math.floor(max * 0.35)), Math.max(0, texte.length - max));
   return `${depart > 0 ? '…' : ''}${texte.slice(depart, depart + max).trim()}${depart + max < texte.length ? '…' : ''}`;
 }
 
@@ -89,7 +83,8 @@ export interface OptionsClassement<T> {
 
 /**
  * Score = part des termes de la requête présents (×5) + fréquence amortie
- * + bonus titre + bonus expression exacte + léger bonus de fraîcheur.
+ * + bonus titre + bonus expression exacte + léger bonus de fraîcheur. Les
+ * résultats sont ensuite plafonnés en nombre et en caractères.
  */
 export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexical<T>[] {
   const { items, texteDe, titreDe, dateDe, budget } = options;
@@ -131,25 +126,71 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   let total = 0;
   for (const note of notes.sort((a, b) => b.score - a.score)) {
     if (note.score <= 0 || retenus.length >= budget.maxResultats) break;
-    const restant = budget.maxCaracteres - total;
-    if (restant <= 0) break;
-    const extrait = note.extrait.slice(0, restant);
-    if (!extrait) continue;
+    if (retenus.length && total + note.extrait.length + 2 > budget.maxCaracteres) break;
+    const extrait = note.extrait.slice(0, Math.max(0, budget.maxCaracteres - total));
+    if (!extrait) break;
     retenus.push({ ...note, extrait });
     total += extrait.length + 2;
   }
   return retenus;
 }
 
-/** Fiches de lore les plus proches, réduites à leur extrait pertinent. */
+/** Fiches de lore classées avec le même score hybride que le mode embeddings. */
 export function rechercherLoreLexical(entrees: LoreEntry[], requete: string): LoreEntry[] {
-  return classerLexical({
-    requete,
-    items: entrees,
-    titreDe: (e) => e.titre,
-    texteDe: (e) => e.contenu,
-    budget: BUDGET_LORE,
-  }).map((r) => ({ id: r.item.id, titre: r.item.titre, contenu: r.extrait, score: r.score }));
+  const termes = termesSignificatifsLore(requete);
+  const toujoursActives: LoreEntry[] = [];
+  const candidats: { item: LoreEntry; score: number; extrait: string; priority: number }[] = [];
+
+  for (const item of entrees) {
+    const meta = item as LoreEntry & Partial<EntreeLoreScorable> & {
+      motsClesPrimaires?: string[];
+      motsClesSecondaires?: string[];
+      motsClesNegatifs?: string[];
+      priority?: number;
+      constant?: boolean;
+      category?: string;
+      scope?: ScopeLore;
+    };
+    if (meta.constant || item.titre === '[MONDE] Géographie et Races') {
+      toujoursActives.push({ id: item.id, titre: item.titre, contenu: item.contenu });
+      continue;
+    }
+    const details = calculerScoreHybrideLore(
+      {
+        titre: item.titre,
+        contenu: item.contenu,
+        primaryKeys: meta.primaryKeys ?? meta.motsClesPrimaires,
+        secondaryKeys: meta.secondaryKeys ?? meta.motsClesSecondaires,
+        negativeKeys: meta.negativeKeys ?? meta.motsClesNegatifs,
+        priority: meta.priority,
+        category: meta.category,
+        scope: meta.scope ?? infererScopeLore(meta.category),
+        constant: meta.constant,
+      },
+      requete,
+    );
+    if (details.score < SEUIL_LORE_HYBRIDE) continue;
+    candidats.push({
+      item,
+      score: details.score,
+      extrait: extraire(item.contenu, termes, BUDGET_LORE.maxCaracteresParResultat),
+      priority: Number.isFinite(meta.priority) ? Number(meta.priority) : 100,
+    });
+  }
+
+  candidats.sort((a, b) => b.score - a.score || a.priority - b.priority);
+  const retenus: LoreEntry[] = [];
+  let total = 0;
+  for (const note of candidats) {
+    if (retenus.length >= BUDGET_LORE.maxResultats) break;
+    if (retenus.length && total + note.extrait.length + 2 > BUDGET_LORE.maxCaracteres) break;
+    const extrait = note.extrait.slice(0, Math.max(0, BUDGET_LORE.maxCaracteres - total));
+    if (!extrait) break;
+    retenus.push({ id: note.item.id, titre: note.item.titre, contenu: extrait, score: note.score });
+    total += extrait.length + 2;
+  }
+
+  return [...toujoursActives, ...retenus];
 }
 
 /** Messages anciens (hors fenêtre récente) qui partagent le plus de termes avec la scène. */

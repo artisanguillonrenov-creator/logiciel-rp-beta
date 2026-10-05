@@ -1,5 +1,6 @@
 import type { ChatMessage } from './openrouter';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
+import { LORE_CORE } from '../data/loreCore';
 import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
@@ -45,7 +46,7 @@ function coutEnteteEntree(entry: LoreEntry): number {
  * Répartit le budget entre les entrées au lieu de remplir le prompt avec les
  * premières puis d'abandonner silencieusement les suivantes.
  *
- * `garantirToutes` est utilisé pour les 15 anciens métamoteurs et le socle
+ * `garantirToutes` est utilisé pour le contrat narratif V2.1 et le socle
  * canon : chaque entrée reçoit au moins un extrait, quitte à être compactée.
  */
 function formaterEntrees(
@@ -76,7 +77,7 @@ function formaterEntrees(
   const tronquees: string[] = [];
   const excluesBudget: string[] = [];
 
-  for (let i = 0; i < entries.length; i++) {
+  for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
     const enteteEntree = `### ${entry.titre}\n`;
     const restantes = entries.slice(i + 1);
@@ -195,6 +196,8 @@ export interface ContexteConstruction {
   settings: StorySettings;
   resume: string;
   faits: Fact[];
+  // Compatibilité de structure : ce canal transporte désormais le seul
+  // NarrativeContract produit par le Kernel V2.1, jamais les 15 textes legacy.
   metamoteursSelectionnes: LoreEntry[];
   loreElyndor: LoreEntry[];
   messagesRecents: Message[];
@@ -244,6 +247,8 @@ ${IDENTITE_NARRATIVE}
 
 ${REGLES_IMMUABLES}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
 
+${LORE_CORE}
+
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquerSilencieusement(ctx.meta.personnageNom, 180)}
 Description : ${tronquerSilencieusement(ctx.meta.personnageDescription, 750)}
@@ -267,24 +272,27 @@ Narration/action restent hors de ces lignes (entre astérisques si besoin). N'ut
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquerSilencieusement(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
   const disponible = Math.max(0, budget - entete.length);
-  const bMeta = Math.floor(disponible * 0.34);
+  const bContrat = Math.floor(disponible * 0.34);
   const bLoreObligatoire = Math.floor(disponible * 0.18);
   const bLoreOptionnel = Math.floor(disponible * 0.10);
   const bBlocs = Math.floor(disponible * 0.12);
   const bFaits = Math.floor(disponible * 0.08);
   const bResume = Math.floor(disponible * 0.06);
   const bEtat = Math.floor(disponible * 0.07);
-  const bSouvenirs = Math.max(0, disponible - bMeta - bLoreObligatoire - bLoreOptionnel - bBlocs - bFaits - bResume - bEtat);
+  const bSouvenirs = Math.max(0, disponible - bContrat - bLoreObligatoire - bLoreOptionnel - bBlocs - bFaits - bResume - bEtat);
 
   const loreObligatoire = ctx.loreElyndor.filter((e) => e.score === undefined);
   const idsObligatoires = new Set(loreObligatoire.map((e) => e.id));
   const loreOptionnel = ctx.loreElyndor.filter((e) => !idsObligatoires.has(e.id));
 
-  const meta = formaterEntrees(
+  // Depuis la V2.1, ce canal contient un seul contrat compact. L'ancienne
+  // limite de 620 caractères, conçue pour répartir 15 textes de métamoteurs,
+  // tronquait le contrat et supprimait parfois ses contraintes décisives.
+  const contrat = formaterEntrees(
     ctx.metamoteursSelectionnes,
-    'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE',
-    bMeta,
-    { garantirToutes: true, minContenu: 120, maxContenu: 620 },
+    'CONTRAT NARRATIF KERNEL V2.1',
+    bContrat,
+    { garantirToutes: true, minContenu: 240, maxContenu: Math.max(240, bContrat) },
   );
   const loreCanon = formaterEntrees(
     loreObligatoire,
@@ -313,10 +321,9 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquerSilencieusement(ctx.no
   );
   const souvenirs = ctx.souvenirs ? tronquerSilencieusement(ctx.souvenirs, bSouvenirs) : '';
 
-  // Priorité matérielle dans le prompt : règles/en-tête, métamoteurs,
-  // socle canon, faits/état/mémoire, puis lore supplémentaire et souvenirs.
-  // Aucun marqueur technique de troncature n'est envoyé au modèle.
-  const brut = `${entete}${meta.texte}${loreCanon.texte}${faits}${etat}${blocs}${resume}${lorePertinent.texte}${souvenirs}`;
+  // Priorité matérielle : règles + Lore Core garantis, contrat Kernel,
+  // ancres/socle canon, état/mémoire, puis lore secondaire et souvenirs.
+  const brut = `${entete}${contrat.texte}${loreCanon.texte}${faits}${etat}${blocs}${resume}${lorePertinent.texte}${souvenirs}`;
   const prompt = tronquerSilencieusement(brut, budget);
   const promptTronque = prompt.length < brut.length;
 
@@ -326,9 +333,9 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquerSilencieusement(ctx.no
       caracteres: prompt.length,
       budget,
       metamoteursSelectionnes: ctx.metamoteursSelectionnes.length,
-      metamoteursInjectes: meta.injectees,
-      metamoteursTronques: meta.tronquees,
-      metamoteursExclusBudget: meta.excluesBudget,
+      metamoteursInjectes: contrat.injectees,
+      metamoteursTronques: contrat.tronquees,
+      metamoteursExclusBudget: contrat.excluesBudget,
       loreSelectionne: ctx.loreElyndor.length,
       loreInjecte: [...loreCanon.injectees, ...lorePertinent.injectees],
       loreTronque: [...loreCanon.tronquees, ...lorePertinent.tronquees],
