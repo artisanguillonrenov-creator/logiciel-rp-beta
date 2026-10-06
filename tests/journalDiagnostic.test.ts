@@ -69,6 +69,6 @@ test('l’export de diagnostic contient l’histoire, le journal et les versions
   assert.equal(exp.resume.toursAvecDiagnostic, 1);
   assert.equal(exp.resume.imagesJournalisees, 1);
   assert.equal(exp.resume.erreursJournalisees, 1);
-  assert.equal(exp.elyndorCloud.modeleImage, 'big-lust-v16');
+  assert.equal(exp.elyndorCloud.modeleImage, 'lustify-sdxl-v4');
   assert.doesNotMatch(JSON.stringify(exp), /sk-secret|4321/);
 });

@@ -46,8 +46,8 @@ Le Kernel, la file de jobs, la déduplication, le contrôle de révision, les é
 ## Serveur Elyndor Cloud (pod Runpod)
 
 - Pod A40 48 Go (`ELYNDOR_CLOUD_POD` dans `src/engine/elyndorCloud.ts`) :
-  - narration : llama.cpp + Anubis 70B v1.2 Q3_K_M, port 8000 ;
-  - images : Big Lust 1.6 (SDXL, dérivé de Lustify, choisi au comparatif du 6 octobre) + IP-Adapter, port 7860.
+  - narration : llama.cpp + Cydonia 24B v4.3 Q6_K (base Mistral Small, choisi au comparatif des narrateurs du 6 octobre), port 8000 ;
+  - images : Lustify SDXL v4 + IP-Adapter, port 7860.
   - embeddings : bge-m3 sur CPU, `/v1/embeddings` sur le port 7860. Ils alimentent la recherche sémantique ObjectBox, moteur principal du narrateur ; la recherche lexicale prend le relais si le service ne répond pas.
 - Tout est installé une seule fois sur le volume réseau `elyndor-cloud` (monté sur `/workspace`, conservé quand le pod s'arrête) par `infra/runpod/install.sh` : venv, llama.cpp, modèles et scripts sous `/workspace/elyndor`.
 - La commande de démarrage du pod lance `/workspace/elyndor/boot.sh`, qui démarre les serveurs (`start.sh`, ~3 min) puis `watchdog.sh`.

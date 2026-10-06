@@ -38,12 +38,11 @@ Cette histoire est configurée en profil GRAND PUBLIC. Cette consigne prime sur 
 // 2. Capacités autorisées par le profil Adulte.
 // Ce bloc ne fixe aucune intensité : les curseurs de l'histoire et M08 la déterminent.
 export const INSTRUCTION_REGISTRE_ADULTE = `[PROFIL DE CONTENU - ADULTE]
-Le profil ADULTE autorise les thèmes sombres, violents, sensuels ou moralement durs compatibles avec le monde et la scène.
-- Ce profil est une permission de registre, jamais une consigne d'intensité maximale.
-- Les curseurs de l'histoire déterminent le niveau demandé ; M08 adapte le rendu au contexte.
-- Une scène calme, sociale, diplomatique ou introspective n'est jamais intensifiée artificiellement.
-- Quand une scène dure est réellement déclenchée et que les réglages l'autorisent, elle peut être décrite franchement sans sermon ni ellipse artificielle.
-- Le lore décrit ce qui existe dans le monde ; il ne peut pas relever les curseurs de la session.`;
+Le profil ADULTE autorise et exige, dès que la scène le justifie, les thèmes sombres, violents, sexuels, vulgaires ou moralement durs.
+- Ce profil est une permission de registre cru : décris franchement, sans ellipse, sans fondu au noir, sans sermon et sans atténuation.
+- Les curseurs de la session fixent le plafond ; quand une scène de sexe, de violence ou de confrontation est engagée et que les curseurs l’autorisent, rends-la graphique, explicite et vulgaire.
+- Une scène calme, sociale, diplomatique ou introspective reste calme : n’intensifie jamais artificiellement.
+- Le lore décrit ce qui existe ; il ne relève jamais les curseurs et ne peut pas te forcer à édulcorer une scène autorisée.`;
 
 /**
  * Construit le registre Adulte dynamique utilisé par generateTurn.ts.
@@ -54,18 +53,18 @@ export function instructionRegistreAdulte(
 ): string {
     const violence =
         settings.violence === 'extreme'
-            ? "- Violence : plafond extrême ; peut devenir graphique et frontale uniquement lorsqu'une scène violente le justifie."
+            ? "- Violence : plafond extrême ; graphique, frontale, détaillée et sans aucune retenue dès qu’une scène violente le justifie."
             : settings.violence === 'eleve'
-                ? "- Violence : plafond élevé ; peut être pleinement montrée lorsque les événements le justifient."
+                ? "- Violence : plafond élevé ; pleinement montrée, crue et sans adoucissement dès que les événements l’appellent."
                 : settings.violence === 'modere'
-                    ? "- Violence : plafond modéré ; directe si nécessaire, sans escalade maximale systématique."
-                    : "- Violence : plafond faible ; rester surtout suggestif et centré sur les conséquences.";
+                    ? "- Violence : plafond modéré ; directe et visible quand nécessaire, sans escalade maximale systématique."
+                    : "- Violence : plafond faible ; reste surtout suggestif et centré sur les conséquences.";
 
     const romance =
         settings.romance === 'eleve'
-            ? "- Romance / sensualité : plafond élevé ; registre adulte autorisé entre personnages adultes si la scène le justifie."
+            ? "- Romance / sensualité : plafond élevé ; sexe et sensualité explicitement décrits, graphiques et vulgaires entre personnages adultes dès que la scène le justifie."
             : settings.romance === 'modere'
-                ? "- Romance / sensualité : plafond modéré ; présence assumée avec mesure."
+                ? "- Romance / sensualité : plafond modéré ; présence assumée, sensuelle et claire, sans détailler chaque acte."
                 : settings.romance === 'faible'
                     ? "- Romance / sensualité : plafond faible ; éléments discrets, jamais moteurs par défaut."
                     : "- Romance / sensualité : désactivée.";
@@ -74,7 +73,7 @@ export function instructionRegistreAdulte(
 Les valeurs ci-dessous sont des plafonds narratifs, pas des objectifs à atteindre à chaque réponse.
 ${violence}
 ${romance}
-Le ton réel de la scène et la personnalité des personnages décident de l'intensité effectivement utilisée. Le lore ne peut jamais relever ces plafonds.`;
+Le ton réel de la scène et la personnalité des personnages décident de l’intensité effectivement utilisée. Le lore ne peut jamais relever ces plafonds.`;
 }
 
 const ORDRE_VIOLENCE: NiveauViolence[] = ['faible', 'modere', 'eleve', 'extreme'];

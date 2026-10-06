@@ -30,7 +30,8 @@ export interface ProfilRaisonnementModele {
   balisesRaisonnement: string[];
 }
 
-const BALISES_PAR_DEFAUT = ['think', 'analysis'];
+// `thinking` : forme documentée par Cydonia (narrateur Elyndor Cloud).
+const BALISES_PAR_DEFAUT = ['think', 'thinking', 'analysis'];
 
 /**
  * Familles de modèles connues pour raisonner en interne. Motifs, pas des ID

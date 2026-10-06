@@ -7,7 +7,7 @@
 # Disposition :
 #   $ELYNDOR_ROOT/venv       dépendances Python (torch vient de l'image)
 #   $ELYNDOR_ROOT/llama.cpp  serveur de narration compilé avec CUDA
-#   $ELYNDOR_ROOT/models     Anubis, Lustify, IP-Adapter, bge-m3
+#   $ELYNDOR_ROOT/models     Cydonia, Lustify, IP-Adapter, bge-m3
 #   $ELYNDOR_ROOT/app        scripts et serveur d'images (copie de infra/runpod)
 #   $ELYNDOR_ROOT/boot.sh    lancé par la commande de démarrage du pod
 set -euo pipefail
@@ -33,13 +33,14 @@ if [ ! -x "$RACINE/llama.cpp/build/bin/llama-server" ]; then
   cmake --build "$RACINE/llama.cpp/build" --config Release -j "$(nproc)" --target llama-server
 fi
 
-# 3. Modèles : Anubis 70B v1.2 Q3_K_M (tient entièrement dans le GPU à côté
-#    de SDXL) et Big Lust 1.6 (SDXL) au format diffusers.
-[ -f "$RACINE/models/text/TheDrummer_Anubis-70B-v1.2-Q3_K_M.gguf" ] || \
-  "$HF" download bartowski/TheDrummer_Anubis-70B-v1.2-GGUF TheDrummer_Anubis-70B-v1.2-Q3_K_M.gguf \
-    --local-dir "$RACINE/models/text"
-[ -f "$RACINE/models/image/big-lust-v16/model_index.json" ] || \
-  "$HF" download John6666/big-lust-v16-sdxl --local-dir "$RACINE/models/image/big-lust-v16"
+# 3. Modèles : Cydonia 24B v4.3 Q6_K (base Mistral Small, choisi au comparatif
+#    des narrateurs du 6 octobre) et Lustify SDXL v4 au format diffusers.
+if [ ! -f "$RACINE/models/text/Cydonia-24B-v4.3-Q6_K.gguf" ]; then
+  "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q6_K.gguf --local-dir "$RACINE/models/text"
+  mv "$RACINE/models/text/Cydonia-24B-v4zg-Q6_K.gguf" "$RACINE/models/text/Cydonia-24B-v4.3-Q6_K.gguf"
+fi
+[ -f "$RACINE/models/image/lustify-v4/model_index.json" ] || \
+  "$HF" download John6666/lustify-sdxl-nsfwsfw-v4-sdxl --local-dir "$RACINE/models/image/lustify-v4"
 
 # 4. IP-Adapter SDXL (visage + continuité de scène) et son encodeur ViT-H.
 [ -f "$RACINE/models/ip-adapter/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors" ] || \

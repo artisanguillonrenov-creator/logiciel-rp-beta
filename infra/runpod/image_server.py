@@ -1,4 +1,4 @@
-"""Serveur d'images Elyndor Cloud (Big Lust 1.6, SDXL).
+"""Serveur d'images Elyndor Cloud (Lustify SDXL v4).
 
 Contrat attendu par l'app (src/engine/elyndorCloudImages.ts) :
 POST /v1/images/generations
@@ -17,7 +17,7 @@ pour la continuité du décor, de la lumière et de l'ambiance.
 
 POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
 normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
-laisse la mémoire vidéo à Anubis et à SDXL.
+laisse la mémoire vidéo au narrateur et à SDXL.
 """
 import base64, ctypes, gc, hashlib, io, os, pathlib, sqlite3, threading, time
 
@@ -35,12 +35,8 @@ from pydantic import BaseModel
 RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
 # Horodatage de la dernière requête : lu par watchdog.sh pour arrêter le pod inactif.
 ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
-# Big Lust 1.6 (dérivé de Lustify) : choisi au comparatif du 6 octobre, il garde
-# le niveau explicite de Lustify tout en respectant mieux les personnages
-# (peau ébène et oreilles des Elfes Noirs, scènes à deux). Lustify reste sur
-# le volume (models/image/lustify-v4) pour revenir en arrière via ELYNDOR_IMAGE_DIR.
-MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/big-lust-v16"))
-MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "big-lust-v16")
+MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/lustify-v4"))
+MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
 EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
@@ -86,7 +82,7 @@ verrou_embeddings = threading.Lock()
 os.makedirs(os.path.join(RACINE, "cache"), exist_ok=True)
 cache_embeddings = sqlite3.connect(os.path.join(RACINE, "cache", f"embeddings-{EMBEDDINGS_ID}.sqlite"), check_same_thread=False)
 cache_embeddings.execute("CREATE TABLE IF NOT EXISTS vecteurs (cle TEXT PRIMARY KEY, vecteur BLOB NOT NULL)")
-# Anubis occupe l'essentiel du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
+# Le narrateur occupe une grande partie du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
 # n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
 pipe.enable_model_cpu_offload()
 pipe.vae.enable_tiling()

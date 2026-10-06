@@ -10,7 +10,7 @@ import type { AppSettings } from '../types';
  */
 /**
  * Pod Runpod (GPU A40) qui sert la narration (port 8000, llama.cpp +
- * Anubis 70B v1.2 Q3_K_M), les images (port 7860, Big Lust 1.6 SDXL) et les
+ * Cydonia 24B v4.3 Q6_K), les images (port 7860, Lustify SDXL v4) et les
  * embeddings (port 7860, bge-m3). Installé sur le volume réseau
  * `elyndor-cloud` (infra/runpod/) : le pod s'arrête seul après 30 min
  * d'inactivité et redémarre sans réinstallation.
@@ -85,7 +85,7 @@ export function urlServeurImagesElyndorCloud(): string {
 /** Valeur des réglages : marqueur stable, l'adresse réelle dépend du pod courant. */
 export const ELYNDOR_CLOUD_REGLAGE_URL = 'elyndor-cloud';
 /** Alias exposé par llama-server (--alias). */
-export const ELYNDOR_CLOUD_MODELE = 'anubis-70b-v1.2';
+export const ELYNDOR_CLOUD_MODELE = 'cydonia-24b-v4.3';
 /**
  * Embeddings de la recherche sémantique (ObjectBox) : bge-m3, servi par le
  * même pod que les images (port 7860). null = recherche lexicale seule.
