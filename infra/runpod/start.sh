@@ -15,9 +15,15 @@ for p in $(pgrep -f "^$LLAMA") $(pgrep -f "elyndor-boucle-images") $(pgrep -f "^
 sleep 3
 
 # --metrics : compteurs de jetons lus par watchdog.sh pour détecter l'activité.
+# Échantillonnage par défaut (l'app n'envoie que température et longueur) :
+# sans pénalité, Anubis pouvait boucler sur les mêmes phrases jusqu'au
+# plafond de jetons. DRY casse les séquences répétées, la pénalité de
+# répétition légère et min-p écartent les mots improbables.
 setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias anubis-70b-v1.2 \
   --host 0.0.0.0 --port 8000 -ngl 99 -c 16384 -np 1 -fa on --metrics \
   --cache-type-k q8_0 --cache-type-v q8_0 -t 16 \
+  --min-p 0.05 --repeat-penalty 1.05 --repeat-last-n 512 \
+  --dry-multiplier 0.8 --dry-base 1.75 --dry-allowed-length 2 --dry-penalty-last-n -1 \
   > "$RACINE/logs/llama.log" 2>&1 < /dev/null &
 
 # Le serveur d'images démarre après le chargement d'Anubis pour que la
