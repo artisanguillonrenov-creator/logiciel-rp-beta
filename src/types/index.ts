@@ -238,6 +238,8 @@ export interface EntreeLoreEmergent {
   statut: 'provisoire' | 'permanent';
   premiereMention: number;
   dernierAcces: number;
+  /** Identifiants des fiches en double fusionnées dans celle-ci (portraits déjà générés sous ces id). */
+  alias?: string[];
 }
 
 // Story Director / Scene Director (brief Phase 2, systèmes narratifs

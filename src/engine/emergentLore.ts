@@ -3,6 +3,7 @@ import type { ElyndorEntryChargee } from './loreLoader';
 import { configurationLLM, appellerModele } from './openrouter';
 import { obtenirEmbeddings, similariteCosinus } from './embeddings';
 import { filtrerTextePourProfil, texteCompatibleAvecProfil } from './contenuAdulte';
+import { fusionnerDoublonsLore, memeEntiteLore } from './loreEmergentDoublons';
 
 const CATEGORIES: CategorieLoreEmergent[] = ['pnj', 'objet', 'lieu', 'faction', 'evenement'];
 const SEUIL_RECONNAISSANCE = 0.86;
@@ -42,6 +43,7 @@ async function extraireCandidats(
           content: `Tu identifies les éléments de MONDE nouveaux et durables introduits dans un extrait de jeu de rôle : PNJ nommés destinés à revenir, lieux nommés, factions, objets marquants, événements qui feront date. Réponds UNIQUEMENT avec un JSON strict :
 {"candidats": [{"categorie": "pnj|objet|lieu|faction|evenement", "titre": "...", "contenu": "description factuelle en une ou deux phrases"}]}
 
+Pour un élément déjà répertorié, reprends EXACTEMENT le titre de la liste ci-dessous, sans le compléter ni le reformuler.
 Pour un PNJ, le "titre" doit être son NOM PROPRE dès que le texte en révèle un (ex. "Kaelen"), jamais son rôle ou son métier ("Marchand", "Garde") même si c'est ainsi qu'il est le plus souvent désigné dans l'extrait — un rôle générique comme titre ferait ensuite confondre ce PNJ précis avec n'importe quelle autre mention du même mot. N'utilise un rôle en titre que si aucun nom propre n'est donné nulle part dans l'extrait.
 N'inclus JAMAIS ${personnageNom} — c'est le personnage du joueur, pas un PNJ, quelle que soit la fréquence à laquelle il est mentionné.
 Ignore les figurants sans nom, les objets ou lieux anecdotiques sans suite probable. Ne réinvente rien : décris uniquement ce que le texte établit. Ce qui est déjà répertorié (ne le reprends que si une information nouvelle importante s'y ajoute) :
@@ -93,20 +95,37 @@ export async function mettreAJourLoreEmergent({
     .join('\n');
 
   const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom);
-  if (candidats.length === 0) return existants;
+  if (candidats.length === 0) return fusionnerDoublonsLore(existants);
+
+  const entrees = fusionnerDoublonsLore(existants);
+  const confirmer = (index: number, candidat: CandidatLoreEmergent) => {
+    const existant = entrees[index];
+    entrees[index] = {
+      ...existant,
+      contenu: candidat.contenu.length > existant.contenu.length ? candidat.contenu : existant.contenu,
+      statut: 'permanent',
+      dernierAcces: messages.length,
+    };
+  };
+  // Le nom fait foi : un PNJ déjà connu est reconnu même si sa description a changé.
+  const sansNomConnu = candidats.filter((candidat) => {
+    const index = entrees.findIndex((e) => memeEntiteLore(e, candidat));
+    if (index >= 0) confirmer(index, candidat);
+    return index < 0;
+  });
+  if (sansNomConnu.length === 0) return entrees;
 
   try {
-    const entrees = [...existants];
     const textesExistants = entrees.map((e) =>
       filtrerTextePourProfil(`${e.titre} — ${e.contenu}`, appSettings.profilContenu)
       || `[${e.categorie}] entrée antérieure masquée par le profil Grand public`,
     );
-    const textesCandidats = candidats.map((c) => `${c.titre} — ${c.contenu}`);
+    const textesCandidats = sansNomConnu.map((c) => `${c.titre} — ${c.contenu}`);
     const { vecteurs } = await obtenirEmbeddings([...textesExistants, ...textesCandidats], appSettings, 'Lore émergent — rapprochement');
     const vecteursExistants = vecteurs.slice(0, entrees.length);
     const vecteursCandidats = vecteurs.slice(entrees.length);
 
-    candidats.forEach((candidat, i) => {
+    sansNomConnu.forEach((candidat, i) => {
       let meilleurIndex = -1;
       let meilleurScore = SEUIL_RECONNAISSANCE;
       vecteursExistants.forEach((v, j) => {
@@ -118,13 +137,7 @@ export async function mettreAJourLoreEmergent({
       });
 
       if (meilleurIndex >= 0) {
-        const existant = entrees[meilleurIndex];
-        entrees[meilleurIndex] = {
-          ...existant,
-          contenu: candidat.contenu.length > existant.contenu.length ? candidat.contenu : existant.contenu,
-          statut: 'permanent',
-          dernierAcces: messages.length,
-        };
+        confirmer(meilleurIndex, candidat);
       } else {
         entrees.push({
           id: idEntree(),
@@ -138,9 +151,9 @@ export async function mettreAJourLoreEmergent({
       }
     });
 
-    return entrees;
+    return fusionnerDoublonsLore(entrees);
   } catch {
-    return existants;
+    return entrees;
   }
 }
 

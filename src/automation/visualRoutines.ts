@@ -11,6 +11,7 @@ import {
   ajouterSceneIllustree,
   appliquerChangementsVisuels,
   lireEtatVisuel,
+  listerPnjVisuels,
   resoudrePersonnagesVisibles,
   type EtatVisuelHistoire,
   type ModeIllustration,
@@ -63,7 +64,7 @@ async function genererAvatarSansCache(
     return obtenirOuGenererAvatarJoueur(story, settings);
   }
 
-  const pnj = story.loreEmergent.find((entree) => entree.id === assetId && entree.categorie === 'pnj');
+  const pnj = listerPnjVisuels(story).find((entree) => entree.id === assetId || entree.alias?.includes(assetId));
   if (!pnj) throw new Error('Ce PNJ n’existe plus dans le lore émergent de cette histoire.');
   return obtenirOuGenererAvatarPnj(story, pnj, settings);
 }

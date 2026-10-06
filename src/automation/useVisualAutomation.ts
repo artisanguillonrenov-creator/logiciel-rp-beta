@@ -13,6 +13,7 @@ import {
 } from './visualRoutines';
 import { ID_AVATAR_JOUEUR_VISUEL } from './visualPlanning';
 import { calculerRevisionNarrative } from './storyRevision';
+import { fusionnerDoublonsLore } from '../engine/loreEmergentDoublons';
 import { listerPnjVisuels, type ModeIllustration } from '../engine/visualState';
 
 function filtrerPnj(story: StoryState | null): EntreeLoreEmergent[] {
@@ -44,7 +45,7 @@ export function useVisualAutomation(story: StoryState | null, appSettings: AppSe
     const fusion = new Map<string, EntreeLoreEmergent>();
     for (const pnj of filtrerPnj(story)) fusion.set(pnj.id, pnj);
     for (const pnj of pnjPersistes) fusion.set(pnj.id, pnj);
-    return [...fusion.values()];
+    return fusionnerDoublonsLore([...fusion.values()]);
   }, [story, pnjPersistes]);
 
   const clePnj = useMemo(() => pnjConnus.map((pnj) => pnj.id).sort().join(','), [pnjConnus]);
@@ -79,7 +80,11 @@ export function useVisualAutomation(story: StoryState | null, appSettings: AppSe
       if (!annule && joueur) setAvatarJoueur(joueur);
 
       for (const pnj of pnjConnus) {
-        const uri = await obtenirAvatarPnj(story.meta.id, pnj.id).catch(() => null);
+        let uri: string | null = null;
+        for (const id of [pnj.id, ...(pnj.alias ?? [])]) {
+          uri = await obtenirAvatarPnj(story.meta.id, id).catch(() => null);
+          if (uri) break;
+        }
         if (annule) return;
         if (uri) setAvatarsPnj((prev) => ({ ...prev, [pnj.id]: uri }));
       }
