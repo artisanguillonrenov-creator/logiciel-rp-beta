@@ -27,6 +27,7 @@ const DELAI_CONFIG_POD_MS = 4000;
 
 let podCourant = ELYNDOR_CLOUD_POD_PAR_DEFAUT;
 let chargementPod: Promise<string> | null = null;
+let configPodChargee = false;
 
 const FORME_ID_POD = /^[a-z0-9]{8,32}$/;
 
@@ -39,6 +40,7 @@ export function definirPodElyndorCloud(id: string): boolean {
   if (!FORME_ID_POD.test(id)) return false;
   podCourant = id;
   chargementPod = Promise.resolve(id);
+  configPodChargee = true;
   return true;
 }
 
@@ -53,23 +55,38 @@ export function lirePodDepuisConfig(config: unknown): string | null {
  * fichier absent ou invalide), garde le pod intégré. Ne lève jamais.
  */
 export function assurerPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
+  // La configuration distante peut changer pendant que l'application reste
+  // ouverte (migration/redémarrage RunPod). On ne fige donc plus à vie un
+  // ancien identifiant après le premier appel.
+  if (configPodChargee && chargementPod) return chargementPod;
   if (!chargementPod) {
     chargementPod = (async () => {
       const controleur = new AbortController();
       const minuteur = setTimeout(() => controleur.abort(), DELAI_CONFIG_POD_MS);
       try {
-        const reponse = await lecteur(`${URL_CONFIG_POD_ELYNDOR_CLOUD}?t=${Date.now()}`, { signal: controleur.signal });
+        const reponse = await lecteur(`${URL_CONFIG_POD_ELYNDOR_CLOUD}?t=${Date.now()}`, {
+          signal: controleur.signal,
+          cache: 'no-store',
+        });
         const pod = reponse.ok ? lirePodDepuisConfig(await reponse.json()) : null;
         if (pod) podCourant = pod;
       } catch {
         // Repli silencieux sur le pod intégré.
       } finally {
         clearTimeout(minuteur);
+        configPodChargee = true;
       }
       return podCourant;
     })();
   }
   return chargementPod;
+}
+
+/** Force une relecture de la configuration distante (utile après un 404/502). */
+export async function rafraichirPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
+  chargementPod = null;
+  configPodChargee = false;
+  return assurerPodElyndorCloud(lecteur);
 }
 
 /** Narration (llama.cpp, API OpenAI). */
