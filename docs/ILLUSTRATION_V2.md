@@ -49,7 +49,9 @@ Le Kernel, la file de jobs, la déduplication, le contrôle de révision, les é
   - narration : llama.cpp + Anubis 70B v1.2 Q3_K_M, port 8000 ;
   - images : Lustify SDXL v4 + IP-Adapter, port 7860.
   - embeddings : bge-m3 sur CPU, `/v1/embeddings` sur le port 7860. Ils alimentent la recherche sémantique ObjectBox, moteur principal du narrateur ; la recherche lexicale prend le relais si le service ne répond pas.
-- Installation et démarrage reproductibles : `infra/runpod/install.sh` puis `infra/runpod/start.sh`. Le disque conteneur est effacé à chaque arrêt du pod, il faut donc relancer les deux scripts après un redémarrage.
+- Tout est installé une seule fois sur le volume réseau `elyndor-cloud` (monté sur `/workspace`, conservé quand le pod s'arrête) par `infra/runpod/install.sh` : venv, llama.cpp, modèles et scripts sous `/workspace/elyndor`.
+- La commande de démarrage du pod lance `/workspace/elyndor/boot.sh`, qui démarre les serveurs (`start.sh`, ~3 min) puis `watchdog.sh`.
+- `watchdog.sh` arrête le pod après 30 min sans requête de l'app (`ELYNDOR_INACTIVITE_MIN`). Un pod arrêté ne coûte que le stockage du volume. Le fichier `/workspace/elyndor/garder-allume` suspend l'arrêt pendant une maintenance.
 - **Consigne permanente** : le modèle image ne voit jamais la conversation. Le modèle narratif rédige tout ce qu'il reçoit, en anglais : le `promptSdxl` des scènes (redemandé s'il est omis) et le prompt de chaque portrait.
 - **Références exploitées par le serveur** :
   - le visage du personnage visible le plus prioritaire passe par IP-Adapter « plus-face » (poids 0,6) ;
