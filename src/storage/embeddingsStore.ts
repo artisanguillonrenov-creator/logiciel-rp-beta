@@ -3,6 +3,7 @@ import type { AppSettings } from '../types';
 import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddings';
 import { planifierTransactionCache } from './embeddingsCacheMutex';
 import { preparerIndexObjectBox } from './objectBoxSearch';
+import { decoderVecteur, encoderVecteur } from './vecteurCompact';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -21,6 +22,26 @@ const CLEF_FOURNISSEUR = '@rp_beta/embeddings_cache_fournisseur';
 interface EntreeCache {
   hash: string;
   vecteur: number[];
+}
+
+/** Forme stockée : vecteur en float32/base64 (`v`), ou tableau JSON (`vecteur`) pour les caches plus anciens. */
+interface EntreeStockee {
+  hash: string;
+  v?: string;
+  vecteur?: number[];
+}
+
+function serialiserEntree(entree: EntreeCache): string {
+  return JSON.stringify({ hash: entree.hash, v: encoderVecteur(entree.vecteur) } satisfies EntreeStockee);
+}
+
+function lireEntree(valeur: string): { entree: EntreeCache; ancienFormat: boolean } | null {
+  const brut = JSON.parse(valeur) as EntreeStockee;
+  const ancienFormat = typeof brut.v !== 'string';
+  const vecteur = ancienFormat ? brut.vecteur : decoderVecteur(brut.v!);
+  return typeof brut.hash === 'string' && Array.isArray(vecteur) && vecteur.length > 0
+    ? { entree: { hash: brut.hash, vecteur }, ancienFormat }
+    : null;
 }
 
 function cleEntree(id: string): string {
@@ -109,7 +130,7 @@ async function ecrireEntrees(
 
     const paires: [string, string][] = idsNouveaux
       .filter((id) => !aEvincerSet.has(id))
-      .map((id) => [cleEntree(id), JSON.stringify(nouvelles[id])]);
+      .map((id) => [cleEntree(id), serialiserEntree(nouvelles[id])]);
 
     if (paires.length > 0) await AsyncStorage.multiSet(paires);
     if (aEvincer.length > 0) await AsyncStorage.multiRemove(aEvincer.map(cleEntree));
@@ -143,10 +164,17 @@ async function assurerEmbeddingsTransaction(
   const idsPresents = entrees.map((e) => e.id).filter((id) => indexSet.has(id));
   const pairesExistantes = idsPresents.length > 0 ? await AsyncStorage.multiGet(idsPresents.map(cleEntree)) : [];
   const existantesParId = new Map<string, EntreeCache>();
+  // Entrées encore en JSON brut (anciennes versions) : réécrites en compact
+  // pour libérer la place qu'elles occupent, sans recalcul.
+  const aCompacter: Record<string, EntreeCache> = {};
   for (const [cle, valeur] of pairesExistantes) {
     if (!valeur) continue;
     try {
-      existantesParId.set(cle.slice(PREFIXE_ENTREE.length), JSON.parse(valeur));
+      const lue = lireEntree(valeur);
+      if (!lue) continue;
+      const id = cle.slice(PREFIXE_ENTREE.length);
+      existantesParId.set(id, lue.entree);
+      if (lue.ancienFormat) aCompacter[id] = lue.entree;
     } catch {
       // Entrée corrompue : ignorée, traitée comme absente (recalculée ci-dessous).
     }
@@ -159,6 +187,9 @@ async function assurerEmbeddingsTransaction(
   });
 
   if (manquants.length === 0) {
+    if (cacheCompatible && fournisseurCache && Object.keys(aCompacter).length > 0) {
+      await ecrireEntrees(fournisseurCache, aCompacter, index);
+    }
     return Object.fromEntries(entrees.map((e) => [e.id, existantesParId.get(e.id)!.vecteur]));
   }
 
@@ -183,7 +214,7 @@ async function assurerEmbeddingsTransaction(
   manquants.forEach((e, i) => {
     nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: resultat.vecteurs[i] };
   });
-  await ecrireEntrees(resultat.identiteCache, nouvellesEntrees, index);
+  await ecrireEntrees(resultat.identiteCache, { ...aCompacter, ...nouvellesEntrees }, index);
 
   return Object.fromEntries(
     entrees.map((e) => [e.id, nouvellesEntrees[e.id]?.vecteur ?? existantesParId.get(e.id)!.vecteur]),

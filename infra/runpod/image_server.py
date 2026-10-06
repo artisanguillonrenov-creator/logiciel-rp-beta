@@ -19,8 +19,9 @@ POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
 normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
 laisse la mémoire vidéo à Anubis et à SDXL.
 """
-import base64, io, os, pathlib, threading, time
+import base64, hashlib, io, os, pathlib, sqlite3, threading, time
 
+import numpy as np
 from PIL import Image
 
 import torch
@@ -73,6 +74,12 @@ try:
 except Exception as erreur:  # le service d'images reste disponible
     print("embeddings indisponibles :", erreur)
 verrou_embeddings = threading.Lock()
+# Cache persistant (volume réseau) : le lore Elyndor (~265 entrées) coûte
+# 2 à 3 minutes de CPU ; un texte déjà vu revient instantanément, même si
+# l'app a perdu son propre cache.
+os.makedirs(os.path.join(RACINE, "cache"), exist_ok=True)
+cache_embeddings = sqlite3.connect(os.path.join(RACINE, "cache", f"embeddings-{EMBEDDINGS_ID}.sqlite"), check_same_thread=False)
+cache_embeddings.execute("CREATE TABLE IF NOT EXISTS vecteurs (cle TEXT PRIMARY KEY, vecteur BLOB NOT NULL)")
 # Anubis occupe l'essentiel du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
 # n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
 pipe.enable_model_cpu_offload()
@@ -146,6 +153,27 @@ def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None]:
     return visage, scene
 
 
+def egaliser_longueurs(a: torch.Tensor, b: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Complète le conditionnement le plus court par des blocs de 77 jetons vides.
+
+    Remplace compel.pad_conditioning_tensors_to_same_length, qui plante en
+    2.4 avec les deux encodeurs de SDXL (« no attribute empty_z ») dès qu'un
+    prompt dépasse 77 jetons.
+    """
+    if a.shape[1] == b.shape[1]:
+        return a, b
+    vide, _ = compel("")
+    vide = vide.to(a.device, a.dtype)
+
+    def completer(t: torch.Tensor, longueur: int) -> torch.Tensor:
+        while t.shape[1] < longueur:
+            t = torch.cat([t, vide[:, : longueur - t.shape[1]]], dim=1)
+        return t
+
+    longueur = max(a.shape[1], b.shape[1])
+    return completer(a, longueur), completer(b, longueur)
+
+
 @app.get("/v1/models")
 def modeles():
     donnees = [{"id": MODELE_ID, "object": "model"}]
@@ -166,12 +194,22 @@ def embeddings(req: RequeteEmbeddings):
     textes = [req.input] if isinstance(req.input, str) else req.input
     if not textes or len(textes) > 256:
         raise HTTPException(400, "input : 1 à 256 textes")
+    cles = [hashlib.sha256(t.encode("utf-8")).hexdigest() for t in textes]
     with verrou_embeddings:
-        vecteurs = encodeur.encode(textes, batch_size=16, normalize_embeddings=True, convert_to_numpy=True)
+        connus = dict(cache_embeddings.execute(
+            f"SELECT cle, vecteur FROM vecteurs WHERE cle IN ({','.join('?' * len(cles))})", cles).fetchall())
+        a_calculer = sorted({c: t for c, t in zip(cles, textes) if c not in connus}.items())
+        if a_calculer:
+            calcules = encodeur.encode([t for _, t in a_calculer], batch_size=16, normalize_embeddings=True, convert_to_numpy=True)
+            nouveaux = {c: v.astype(np.float32).tobytes() for (c, _), v in zip(a_calculer, calcules)}
+            cache_embeddings.executemany("INSERT OR REPLACE INTO vecteurs VALUES (?, ?)", nouveaux.items())
+            cache_embeddings.commit()
+            connus.update(nouveaux)
     return {
         "object": "list",
         "model": EMBEDDINGS_ID,
-        "data": [{"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecteurs)],
+        "data": [{"object": "embedding", "index": i, "embedding": np.frombuffer(connus[c], dtype=np.float32).tolist()}
+                 for i, c in enumerate(cles)],
     }
 
 
@@ -188,7 +226,7 @@ def generer(req: Requete):
     with verrou:
         cond, pooled = compel(positif)
         ncond, npooled = compel(negatif)
-        cond, ncond = compel.pad_conditioning_tensors_to_same_length([cond, ncond])
+        cond, ncond = egaliser_longueurs(cond, ncond)
         graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
         options = {}
         if IP_ADAPTER:
