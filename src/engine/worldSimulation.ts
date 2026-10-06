@@ -48,6 +48,7 @@ async function extraireAppelsMonde(
   appSettings: AppSettings,
   transcript: string,
   monde: MondeState,
+  storyId?: string,
 ): Promise<AppelOutil[]> {
   const declencheursEnAttente = monde.declencheurs
     .filter((d) => d.declenche && !d.resolu)
@@ -59,6 +60,7 @@ async function extraireAppelsMonde(
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
       ...configurationLLM(appSettings),
+      storyId,
       temperature: 0.2,
       maxTokens: 500,
       diagnosticLabel: 'Monde',
@@ -102,6 +104,8 @@ export interface MiseAJourMondeOptions {
   mondeActuel: MondeState;
   messages: Message[];
   depuisIndex: number;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 /**
@@ -118,6 +122,7 @@ export async function mettreAJourMonde({
   mondeActuel,
   messages,
   depuisIndex,
+  storyId,
 }: MiseAJourMondeOptions): Promise<MondeState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   const nbMessages = messages.length;
@@ -131,7 +136,7 @@ export async function mettreAJourMonde({
     const transcript = nouveauxMessages
       .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
       .join('\n');
-    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel);
+    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId);
     const outilsMonde = outilsPourComposant('monde');
 
     zones = [...zones];

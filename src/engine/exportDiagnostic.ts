@@ -18,13 +18,22 @@ export interface InfosApplication {
   plateforme: string;
 }
 
-const CLE_SENSIBLE = /(api.?key|token|secret|password|mot.?de.?passe)/i;
+// Liste blanche : seuls ces réglages sont exportés. Tout réglage ajouté plus
+// tard (clé, code de déverrouillage du profil Adulte…) reste exclu par défaut.
+const REGLAGES_EXPORTABLES = [
+  'model',
+  'moteurInference',
+  'serveurLocalModele',
+  'profilContenu',
+  'betaAcceptee',
+  'modeConcepteur',
+  'langueInterface',
+] as const;
 
-/** Réglages sans aucune valeur sensible (les clés héritées sont déjà vidées, ceinture et bretelles). */
+/** Réglages utiles à l'analyse, sans aucune valeur sensible. */
 export function reglagesSansSecrets(settings: AppSettings): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(settings as unknown as Record<string, unknown>).filter(([cle]) => !CLE_SENSIBLE.test(cle)),
-  );
+  const source = settings as unknown as Record<string, unknown>;
+  return Object.fromEntries(REGLAGES_EXPORTABLES.filter((cle) => cle in source).map((cle) => [cle, source[cle]]));
 }
 
 export function construireExportDiagnostic(params: {

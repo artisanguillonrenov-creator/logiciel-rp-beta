@@ -25,6 +25,7 @@ async function analyserDirecteur(
   appSettings: AppSettings,
   transcript: string,
   directeurActuel: DirecteurState,
+  storyId?: string,
 ): Promise<SortieDirecteur | null> {
   const beatsOuvertsTexte = directeurActuel.beats
     .filter((b) => !b.paye)
@@ -34,6 +35,7 @@ async function analyserDirecteur(
   try {
     const sortie = await appellerModele({
       ...configurationLLM(appSettings),
+      storyId,
       temperature: 0.3,
       maxTokens: 400,
       diagnosticLabel: 'Directeur narratif',
@@ -78,6 +80,8 @@ export interface MiseAJourDirecteurOptions {
   directeurActuel: DirecteurState;
   messages: Message[];
   depuisIndex: number;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 /**
@@ -92,6 +96,7 @@ export async function mettreAJourDirecteur({
   directeurActuel,
   messages,
   depuisIndex,
+  storyId,
 }: MiseAJourDirecteurOptions): Promise<DirecteurState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return directeurActuel;
@@ -100,7 +105,7 @@ export async function mettreAJourDirecteur({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const analyse = await analyserDirecteur(appSettings, transcript, directeurActuel);
+  const analyse = await analyserDirecteur(appSettings, transcript, directeurActuel, storyId);
   if (!analyse) return directeurActuel;
 
   const beats: BeatNarratif[] = directeurActuel.beats.map((b) =>

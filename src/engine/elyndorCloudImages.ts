@@ -50,6 +50,8 @@ export interface RequeteImage {
   /** Déjà triées par priorité (voir selectionnerReferencesGenerateur). */
   references: ReferenceImage[];
   format: FormatImage;
+  /** Histoire concernée (journal de diagnostic) ; jamais envoyée au serveur. */
+  storyId?: string;
 }
 
 export type GenerateurImage = (requete: RequeteImage, signal?: AbortSignal) => Promise<string>;
@@ -113,7 +115,7 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
     dureeMs: Date.now() - debut,
     statut,
     ...(raison ? { raison } : {}),
-  });
+  }, requete.storyId);
   try {
     await assurerPodElyndorCloud();
     const reponse = await fetch(`${urlServeurImagesElyndorCloud()}/images/generations`, {

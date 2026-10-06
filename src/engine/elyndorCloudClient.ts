@@ -53,6 +53,8 @@ export interface AppelModeleOptions {
   signal?: AbortSignal;
   /** Libellé concepteur uniquement : n'altère jamais la requête envoyée au modèle. */
   diagnosticLabel?: string;
+  /** Histoire concernée : rattache l'appel au bon journal de diagnostic. */
+  storyId?: string;
 }
 
 export interface AppelModeleAvecOutilsOptions extends AppelModeleOptions {
@@ -224,8 +226,9 @@ async function appelerChat(
   signal?: AbortSignal,
   tools?: unknown[],
   diagnosticLabel?: string,
+  storyId?: string,
 ): Promise<Record<string, any>> {
-  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel)).message;
+  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel, storyId)).message;
 }
 
 async function appelerChatDetaille(
@@ -235,6 +238,7 @@ async function appelerChatDetaille(
   signal?: AbortSignal,
   tools?: unknown[],
   diagnosticLabel?: string,
+  storyId?: string,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
   const profil = resoudreProfilRaisonnement('serveur', ELYNDOR_CLOUD_MODELE);
   const debutAppel = Date.now();
@@ -263,7 +267,7 @@ async function appelerChatDetaille(
       composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
       dureeMs: Date.now() - debutAppel, statut: 'erreur',
       raison: erreur instanceof Error ? erreur.message : 'Erreur réseau',
-    });
+    }, storyId);
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
       modele: ELYNDOR_CLOUD_MODELE,
@@ -282,7 +286,7 @@ async function appelerChatDetaille(
       composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
       dureeMs: Date.now() - debutAppel, statut: 'erreur',
       raison: `HTTP ${response.status}${detail ? ` : ${detail}` : ''}`,
-    });
+    }, storyId);
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
       modele: ELYNDOR_CLOUD_MODELE,
@@ -322,7 +326,7 @@ async function appelerChatDetaille(
     dureeMs: Date.now() - debutAppel,
     usage: data?.usage ?? null,
     statut: 'ok',
-  });
+  }, storyId);
   return { message, finishReason };
 }
 
@@ -332,9 +336,10 @@ export async function appellerModele({
   maxTokens = 700,
   signal,
   diagnosticLabel,
+  storyId,
 }: AppelModeleOptions): Promise<string> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return contenu;
     if (tentative === TENTATIVES_REPONSE_VIDE) {
@@ -357,9 +362,10 @@ export async function appellerModeleDetaille({
   maxTokens = 700,
   signal,
   diagnosticLabel,
+  storyId,
 }: AppelModeleOptions): Promise<ReponseModele> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel);
+    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return { contenu, coupee: finishReason === 'length' };
   }
@@ -373,11 +379,12 @@ export async function appellerModeleAvecOutils({
   maxTokens = 600,
   signal,
   diagnosticLabel,
+  storyId,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   const schemas = outils.map(versSchemaOutil);
 
   try {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas, diagnosticLabel);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas, diagnosticLabel, storyId);
     return {
       contenu: typeof message.content === 'string' ? message.content : '',
       appelsOutils: parserAppelsOutils(message),
@@ -394,6 +401,7 @@ export async function appellerModeleAvecOutils({
       signal,
       undefined,
       diagnosticLabel ? `${diagnosticLabel} — repli JSON` : 'Outils — repli JSON',
+      storyId,
     );
     return extraireAppelsOutilsJson(typeof message.content === 'string' ? message.content : '');
   }

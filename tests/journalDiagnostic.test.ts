@@ -3,7 +3,6 @@ import test from 'node:test';
 import { commencerDiagnosticTour, terminerDiagnosticTour } from '../src/engine/diagnosticTour';
 import { construireExportDiagnostic, reglagesSansSecrets } from '../src/engine/exportDiagnostic';
 import {
-  definirHistoireJournal,
   definirPuitsJournal,
   journaliser,
   resumerReferences,
@@ -11,31 +10,29 @@ import {
 } from '../src/engine/journalDiagnostic';
 import type { AppSettings, StoryState } from '../src/types';
 
-test('le journal rattache chaque entrée à l’histoire ouverte et au tour en cours', () => {
+test('chaque entrée va dans le journal de l’histoire qui l’a produite, jamais dans celle affichée', () => {
   const recues: Array<[string, EntreeJournal]> = [];
   definirPuitsJournal((id, e) => recues.push([id, e]));
 
-  definirHistoireJournal(null);
-  journaliser('image', { statut: 'ok' });
-  assert.equal(recues.length, 0, 'sans histoire ouverte, rien n’est journalisé');
+  journaliser('image', { statut: 'ok' }, undefined);
+  assert.equal(recues.length, 0, 'sans histoire connue, rien n’est journalisé plutôt que mal rangé');
 
-  definirHistoireJournal('histoire-1');
-  const tour = commencerDiagnosticTour('diag-test');
-  journaliser('appel-ia', { composant: 'Narration', reponse: 'Bonjour' });
+  // Tour joueur de l'histoire B pendant qu'une tâche de fond de A se termine.
+  const tourB = commencerDiagnosticTour('diag-b', 'histoire-B');
+  journaliser('appel-ia', { composant: 'Narration', reponse: 'Bonjour' }, 'histoire-B');
+  journaliser('appel-ia', { composant: 'Mémoire' }, 'histoire-A');
   terminerDiagnosticTour();
-  journaliser('image', { statut: 'erreur' });
+  journaliser('image', { statut: 'erreur' }, 'histoire-B');
 
-  assert.equal(recues.length, 2);
-  assert.equal(recues[0][0], 'histoire-1');
-  assert.equal(recues[0][1].tourId, tour.id);
-  assert.equal(recues[0][1].reponse, 'Bonjour');
-  assert.equal(recues[1][1].tourId, undefined, 'hors tour joueur (tâche de fond)');
-  assert.match(recues[1][1].date, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(recues.map(([id]) => id), ['histoire-B', 'histoire-A', 'histoire-B']);
+  assert.equal(recues[0][1].tourId, tourB.id);
+  assert.equal(recues[1][1].tourId, undefined, 'la tâche de A ne prend pas le tour de B');
+  assert.equal(recues[2][1].tourId, undefined, 'hors tour joueur');
+  assert.match(recues[0][1].date, /^\d{4}-\d{2}-\d{2}T/);
 
   definirPuitsJournal(() => { throw new Error('disque plein'); });
-  assert.doesNotThrow(() => journaliser('image', {}), 'le diagnostic ne casse jamais le jeu');
+  assert.doesNotThrow(() => journaliser('image', {}, 'histoire-B'), 'le diagnostic ne casse jamais le jeu');
   definirPuitsJournal(null);
-  definirHistoireJournal(null);
 });
 
 test('les images de référence ne sont pas recopiées dans le journal', () => {
@@ -43,8 +40,11 @@ test('les images de référence ne sont pas recopiées dans le journal', () => {
 });
 
 test('l’export de diagnostic contient l’histoire, le journal et les versions, jamais de secret', () => {
-  const settings = { profilContenu: 'adulte', openRouterApiKey: 'sk-secret', serveurLocalApiKey: 'x', langue: 'fr' } as unknown as AppSettings;
-  assert.deepEqual(Object.keys(reglagesSansSecrets(settings)).sort(), ['langue', 'profilContenu']);
+  const settings = {
+    profilContenu: 'adulte', openRouterApiKey: 'sk-secret', serveurLocalApiKey: 'x',
+    codeDeverrouillage: '4321', langueInterface: 'fr', reglageFutur: 'inconnu',
+  } as unknown as AppSettings;
+  assert.deepEqual(Object.keys(reglagesSansSecrets(settings)).sort(), ['langueInterface', 'profilContenu']);
 
   const story = {
     meta: { id: 'h1', titre: 'Test' },
@@ -70,5 +70,5 @@ test('l’export de diagnostic contient l’histoire, le journal et les versions
   assert.equal(exp.resume.imagesJournalisees, 1);
   assert.equal(exp.resume.erreursJournalisees, 1);
   assert.equal(exp.elyndorCloud.modeleImage, 'big-lust-v16');
-  assert.doesNotMatch(JSON.stringify(exp), /sk-secret/);
+  assert.doesNotMatch(JSON.stringify(exp), /sk-secret|4321/);
 });

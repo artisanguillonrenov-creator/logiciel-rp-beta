@@ -40,6 +40,7 @@ export async function suggererRepliqueJoueur(story: StoryState, appSettings: App
 
   const contenu = await appellerModele({
     ...configurationLLM(appSettings),
+    storyId: story.meta.id,
     temperature: 0.8,
     // Le format est déjà contraint par la consigne (1-2 phrases, un seul
     // personnage) — cette marge sert seulement à ne jamais couper une

@@ -177,7 +177,7 @@ async function genererScene(
   }
 
   const references = await collecterReferencesScene(story, scene.personnagesVisibles, precedentes);
-  const dataUrl = await genererImageScene(scene.structure, references, settings.profilContenu);
+  const dataUrl = await genererImageScene(scene.structure, references, settings.profilContenu, story.meta.id);
 
   const { scenes } = ajouterSceneIllustree(etat.scenesIllustrees, scene);
   const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl, scenes.map((s) => s.revision));

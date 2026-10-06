@@ -1,6 +1,6 @@
 import { supprimerAvatarsHistoire, supprimerAvatarsOrphelins } from '../storage/pnjAvatarsStore';
 import { supprimerIllustrationsHistoire, supprimerIllustrationsOrphelines } from '../storage/sceneImagesStore';
-import { supprimerJournal } from '../storage/journalDiagnosticStore';
+import { supprimerJournal, supprimerJournauxOrphelins } from '../storage/journalDiagnosticStore';
 import {
   enqueueAutomation,
   listAutomationJobs,
@@ -47,6 +47,7 @@ export function registerLifecycleAutomationHandlers(deps: LifecycleAutomationDep
     await Promise.all([
       supprimerAvatarsOrphelins(storyIdsValides),
       supprimerIllustrationsOrphelines(storyIdsValides),
+      supprimerJournauxOrphelins(storyIdsValides),
     ]);
 
     const jobs = await listAutomationJobs();

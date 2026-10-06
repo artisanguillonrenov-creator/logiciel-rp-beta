@@ -93,6 +93,25 @@ export async function lireJournal(storyId: string): Promise<EntreeJournal[]> {
   }
 }
 
+/**
+ * Supprime les journaux des histoires qui n'existent plus (app fermée entre la
+ * suppression de l'histoire et son nettoyage, par exemple).
+ */
+export async function supprimerJournauxOrphelins(storyIdsValides: readonly string[]): Promise<number> {
+  const dossier = new Directory(Paths.document, DOSSIER);
+  if (!dossier.exists) return 0;
+  const valides = new Set(storyIdsValides.map(nomFichier));
+  let supprimes = 0;
+  for (const entree of dossier.list()) {
+    if (!(entree instanceof File) || valides.has(entree.name)) continue;
+    const storyId = [...tampons.keys()].find((id) => nomFichier(id) === entree.name);
+    if (storyId) await supprimerJournal(storyId);
+    else entree.delete();
+    supprimes++;
+  }
+  return supprimes;
+}
+
 export async function supprimerJournal(storyId: string): Promise<void> {
   const minuteur = minuteurs.get(storyId);
   if (minuteur) clearTimeout(minuteur);

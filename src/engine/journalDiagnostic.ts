@@ -22,30 +22,31 @@ export interface EntreeJournal {
 }
 
 type Puits = (storyId: string, entree: EntreeJournal) => void;
+interface TourCourant { id: string; storyId?: string }
 
 let puits: Puits | null = null;
-let histoireActive: string | null = null;
-let lireTourCourant: () => string | undefined = () => undefined;
+let lireTourCourant: () => TourCourant | undefined = () => undefined;
 
 export function definirPuitsJournal(nouveau: Puits | null): void {
   puits = nouveau;
 }
 
-/** Histoire ouverte à l'écran : une seule à la fois, les tâches de fond la concernent. */
-export function definirHistoireJournal(storyId: string | null): void {
-  histoireActive = storyId;
-}
-
 /** Branché par diagnosticTour pour éviter un import circulaire. */
-export function definirLecteurTourCourant(lecteur: () => string | undefined): void {
+export function definirLecteurTourCourant(lecteur: () => TourCourant | undefined): void {
   lireTourCourant = lecteur;
 }
 
-export function journaliser(type: TypeEntreeJournal, donnees: Record<string, unknown>, storyId = histoireActive): void {
+/**
+ * L'histoire est toujours celle de l'opération (transmise par l'appelant),
+ * jamais celle affichée à l'écran : une tâche de fond de l'histoire A qui se
+ * termine pendant que B est ouverte doit rester dans le journal de A. Sans
+ * histoire connue, rien n'est enregistré plutôt que mal rangé.
+ */
+export function journaliser(type: TypeEntreeJournal, donnees: Record<string, unknown>, storyId: string | undefined): void {
   if (!puits || !storyId) return;
   const entree: EntreeJournal = { type, date: new Date().toISOString(), ...donnees };
-  const tourId = lireTourCourant();
-  if (tourId) entree.tourId = tourId;
+  const tour = lireTourCourant();
+  if (tour && tour.storyId === storyId) entree.tourId = tour.id;
   try {
     puits(storyId, entree);
   } catch {

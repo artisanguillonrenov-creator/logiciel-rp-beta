@@ -313,9 +313,11 @@ export async function redigerPromptSdxl(
   description: string,
   cadrage: string,
   signal?: AbortSignal,
+  storyId?: string,
 ): Promise<string | undefined> {
   const sortie = await appellerModele({
     ...configurationLLM(settings),
+    storyId,
     temperature: 0.2,
     maxTokens: 200,
     signal,
@@ -353,6 +355,8 @@ export async function redigerPromptPortraitSdxl(
     settings,
     [`Fiche : ${fiche}`, etat && `État visuel actuel :\n${etat}`].filter(Boolean).join('\n\n'),
     'portrait en buste, cadrage serré visage et épaules, fond sombre uni',
+    undefined,
+    story.meta.id,
   );
 }
 
@@ -387,6 +391,7 @@ export async function demanderDirectionArtistique(
   try {
     const sortie = await appellerModele({
       ...configurationLLM(settings),
+      storyId: story.meta.id,
       temperature: 0.3,
       maxTokens: 1600,
       signal,
@@ -412,6 +417,7 @@ export async function demanderDirectionArtistique(
           formaterPromptImage(direction.structure).split('[STYLE VISUEL]')[0],
           `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
           signal,
+          story.meta.id,
         ).catch(() => undefined);
       }
       return direction;

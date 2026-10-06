@@ -47,7 +47,7 @@ import Panneau from '../components/Panneau';
 import TexteMessageFormate from '../components/TexteMessageFormate';
 import BoutonDictee from '../components/BoutonDictee';
 import { useLangue } from '../i18n/LangueProvider';
-import { definirHistoireJournal, definirPuitsJournal } from '../engine/journalDiagnostic';
+import { definirPuitsJournal } from '../engine/journalDiagnostic';
 import { ajouterAuJournal } from '../storage/journalDiagnosticStore';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/cour-des-serments.png');
@@ -154,14 +154,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [majForceeEnCours, setMajForceeEnCours] = useState(false);
   const [messageConcepteur, setMessageConcepteur] = useState('');
 
-  // Journal de diagnostic (export « Diagnostic complet ») : rattaché à
-  // l'histoire ouverte. Volontairement pas remis à zéro en quittant l'écran,
-  // pour garder les tâches de fond qui finissent après.
+  // Journal de diagnostic (export « Diagnostic complet ») : chaque entrée
+  // porte l'histoire de l'opération qui l'a produite (voir journalDiagnostic).
   useEffect(() => {
-    if (!story?.meta.id) return;
     definirPuitsJournal(ajouterAuJournal);
-    definirHistoireJournal(story.meta.id);
-  }, [story?.meta.id]);
+  }, []);
 
   useEffect(() => {
     let actif = true;

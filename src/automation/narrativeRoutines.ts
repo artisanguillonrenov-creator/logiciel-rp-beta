@@ -85,24 +85,28 @@ export async function calculerRattrapageNarratif(
     ? Promise.all([
         mesurer('Mémoire L0-L5', () => mettreAJourMemoire({
           appSettings,
+          storyId: story.meta.id,
           memoireActuelle: story.memoire,
           messages: messagesSecurises,
           personnageNom,
         })),
         mesurer('Directeur narratif', () => mettreAJourDirecteur({
           appSettings,
+          storyId: story.meta.id,
           directeurActuel: story.directeur,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         })),
         mesurer('Simulation du monde', () => mettreAJourMonde({
           appSettings,
+          storyId: story.meta.id,
           mondeActuel: story.monde,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         })),
         mesurer('Social / engagements', () => mettreAJourSocial({
           appSettings,
+          storyId: story.meta.id,
           socialActuel: story.social,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
@@ -113,6 +117,7 @@ export async function calculerRattrapageNarratif(
   const lorePromise = loreDue
     ? mesurer('Lore émergent', () => mettreAJourLoreEmergent({
         appSettings,
+        storyId: story.meta.id,
         existants: story.loreEmergent,
         messages: messagesSecurises,
         depuisIndex: loreDepuisIndex,
