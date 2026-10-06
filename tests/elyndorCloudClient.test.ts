@@ -6,10 +6,20 @@ import {
   configurationLLM,
 } from '../src/engine/elyndorCloudClient';
 import {
-  ELYNDOR_CLOUD_EMBEDDINGS_URL,
   ELYNDOR_CLOUD_MODELE,
-  ELYNDOR_CLOUD_URL,
+  ELYNDOR_CLOUD_POD_PAR_DEFAUT,
+  assurerPodElyndorCloud,
+  definirPodElyndorCloud,
+  lirePodDepuisConfig,
+  podElyndorCloud,
+  urlNarrationElyndorCloud,
+  urlServeurImagesElyndorCloud,
 } from '../src/engine/elyndorCloud';
+
+// Pod fixé : les tests ne doivent pas aller lire la configuration publiée.
+definirPodElyndorCloud(ELYNDOR_CLOUD_POD_PAR_DEFAUT);
+const ELYNDOR_CLOUD_URL = urlNarrationElyndorCloud();
+const ELYNDOR_CLOUD_EMBEDDINGS_URL = urlServeurImagesElyndorCloud();
 import {
   cacheEmbeddingsCompatible,
   embeddingsDisponibles,
@@ -155,4 +165,19 @@ test('la narration est demandée en streaming, les appels à outils non', async 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('le pod est lu dans la configuration publiée, avec repli sur le pod intégré', async () => {
+  assert.equal(lirePodDepuisConfig({ pod: 'mjp2vk70p1sw4g' }), 'mjp2vk70p1sw4g');
+  assert.equal(lirePodDepuisConfig({ pod: 'https://exemple.com/' }), null);
+  assert.equal(lirePodDepuisConfig(null), null);
+
+  assert.equal(definirPodElyndorCloud('nouveaupod123'), true);
+  assert.equal(urlNarrationElyndorCloud(), 'https://nouveaupod123-8000.proxy.runpod.net/v1');
+  assert.equal(urlServeurImagesElyndorCloud(), 'https://nouveaupod123-7860.proxy.runpod.net/v1');
+  assert.equal(definirPodElyndorCloud('../evil'), false);
+  assert.equal(podElyndorCloud(), 'nouveaupod123');
+  // Déjà chargé : aucune nouvelle lecture réseau.
+  assert.equal(await assurerPodElyndorCloud(async () => { throw new Error('ne doit pas être appelé'); }), 'nouveaupod123');
+  definirPodElyndorCloud(ELYNDOR_CLOUD_POD_PAR_DEFAUT);
 });

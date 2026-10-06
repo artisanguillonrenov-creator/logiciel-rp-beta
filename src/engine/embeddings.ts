@@ -1,5 +1,5 @@
 import type { AppSettings } from '../types';
-import { ELYNDOR_CLOUD_EMBEDDINGS_URL, ELYNDOR_CLOUD_MODELE_EMBEDDINGS } from './elyndorCloud';
+import { ELYNDOR_CLOUD_MODELE_EMBEDDINGS, assurerPodElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
 import { enregistrerEmbeddingsDiagnostic } from './diagnosticTour';
 
 export class ErreurEmbeddings extends Error {
@@ -34,7 +34,8 @@ async function appelerLot(textes: string[], modele: string): Promise<number[][]>
   const timer = setTimeout(() => controleur.abort(), DELAI_LOT_MS);
   let response: Response;
   try {
-    response = await fetch(`${ELYNDOR_CLOUD_EMBEDDINGS_URL}/embeddings`, {
+    await assurerPodElyndorCloud();
+    response = await fetch(`${urlServeurImagesElyndorCloud()}/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: modele, input: textes }),

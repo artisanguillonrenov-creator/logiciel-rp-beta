@@ -3,7 +3,7 @@ import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolC
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 import { enregistrerUsageAppel } from './mesureTokens';
 import { enregistrerAppelIADiagnostic } from './diagnosticTour';
-import { ELYNDOR_CLOUD_MODELE, ELYNDOR_CLOUD_URL } from './elyndorCloud';
+import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
 
 /**
  * Client réseau unique d'Elyndor.
@@ -86,7 +86,7 @@ export function configurationLLM(_settings: AppSettings, _modeleOverride?: strin
     apiKey: '',
     model: ELYNDOR_CLOUD_MODELE,
     moteurInference: 'serveur' as const,
-    baseUrl: ELYNDOR_CLOUD_URL,
+    baseUrl: urlNarrationElyndorCloud(),
   };
 }
 
@@ -148,7 +148,8 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal): Promi
   );
 
   try {
-    return await fetch(`${ELYNDOR_CLOUD_URL}/chat/completions`, {
+    await assurerPodElyndorCloud();
+    return await fetch(`${urlNarrationElyndorCloud()}/chat/completions`, {
       ...init,
       signal: controleur.signal,
     });

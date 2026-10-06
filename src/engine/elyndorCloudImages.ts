@@ -1,4 +1,4 @@
-import { ELYNDOR_CLOUD_POD } from './elyndorCloud';
+import { assurerPodElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
 
 /**
  * Générateur d'images Elyndor Cloud.
@@ -16,7 +16,6 @@ import { ELYNDOR_CLOUD_POD } from './elyndorCloud';
  * indépendante de ce module : un autre backend (serveur GPU, modèle local…)
  * n'aura qu'à implémenter `GenerateurImage`.
  */
-export const ELYNDOR_CLOUD_IMAGES_URL = `https://${ELYNDOR_CLOUD_POD}-7860.proxy.runpod.net/v1`;
 export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'big-lust-v16';
 
 /** Limite du nombre d'images de référence envoyées par requête. */
@@ -102,7 +101,8 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
   const timer = setTimeout(() => controleur.abort(new Error('Délai de génération d’image dépassé.')), DELAI_GENERATION_IMAGE_MS);
 
   try {
-    const reponse = await fetch(`${ELYNDOR_CLOUD_IMAGES_URL}/images/generations`, {
+    await assurerPodElyndorCloud();
+    const reponse = await fetch(`${urlServeurImagesElyndorCloud()}/images/generations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(construireCorpsRequeteImage(requete, modele)),

@@ -52,6 +52,7 @@ Le Kernel, la file de jobs, la déduplication, le contrôle de révision, les é
 - Tout est installé une seule fois sur le volume réseau `elyndor-cloud` (monté sur `/workspace`, conservé quand le pod s'arrête) par `infra/runpod/install.sh` : venv, llama.cpp, modèles et scripts sous `/workspace/elyndor`.
 - La commande de démarrage du pod lance `/workspace/elyndor/boot.sh`, qui démarre les serveurs (`start.sh`, ~3 min) puis `watchdog.sh`.
 - `watchdog.sh` arrête le pod après 30 min sans requête de l'app (`ELYNDOR_INACTIVITE_MIN`). Un pod arrêté ne coûte que le stockage du volume. Le fichier `/workspace/elyndor/garder-allume` suspend l'arrêt pendant une maintenance.
+- **Pod migré, nouvel identifiant** : un pod arrêté ne redémarre que si sa machine a encore un GPU libre. Sinon, Runpod propose une migration : un nouveau pod sur le même volume, avec un nouvel identifiant. L'app lit l'identifiant dans `public/elyndor-cloud.json`, publié sur GitHub Pages avec la version web. Il suffit d'y mettre le nouvel identifiant et de fusionner, sans nouvelle APK ni mise à jour. `ELYNDOR_CLOUD_POD_PAR_DEFAUT` (`src/engine/elyndorCloud.ts`) sert de repli si le fichier est injoignable.
 - **Consigne permanente** : le modèle image ne voit jamais la conversation. Le modèle narratif rédige tout ce qu'il reçoit, en anglais : le `promptSdxl` des scènes (redemandé s'il est omis) et le prompt de chaque portrait.
 - **Références exploitées par le serveur** :
   - le visage du personnage visible le plus prioritaire passe par IP-Adapter « plus-face » (poids 0,6) ;
