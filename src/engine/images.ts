@@ -196,6 +196,12 @@ export async function obtenirOuGenererAvatarPnj(
 ): Promise<string> {
   const existant = await obtenirAvatarPnj(story.meta.id, pnj.id);
   if (existant) return existant;
+  // Fiche fusionnée : le portrait déjà généré sous un ancien identifiant est repris.
+  for (const alias of pnj.alias ?? []) {
+    const ancien = await obtenirAvatarPnj(story.meta.id, alias).catch(() => null);
+    const image = ancien ? await preparerImageReference(ancien).catch(() => null) : null;
+    if (image) return enregistrerAvatarPnj(story.meta.id, pnj.id, image);
+  }
   const dataUrl = await genererPortrait(
     construirePromptAvatarPnj(pnj),
     await promptPortraitSdxl(story, pnj.titre, pnj.contenu, settings),

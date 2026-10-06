@@ -1,4 +1,5 @@
 import type { EntreeLoreEmergent, StoryState } from '../types';
+import { fusionnerDoublonsLore } from './loreEmergentDoublons';
 import type { PromptImageStructure, ProfilCadrage } from './visualBible';
 
 // État visuel persistant V2 (refonte du système d'illustration) : la seule
@@ -138,7 +139,9 @@ export function estPnjVisuel(entree: EntreeLoreEmergent, personnageNom: string):
 }
 
 export function listerPnjVisuels(story: StoryState): EntreeLoreEmergent[] {
-  return story.loreEmergent.filter((entree) => estPnjVisuel(entree, story.meta.personnageNom));
+  // Les histoires jouées avant la fusion par nom peuvent contenir plusieurs
+  // fiches du même PNJ : une seule est montrée, illustrée et référencée.
+  return fusionnerDoublonsLore(story.loreEmergent.filter((entree) => estPnjVisuel(entree, story.meta.personnageNom)));
 }
 
 // ---------------------------------------------------------------------------
