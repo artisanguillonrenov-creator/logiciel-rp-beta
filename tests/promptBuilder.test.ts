@@ -107,6 +107,7 @@ test('les 15 métamoteurs sont envoyés en entier, hors budget système', () => 
     { ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(2000), metamoteursSelectionnes: metamoteurs },
     { budgetSysteme: BUDGET_SYSTEM_DISTANT, budgetConversation: BUDGET_CONVERSATION_DISTANT },
   );
+  assert.ok(systeme.content.length <= BUDGET_SYSTEM_DISTANT);
   assert.match(systeme.content, /\[MÉTAMOTEURS ACTIFS\]/);
   for (const m of metamoteurs) assert.ok(systeme.content.includes(`### ${m.titre}\n${m.contenu}`));
   assert.match(systeme.content, /AUTONOMIE DU JOUEUR STRICTE/);
