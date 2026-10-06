@@ -9,7 +9,8 @@ import {
 } from '../src/engine/completionReponse';
 import type { AppelModeleOptions, ReponseModele } from '../src/engine/elyndorCloudClient';
 import { FIN_ETAT, MARQUEUR_ETAT } from '../src/engine/noyauNarratif';
-import { INSTRUCTION_FIN_DE_REPONSE, maxTokensPourLongueur } from '../src/engine/promptBuilder';
+import { INSTRUCTION_FIN_DE_REPONSE, INSTRUCTION_STYLE_JOUEUR, maxTokensPourLongueur } from '../src/engine/promptBuilder';
+import { validerAgentiviteHeuristique } from '../src/engine/validator';
 
 const OPTIONS: AppelModeleOptions = {
   apiKey: '',
@@ -115,4 +116,12 @@ test('le narrateur reçoit une cible en mots cohérente avec le plafond et la co
     [350, 650, 1100],
   );
   assert.match(INSTRUCTION_FIN_DE_REPONSE, /phrase complète/);
+});
+
+test('consignes issues des parties réelles : tutoiement, aucun mot inventé, pas d’achat à la place du joueur', () => {
+  assert.match(INSTRUCTION_STYLE_JOUEUR, /deuxième personne du singulier/);
+  assert.match(INSTRUCTION_STYLE_JOUEUR, /n’invente pas de mots/);
+  assert.match(INSTRUCTION_STYLE_JOUEUR, /paiement, une signature/);
+  assert.equal(validerAgentiviteHeuristique('Tu paies Marcus et repars avec elle.').ok, false);
+  assert.equal(validerAgentiviteHeuristique('Marcus attend ta réponse.').ok, true);
 });

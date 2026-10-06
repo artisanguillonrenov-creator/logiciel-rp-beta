@@ -20,6 +20,11 @@ const TOURNURES_INTERDITES = [
   'tu optes pour',
   'tu te sens obligé',
   'tu réalises que tu dois',
+  // Actes conclus à la place du joueur (paiement, signature).
+  'tu paies',
+  'tu payes',
+  'tu signes',
+  'tu verses la somme',
 ];
 
 // Suite de validation complète (brief Phase 2) : les six contrôles nommés

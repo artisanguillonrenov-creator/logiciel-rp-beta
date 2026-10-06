@@ -11,9 +11,10 @@ import type { AppSettings } from '../types';
 /**
  * Pod Runpod (GPU A40) qui sert la narration (port 8000, llama.cpp +
  * Anubis 70B v1.2 Q3_K_M) et les images (port 7860, Lustify SDXL v4).
- * Installation reproductible : infra/runpod/.
+ * Installé sur le volume réseau `elyndor-cloud` (infra/runpod/) : le pod
+ * s'arrête seul après 30 min d'inactivité et redémarre sans réinstallation.
  */
-export const ELYNDOR_CLOUD_POD = 'aaled19oswvq6j';
+export const ELYNDOR_CLOUD_POD = 'dttm6j1bex3051';
 export const ELYNDOR_CLOUD_URL = `https://${ELYNDOR_CLOUD_POD}-8000.proxy.runpod.net/v1`;
 /** Alias exposé par llama-server (--alias). */
 export const ELYNDOR_CLOUD_MODELE = 'anubis-70b-v1.2';

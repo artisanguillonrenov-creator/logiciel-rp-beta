@@ -170,6 +170,51 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal): Promi
   }
 }
 
+/**
+ * Accepte une réponse JSON classique ou un flux SSE (`data: {...}` …
+ * `data: [DONE]`) et la ramène à la forme d'une réponse non streamée :
+ * contenu concaténé, raisonnement éventuel, finish_reason et usage du dernier
+ * morceau qui les porte.
+ */
+export function analyserCorpsReponse(texte: string): Record<string, any> {
+  const brut = texte.trim();
+  if (!brut.startsWith('data:') && !brut.startsWith('event:') && !brut.startsWith(':')) {
+    try {
+      return JSON.parse(brut);
+    } catch {
+      throw new ErreurElyndorCloud('Réponse Elyndor Cloud illisible.');
+    }
+  }
+  let contenu = '';
+  let raisonnement = '';
+  let finishReason: string | null = null;
+  let usage: unknown;
+  for (const ligne of brut.split(/\r?\n/)) {
+    if (!ligne.startsWith('data:')) continue;
+    const donnees = ligne.slice(5).trim();
+    if (!donnees || donnees === '[DONE]') continue;
+    let morceau: any;
+    try {
+      morceau = JSON.parse(donnees);
+    } catch {
+      continue;
+    }
+    if (morceau?.error) {
+      const detail = morceau.error.message ?? JSON.stringify(morceau.error);
+      throw new ErreurElyndorCloud(`Erreur Elyndor Cloud : ${detail}`);
+    }
+    const choix = morceau?.choices?.[0];
+    const delta = choix?.delta ?? {};
+    if (typeof delta.content === 'string') contenu += delta.content;
+    if (typeof delta.reasoning_content === 'string') raisonnement += delta.reasoning_content;
+    if (choix?.finish_reason) finishReason = choix.finish_reason;
+    if (morceau?.usage) usage = morceau.usage;
+  }
+  const message: Record<string, unknown> = { role: 'assistant', content: contenu };
+  if (raisonnement) message.reasoning_content = raisonnement;
+  return { choices: [{ message, finish_reason: finishReason }], usage };
+}
+
 async function appelerChat(
   messages: ChatMessage[],
   temperature: number,
@@ -203,8 +248,12 @@ async function appelerChatDetaille(
       temperature,
       max_tokens: maxTokens,
       reasoning_effort: 'low',
-      stream: false,
-      ...(tools ? { tools, tool_choice: 'auto' } : {}),
+      // Streaming : le proxy Runpod (Cloudflare) coupe toute réponse qui n'a
+      // rien envoyé en 100 s (erreur 524). En flux, les jetons arrivent au fil
+      // de l'eau et une longue narration n'est plus interrompue. Les appels à
+      // outils restent en une seule réponse (courts, deltas d'outils complexes).
+      stream: !tools,
+      ...(tools ? { tools, tool_choice: 'auto' } : { stream_options: { include_usage: true } }),
     }),
   }, signal);
   } catch (erreur) {
@@ -237,7 +286,7 @@ async function appelerChatDetaille(
     );
   }
 
-  const data = await response.json();
+  const data = analyserCorpsReponse(await response.text());
   enregistrerUsageAppel(data?.usage);
   enregistrerAppelIADiagnostic({
     composant: diagnosticLabel ?? 'Elyndor Cloud',

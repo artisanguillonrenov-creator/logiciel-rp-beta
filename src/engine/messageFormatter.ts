@@ -65,7 +65,21 @@ function analyserSegmentsSansLocuteur(texte: string): SegmentMessage[] {
   return segments;
 }
 
-export function analyserMessage(texte: string): SegmentMessage[] {
+const LETTRES_MAJ = "A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ";
+const NOM_LOCUTEUR = `[${LETTRES_MAJ}][${LETTRES_MAJ}' -]{1,29}?`;
+// Réplique nommée écrite au milieu d'un paragraphe (« … sa marchandise.
+// MARCUS : « Vous… » Il fait… ») : le modèle ne respecte pas toujours la
+// consigne « sur sa propre ligne ». On la remet sur sa ligne avant l'analyse.
+const AVANT_REPLIQUE_EN_LIGNE = new RegExp(`([^\\n${LETTRES_MAJ}])[ \\t]+(?=${NOM_LOCUTEUR}[ \\t]*:[ \\t]*«)`, 'g');
+const APRES_REPLIQUE_EN_LIGNE = new RegExp(`^([ \\t]*${NOM_LOCUTEUR}[ \\t]*:[ \\t]*«[^»\\n]*»)[ \\t]+(?=\\S)`, 'gm');
+
+/** Place chaque réplique « NOM : « … » » sur sa propre ligne. */
+export function isolerRepliquesNommees(texte: string): string {
+  return texte.replace(AVANT_REPLIQUE_EN_LIGNE, '$1\n').replace(APRES_REPLIQUE_EN_LIGNE, '$1\n');
+}
+
+export function analyserMessage(brut: string): SegmentMessage[] {
+  const texte = isolerRepliquesNommees(brut);
   const segments: SegmentMessage[] = [];
   let curseur = 0;
   REGLE_REPLIQUE_NOMMEE.lastIndex = 0;
