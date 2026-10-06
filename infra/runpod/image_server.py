@@ -141,6 +141,7 @@ class Requete(BaseModel):
     response_format: str = "b64_json"
     reference_images: list[str | dict] | None = None
     seed: int | None = None
+    poids_race: float | None = None
 
 
 def dimensions(taille: str) -> tuple[int, int]:
@@ -259,7 +260,8 @@ def generer(req: Requete):
                 # L'adaptateur général sert la scène précédente, ou à défaut le
                 # portrait de race (portraits de PNJ, qui n'ont pas de scène).
                 general = scene or race
-                poids_general = POIDS_SCENE if scene else POIDS_RACE if race else 0.0
+                poids_race = req.poids_race if req.poids_race is not None else POIDS_RACE
+                poids_general = POIDS_SCENE if scene else poids_race if race else 0.0
                 pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visage else 0.0])
                 options["ip_adapter_image"] = [general or VIDE, visage or VIDE]
             image = pipe(
