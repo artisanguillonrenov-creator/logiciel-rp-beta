@@ -1,5 +1,7 @@
 import type { AppSettings, StoryState } from '../types';
 import { appellerModele, configurationLLM } from './elyndorCloudClient';
+import { canonRace, detecterRacePnj } from './racePnj';
+import { RACES_ELYNDOR } from '../data/races';
 import { filtrerTextePourProfil } from './contenuAdulte';
 import {
   PROFILS,
@@ -148,9 +150,15 @@ function decrireEtatVisuel(etat: EtatVisuelHistoire): string {
 
 export function construireContexteDirection(story: StoryState, settings: AppSettings): string {
   const etat = lireEtatVisuel(story);
-  const joueur = `[PERSONNAGE DU JOUEUR — ${story.meta.personnageNom}]\n${texteProfil(story.meta.personnageDescription || 'Aucune fiche.', settings)}`;
+  const raceJoueur = RACES_ELYNDOR.find((r) => r.id === story.meta.raceOrigineId);
+  const joueur = `[PERSONNAGE DU JOUEUR — ${story.meta.personnageNom}]\n${texteProfil(story.meta.personnageDescription || 'Aucune fiche.', settings)}`
+    + (raceJoueur ? `\n${canonRace({ race: raceJoueur, sexe: 'Autre' })}` : '');
   const pnj = listerPnjVisuels(story)
-    .map((e) => `- ${e.titre} (${e.statut}) : ${texteSur(texteProfil(e.contenu, settings), 300)}`)
+    .map((e) => {
+      // Canon de la race : « elfe noire » se lit sinon « black woman » dans le prompt anglais.
+      const race = detecterRacePnj(e.titre, e.contenu);
+      return `- ${e.titre} (${e.statut}) : ${texteSur(texteProfil(e.contenu, settings), 300)}${race ? `\n  ${canonRace(race)}` : ''}`;
+    })
     .join('\n');
   const contexte = story.meta.contexte;
   const cadre = [contexte?.lieu && `Lieu : ${contexte.lieu}`, contexte?.ambiance && `Ambiance : ${contexte.ambiance}`]

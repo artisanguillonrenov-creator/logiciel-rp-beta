@@ -10,7 +10,7 @@ POST /v1/images/generations
 prioritaire : le CLIP de SDXL est limité à 77 jetons et comprend mal le
 français. Sinon le prompt complet est encodé par morceaux via compel.
 
-`reference_images` : [{role: "personnage"|"scene", image: data URL}] (une
+`reference_images` : [{role: "personnage"|"scene"|"race", image: data URL}] (une
 chaîne seule vaut « personnage »). Deux IP-Adapter SDXL les exploitent :
 « plus-face » pour le visage du personnage principal, « plus » à faible poids
 pour la continuité du décor, de la lumière et de l'ambiance.
@@ -44,6 +44,8 @@ EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
 IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", os.path.join(RACINE, "models/ip-adapter"))
 POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
 POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
+# Portrait prédéfini de la race : allure (peau, cheveux, parure), pas le visage.
+POIDS_RACE = float(os.environ.get("ELYNDOR_IP_RACE", "0.5"))
 NEGATIF_BASE = "text, logo, watermark, signature, duplicate, extra limbs, extra fingers, deformed hands, deformed face, bad anatomy, blurry, lowres, child, minor, underage"
 
 pipe = StableDiffusionXLPipeline.from_pretrained(MODELE_DIR, torch_dtype=torch.float16, use_safetensors=True)
@@ -159,18 +161,20 @@ def lire_image(data_url: str) -> Image.Image | None:
         return None
 
 
-def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None]:
-    """Première référence de personnage (visage) et première scène."""
-    visage = scene = None
+def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None, Image.Image | None]:
+    """Première référence de personnage (visage), de scène et de race."""
+    visage = scene = race = None
     for ref in req.reference_images or []:
         role, image = ("personnage", ref) if isinstance(ref, str) else (ref.get("role"), ref.get("image", ""))
         if not isinstance(image, str):
             continue
         if role == "scene" and scene is None:
             scene = lire_image(image)
+        elif role == "race" and race is None:
+            race = lire_image(image)
         elif role != "scene" and visage is None:
             visage = lire_image(image)
-    return visage, scene
+    return visage, scene, race
 
 
 def egaliser_longueurs(a: torch.Tensor, b: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -251,9 +255,13 @@ def generer(req: Requete):
             graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
             options = {}
             if IP_ADAPTER:
-                visage, scene = references(req)
-                pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
-                options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
+                visage, scene, race = references(req)
+                # L'adaptateur général sert la scène précédente, ou à défaut le
+                # portrait de race (portraits de PNJ, qui n'ont pas de scène).
+                general = scene or race
+                poids_general = POIDS_SCENE if scene else POIDS_RACE if race else 0.0
+                pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visage else 0.0])
+                options["ip_adapter_image"] = [general or VIDE, visage or VIDE]
             image = pipe(
                 prompt_embeds=cond, pooled_prompt_embeds=pooled,
                 negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,

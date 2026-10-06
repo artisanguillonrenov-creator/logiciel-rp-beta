@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { canonRace, detecterRacePnj } from '../src/engine/racePnj';
+
+test('la race et le sexe d’un PNJ sont lus dans sa fiche', () => {
+  const nkala = detecterRacePnj('N’Kala', 'Elfe noire de vingt-deux ans, guerrière, désormais au service de William.');
+  assert.equal(nkala?.race.id, 'elfes-noirs');
+  assert.equal(nkala?.sexe, 'Femme');
+  assert.match(canonRace(nkala!), /cheveux argentés/);
+
+  assert.equal(detecterRacePnj('Elfe Noire (N’Kala)', 'Capturée lors d’un raid.')?.race.id, 'elfes-noirs');
+  assert.equal(detecterRacePnj('Grom', 'Un orque noble, il commande la garde.')?.race.id, 'orques-nobles');
+  assert.equal(detecterRacePnj('Brak', 'Un orc couvert de scarifications, il ricane.')?.race.id, 'orcs');
+  assert.equal(detecterRacePnj('Aiko', 'Haute-elfe de Tokyo, elle méprise les humains.')?.race.id, 'hauts-elfes');
+  assert.equal(detecterRacePnj('Thorin', 'Un nain forgeron, il parle peu.')?.sexe, 'Homme');
+});
+
+test('sans race reconnaissable, aucun portrait de référence n’est imposé', () => {
+  assert.equal(detecterRacePnj('Marcus', 'Marchand d’esclaves des couloirs souterrains de Paris.'), null);
+});

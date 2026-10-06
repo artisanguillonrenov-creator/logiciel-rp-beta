@@ -37,7 +37,8 @@ export const DIMENSIONS_FORMAT: Record<FormatImage, { width: number; height: num
  * de la lumière et de l'ambiance.
  */
 export interface ReferenceImage {
-  role: 'personnage' | 'scene';
+  /** race : portrait prédéfini de la race, guide l'allure (peau, cheveux, parure) sans imposer le visage. */
+  role: 'personnage' | 'scene' | 'race';
   image: string;
 }
 

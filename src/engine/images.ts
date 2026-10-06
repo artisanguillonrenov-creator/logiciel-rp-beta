@@ -9,15 +9,18 @@ import {
   genererImageElyndorCloud,
   imagesElyndorCloudDisponibles,
   type GenerateurImage,
+  type ReferenceImage,
 } from './elyndorCloudImages';
 import {
   STYLE_PORTRAIT_ELYNDOR,
+  STYLE_PORTRAIT_SDXL,
   construirePromptSdxl,
   formaterPromptImage,
   negatifAplati,
   type PromptImageStructure,
 } from './visualBible';
 import { redigerPromptPortraitSdxl } from './directionArtistique';
+import { canonRace, detecterRacePnj } from './racePnj';
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
@@ -145,9 +148,12 @@ export async function genererImageScene(
 }
 
 export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
+  const race = detecterRacePnj(pnj.titre, pnj.contenu);
   return (
     `Portrait (buste, cadrage serré sur le visage et les épaules) de ${pnj.titre}.\n` +
-    `Description : ${pnj.contenu.slice(0, 400)}\n\n` +
+    `Description : ${pnj.contenu.slice(0, 400)}\n` +
+    (race ? `${canonRace(race)}\n` : '') +
+    '\n' +
     `Style : ${STYLE_PORTRAIT_ELYNDOR}.`
   );
 }
@@ -164,7 +170,7 @@ export function construirePromptAvatarJoueur(story: StoryState): string {
 async function genererPortrait(
   prompt: string,
   promptCourt: string | undefined,
-  references: (string | null)[],
+  references: (ReferenceImage | null)[],
   profil?: ProfilContenu,
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
@@ -174,7 +180,7 @@ async function genererPortrait(
     prompt,
     promptCourt,
     negatif: negatifPourProfil(profil),
-    references: references.filter((r): r is string => !!r).map((image) => ({ role: 'personnage' as const, image })),
+    references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
   });
 }
@@ -183,7 +189,8 @@ async function genererPortrait(
 /** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
 async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings) {
   try {
-    return await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+    const prompt = await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+    return prompt ? `${prompt}, ${STYLE_PORTRAIT_SDXL}` : undefined;
   } catch {
     return undefined;
   }
@@ -202,10 +209,15 @@ export async function obtenirOuGenererAvatarPnj(
     const image = ancien ? await preparerImageReference(ancien).catch(() => null) : null;
     if (image) return enregistrerAvatarPnj(story.meta.id, pnj.id, image);
   }
+  // Le portrait prédéfini de sa race (création de personnage) guide l'allure
+  // du PNJ ; le canon de la race est rappelé au modèle qui rédige le prompt.
+  const race = detecterRacePnj(pnj.titre, pnj.contenu);
+  const referenceRace = race ? await assetVersDataUrl(obtenirPortrait(race.race.id, race.sexe)) : null;
+  const fiche = race ? `${pnj.contenu}\n${canonRace(race)}` : pnj.contenu;
   const dataUrl = await genererPortrait(
     construirePromptAvatarPnj(pnj),
-    await promptPortraitSdxl(story, pnj.titre, pnj.contenu, settings),
-    [],
+    await promptPortraitSdxl(story, pnj.titre, fiche, settings),
+    [referenceRace ? { role: 'race', image: referenceRace } : null],
     settings.profilContenu,
   );
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
@@ -218,7 +230,7 @@ export async function obtenirOuGenererAvatarJoueur(story: StoryState, settings: 
   const dataUrl = await genererPortrait(
     construirePromptAvatarJoueur(story),
     await promptPortraitSdxl(story, story.meta.personnageNom, story.meta.personnageDescription || story.meta.personnageNom, settings),
-    [portrait],
+    [portrait ? { role: 'personnage', image: portrait } : null],
     settings.profilContenu,
   );
   return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);
