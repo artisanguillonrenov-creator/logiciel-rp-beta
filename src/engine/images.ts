@@ -20,7 +20,7 @@ import {
   type PromptImageStructure,
 } from './visualBible';
 import { redigerPromptPortraitSdxl } from './directionArtistique';
-import { canonRace, detecterRacePnj } from './racePnj';
+import { canonRace, detecterRacePnj, negatifSdxlRace, referenceRaceFiable, traitsSdxlRace } from './racePnj';
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
@@ -172,6 +172,7 @@ async function genererPortrait(
   promptCourt: string | undefined,
   references: (ReferenceImage | null)[],
   profil?: ProfilContenu,
+  negatifSupplementaire = '',
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
@@ -179,7 +180,7 @@ async function genererPortrait(
   return generateurCourant({
     prompt,
     promptCourt,
-    negatif: negatifPourProfil(profil),
+    negatif: [negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '),
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
   });
@@ -187,10 +188,11 @@ async function genererPortrait(
 
 /** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
 /** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
-async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings) {
+async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings, traitsRace = '') {
   try {
     const prompt = await redigerPromptPortraitSdxl(story, nom, fiche, settings);
-    return prompt ? `${prompt}, ${STYLE_PORTRAIT_SDXL}` : undefined;
+    // Les traits de race passent en tête : SDXL pèse davantage les premiers mots.
+    return prompt ? [traitsRace, prompt, STYLE_PORTRAIT_SDXL].filter(Boolean).join(', ') : undefined;
   } catch {
     return undefined;
   }
@@ -212,13 +214,16 @@ export async function obtenirOuGenererAvatarPnj(
   // Le portrait prédéfini de sa race (création de personnage) guide l'allure
   // du PNJ ; le canon de la race est rappelé au modèle qui rédige le prompt.
   const race = detecterRacePnj(pnj.titre, pnj.contenu);
-  const referenceRace = race ? await assetVersDataUrl(obtenirPortrait(race.race.id, race.sexe)) : null;
+  const referenceRace = race && referenceRaceFiable(race)
+    ? await assetVersDataUrl(obtenirPortrait(race.race.id, race.sexe))
+    : null;
   const fiche = race ? `${pnj.contenu}\n${canonRace(race)}` : pnj.contenu;
   const dataUrl = await genererPortrait(
     construirePromptAvatarPnj(pnj),
-    await promptPortraitSdxl(story, pnj.titre, fiche, settings),
+    await promptPortraitSdxl(story, pnj.titre, fiche, settings, race ? traitsSdxlRace(race) : ''),
     [referenceRace ? { role: 'race', image: referenceRace } : null],
     settings.profilContenu,
+    race ? negatifSdxlRace(race) : '',
   );
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
 }
