@@ -114,6 +114,9 @@ export interface Message {
   // Tokens consommés par tous les appels du tour qui a produit ce message
   // (V13) — affichés dans les exports, jamais transmis au moteur.
   usageTokens?: UsageTokens;
+  // Diagnostic concepteur passif du chemin réellement emprunté par ce tour.
+  // Jamais injecté dans le prompt et ignoré par le gameplay.
+  diagnosticTour?: DiagnosticTour;
 }
 
 export interface UsageTokens {
@@ -126,6 +129,50 @@ export interface UsageTokens {
   // false si au moins un appel n'a renvoyé aucun usage (runtime local,
   // fournisseur muet) : les totaux sont alors des minima.
   complete: boolean;
+}
+
+export type DiagnosticStatut = 'ok' | 'ignoree' | 'repli' | 'erreur';
+
+export interface DiagnosticEtape {
+  nom: string;
+  categorie: string;
+  statut: DiagnosticStatut;
+  dureeMs?: number;
+  raison?: string;
+  details?: string[];
+}
+
+export interface DiagnosticAppelIA {
+  composant: string;
+  modele: string;
+  maxTokens: number;
+  dureeMs: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  totalTokens: number;
+  usageComplet: boolean;
+  statut: DiagnosticStatut;
+  raison?: string;
+}
+
+export interface DiagnosticAppelEmbeddings {
+  composant: string;
+  textes: number;
+  lots: number;
+  dureeMs: number;
+  statut: DiagnosticStatut;
+  raison?: string;
+}
+
+export interface DiagnosticTour {
+  id: string;
+  startedAt: number;
+  dureeTotaleMs: number;
+  etapes: DiagnosticEtape[];
+  appelsIA: DiagnosticAppelIA[];
+  embeddings: DiagnosticAppelEmbeddings[];
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
