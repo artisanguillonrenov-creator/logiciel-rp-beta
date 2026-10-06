@@ -19,7 +19,7 @@ POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
 normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
 laisse la mémoire vidéo à Anubis et à SDXL.
 """
-import base64, hashlib, io, os, pathlib, sqlite3, threading, time
+import base64, ctypes, gc, hashlib, io, os, pathlib, sqlite3, threading, time
 
 import numpy as np
 from PIL import Image
@@ -95,6 +95,26 @@ compel = Compel(
     device="cuda",
 )
 verrou = threading.Lock()
+
+try:
+    _libc = ctypes.CDLL("libc.so.6")
+except OSError:
+    _libc = None
+
+
+def rendre_memoire() -> None:
+    """Rend au système la mémoire libérée après une génération.
+
+    Avec le déchargement CPU, chaque image fait transiter UNet, VAE et
+    encodeurs entre CPU et GPU : la mémoire libérée restait réservée par
+    l'allocateur (~10 Go de plus par image), jusqu'à la limite de 50 Go du
+    pod, où le serveur était tué (erreur 502 dans l'app).
+    """
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if _libc is not None:
+        _libc.malloc_trim(0)
 app = FastAPI()
 # La version web d'Elyndor (GitHub Pages) appelle ce serveur depuis le
 # navigateur : sans en-têtes CORS, la requête serait bloquée.
@@ -224,22 +244,27 @@ def generer(req: Requete):
     positif = (req.prompt_sdxl or req.prompt).strip()
     negatif = ", ".join(x for x in [req.negative_prompt, NEGATIF_BASE] if x)
     with verrou:
-        cond, pooled = compel(positif)
-        ncond, npooled = compel(negatif)
-        cond, ncond = egaliser_longueurs(cond, ncond)
-        graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
-        options = {}
-        if IP_ADAPTER:
-            visage, scene = references(req)
-            pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
-            options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
-        image = pipe(
-            prompt_embeds=cond, pooled_prompt_embeds=pooled,
-            negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
-            width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
-            generator=torch.Generator("cuda").manual_seed(graine),
-            **options,
-        ).images[0]
+        try:
+            cond, pooled = compel(positif)
+            ncond, npooled = compel(negatif)
+            cond, ncond = egaliser_longueurs(cond, ncond)
+            graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
+            options = {}
+            if IP_ADAPTER:
+                visage, scene = references(req)
+                pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
+                options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
+            image = pipe(
+                prompt_embeds=cond, pooled_prompt_embeds=pooled,
+                negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
+                width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
+                generator=torch.Generator("cuda").manual_seed(graine),
+                **options,
+            ).images[0]
+        finally:
+            # Aussi après une erreur (OOM CUDA récupérable…) : sinon la mémoire
+            # retenue s'accumule d'échec en échec.
+            rendre_memoire()
     tampon = io.BytesIO()
     image.save(tampon, format="PNG")
     return {"created": int(time.time()), "data": [{"b64_json": base64.b64encode(tampon.getvalue()).decode()}]}
