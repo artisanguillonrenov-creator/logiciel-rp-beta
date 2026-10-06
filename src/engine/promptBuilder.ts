@@ -87,6 +87,14 @@ function instructionLongueur(longueur: StorySettings['longueur']): string {
   }
 }
 
+// Retours de partie réelle : vouvoiement glissé, peuples inventés
+// (« Elfelle »), transaction conclue sans le joueur.
+export const INSTRUCTION_STYLE_JOUEUR = [
+  'Adresse-toi toujours au joueur à la deuxième personne du singulier (« tu », « toi », « ton ») ; les PNJ peuvent vouvoyer {{user}} dans leurs répliques, jamais la narration.',
+  'N’emploie aucun nom de race, de peuple, de lieu ou d’objet absent du lore et des fiches fournis : n’invente pas de mots.',
+  'Ne conclus jamais à la place du joueur un paiement, une signature, un achat ou un accord qu’il n’a pas explicitement fait : arrête la scène avant et laisse-le agir.',
+].join('\n');
+
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
 
@@ -201,6 +209,7 @@ Les paramètres de session ci-dessous priment sur toute formulation du lore port
 Ton : ${libelleTon(ctx.settings.ton)}
 ${instructionLongueur(ctx.settings.longueur)}
 ${INSTRUCTION_FIN_DE_REPONSE}
+${INSTRUCTION_STYLE_JOUEUR}
 Rythme : ${libelleRythme(ctx.settings.rythme)}.
 Liberté du joueur : ${libelleLiberteJoueur(ctx.settings.liberteJoueur)}.
 Violence : ${libelleViolence(ctx.settings.violence)}.
