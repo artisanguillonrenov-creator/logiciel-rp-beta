@@ -1,4 +1,4 @@
-"""Serveur d'images Elyndor Cloud (Lustify SDXL v4).
+"""Serveur d'images Elyndor Cloud (Big Lust 1.6, SDXL).
 
 Contrat attendu par l'app (src/engine/elyndorCloudImages.ts) :
 POST /v1/images/generations
@@ -10,7 +10,7 @@ POST /v1/images/generations
 prioritaire : le CLIP de SDXL est limité à 77 jetons et comprend mal le
 français. Sinon le prompt complet est encodé par morceaux via compel.
 
-`reference_images` : [{role: "personnage"|"scene", image: data URL}] (une
+`reference_images` : [{role: "personnage"|"scene"|"race", image: data URL}] (une
 chaîne seule vaut « personnage »). Deux IP-Adapter SDXL les exploitent :
 « plus-face » pour le visage du personnage principal, « plus » à faible poids
 pour la continuité du décor, de la lumière et de l'ambiance.
@@ -35,8 +35,12 @@ from pydantic import BaseModel
 RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
 # Horodatage de la dernière requête : lu par watchdog.sh pour arrêter le pod inactif.
 ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
-MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/lustify-v4"))
-MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
+# Big Lust 1.6 (dérivé de Lustify) : choisi au comparatif du 6 octobre, il garde
+# le niveau explicite de Lustify tout en respectant mieux les personnages
+# (peau ébène et oreilles des Elfes Noirs, scènes à deux). Lustify reste sur
+# le volume (models/image/lustify-v4) pour revenir en arrière via ELYNDOR_IMAGE_DIR.
+MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/big-lust-v16"))
+MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "big-lust-v16")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
 EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
@@ -44,6 +48,8 @@ EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
 IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", os.path.join(RACINE, "models/ip-adapter"))
 POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
 POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
+# Portrait prédéfini de la race : allure (peau, cheveux, parure), pas le visage.
+POIDS_RACE = float(os.environ.get("ELYNDOR_IP_RACE", "0.5"))
 NEGATIF_BASE = "text, logo, watermark, signature, duplicate, extra limbs, extra fingers, deformed hands, deformed face, bad anatomy, blurry, lowres, child, minor, underage"
 
 pipe = StableDiffusionXLPipeline.from_pretrained(MODELE_DIR, torch_dtype=torch.float16, use_safetensors=True)
@@ -139,6 +145,7 @@ class Requete(BaseModel):
     response_format: str = "b64_json"
     reference_images: list[str | dict] | None = None
     seed: int | None = None
+    poids_race: float | None = None
 
 
 def dimensions(taille: str) -> tuple[int, int]:
@@ -159,18 +166,20 @@ def lire_image(data_url: str) -> Image.Image | None:
         return None
 
 
-def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None]:
-    """Première référence de personnage (visage) et première scène."""
-    visage = scene = None
+def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None, Image.Image | None]:
+    """Première référence de personnage (visage), de scène et de race."""
+    visage = scene = race = None
     for ref in req.reference_images or []:
         role, image = ("personnage", ref) if isinstance(ref, str) else (ref.get("role"), ref.get("image", ""))
         if not isinstance(image, str):
             continue
         if role == "scene" and scene is None:
             scene = lire_image(image)
+        elif role == "race" and race is None:
+            race = lire_image(image)
         elif role != "scene" and visage is None:
             visage = lire_image(image)
-    return visage, scene
+    return visage, scene, race
 
 
 def egaliser_longueurs(a: torch.Tensor, b: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -251,9 +260,14 @@ def generer(req: Requete):
             graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
             options = {}
             if IP_ADAPTER:
-                visage, scene = references(req)
-                pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
-                options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
+                visage, scene, race = references(req)
+                # L'adaptateur général sert la scène précédente, ou à défaut le
+                # portrait de race (portraits de PNJ, qui n'ont pas de scène).
+                general = scene or race
+                poids_race = req.poids_race if req.poids_race is not None else POIDS_RACE
+                poids_general = POIDS_SCENE if scene else poids_race if race else 0.0
+                pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visage else 0.0])
+                options["ip_adapter_image"] = [general or VIDE, visage or VIDE]
             image = pipe(
                 prompt_embeds=cond, pooled_prompt_embeds=pooled,
                 negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,

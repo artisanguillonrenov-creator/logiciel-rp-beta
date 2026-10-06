@@ -10,19 +10,86 @@ import type { AppSettings } from '../types';
  */
 /**
  * Pod Runpod (GPU A40) qui sert la narration (port 8000, llama.cpp +
- * Anubis 70B v1.2 Q3_K_M) et les images (port 7860, Lustify SDXL v4).
- * Installé sur le volume réseau `elyndor-cloud` (infra/runpod/) : le pod
- * s'arrête seul après 30 min d'inactivité et redémarre sans réinstallation.
+ * Anubis 70B v1.2 Q3_K_M), les images (port 7860, Big Lust 1.6 SDXL) et les
+ * embeddings (port 7860, bge-m3). Installé sur le volume réseau
+ * `elyndor-cloud` (infra/runpod/) : le pod s'arrête seul après 30 min
+ * d'inactivité et redémarre sans réinstallation.
+ *
+ * L'identifiant du pod change quand Runpod le migre sur une autre machine
+ * (GPU indisponible au redémarrage). Il est donc lu au démarrage dans
+ * `public/elyndor-cloud.json`, publié avec la version web sur GitHub Pages :
+ * après une migration, il suffit de modifier ce fichier, sans nouvelle
+ * version de l'app. La valeur intégrée sert de repli.
  */
-export const ELYNDOR_CLOUD_POD = 'dttm6j1bex3051';
-export const ELYNDOR_CLOUD_URL = `https://${ELYNDOR_CLOUD_POD}-8000.proxy.runpod.net/v1`;
+export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'mjp2vk70p1sw4g';
+export const URL_CONFIG_POD_ELYNDOR_CLOUD = 'https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/elyndor-cloud.json';
+const DELAI_CONFIG_POD_MS = 4000;
+
+let podCourant = ELYNDOR_CLOUD_POD_PAR_DEFAUT;
+let chargementPod: Promise<string> | null = null;
+
+const FORME_ID_POD = /^[a-z0-9]{8,32}$/;
+
+export function podElyndorCloud(): string {
+  return podCourant;
+}
+
+/** Fixe le pod (identifiant Runpod valide) ; renvoie false si l'identifiant est rejeté. */
+export function definirPodElyndorCloud(id: string): boolean {
+  if (!FORME_ID_POD.test(id)) return false;
+  podCourant = id;
+  chargementPod = Promise.resolve(id);
+  return true;
+}
+
+/** Contenu attendu : {"pod": "identifiant"}. */
+export function lirePodDepuisConfig(config: unknown): string | null {
+  const pod = (config as { pod?: unknown } | null)?.pod;
+  return typeof pod === 'string' && FORME_ID_POD.test(pod.trim()) ? pod.trim() : null;
+}
+
+/**
+ * Lit une seule fois la configuration publiée ; en cas d'échec (hors ligne,
+ * fichier absent ou invalide), garde le pod intégré. Ne lève jamais.
+ */
+export function assurerPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
+  if (!chargementPod) {
+    chargementPod = (async () => {
+      const controleur = new AbortController();
+      const minuteur = setTimeout(() => controleur.abort(), DELAI_CONFIG_POD_MS);
+      try {
+        const reponse = await lecteur(`${URL_CONFIG_POD_ELYNDOR_CLOUD}?t=${Date.now()}`, { signal: controleur.signal });
+        const pod = reponse.ok ? lirePodDepuisConfig(await reponse.json()) : null;
+        if (pod) podCourant = pod;
+      } catch {
+        // Repli silencieux sur le pod intégré.
+      } finally {
+        clearTimeout(minuteur);
+      }
+      return podCourant;
+    })();
+  }
+  return chargementPod;
+}
+
+/** Narration (llama.cpp, API OpenAI). */
+export function urlNarrationElyndorCloud(): string {
+  return `https://${podCourant}-8000.proxy.runpod.net/v1`;
+}
+
+/** Images et embeddings (serveur FastAPI du port 7860). */
+export function urlServeurImagesElyndorCloud(): string {
+  return `https://${podCourant}-7860.proxy.runpod.net/v1`;
+}
+
+/** Valeur des réglages : marqueur stable, l'adresse réelle dépend du pod courant. */
+export const ELYNDOR_CLOUD_REGLAGE_URL = 'elyndor-cloud';
 /** Alias exposé par llama-server (--alias). */
 export const ELYNDOR_CLOUD_MODELE = 'anubis-70b-v1.2';
 /**
  * Embeddings de la recherche sémantique (ObjectBox) : bge-m3, servi par le
  * même pod que les images (port 7860). null = recherche lexicale seule.
  */
-export const ELYNDOR_CLOUD_EMBEDDINGS_URL = `https://${ELYNDOR_CLOUD_POD}-7860.proxy.runpod.net/v1`;
 export const ELYNDOR_CLOUD_MODELE_EMBEDDINGS: string | null = 'bge-m3';
 
 /**
@@ -44,7 +111,7 @@ export function verrouillerSurElyndorCloud(settings: AppSettings): AppSettings {
     embeddingsApiKey: undefined,
     conserverClesWeb: false,
     moteurInference: 'serveur',
-    serveurLocalUrl: ELYNDOR_CLOUD_URL,
+    serveurLocalUrl: ELYNDOR_CLOUD_REGLAGE_URL,
     serveurLocalModele: ELYNDOR_CLOUD_MODELE,
     serveurLocalApiKey: undefined,
     // Réglages hérités de l'ancien générateur d'images tiers : jamais relus.
@@ -63,7 +130,7 @@ export function verrouillerSurElyndorCloud(settings: AppSettings): AppSettings {
 export function reglagesSontElyndorCloud(settings: AppSettings): boolean {
   return settings.moteurInference === 'serveur'
     && settings.model === ELYNDOR_CLOUD_MODELE
-    && settings.serveurLocalUrl === ELYNDOR_CLOUD_URL
+    && settings.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL
     && settings.serveurLocalModele === ELYNDOR_CLOUD_MODELE
     && !settings.serveurLocalApiKey
     && !settings.openRouterApiKey

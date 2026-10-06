@@ -9,15 +9,18 @@ import {
   genererImageElyndorCloud,
   imagesElyndorCloudDisponibles,
   type GenerateurImage,
+  type ReferenceImage,
 } from './elyndorCloudImages';
 import {
   STYLE_PORTRAIT_ELYNDOR,
+  STYLE_PORTRAIT_SDXL,
   construirePromptSdxl,
   formaterPromptImage,
   negatifAplati,
   type PromptImageStructure,
 } from './visualBible';
 import { redigerPromptPortraitSdxl } from './directionArtistique';
+import { canonRace, detecterRacePnj, negatifSdxlRace, referenceRaceFiable, traitsSdxlRace } from './racePnj';
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
@@ -118,7 +121,7 @@ export async function collecterReferencesScene(
   return ordonnerReferences(candidats, MAX_REFERENCES_IMAGE);
 }
 
-// Lustify SDXL sait produire du contenu explicite : hors profil Adulte, il
+// Big Lust (SDXL) sait produire du contenu explicite : hors profil Adulte, il
 // est exclu par le prompt négatif, en plus du filtrage du texte en amont.
 const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
 
@@ -145,9 +148,12 @@ export async function genererImageScene(
 }
 
 export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
+  const race = detecterRacePnj(pnj.titre, pnj.contenu);
   return (
     `Portrait (buste, cadrage serré sur le visage et les épaules) de ${pnj.titre}.\n` +
-    `Description : ${pnj.contenu.slice(0, 400)}\n\n` +
+    `Description : ${pnj.contenu.slice(0, 400)}\n` +
+    (race ? `${canonRace(race)}\n` : '') +
+    '\n' +
     `Style : ${STYLE_PORTRAIT_ELYNDOR}.`
   );
 }
@@ -164,8 +170,9 @@ export function construirePromptAvatarJoueur(story: StoryState): string {
 async function genererPortrait(
   prompt: string,
   promptCourt: string | undefined,
-  references: (string | null)[],
+  references: (ReferenceImage | null)[],
   profil?: ProfilContenu,
+  negatifSupplementaire = '',
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
@@ -173,17 +180,19 @@ async function genererPortrait(
   return generateurCourant({
     prompt,
     promptCourt,
-    negatif: negatifPourProfil(profil),
-    references: references.filter((r): r is string => !!r).map((image) => ({ role: 'personnage' as const, image })),
+    negatif: [negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '),
+    references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
   });
 }
 
 /** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
 /** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
-async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings) {
+async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings, traitsRace = '') {
   try {
-    return await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+    const prompt = await redigerPromptPortraitSdxl(story, nom, fiche, settings);
+    // Les traits de race passent en tête : SDXL pèse davantage les premiers mots.
+    return prompt ? [traitsRace, prompt, STYLE_PORTRAIT_SDXL].filter(Boolean).join(', ') : undefined;
   } catch {
     return undefined;
   }
@@ -202,11 +211,19 @@ export async function obtenirOuGenererAvatarPnj(
     const image = ancien ? await preparerImageReference(ancien).catch(() => null) : null;
     if (image) return enregistrerAvatarPnj(story.meta.id, pnj.id, image);
   }
+  // Le portrait prédéfini de sa race (création de personnage) guide l'allure
+  // du PNJ ; le canon de la race est rappelé au modèle qui rédige le prompt.
+  const race = detecterRacePnj(pnj.titre, pnj.contenu);
+  const referenceRace = race && referenceRaceFiable(race)
+    ? await assetVersDataUrl(obtenirPortrait(race.race.id, race.sexe))
+    : null;
+  const fiche = race ? `${pnj.contenu}\n${canonRace(race)}` : pnj.contenu;
   const dataUrl = await genererPortrait(
     construirePromptAvatarPnj(pnj),
-    await promptPortraitSdxl(story, pnj.titre, pnj.contenu, settings),
-    [],
+    await promptPortraitSdxl(story, pnj.titre, fiche, settings, race ? traitsSdxlRace(race) : ''),
+    [referenceRace ? { role: 'race', image: referenceRace } : null],
     settings.profilContenu,
+    race ? negatifSdxlRace(race) : '',
   );
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
 }
@@ -218,7 +235,7 @@ export async function obtenirOuGenererAvatarJoueur(story: StoryState, settings: 
   const dataUrl = await genererPortrait(
     construirePromptAvatarJoueur(story),
     await promptPortraitSdxl(story, story.meta.personnageNom, story.meta.personnageDescription || story.meta.personnageNom, settings),
-    [portrait],
+    [portrait ? { role: 'personnage', image: portrait } : null],
     settings.profilContenu,
   );
   return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);

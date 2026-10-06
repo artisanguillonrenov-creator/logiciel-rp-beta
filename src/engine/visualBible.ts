@@ -140,12 +140,12 @@ export const BIBLE_VISUELLE_ELYNDOR: readonly string[] = [
   'profondeur de champ et premier plan fort',
   'personnages saisis en mouvement plutôt qu’en pose, tension visuelle',
   'éclairage cinématographique, contrastes marqués, ombres profondes, lumière chaude ou dramatique selon la scène',
-  'couleurs riches, texture peinte haut de gamme, dark fantasy réaliste',
+  'couleurs riches et saturées, étalonnage chaud, grain de pellicule 35 mm, dark fantasy photoréaliste',
   'sensation d’un photogramme extrait d’un film, format cinéma 16:9',
 ];
 
 export const STYLE_PORTRAIT_ELYNDOR =
-  'peinture numérique haut de gamme, dark fantasy réaliste, éclairage cinématographique contrasté, ombres profondes, couleurs riches, portrait en buste, fond sombre uni, sans texte, sans logo, sans watermark, sans signature';
+  'image de cinéma façon Quentin Tarantino, dark fantasy photoréaliste, grain de pellicule 35 mm, étalonnage chaud et saturé, fort contraste, lumière de contour dramatique, portrait en buste, sans texte, sans logo, sans watermark, sans signature';
 
 export const CONTRAINTES_NEGATIVES: Readonly<Record<string, readonly string[]>> = {
   'Rendu': ['texte dans l’image', 'logo', 'watermark', 'signature'],
@@ -291,7 +291,10 @@ const INDICES_CAMERA_ANGLAIS: Record<'autre-cadrage' | 'autre-angle' | 'autre-co
   'autre-composition': ['off-center composition', 'strong foreground framing', 'symmetrical composition', 'rule of thirds'],
 };
 
-const STYLE_SDXL_ELYNDOR = 'cinematic film still, dark fantasy, dramatic lighting, deep shadows, rich colors, painterly texture, highly detailed';
+// Style Elyndor : image de cinéma façon Quentin Tarantino, photoréaliste,
+// étalonnage chaud et saturé, fort contraste, grain de pellicule.
+const STYLE_SDXL_ELYNDOR = 'cinematic film still, Quentin Tarantino style, dark fantasy, photorealistic, 35mm film grain, saturated warm color grading, high contrast, dramatic chiaroscuro lighting, sharp focus, highly detailed';
+export const STYLE_PORTRAIT_SDXL = 'cinematic portrait, Quentin Tarantino style, dark fantasy, photorealistic skin texture, 35mm film grain, saturated warm color grading, high contrast, dramatic rim lighting, sharp focus, highly detailed';
 
 /** Prompt court anglais envoyé aux modèles CLIP ; undefined s'il n'existe pas. */
 export function construirePromptSdxl(structure: PromptImageStructure): string | undefined {
