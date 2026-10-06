@@ -166,6 +166,11 @@ export interface DiagnosticAppelEmbeddings {
   raison?: string;
 }
 
+export interface DiagnosticPostTraitement {
+  dureeTotaleMs: number;
+  etapes: DiagnosticEtape[];
+}
+
 export interface DiagnosticTour {
   id: string;
   startedAt: number;
@@ -173,6 +178,8 @@ export interface DiagnosticTour {
   etapes: DiagnosticEtape[];
   appelsIA: DiagnosticAppelIA[];
   embeddings: DiagnosticAppelEmbeddings[];
+  // Mesuré après sauvegarde : n'entre pas dans le temps d'attente du joueur.
+  postTraitement?: DiagnosticPostTraitement;
 }
 
 export type FactType = 'personnage' | 'lieu' | 'promesse' | 'autre';
