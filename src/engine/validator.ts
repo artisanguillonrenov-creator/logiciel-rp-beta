@@ -147,6 +147,8 @@ export interface ValidationLLMOptions {
   meta: StoryMeta;
   moteurInference?: MoteurInference;
   baseUrl?: string;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 const NOMS_CHECKS: NomCheck[] = [
@@ -173,6 +175,7 @@ export async function validerReponseLLM({
   meta,
   moteurInference,
   baseUrl,
+  storyId,
 }: ValidationLLMOptions): Promise<RapportValidation> {
   const faitsTexte = faits.length
     ? faits.map((f) => `- [${f.type}]${f.resolue ? ' (résolu)' : ''} ${f.texte}`).join('\n')
@@ -182,6 +185,7 @@ export async function validerReponseLLM({
   try {
     const sortie = await appellerModele({
       apiKey,
+      storyId,
       model,
       moteurInference,
       baseUrl,
@@ -302,6 +306,8 @@ export interface RepairOptions {
   partiel: boolean;
   moteurInference?: MoteurInference;
   baseUrl?: string;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 /**
@@ -319,6 +325,7 @@ export async function reparerReponse({
   partiel,
   moteurInference,
   baseUrl,
+  storyId,
 }: RepairOptions): Promise<string> {
   const points = rapport.checks
     .filter((c) => !c.ok)
@@ -331,6 +338,7 @@ export async function reparerReponse({
 
   const corrige = await appellerModele({
     apiKey,
+    storyId,
     model,
     moteurInference,
     baseUrl,

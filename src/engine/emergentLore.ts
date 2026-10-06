@@ -23,6 +23,7 @@ async function extraireCandidats(
   transcript: string,
   existants: EntreeLoreEmergent[],
   personnageNom: string,
+  storyId?: string,
 ): Promise<CandidatLoreEmergent[]> {
   const existantsVisibles = appSettings.profilContenu === 'adulte'
     ? existants
@@ -34,6 +35,7 @@ async function extraireCandidats(
   try {
     const sortie = await appellerModele({
       ...configurationLLM(appSettings),
+      storyId,
       temperature: 0.2,
       maxTokens: 500,
       diagnosticLabel: 'Lore émergent',
@@ -78,6 +80,8 @@ export interface MiseAJourLoreEmergentOptions {
   messages: Message[];
   depuisIndex: number;
   personnageNom: string;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 export async function mettreAJourLoreEmergent({
@@ -86,6 +90,7 @@ export async function mettreAJourLoreEmergent({
   messages,
   depuisIndex,
   personnageNom,
+  storyId,
 }: MiseAJourLoreEmergentOptions): Promise<EntreeLoreEmergent[]> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return existants;
@@ -94,7 +99,7 @@ export async function mettreAJourLoreEmergent({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom);
+  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom, storyId);
   if (candidats.length === 0) return fusionnerDoublonsLore(existants);
 
   const entrees = fusionnerDoublonsLore(existants);

@@ -5,6 +5,7 @@ import type {
   DiagnosticStatut,
   DiagnosticTour,
 } from '../types';
+import { definirLecteurTourCourant } from './journalDiagnostic';
 
 /**
  * Instrumentation passive du pipeline narratif.
@@ -14,13 +15,16 @@ import type {
  * (LLM / embeddings) sans modifier leurs résultats ni leurs décisions.
  */
 let courant: DiagnosticTour | null = null;
+let histoireDuTour: string | undefined;
+definirLecteurTourCourant(() => (courant ? { id: courant.id, storyId: histoireDuTour } : undefined));
 
 function entier(valeur: unknown): number {
   const n = typeof valeur === 'number' ? valeur : Number(valeur);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
-export function commencerDiagnosticTour(id?: string): DiagnosticTour {
+export function commencerDiagnosticTour(id?: string, storyId?: string): DiagnosticTour {
+  histoireDuTour = storyId;
   const diagnostic: DiagnosticTour = {
     id: id ?? `diag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     startedAt: Date.now(),

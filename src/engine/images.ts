@@ -134,6 +134,7 @@ export async function genererImageScene(
   structure: PromptImageStructure,
   references: readonly ReferenceVisuelle[],
   profil?: ProfilContenu,
+  storyId?: string,
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
@@ -144,6 +145,7 @@ export async function genererImageScene(
     negatif: negatifPourProfil(profil),
     references: selectionnerReferencesGenerateur(references),
     format: '16:9',
+    storyId,
   });
 }
 
@@ -173,6 +175,7 @@ async function genererPortrait(
   references: (ReferenceImage | null)[],
   profil?: ProfilContenu,
   negatifSupplementaire = '',
+  storyId?: string,
 ): Promise<string> {
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
@@ -183,6 +186,7 @@ async function genererPortrait(
     negatif: [negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '),
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
+    storyId,
   });
 }
 
@@ -224,6 +228,7 @@ export async function obtenirOuGenererAvatarPnj(
     [referenceRace ? { role: 'race', image: referenceRace } : null],
     settings.profilContenu,
     race ? negatifSdxlRace(race) : '',
+    story.meta.id,
   );
   return enregistrerAvatarPnj(story.meta.id, pnj.id, dataUrl);
 }
@@ -237,6 +242,8 @@ export async function obtenirOuGenererAvatarJoueur(story: StoryState, settings: 
     await promptPortraitSdxl(story, story.meta.personnageNom, story.meta.personnageDescription || story.meta.personnageNom, settings),
     [portrait ? { role: 'personnage', image: portrait } : null],
     settings.profilContenu,
+    '',
+    story.meta.id,
   );
   return enregistrerAvatarPnj(story.meta.id, ID_ASSET_JOUEUR, dataUrl);
 }

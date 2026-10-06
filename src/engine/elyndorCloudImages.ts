@@ -1,4 +1,5 @@
-import { assurerPodElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
+import { assurerPodElyndorCloud, podElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
+import { journaliser, resumerReferences } from './journalDiagnostic';
 
 /**
  * Générateur d'images Elyndor Cloud.
@@ -49,6 +50,8 @@ export interface RequeteImage {
   /** Déjà triées par priorité (voir selectionnerReferencesGenerateur). */
   references: ReferenceImage[];
   format: FormatImage;
+  /** Histoire concernée (journal de diagnostic) ; jamais envoyée au serveur. */
+  storyId?: string;
 }
 
 export type GenerateurImage = (requete: RequeteImage, signal?: AbortSignal) => Promise<string>;
@@ -100,6 +103,19 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
   else signal?.addEventListener('abort', relayer, { once: true });
   const timer = setTimeout(() => controleur.abort(new Error('Délai de génération d’image dépassé.')), DELAI_GENERATION_IMAGE_MS);
 
+  const debut = Date.now();
+  const trace = (statut: 'ok' | 'erreur', raison?: string) => journaliser('image', {
+    modele,
+    pod: podElyndorCloud(),
+    format: requete.format,
+    promptSdxl: requete.promptCourt ?? null,
+    prompt: requete.prompt,
+    negatif: requete.negatif ?? null,
+    references: resumerReferences(requete.references),
+    dureeMs: Date.now() - debut,
+    statut,
+    ...(raison ? { raison } : {}),
+  }, requete.storyId);
   try {
     await assurerPodElyndorCloud();
     const reponse = await fetch(`${urlServeurImagesElyndorCloud()}/images/generations`, {
@@ -113,8 +129,10 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
     }
     const image = extraireImageReponse(await reponse.json());
     if (!image) throw new ErreurImagesIndisponibles('Elyndor Cloud n’a renvoyé aucune image exploitable.');
+    trace('ok');
     return image;
   } catch (erreur) {
+    trace('erreur', erreur instanceof Error ? erreur.message : String(erreur));
     if (erreur instanceof ErreurImagesIndisponibles) throw erreur;
     if (signal?.aborted) throw new ErreurImagesIndisponibles('Génération d’image annulée.');
     if (controleur.signal.aborted) {

@@ -2,8 +2,11 @@ import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
+import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
-import type { Message, StoryState } from '../types';
+import { lireJournal } from '../storage/journalDiagnosticStore';
+import type { AppSettings, Message, StoryState } from '../types';
+import { construireExportDiagnostic } from './exportDiagnostic';
 import { analyserMessage } from './messageFormatter';
 import { cumulerUsages } from './mesureTokens';
 
@@ -12,7 +15,9 @@ import { cumulerUsages } from './mesureTokens';
 // EPUB pour lire sa propre histoire comme un livre. Les trois réutilisent
 // analyserMessage() pour distinguer narration/dialogue, plutôt qu'un export
 // plat sans mise en forme.
-export type FormatExport = 'texte' | 'pdf' | 'epub';
+// « diagnostic » : fichier JSON complet pour l'analyse d'une partie
+// (voir exportDiagnostic.ts), pas un format de lecture.
+export type FormatExport = 'texte' | 'pdf' | 'epub' | 'diagnostic';
 
 function nomAuteur(story: StoryState, role: Message['role']): string {
   return role === 'user' ? story.meta.personnageNom || 'Joueur' : 'Narrateur';
@@ -271,7 +276,35 @@ async function exporterEpub(story: StoryState): Promise<void> {
   await ecrireEtPartagerNatif(nom, octets, 'application/epub+zip');
 }
 
-export async function exporterConversation(story: StoryState, format: FormatExport): Promise<void> {
+async function exporterDiagnostic(story: StoryState, settings: AppSettings): Promise<void> {
+  const contenu = JSON.stringify(construireExportDiagnostic({
+    story,
+    settings,
+    journal: await lireJournal(story.meta.id),
+    application: {
+      // Version lue dans le manifeste de la mise à jour (pas d'expo-constants :
+      // l'ajouter changerait l'empreinte native et exigerait une nouvelle APK).
+      version: (Updates.manifest as { extra?: { expoClient?: { version?: string } } } | null)?.extra?.expoClient?.version ?? null,
+      miseAJourDu: Updates.createdAt ? Updates.createdAt.toISOString() : null,
+      runtimeVersion: typeof Updates.runtimeVersion === 'string' ? Updates.runtimeVersion : null,
+      updateId: Updates.updateId ?? null,
+      canal: Updates.channel ?? null,
+      plateforme: Platform.OS,
+    },
+  }), null, 2);
+  const nom = nomFichier(story, 'diagnostic.json');
+  if (Platform.OS === 'web') {
+    telechargerWeb(nom, contenu, 'application/json');
+    return;
+  }
+  await ecrireEtPartagerNatif(nom, contenu, 'application/json');
+}
+
+export async function exporterConversation(story: StoryState, format: FormatExport, settings?: AppSettings): Promise<void> {
+  if (format === 'diagnostic') {
+    if (!settings) throw new Error('Réglages indisponibles pour l’export de diagnostic.');
+    return exporterDiagnostic(story, settings);
+  }
   if (format === 'texte') return exporterTexte(story);
   if (format === 'pdf') return exporterPdf(story);
   return exporterEpub(story);

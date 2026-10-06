@@ -65,6 +65,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   // Pas de bloc d'état à l'ouverture : seule la phrase coupée est complétée.
   let contenu = await genererReponseComplete({
     ...configurationLLM(appSettings, modelePourAppel),
+    storyId: story.meta.id,
     messages: construireMessages(ctxBase, { budgetSysteme }),
     temperature,
     maxTokens,
@@ -76,6 +77,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     try {
       contenu = await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
+        storyId: story.meta.id,
         messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection, undefined, false), { budgetSysteme }),
         temperature,
         maxTokens,

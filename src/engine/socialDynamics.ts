@@ -45,6 +45,7 @@ async function extraireAppelsSocial(
   appSettings: AppSettings,
   transcript: string,
   social: SocialState,
+  storyId?: string,
 ): Promise<AppelOutil[]> {
   const engagementsOuverts = social.engagements
     .filter((e) => !e.honore && !e.rompu)
@@ -54,6 +55,7 @@ async function extraireAppelsSocial(
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
       ...configurationLLM(appSettings),
+      storyId,
       temperature: 0.2,
       maxTokens: 500,
       diagnosticLabel: 'Social / engagements',
@@ -107,6 +109,8 @@ export interface MiseAJourSocialOptions {
   socialActuel: SocialState;
   messages: Message[];
   depuisIndex: number;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 /**
@@ -122,6 +126,7 @@ export async function mettreAJourSocial({
   socialActuel,
   messages,
   depuisIndex,
+  storyId,
 }: MiseAJourSocialOptions): Promise<SocialState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return socialActuel;
@@ -130,7 +135,7 @@ export async function mettreAJourSocial({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const appelsBruts = await extraireAppelsSocial(appSettings, transcript, socialActuel);
+  const appelsBruts = await extraireAppelsSocial(appSettings, transcript, socialActuel, storyId);
   const outilsSocial = outilsPourComposant('social');
 
   const engagements: Engagement[] = [...socialActuel.engagements];

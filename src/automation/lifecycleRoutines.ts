@@ -1,5 +1,6 @@
 import { supprimerAvatarsHistoire, supprimerAvatarsOrphelins } from '../storage/pnjAvatarsStore';
 import { supprimerIllustrationsHistoire, supprimerIllustrationsOrphelines } from '../storage/sceneImagesStore';
+import { supprimerJournal, supprimerJournauxOrphelins } from '../storage/journalDiagnosticStore';
 import {
   enqueueAutomation,
   listAutomationJobs,
@@ -16,6 +17,7 @@ export async function nettoyerDonneesDeriveesHistoire(storyId: string): Promise<
   const resultats = await Promise.allSettled([
     supprimerAvatarsHistoire(storyId),
     supprimerIllustrationsHistoire(storyId),
+    supprimerJournal(storyId),
   ]);
   const erreur = resultats.find((resultat): resultat is PromiseRejectedResult => resultat.status === 'rejected');
   if (erreur) throw erreur.reason;
@@ -45,6 +47,7 @@ export function registerLifecycleAutomationHandlers(deps: LifecycleAutomationDep
     await Promise.all([
       supprimerAvatarsOrphelins(storyIdsValides),
       supprimerIllustrationsOrphelines(storyIdsValides),
+      supprimerJournauxOrphelins(storyIdsValides),
     ]);
 
     const jobs = await listAutomationJobs();

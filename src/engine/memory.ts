@@ -59,6 +59,8 @@ export interface MiseAJourMemoireOptions {
   memoireActuelle: MemoryState;
   messages: Message[];
   personnageNom: string;
+  /** Histoire concernée (journal de diagnostic). */
+  storyId?: string;
 }
 
 interface FaitCandidat {
@@ -85,6 +87,7 @@ async function extraireCandidats({
   memoireActuelle,
   messages,
   personnageNom,
+  storyId,
 }: MiseAJourMemoireOptions): Promise<{ resume: string; candidats: FaitCandidat[] } | null> {
   const nouveauxMessages = messages.slice(memoireActuelle.dernierMessageIndexMaj);
   const transcript = nouveauxMessages
@@ -99,6 +102,7 @@ async function extraireCandidats({
   try {
     const sortie = await appellerModele({
       ...configurationLLM(appSettings),
+      storyId,
       temperature: 0.2,
       maxTokens: 600,
       diagnosticLabel: 'Mémoire — extraction',

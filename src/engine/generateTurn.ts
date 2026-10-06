@@ -79,6 +79,7 @@ import {
   retirerRepliqueDuJoueur,
   validerAgentiviteHeuristique,
   validerReponseLLM,
+  type RapportValidation,
 } from './validator';
 
 const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
@@ -402,10 +403,11 @@ async function executerMisesAJourPeriodiques(
       memoireActuelle: story.memoire,
       messages: messagesSecurises,
       personnageNom,
+      storyId: story.meta.id,
     }),
-    mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages: messagesSecurises, depuisIndex }),
-    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages: messagesSecurises, depuisIndex }),
-    mettreAJourSocial({ appSettings, socialActuel: story.social, messages: messagesSecurises, depuisIndex }),
+    mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
+    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
+    mettreAJourSocial({ appSettings, socialActuel: story.social, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
   ]);
   return { memoire, directeur, monde, social };
 }
@@ -423,6 +425,7 @@ async function mettreAJourLoreEmergentSeul(
     messages: messagesSecurises,
     depuisIndex: story.loreEmergentDernierIndex ?? 0,
     personnageNom,
+    storyId: story.meta.id,
   });
   return { loreEmergent, loreEmergentDernierIndex: messages.length };
 }
@@ -506,6 +509,7 @@ async function genererTourInterne(
     'génération',
     () => genererReponseComplete({
       ...configurationLLM(appSettings, modelePourAppel),
+      storyId: storyCourante.meta.id,
       messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
       temperature,
       maxTokens,
@@ -517,19 +521,24 @@ async function genererTourInterne(
 
   const canon = corpusCanonHistoire(storyCourante, messageJoueur);
   const debutValidationLocale = Date.now();
-  const controlesLocaux = fusionnerRapports(
-    validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
-    validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
-    validerRepetitionHeuristique(reponse, storyCourante),
-    verifierEntitesCanoniques(reponse, canon),
-  );
+  // Verdict de chaque règle, respectée ou non, dans le diagnostic du tour :
+  // c'est ce qui permet de vérifier que le modèle suit les règles codées.
+  const verdictsLocaux: Array<[string, RapportValidation]> = [
+    ['Autonomie du joueur (règles 1 et 7)', validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom)],
+    ['Profil de contenu', validerProfilContenuHeuristique(reponse, appSettings.profilContenu)],
+    ['Répétitions', validerRepetitionHeuristique(reponse, storyCourante)],
+    ['Canon et mots inventés (règles 2 et 5)', verifierEntitesCanoniques(reponse, canon)],
+  ];
+  const controlesLocaux = fusionnerRapports(...verdictsLocaux.map(([, rapportLocal]) => rapportLocal));
   ajouterEtapeDiagnostic(
     'Contrôles locaux',
     'validation',
     controlesLocaux.ok ? 'ok' : 'erreur',
     Date.now() - debutValidationLocale,
     controlesLocaux.ok ? undefined : controlesLocaux.checks.filter((x) => !x.ok).map((x) => x.raison).join(' | '),
-    [`${controlesLocaux.checks.length} signalement(s)`],
+    verdictsLocaux.map(([regle, rapportLocal]) => (rapportLocal.ok
+      ? `respectée · ${regle}`
+      : `ENFREINTE · ${regle} — ${rapportLocal.checks.filter((c) => !c.ok).map((c) => `[${c.nom}, ${c.gravite}] ${c.raison}`).join(' ; ')}`)),
   );
   // V13 : l'appel de validation au modèle (un second appel complet, très
   // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
@@ -542,10 +551,14 @@ async function genererTourInterne(
       'validation',
       () => validerReponseLLM({
         ...configurationLLM(appSettings, modelePourAppel),
+        storyId: storyCourante.meta.id,
         reponse,
         faits: ctxBase.faits,
         meta: ctxBase.meta,
       }),
+      (rapportLLM) => (rapportLLM.ok
+        ? ['respectée · Contradictions avec les faits établis (règle 6)']
+        : rapportLLM.checks.filter((c) => !c.ok).map((c) => `ENFREINTE · [${c.nom}, ${c.gravite}] ${c.raison}`)),
     );
   } else {
     ajouterEtapeDiagnostic(
@@ -576,6 +589,7 @@ async function genererTourInterne(
     try {
       reponse = extraireEnveloppeEtat(await reparerReponse({
         ...configurationLLM(appSettings, modelePourAppel),
+        storyId: storyCourante.meta.id,
         reponse,
         rapport,
         partiel: strategie === 'regeneration_partielle',
@@ -593,6 +607,7 @@ async function genererTourInterne(
       // celui de la nouvelle apparaître dans le récit.
       const regeneree = extraireEnveloppeEtat(await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
+        storyId: storyCourante.meta.id,
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
@@ -677,7 +692,7 @@ export async function genererTour(
   messageJoueur: string,
   reponseAId?: string,
 ): Promise<ResultatTour> {
-  commencerDiagnosticTour();
+  commencerDiagnosticTour(undefined, story.meta.id);
   try {
     const resultat = await genererTourInterne(story, appSettings, messageJoueur, reponseAId);
     const diagnosticTour = terminerDiagnosticTour();
