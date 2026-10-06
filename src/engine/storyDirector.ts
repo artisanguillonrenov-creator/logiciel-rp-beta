@@ -36,6 +36,7 @@ async function analyserDirecteur(
       ...configurationLLM(appSettings),
       temperature: 0.3,
       maxTokens: 400,
+      diagnosticLabel: 'Directeur narratif',
       messages: [
         {
           role: 'system',

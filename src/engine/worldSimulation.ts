@@ -61,6 +61,7 @@ async function extraireAppelsMonde(
       ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
+      diagnosticLabel: 'Monde',
       outils: outilsPourComposant('monde'),
       messages: [
         {

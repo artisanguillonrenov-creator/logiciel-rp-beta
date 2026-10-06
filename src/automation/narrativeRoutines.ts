@@ -1,4 +1,4 @@
-import type { AppSettings, Message, StoryState } from '../types';
+import type { AppSettings, DiagnosticEtape, DiagnosticPostTraitement, Message, StoryState } from '../types';
 import { doitMettreAJourMemoire, mettreAJourMemoire } from '../engine/memory';
 import { mettreAJourDirecteur } from '../engine/storyDirector';
 import { mettreAJourMonde } from '../engine/worldSimulation';
@@ -24,7 +24,7 @@ export interface NarrativeAutomationDeps {
 export type NarrativeDerivedPatch = Pick<
   StoryState,
   'memoire' | 'directeur' | 'monde' | 'social' | 'loreEmergent' | 'loreEmergentDernierIndex'
->;
+> & { diagnosticPostTraitement?: DiagnosticPostTraitement };
 
 export function besoinRattrapageNarratif(story: StoryState): boolean {
   return (
@@ -46,6 +46,26 @@ export async function calculerRattrapageNarratif(
   story: StoryState,
   appSettings: AppSettings,
 ): Promise<NarrativeDerivedPatch | null> {
+  const debutPostTraitement = Date.now();
+  const etapesDiagnostic: DiagnosticEtape[] = [];
+  const mesurer = async <T>(nom: string, action: () => Promise<T>): Promise<T> => {
+    const debut = Date.now();
+    try {
+      const resultat = await action();
+      etapesDiagnostic.push({ nom, categorie: 'post-traitement', statut: 'ok', dureeMs: Date.now() - debut });
+      return resultat;
+    } catch (erreur) {
+      etapesDiagnostic.push({
+        nom,
+        categorie: 'post-traitement',
+        statut: 'erreur',
+        dureeMs: Date.now() - debut,
+        raison: erreur instanceof Error ? erreur.message : 'Erreur inconnue',
+      });
+      throw erreur;
+    }
+  };
+
   const periodicDue = doitMettreAJourMemoire(story.messages, story.memoire.dernierMessageIndexMaj);
   const loreDepuisIndex = story.loreEmergentDernierIndex ?? 0;
   const loreDue = loreDepuisIndex < story.messages.length;
@@ -63,42 +83,52 @@ export async function calculerRattrapageNarratif(
 
   const periodicPromise = periodicDue
     ? Promise.all([
-        mettreAJourMemoire({
+        mesurer('Mémoire L0-L5', () => mettreAJourMemoire({
           appSettings,
           memoireActuelle: story.memoire,
           messages: messagesSecurises,
           personnageNom,
-        }),
-        mettreAJourDirecteur({
+        })),
+        mesurer('Directeur narratif', () => mettreAJourDirecteur({
           appSettings,
           directeurActuel: story.directeur,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
-        }),
-        mettreAJourMonde({
+        })),
+        mesurer('Simulation du monde', () => mettreAJourMonde({
           appSettings,
           mondeActuel: story.monde,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
-        }),
-        mettreAJourSocial({
+        })),
+        mesurer('Social / engagements', () => mettreAJourSocial({
           appSettings,
           socialActuel: story.social,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
-        }),
+        })),
       ])
     : null;
 
   const lorePromise = loreDue
-    ? mettreAJourLoreEmergent({
+    ? mesurer('Lore émergent', () => mettreAJourLoreEmergent({
         appSettings,
         existants: story.loreEmergent,
         messages: messagesSecurises,
         depuisIndex: loreDepuisIndex,
         personnageNom,
-      })
+      }))
     : null;
+
+  if (!periodicDue) {
+    const raison = `Cadence non atteinte : ${story.messages.length - story.memoire.dernierMessageIndexMaj}/8 messages depuis la dernière mise à jour.`;
+    for (const nom of ['Mémoire L0-L5', 'Directeur narratif', 'Simulation du monde', 'Social / engagements']) {
+      etapesDiagnostic.push({ nom, categorie: 'post-traitement', statut: 'ignoree', dureeMs: 0, raison });
+    }
+  }
+  if (!loreDue) {
+    etapesDiagnostic.push({ nom: 'Lore émergent', categorie: 'post-traitement', statut: 'ignoree', dureeMs: 0, raison: 'Aucun nouveau message à analyser.' });
+  }
 
   if (periodicPromise) {
     [memoire, directeur, monde, social] = await periodicPromise;
@@ -108,7 +138,18 @@ export async function calculerRattrapageNarratif(
     loreEmergentDernierIndex = story.messages.length;
   }
 
-  return { memoire, directeur, monde, social, loreEmergent, loreEmergentDernierIndex };
+  return {
+    memoire,
+    directeur,
+    monde,
+    social,
+    loreEmergent,
+    loreEmergentDernierIndex,
+    diagnosticPostTraitement: {
+      dureeTotaleMs: Date.now() - debutPostTraitement,
+      etapes: etapesDiagnostic,
+    },
+  };
 }
 
 export async function enqueueNarrativePostprocess(event: NarrativeStorySavedEvent): Promise<void> {
@@ -130,11 +171,25 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
 
     const patch = await calculerRattrapageNarratif(snapshot, await deps.getSettings());
     if (!patch) return;
+    const { diagnosticPostTraitement, ...etatPatch } = patch;
 
     const miseAJour = await deps.updateStoryIf(
       job.storyId,
       (courante) => calculerRevisionNarrative(courante) === revision,
-      (courante) => ({ ...courante, ...patch }),
+      (courante) => {
+        let diagnosticAttache = false;
+        const messages = [...courante.messages].reverse().map((message) => {
+          if (!diagnosticAttache && message.role === 'assistant' && message.diagnosticTour && diagnosticPostTraitement) {
+            diagnosticAttache = true;
+            return {
+              ...message,
+              diagnosticTour: { ...message.diagnosticTour, postTraitement: diagnosticPostTraitement },
+            };
+          }
+          return message;
+        }).reverse();
+        return { ...courante, ...etatPatch, messages };
+      },
     );
     if (miseAJour) await deps.afterNarrativeUpdate?.(miseAJour);
   });
