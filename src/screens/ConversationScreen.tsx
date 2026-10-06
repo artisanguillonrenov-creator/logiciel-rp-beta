@@ -788,6 +788,20 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     {symboleDiagnostic(appel.statut)} {appel.composant} — {appel.textes} texte(s), {appel.lots} lot(s), {formaterDureeGeneration(appel.dureeMs)}{appel.raison ? ` · ${appel.raison}` : ''}
                   </Text>
                 ))}
+
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Après affichage — moteurs asynchrones</Text>
+                {debugLore.diagnosticTour.postTraitement ? (
+                  <>
+                    <Text style={styles.ligneDebug}>Temps hors attente joueur : {formaterDureeGeneration(debugLore.diagnosticTour.postTraitement.dureeTotaleMs)}</Text>
+                    {debugLore.diagnosticTour.postTraitement.etapes.map((etape, index) => (
+                      <Text key={`${etape.nom}-post-${index}`} style={styles.ligneDebug}>
+                        {symboleDiagnostic(etape.statut)} {etape.nom}{typeof etape.dureeMs === 'number' ? ` — ${formaterDureeGeneration(etape.dureeMs)}` : ''}{etape.raison ? ` · ${etape.raison}` : ''}
+                      </Text>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.ligneDebug}>En attente du post-traitement, ou diagnostic ouvert avant sa sauvegarde.</Text>
+                )}
               </>
             ) : null}
 
