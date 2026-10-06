@@ -244,23 +244,27 @@ def generer(req: Requete):
     positif = (req.prompt_sdxl or req.prompt).strip()
     negatif = ", ".join(x for x in [req.negative_prompt, NEGATIF_BASE] if x)
     with verrou:
-        cond, pooled = compel(positif)
-        ncond, npooled = compel(negatif)
-        cond, ncond = egaliser_longueurs(cond, ncond)
-        graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
-        options = {}
-        if IP_ADAPTER:
-            visage, scene = references(req)
-            pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
-            options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
-        image = pipe(
-            prompt_embeds=cond, pooled_prompt_embeds=pooled,
-            negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
-            width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
-            generator=torch.Generator("cuda").manual_seed(graine),
-            **options,
-        ).images[0]
-        rendre_memoire()
+        try:
+            cond, pooled = compel(positif)
+            ncond, npooled = compel(negatif)
+            cond, ncond = egaliser_longueurs(cond, ncond)
+            graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
+            options = {}
+            if IP_ADAPTER:
+                visage, scene = references(req)
+                pipe.set_ip_adapter_scale([POIDS_SCENE if scene else 0.0, POIDS_VISAGE if visage else 0.0])
+                options["ip_adapter_image"] = [scene or VIDE, visage or VIDE]
+            image = pipe(
+                prompt_embeds=cond, pooled_prompt_embeds=pooled,
+                negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
+                width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
+                generator=torch.Generator("cuda").manual_seed(graine),
+                **options,
+            ).images[0]
+        finally:
+            # Aussi après une erreur (OOM CUDA récupérable…) : sinon la mémoire
+            # retenue s'accumule d'échec en échec.
+            rendre_memoire()
     tampon = io.BytesIO()
     image.save(tampon, format="PNG")
     return {"created": int(time.time()), "data": [{"b64_json": base64.b64encode(tampon.getvalue()).decode()}]}
