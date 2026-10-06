@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  BUDGET_CONVERSATION_DISTANT,
   BUDGET_CONVERSATION_LOCAL,
+  BUDGET_SYSTEM_DISTANT,
   BUDGET_SYSTEM_LOCAL,
   construireMessages,
   selectionnerMessagesRecents,
@@ -84,5 +86,16 @@ test('identité narrative en tête et style jamais tronqué, même en budget loc
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);
   assert.match(systeme.content, /POINT DE VUE: dans la narration uniquement/);
   assert.match(systeme.content, /\[STYLE & FILTRE SYSTEME\][\s\S]*Format des dialogues des PNJ/);
+  assert.match(systeme.content, /\[MÉMOIRE NARRATIVE PERTINENTE\]/);
+});
+
+test('le registre Adulte (avec M08) reste entier dans l’en-tête, même avec mémoire et lore saturés', () => {
+  const m08 = `[MÉTA] Registre et Style Narratif\n${'Règle de registre. '.repeat(90)}Quand la scène appelle le cru, rends-le.`;
+  const [systeme] = construireMessages(
+    { ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(2000), registreAdulte: m08 },
+    { budgetSysteme: BUDGET_SYSTEM_DISTANT, budgetConversation: BUDGET_CONVERSATION_DISTANT },
+  );
+  assert.ok(systeme.content.length <= BUDGET_SYSTEM_DISTANT);
+  assert.ok(systeme.content.includes(m08));
   assert.match(systeme.content, /\[MÉMOIRE NARRATIVE PERTINENTE\]/);
 });

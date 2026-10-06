@@ -24,6 +24,7 @@ import {
 } from './promptBuilder';
 import { configurationLLM } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
+import { reglagesSontElyndorCloud } from './elyndorCloud';
 import { embeddingsDisponibles, obtenirEmbeddings } from './embeddings';
 import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { mettreAJourMemoire } from './memory';
@@ -86,12 +87,34 @@ const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
 
 const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
+const M08_REGISTRE = METAMOTEURS.find((e) => e.titre === METAMOTEUR_REGISTRE);
+
+/**
+ * Les métamoteurs ne sont plus envoyés au narrateur (METAMOTEURS_DANS_LE_PROMPT),
+ * sauf M08 : il n'a pas d'équivalent codé et règle le cru, la violence et le
+ * sexe du profil Adulte. Il suit donc le registre Adulte, dans l'en-tête du
+ * prompt, jamais rogné.
+ */
+function registreAdulteAvecM08(settings: StoryState['settings']): string {
+  const registre = instructionRegistreAdulte(settings);
+  return M08_REGISTRE ? `${registre}\n\n${M08_REGISTRE.titre}\n${M08_REGISTRE.contenu}` : registre;
+}
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
+/**
+ * Fenêtre étroite : modèle sur l'appareil ou serveur du réseau local. Le pod
+ * Elyndor Cloud (fenêtre de 24 576 jetons, voir infra/runpod/start.sh) reçoit
+ * les budgets larges : avec les budgets étroits, l'en-tête occupait presque
+ * tout le prompt et la mémoire et le lore n'avaient plus que quelques
+ * centaines de caractères.
+ */
+export function moteurAFenetreEtroite(appSettings: AppSettings): boolean {
+  if (appSettings.moteurInference === 'local') return true;
+  return appSettings.moteurInference === 'serveur' && !reglagesSontElyndorCloud(appSettings);
+}
+
 function budgetConversationPourApp(appSettings: AppSettings): number {
-  return appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur'
-    ? BUDGET_CONVERSATION_LOCAL
-    : BUDGET_CONVERSATION_DISTANT;
+  return moteurAFenetreEtroite(appSettings) ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
 }
 
 /** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
@@ -362,7 +385,7 @@ export function construireCtxBase(
     loreElyndor: selection.loreElyndor,
     messagesRecents,
     messageJoueur,
-    registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
+    registreAdulte: profilAdulte ? registreAdulteAvecM08(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
     engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
@@ -497,7 +520,7 @@ async function genererTourInterne(
   // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
   // il rognait la scène ou arrivait coupé.
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
-  const moteurEtroit = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur';
+  const moteurEtroit = moteurAFenetreEtroite(appSettings);
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
 
