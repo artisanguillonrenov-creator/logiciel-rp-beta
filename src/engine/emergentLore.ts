@@ -35,6 +35,7 @@ async function extraireCandidats(
       ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
+      diagnosticLabel: 'Lore émergent',
       messages: [
         {
           role: 'system',
@@ -101,7 +102,7 @@ export async function mettreAJourLoreEmergent({
       || `[${e.categorie}] entrée antérieure masquée par le profil Grand public`,
     );
     const textesCandidats = candidats.map((c) => `${c.titre} — ${c.contenu}`);
-    const { vecteurs } = await obtenirEmbeddings([...textesExistants, ...textesCandidats], appSettings);
+    const { vecteurs } = await obtenirEmbeddings([...textesExistants, ...textesCandidats], appSettings, 'Lore émergent — rapprochement');
     const vecteursExistants = vecteurs.slice(0, entrees.length);
     const vecteursCandidats = vecteurs.slice(entrees.length);
 
