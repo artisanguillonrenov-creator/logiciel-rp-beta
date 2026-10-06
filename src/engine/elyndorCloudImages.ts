@@ -5,7 +5,7 @@ import { journaliser, resumerReferences } from './journalDiagnostic';
  * Générateur d'images Elyndor Cloud.
  *
  * Comme pour la narration, aucun fournisseur tiers n'est configurable :
- * Big Lust 1.6 (SDXL) est servi par le pod Elyndor Cloud (infra/runpod/
+ * Lustify SDXL v4 est servi par le pod Elyndor Cloud (infra/runpod/
  * image_server.py, port 7860). Mettre ELYNDOR_CLOUD_MODELE_IMAGE à null
  * désactive la capacité `images` (voir automation/capabilities.ts).
  *
@@ -17,7 +17,7 @@ import { journaliser, resumerReferences } from './journalDiagnostic';
  * indépendante de ce module : un autre backend (serveur GPU, modèle local…)
  * n'aura qu'à implémenter `GenerateurImage`.
  */
-export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'big-lust-v16';
+export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'lustify-sdxl-v4';
 
 /** Limite du nombre d'images de référence envoyées par requête. */
 export const MAX_REFERENCES_IMAGE = 6;
