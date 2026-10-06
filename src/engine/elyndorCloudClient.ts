@@ -2,6 +2,7 @@ import type { AppSettings, MoteurInference } from '../types';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 import { enregistrerUsageAppel } from './mesureTokens';
+import { enregistrerAppelIADiagnostic } from './diagnosticTour';
 import { ELYNDOR_CLOUD_MODELE, ELYNDOR_CLOUD_URL } from './elyndorCloud';
 
 /**
@@ -49,6 +50,8 @@ export interface AppelModeleOptions {
   moteurInference?: MoteurInference;
   baseUrl?: string;
   signal?: AbortSignal;
+  /** Libellé concepteur uniquement : n'altère jamais la requête envoyée au modèle. */
+  diagnosticLabel?: string;
 }
 
 export interface AppelModeleAvecOutilsOptions extends AppelModeleOptions {
@@ -218,8 +221,9 @@ async function appelerChat(
   maxTokens: number,
   signal?: AbortSignal,
   tools?: unknown[],
+  diagnosticLabel?: string,
 ): Promise<Record<string, any>> {
-  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools)).message;
+  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel)).message;
 }
 
 async function appelerChatDetaille(
@@ -228,10 +232,14 @@ async function appelerChatDetaille(
   maxTokens: number,
   signal?: AbortSignal,
   tools?: unknown[],
+  diagnosticLabel?: string,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
   const profil = resoudreProfilRaisonnement('serveur', ELYNDOR_CLOUD_MODELE);
+  const debutAppel = Date.now();
 
-  const response = await fetchCloud({
+  let response: Response;
+  try {
+    response = await fetchCloud({
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -248,9 +256,30 @@ async function appelerChatDetaille(
       ...(tools ? { tools, tool_choice: 'auto' } : { stream_options: { include_usage: true } }),
     }),
   }, signal);
+  } catch (erreur) {
+    enregistrerAppelIADiagnostic({
+      composant: diagnosticLabel ?? 'Elyndor Cloud',
+      modele: ELYNDOR_CLOUD_MODELE,
+      maxTokens,
+      dureeMs: Date.now() - debutAppel,
+      usage: null,
+      statut: 'erreur',
+      raison: erreur instanceof Error ? erreur.message : 'Erreur réseau',
+    });
+    throw erreur;
+  }
 
   if (!response.ok) {
     const detail = await detailErreur(response);
+    enregistrerAppelIADiagnostic({
+      composant: diagnosticLabel ?? 'Elyndor Cloud',
+      modele: ELYNDOR_CLOUD_MODELE,
+      maxTokens,
+      dureeMs: Date.now() - debutAppel,
+      usage: null,
+      statut: 'erreur',
+      raison: `HTTP ${response.status}${detail ? ` : ${detail}` : ''}`,
+    });
     throw new ErreurElyndorCloud(
       `Erreur Elyndor Cloud (${response.status})${detail ? ` : ${detail}` : ''}`,
       response.status,
@@ -259,6 +288,13 @@ async function appelerChatDetaille(
 
   const data = analyserCorpsReponse(await response.text());
   enregistrerUsageAppel(data?.usage);
+  enregistrerAppelIADiagnostic({
+    composant: diagnosticLabel ?? 'Elyndor Cloud',
+    modele: ELYNDOR_CLOUD_MODELE,
+    maxTokens,
+    dureeMs: Date.now() - debutAppel,
+    usage: data?.usage,
+  });
   const message = data?.choices?.[0]?.message ?? data?.message ?? {};
   appliquerPolitiqueRaisonnement(message, profil);
   const finishReason = String(data?.choices?.[0]?.finish_reason ?? data?.finish_reason ?? '');
@@ -270,9 +306,10 @@ export async function appellerModele({
   temperature = 0.9,
   maxTokens = 700,
   signal,
+  diagnosticLabel,
 }: AppelModeleOptions): Promise<string> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const message = await appelerChat(messages, temperature, maxTokens, signal);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return contenu;
     if (tentative === TENTATIVES_REPONSE_VIDE) {
@@ -294,9 +331,10 @@ export async function appellerModeleDetaille({
   temperature = 0.9,
   maxTokens = 700,
   signal,
+  diagnosticLabel,
 }: AppelModeleOptions): Promise<ReponseModele> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal);
+    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return { contenu, coupee: finishReason === 'length' };
   }
@@ -309,11 +347,12 @@ export async function appellerModeleAvecOutils({
   temperature = 0.2,
   maxTokens = 600,
   signal,
+  diagnosticLabel,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
   const schemas = outils.map(versSchemaOutil);
 
   try {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas, diagnosticLabel);
     return {
       contenu: typeof message.content === 'string' ? message.content : '',
       appelsOutils: parserAppelsOutils(message),
@@ -328,6 +367,8 @@ export async function appellerModeleAvecOutils({
       temperature,
       maxTokens,
       signal,
+      undefined,
+      diagnosticLabel ? `${diagnosticLabel} — repli JSON` : 'Outils — repli JSON',
     );
     return extraireAppelsOutilsJson(typeof message.content === 'string' ? message.content : '');
   }

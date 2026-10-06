@@ -34,6 +34,7 @@ export async function embedderMessagesAnciens(
   return assurerEmbeddings(
     messagesAnciens.map((m) => ({ id: m.id, contenu: m.content })),
     appSettings,
+    'Historique ancien',
   );
 }
 

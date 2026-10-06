@@ -4,6 +4,7 @@ import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddin
 import { planifierTransactionCache } from './embeddingsCacheMutex';
 import { preparerIndexObjectBox } from './objectBoxSearch';
 import { decoderVecteur, encoderVecteur } from './vecteurCompact';
+import { ajouterEtapeDiagnostic } from '../engine/diagnosticTour';
 
 // Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
@@ -154,7 +155,9 @@ async function ecrireEntrees(
 async function assurerEmbeddingsTransaction(
   entrees: EntreeAEmbeder[],
   appSettings: AppSettings,
+  diagnosticLabel: string,
 ): Promise<Record<string, number[]>> {
+  const debutCache = Date.now();
   const index = await chargerIndex();
   const indexSet = new Set(index);
   const fournisseurCache = await chargerFournisseur();
@@ -186,6 +189,15 @@ async function assurerEmbeddingsTransaction(
     return !existant || existant.hash !== hashParId.get(e.id);
   });
 
+  ajouterEtapeDiagnostic(
+    `Cache embeddings — ${diagnosticLabel}`,
+    'recherche',
+    'ok',
+    Date.now() - debutCache,
+    undefined,
+    [`${entrees.length} demandées`, `${entrees.length - manquants.length} depuis le cache`, `${manquants.length} à calculer`],
+  );
+
   if (manquants.length === 0) {
     if (cacheCompatible && fournisseurCache && Object.keys(aCompacter).length > 0) {
       await ecrireEntrees(fournisseurCache, aCompacter, index);
@@ -193,14 +205,14 @@ async function assurerEmbeddingsTransaction(
     return Object.fromEntries(entrees.map((e) => [e.id, existantesParId.get(e.id)!.vecteur]));
   }
 
-  const resultat = await obtenirEmbeddings(manquants.map((e) => e.contenu), appSettings);
+  const resultat = await obtenirEmbeddings(manquants.map((e) => e.contenu), appSettings, `${diagnosticLabel} — calcul`);
   const cacheAvaitDejaDesEntrees = index.length > 0;
 
   if (cacheAvaitDejaDesEntrees && fournisseurCache !== null && fournisseurCache !== resultat.identiteCache) {
     // Fournisseur changé : impossible de mélanger les anciens vecteurs avec
     // les nouveaux — on jette tout le cache existant et on recalcule le lot
     // demandé d'un coup.
-    const tout = await obtenirEmbeddings(entrees.map((e) => e.contenu), appSettings);
+    const tout = await obtenirEmbeddings(entrees.map((e) => e.contenu), appSettings, `${diagnosticLabel} — recalcul complet`);
     const nouvellesEntrees: Record<string, EntreeCache> = {};
     entrees.forEach((e, i) => {
       nouvellesEntrees[e.id] = { hash: hashParId.get(e.id)!, vecteur: tout.vecteurs[i] };
@@ -229,11 +241,22 @@ async function assurerEmbeddingsTransaction(
 export async function assurerEmbeddings(
   entrees: EntreeAEmbeder[],
   appSettings: AppSettings,
+  diagnosticLabel = 'Index sémantique',
 ): Promise<Record<string, number[]>> {
-  const vecteurs = await planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings));
+  const vecteurs = await planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings, diagnosticLabel));
+  const debutIndex = Date.now();
   try {
     await preparerIndexObjectBox(entrees, vecteurs);
-  } catch {
+    ajouterEtapeDiagnostic(`Index ObjectBox — ${diagnosticLabel}`, 'recherche', 'ok', Date.now() - debutIndex, undefined, [`${entrees.length} entrées préparées`]);
+  } catch (erreur) {
+    ajouterEtapeDiagnostic(
+      `Index ObjectBox — ${diagnosticLabel}`,
+      'recherche',
+      'repli',
+      Date.now() - debutIndex,
+      'Index natif indisponible : classement cosinus utilisé.',
+      erreur instanceof Error ? [erreur.message] : undefined,
+    );
     // Le classement cosinus existant reste le filet de secours.
   }
   return vecteurs;

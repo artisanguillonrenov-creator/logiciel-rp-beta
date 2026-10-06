@@ -71,6 +71,13 @@ function formaterDureeGeneration(ms: number): string {
   return `${(ms / 1000).toFixed(1).replace('.', ',')} s`;
 }
 
+function symboleDiagnostic(statut: 'ok' | 'ignoree' | 'repli' | 'erreur'): string {
+  if (statut === 'ok') return '✓';
+  if (statut === 'ignoree') return '○';
+  if (statut === 'repli') return '↪';
+  return '✕';
+}
+
 export default function ConversationScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useLangue();
@@ -269,12 +276,13 @@ export default function ConversationScreen({ route, navigation }: Props) {
     if (!story) return;
     let actif = true;
     const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
+    const dernierDiagnostic = [...story.messages].reverse().find((m) => m.role === 'assistant' && m.diagnosticTour)?.diagnosticTour;
     if (dernierMessageJoueur && debugLoreMessageIdRef.current !== dernierMessageJoueur.id) {
       calculerDebugLore(story, dernierMessageJoueur.content, appSettings)
         .then((debug) => {
           if (!actif) return;
           debugLoreMessageIdRef.current = dernierMessageJoueur.id;
-          setDebugLore(debug);
+          setDebugLore({ ...debug, diagnosticTour: dernierDiagnostic });
         })
         .catch(() => {});
     }
@@ -738,14 +746,66 @@ export default function ConversationScreen({ route, navigation }: Props) {
         {appSettings.modeConcepteur && debugLore && (
           <Pressable style={styles.boutonDebug} onPress={() => setDebugOuvert((v) => !v)}>
             <Text style={styles.texteBoutonDebug}>
-              {debugOuvert ? '▾' : '▸'} Diagnostic narratif ({debugLore.metamoteurs.length} métamoteurs,{' '}
-              {debugLore.loreElyndor.length} entrées Elyndor, {debugLore.souvenirs.length} souvenirs)
+              {debugOuvert ? '▾' : '▸'} Diagnostic narratif ({debugLore.loreElyndor.length} lore, {debugLore.souvenirs.length} souvenirs
+              {debugLore.diagnosticTour ? ` · ${formaterDureeGeneration(debugLore.diagnosticTour.dureeTotaleMs)} · ${debugLore.diagnosticTour.appelsIA.length} appel(s) IA` : ''})
             </Text>
           </Pressable>
         )}
         {appSettings.modeConcepteur && debugOuvert && debugLore && (
           <ScrollView style={styles.panneauDebug}>
-            <Text style={styles.titreDebug}>Métamoteurs sélectionnés</Text>
+            {debugLore.diagnosticTour ? (
+              <>
+                <Text style={styles.titreDebug}>Résumé du tour</Text>
+                <Text style={styles.ligneDebug}>
+                  Temps total : {formaterDureeGeneration(debugLore.diagnosticTour.dureeTotaleMs)} · Appels IA : {debugLore.diagnosticTour.appelsIA.length} · Appels embeddings : {debugLore.diagnosticTour.embeddings.length}
+                </Text>
+                <Text style={styles.ligneDebug}>
+                  Tokens IA mesurés : {debugLore.diagnosticTour.appelsIA.reduce((s, a) => s + a.totalTokens, 0).toLocaleString('fr-FR')}
+                  {' '}({debugLore.diagnosticTour.appelsIA.reduce((s, a) => s + a.inputTokens, 0).toLocaleString('fr-FR')} entrée / {debugLore.diagnosticTour.appelsIA.reduce((s, a) => s + a.outputTokens, 0).toLocaleString('fr-FR')} sortie)
+                </Text>
+
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Cheminement réel</Text>
+                {debugLore.diagnosticTour.etapes.map((etape, index) => (
+                  <View key={`${etape.nom}-${index}`} style={{ marginBottom: 4 }}>
+                    <Text style={styles.ligneDebug}>
+                      {symboleDiagnostic(etape.statut)} [{etape.categorie}] {etape.nom}{typeof etape.dureeMs === 'number' ? ` — ${formaterDureeGeneration(etape.dureeMs)}` : ''}
+                    </Text>
+                    {etape.raison ? <Text style={styles.ligneDebug}>   Pourquoi : {etape.raison}</Text> : null}
+                    {etape.details?.map((detail, i) => <Text key={`${index}-detail-${i}`} style={styles.ligneDebug}>   · {detail}</Text>)}
+                  </View>
+                ))}
+
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Appels IA</Text>
+                {debugLore.diagnosticTour.appelsIA.length === 0 ? <Text style={styles.ligneDebug}>Aucun appel IA tracé.</Text> : debugLore.diagnosticTour.appelsIA.map((appel, index) => (
+                  <Text key={`${appel.composant}-ia-${index}`} style={styles.ligneDebug}>
+                    {symboleDiagnostic(appel.statut)} {appel.composant} — {formaterDureeGeneration(appel.dureeMs)} · max {appel.maxTokens} · {appel.totalTokens.toLocaleString('fr-FR')} tokens ({appel.inputTokens.toLocaleString('fr-FR')} in / {appel.outputTokens.toLocaleString('fr-FR')} out{appel.cachedInputTokens ? ` / ${appel.cachedInputTokens.toLocaleString('fr-FR')} cache` : ''})
+                  </Text>
+                ))}
+
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Embeddings / recherche vectorielle</Text>
+                {debugLore.diagnosticTour.embeddings.length === 0 ? <Text style={styles.ligneDebug}>Aucun calcul d'embeddings réseau sur ce tour.</Text> : debugLore.diagnosticTour.embeddings.map((appel, index) => (
+                  <Text key={`${appel.composant}-emb-${index}`} style={styles.ligneDebug}>
+                    {symboleDiagnostic(appel.statut)} {appel.composant} — {appel.textes} texte(s), {appel.lots} lot(s), {formaterDureeGeneration(appel.dureeMs)}{appel.raison ? ` · ${appel.raison}` : ''}
+                  </Text>
+                ))}
+
+                <Text style={[styles.titreDebug, { marginTop: espacement.sm }]}>Après affichage — moteurs asynchrones</Text>
+                {debugLore.diagnosticTour.postTraitement ? (
+                  <>
+                    <Text style={styles.ligneDebug}>Temps hors attente joueur : {formaterDureeGeneration(debugLore.diagnosticTour.postTraitement.dureeTotaleMs)}</Text>
+                    {debugLore.diagnosticTour.postTraitement.etapes.map((etape, index) => (
+                      <Text key={`${etape.nom}-post-${index}`} style={styles.ligneDebug}>
+                        {symboleDiagnostic(etape.statut)} {etape.nom}{typeof etape.dureeMs === 'number' ? ` — ${formaterDureeGeneration(etape.dureeMs)}` : ''}{etape.raison ? ` · ${etape.raison}` : ''}
+                      </Text>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.ligneDebug}>En attente du post-traitement, ou diagnostic ouvert avant sa sauvegarde.</Text>
+                )}
+              </>
+            ) : null}
+
+            <Text style={[styles.titreDebug, { marginTop: debugLore.diagnosticTour ? espacement.sm : 0 }]}>Métamoteurs sélectionnés</Text>
             {debugLore.metamoteurs.map((titre) => (
               <Text key={titre} style={styles.ligneDebug}>• {titre}</Text>
             ))}
@@ -1351,7 +1411,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   panneauDebug: {
-    maxHeight: 180,
+    maxHeight: 360,
     backgroundColor: couleurs.fondCarte,
     paddingHorizontal: espacement.md,
     paddingBottom: espacement.sm,

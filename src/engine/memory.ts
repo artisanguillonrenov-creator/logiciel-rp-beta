@@ -101,6 +101,7 @@ async function extraireCandidats({
       ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 600,
+      diagnosticLabel: 'Mémoire — extraction',
       messages: [
         {
           role: 'system',
@@ -162,7 +163,7 @@ async function consoliderEtCanoniser(
     // automatique de L5 dans cette version).
     const cibles = faits.filter((f) => f.niveau !== 'archive');
     const textes = [...cibles.map((f) => f.texte), ...candidats.map((c) => c.texte)];
-    const { vecteurs } = await obtenirEmbeddings(textes, appSettings);
+    const { vecteurs } = await obtenirEmbeddings(textes, appSettings, 'Mémoire — déduplication');
     const vecteursCibles = vecteurs.slice(0, cibles.length);
     const vecteursCandidats = vecteurs.slice(cibles.length);
 

@@ -187,6 +187,7 @@ export async function validerReponseLLM({
       baseUrl,
       temperature: 0,
       maxTokens: 500,
+      diagnosticLabel: 'Validation LLM',
       messages: [
         {
           role: 'system',
@@ -335,6 +336,7 @@ export async function reparerReponse({
     baseUrl,
     temperature: 0.3,
     maxTokens: Math.max(500, Math.ceil(reponse.length / 3)),
+    diagnosticLabel: partiel ? 'Réparation — régénération partielle' : 'Réparation ciblée',
     messages: [
       {
         role: 'system',

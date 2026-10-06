@@ -56,6 +56,7 @@ async function extraireAppelsSocial(
       ...configurationLLM(appSettings),
       temperature: 0.2,
       maxTokens: 500,
+      diagnosticLabel: 'Social / engagements',
       outils: outilsPourComposant('social'),
       messages: [
         {

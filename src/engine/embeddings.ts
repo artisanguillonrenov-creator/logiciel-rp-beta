@@ -1,5 +1,6 @@
 import type { AppSettings } from '../types';
 import { ELYNDOR_CLOUD_EMBEDDINGS_URL, ELYNDOR_CLOUD_MODELE_EMBEDDINGS } from './elyndorCloud';
+import { enregistrerEmbeddingsDiagnostic } from './diagnosticTour';
 
 export class ErreurEmbeddings extends Error {
   constructor(message: string, readonly statut?: number) {
@@ -68,16 +69,34 @@ export function extraireVecteurs(data: unknown, attendus: number): number[][] {
 export async function obtenirEmbeddings(
   textes: string[],
   _appSettings: AppSettings,
+  diagnosticLabel = 'Embeddings',
 ): Promise<ResultatEmbeddings> {
+  const debut = Date.now();
+  const lots = Math.ceil(textes.length / TAILLE_LOT);
   const modele = ELYNDOR_CLOUD_MODELE_EMBEDDINGS;
   if (!modele || !IDENTITE_CACHE) {
-    throw new ErreurEmbeddings('Le service d’embeddings Elyndor Cloud est désactivé ; recherche lexicale utilisée.');
+    const raison = 'Le service d’embeddings Elyndor Cloud est désactivé ; recherche lexicale utilisée.';
+    enregistrerEmbeddingsDiagnostic({ composant: diagnosticLabel, textes: textes.length, lots, dureeMs: Date.now() - debut, statut: 'repli', raison });
+    throw new ErreurEmbeddings(raison);
   }
   const vecteurs: number[][] = [];
-  for (let i = 0; i < textes.length; i += TAILLE_LOT) {
-    vecteurs.push(...await appelerLot(textes.slice(i, i + TAILLE_LOT), modele));
+  try {
+    for (let i = 0; i < textes.length; i += TAILLE_LOT) {
+      vecteurs.push(...await appelerLot(textes.slice(i, i + TAILLE_LOT), modele));
+    }
+    enregistrerEmbeddingsDiagnostic({ composant: diagnosticLabel, textes: textes.length, lots, dureeMs: Date.now() - debut });
+    return { vecteurs, fournisseur: 'elyndor-cloud', identiteCache: IDENTITE_CACHE };
+  } catch (erreur) {
+    enregistrerEmbeddingsDiagnostic({
+      composant: diagnosticLabel,
+      textes: textes.length,
+      lots,
+      dureeMs: Date.now() - debut,
+      statut: 'erreur',
+      raison: erreur instanceof Error ? erreur.message : 'Erreur embeddings',
+    });
+    throw erreur;
   }
-  return { vecteurs, fournisseur: 'elyndor-cloud', identiteCache: IDENTITE_CACHE };
 }
 
 /** Disponible dès que le modèle d'embeddings Elyndor Cloud est déclaré, quels que soient les anciens réglages. */

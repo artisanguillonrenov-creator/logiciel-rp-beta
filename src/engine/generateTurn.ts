@@ -1,6 +1,6 @@
 import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
-import type { AppSettings, Message, StoryState } from '../types';
+import type { AppSettings, DiagnosticTour, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
   chargerMetamoteurs,
@@ -37,6 +37,13 @@ import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynam
 import { rechercherLoreLexical, rechercherSouvenirsLexical } from './rechercheLexicale';
 import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
+import {
+  ajouterEtapeDiagnostic,
+  annulerDiagnosticTour,
+  commencerDiagnosticTour,
+  mesurerEtapeDiagnostic,
+  terminerDiagnosticTour,
+} from './diagnosticTour';
 import { contradictionProbable, corpusCanon, validerRepetitionHeuristique, verifierEntitesCanoniques } from './verificationCanon';
 import { annulerTour, assurerNoyau, construireContexteNoyau, diagnosticNoyau, extraireEnveloppeEtat, validerTour } from './noyauNarratif';
 import {
@@ -102,6 +109,7 @@ export interface DebugLore {
   // Mémoire narrative (V13) : blocs retenus pour le tour et taille de l'index.
   blocsContexte?: string[];
   memoireNarrative?: string;
+  diagnosticTour?: DiagnosticTour;
 }
 
 export interface ResultatTour {
@@ -151,6 +159,7 @@ export async function calculerSelectionLore(
   appSettings: AppSettings,
   optionsLoreElyndor?: OptionsSelectionLore,
 ): Promise<SelectionLore> {
+  const debutRecherche = Date.now();
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
@@ -194,13 +203,27 @@ export async function calculerSelectionLore(
   // empêcher un tour narratif. Ce repli local reste disponible aussi bien
   // lorsqu'aucun fournisseur n'est configuré que lorsqu'un endpoint
   // d'embeddings configuré refuse ou échoue pendant l'appel.
-  const selectionLexicale = (): SelectionLore => {
+  const selectionLexicale = (raison: string, statut: 'ok' | 'repli' = 'repli'): SelectionLore => {
     const loreElyndor = prioriserLoreCanon(
       texteRequete,
       rechercherLoreLexical(poolElyndor, texteRequete),
       LORE_ELYNDOR,
     );
     const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
+    ajouterEtapeDiagnostic(
+      'Recherche lore et historique',
+      'recherche',
+      statut,
+      Date.now() - debutRecherche,
+      raison,
+      [
+        'voie : lexicale locale',
+        `${poolElyndor.length} entrées lore candidates`,
+        `${messagesAnciens.length} messages anciens consultables`,
+        `${loreElyndor.length} entrées lore retenues`,
+        `${souvenirs.length} souvenirs retenus`,
+      ],
+    );
     return {
       metamoteursSelectionnes: [],
       loreElyndor,
@@ -213,20 +236,21 @@ export async function calculerSelectionLore(
     };
   };
 
-  if (!embeddingsDisponibles(appSettings)) return selectionLexicale();
+  if (!embeddingsDisponibles(appSettings)) return selectionLexicale('Embeddings indisponibles : repli lexical.');
 
   try {
     // Métamoteurs volontairement inactifs dans le prompt : ils sont désormais
     // codés dans l'application et seront retirés du texte une fois validés.
     const vecteursMetamoteurs = METAMOTEURS_DANS_LE_PROMPT
-      ? await assurerEmbeddings(metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })), appSettings)
+      ? await assurerEmbeddings(metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })), appSettings, 'Métamoteurs')
       : {};
     const [vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
         appSettings,
+        'Lore Elyndor',
       ),
-      obtenirEmbeddings([texteRequete], appSettings),
+      obtenirEmbeddings([texteRequete], appSettings, 'Requête de recherche'),
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
@@ -240,6 +264,22 @@ export async function calculerSelectionLore(
     );
     const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
 
+    ajouterEtapeDiagnostic(
+      'Recherche lore et historique',
+      'recherche',
+      'ok',
+      Date.now() - debutRecherche,
+      undefined,
+      [
+        'voie : sémantique bge-m3 + ObjectBox/cosinus',
+        `${poolElyndor.length} entrées lore candidates`,
+        `${messagesAnciens.length} messages anciens consultables`,
+        `${loreElyndor.length} entrées lore retenues`,
+        `${souvenirs.length} souvenirs retenus`,
+        ...loreElyndor.slice(0, 8).map((e) => `lore → ${formaterDebug(e.titre, e.score)}`),
+      ],
+    );
+
     return {
       metamoteursSelectionnes,
       loreElyndor,
@@ -250,8 +290,11 @@ export async function calculerSelectionLore(
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
     };
-  } catch {
-    return selectionLexicale();
+  } catch (erreur) {
+    return selectionLexicale(
+      `Échec de la voie sémantique : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`,
+      'repli',
+    );
   }
 }
 
@@ -400,16 +443,29 @@ async function rafraichirEtatDeriveAvantTour(story: StoryState): Promise<StorySt
   }
 }
 
-export async function genererTour(
+async function genererTourInterne(
   story: StoryState,
   appSettings: AppSettings,
   messageJoueur: string,
   reponseAId?: string,
 ): Promise<ResultatTour> {
   const debutMs = Date.now();
-  const storyRafraichie = await rafraichirEtatDeriveAvantTour(story);
+  const storyRafraichie = await mesurerEtapeDiagnostic(
+    'Rafraîchir état dérivé',
+    'préparation',
+    () => rafraichirEtatDeriveAvantTour(story),
+  );
+  const debutMemoireNarrative = Date.now();
   const evenements = synchroniserMemoireNarrative(storyRafraichie);
   const storyCourante = assurerNoyau(storyRafraichie, evenements);
+  ajouterEtapeDiagnostic(
+    'Synchroniser mémoire narrative et noyau',
+    'préparation',
+    'ok',
+    Date.now() - debutMemoireNarrative,
+    undefined,
+    [`${evenements.length} événements indexés`],
+  );
 
   const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
@@ -417,8 +473,17 @@ export async function genererTour(
     appSettings,
   );
 
+  const debutContexte = Date.now();
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
   const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
+  ajouterEtapeDiagnostic(
+    'Construire contexte du tour',
+    'contexte',
+    'ok',
+    Date.now() - debutContexte,
+    undefined,
+    [`${blocs.blocs.length} blocs mémoire retenus`, `${blocs.totalCaracteres} caractères mémoire narrative`],
+  );
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -436,36 +501,73 @@ export async function genererTour(
   commencerMesureTokens();
   // Une réponse coupée par le plafond est complétée par le modèle plutôt que
   // laissée en suspens (voir completionReponse.ts).
-  const premiere = extraireEnveloppeEtat(await genererReponseComplete({
-    ...configurationLLM(appSettings, modelePourAppel),
-    messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
-    temperature,
-    maxTokens,
-  }));
+  const premiere = extraireEnveloppeEtat(await mesurerEtapeDiagnostic(
+    'Génération narrative principale',
+    'génération',
+    () => genererReponseComplete({
+      ...configurationLLM(appSettings, modelePourAppel),
+      messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
+      temperature,
+      maxTokens,
+      diagnosticLabel: 'Narration RP',
+    }),
+  ));
   let reponse = premiere.texte;
   let deltaEtat = premiere.delta;
 
   const canon = corpusCanonHistoire(storyCourante, messageJoueur);
+  const debutValidationLocale = Date.now();
   const controlesLocaux = fusionnerRapports(
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
+  ajouterEtapeDiagnostic(
+    'Contrôles locaux',
+    'validation',
+    controlesLocaux.ok ? 'ok' : 'erreur',
+    Date.now() - debutValidationLocale,
+    controlesLocaux.ok ? undefined : controlesLocaux.checks.filter((x) => !x.ok).map((x) => x.raison).join(' | '),
+    [`${controlesLocaux.checks.length} signalement(s)`],
+  );
   // V13 : l'appel de validation au modèle (un second appel complet, très
   // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
   // passés et que la réponse semble défaire un fait établi.
-  const llm = controlesLocaux.ok && contradictionProbable(reponse, storyCourante)
-    ? await validerReponseLLM({
+  const contradictionDetectee = controlesLocaux.ok && contradictionProbable(reponse, storyCourante);
+  let llm = rapportOk();
+  if (contradictionDetectee) {
+    llm = await mesurerEtapeDiagnostic(
+      'Validation LLM approfondie',
+      'validation',
+      () => validerReponseLLM({
         ...configurationLLM(appSettings, modelePourAppel),
         reponse,
         faits: ctxBase.faits,
         meta: ctxBase.meta,
-      })
-    : rapportOk();
+      }),
+    );
+  } else {
+    ajouterEtapeDiagnostic(
+      'Validation LLM approfondie',
+      'validation',
+      'ignoree',
+      0,
+      controlesLocaux.ok
+        ? 'contradictionProbable() = false'
+        : 'contrôles locaux déjà en échec',
+    );
+  }
   const rapport = fusionnerRapports(controlesLocaux, llm);
 
   const strategie = determinerStrategie(rapport);
+  ajouterEtapeDiagnostic(
+    'Choisir stratégie de correction',
+    'validation',
+    strategie === 'aucune' ? 'ignoree' : 'ok',
+    0,
+    strategie === 'aucune' ? 'Aucune correction nécessaire.' : `Stratégie : ${strategie}`,
+  );
   let aEteCorrige = strategie !== 'aucune';
 
   if (strategie === 'patch_local') {
@@ -494,6 +596,7 @@ export async function genererTour(
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
+        diagnosticLabel: 'Narration RP — régénération complète',
       }));
       reponse = regeneree.texte;
       deltaEtat = regeneree.delta;
@@ -514,6 +617,14 @@ export async function genererTour(
     const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
     if (nettoyee) reponse = nettoyee;
   }
+
+  ajouterEtapeDiagnostic(
+    'Vérification finale canon / agentivité',
+    'validation',
+    canonFinal.ok ? 'ok' : 'repli',
+    0,
+    canonFinal.ok ? undefined : 'Patch local final appliqué.',
+  );
 
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
     annulerMesureTokens();
@@ -539,9 +650,17 @@ export async function genererTour(
   };
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
+  const debutValidationEtat = Date.now();
   const storyFinale = validerTour(
     { ...storyCourante, messages },
     { messageJoueur: messageUtilisateur, messageNarrateur: messageAssistant, delta: deltaEtat, corrige: aEteCorrige },
+  );
+  ajouterEtapeDiagnostic(
+    'Intégrer STATE DELTA au noyau',
+    'état',
+    deltaEtat ? 'ok' : 'repli',
+    Date.now() - debutValidationEtat,
+    deltaEtat ? undefined : 'Aucun delta exploitable : repli du noyau.',
   );
   const debugMemoire = debugMemoireNarrative(evenements.length, blocs);
 
@@ -550,6 +669,38 @@ export async function genererTour(
     aEteCorrige,
     debugLore: { ...debugLore, ...debugMemoire, blocsContexte: [...(debugMemoire.blocsContexte ?? []), ...diagnosticNoyau(storyFinale)] },
   };
+}
+
+export async function genererTour(
+  story: StoryState,
+  appSettings: AppSettings,
+  messageJoueur: string,
+  reponseAId?: string,
+): Promise<ResultatTour> {
+  commencerDiagnosticTour();
+  try {
+    const resultat = await genererTourInterne(story, appSettings, messageJoueur, reponseAId);
+    const diagnosticTour = terminerDiagnosticTour();
+    if (!diagnosticTour) return resultat;
+
+    let attache = false;
+    const messages = [...resultat.story.messages].reverse().map((message) => {
+      if (!attache && message.role === 'assistant') {
+        attache = true;
+        return { ...message, diagnosticTour };
+      }
+      return message;
+    }).reverse();
+
+    return {
+      ...resultat,
+      story: { ...resultat.story, messages },
+      debugLore: { ...resultat.debugLore, diagnosticTour },
+    };
+  } catch (erreur) {
+    annulerDiagnosticTour();
+    throw erreur;
+  }
 }
 
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
