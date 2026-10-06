@@ -108,7 +108,7 @@ const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
  * tout le prompt et la mémoire et le lore n'avaient plus que quelques
  * centaines de caractères.
  */
-function moteurAFenetreEtroite(appSettings: AppSettings): boolean {
+export function moteurAFenetreEtroite(appSettings: AppSettings): boolean {
   if (appSettings.moteurInference === 'local') return true;
   return appSettings.moteurInference === 'serveur' && !reglagesSontElyndorCloud(appSettings);
 }

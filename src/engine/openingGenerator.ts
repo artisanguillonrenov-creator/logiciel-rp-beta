@@ -1,5 +1,5 @@
 import type { AppSettings, Message, StoryState } from '../types';
-import { calculerSelectionLore, construireCtxBase, corpusCanonHistoire } from './generateTurn';
+import { calculerSelectionLore, construireCtxBase, corpusCanonHistoire, moteurAFenetreEtroite } from './generateTurn';
 import {
   construireMessages,
   maxTokensPourLongueur,
@@ -52,7 +52,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   ) || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
   const maxTokens = maxTokensPourLongueur(story.settings.longueur);
-  const budgetSysteme = appSettings.moteurInference === 'local' || appSettings.moteurInference === 'serveur' ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
+  const budgetSysteme = moteurAFenetreEtroite(appSettings) ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const canon = corpusCanonHistoire(story, texteRequete);
   const ecarts = (texte: string) => [...new Set([
     ...raisonsEchec(validerAgentiviteHeuristique(texte, story.meta.personnageNom)),
