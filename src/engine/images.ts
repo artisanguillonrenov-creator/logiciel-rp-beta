@@ -121,7 +121,7 @@ export async function collecterReferencesScene(
   return ordonnerReferences(candidats, MAX_REFERENCES_IMAGE);
 }
 
-// Lustify SDXL sait produire du contenu explicite : hors profil Adulte, il
+// Big Lust (SDXL) sait produire du contenu explicite : hors profil Adulte, il
 // est exclu par le prompt négatif, en plus du filtrage du texte en amont.
 const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
 

@@ -4,7 +4,7 @@ import { ELYNDOR_CLOUD_POD } from './elyndorCloud';
  * Générateur d'images Elyndor Cloud.
  *
  * Comme pour la narration, aucun fournisseur tiers n'est configurable :
- * Lustify SDXL v4 est servi par le pod Elyndor Cloud (infra/runpod/
+ * Big Lust 1.6 (SDXL) est servi par le pod Elyndor Cloud (infra/runpod/
  * image_server.py, port 7860). Mettre ELYNDOR_CLOUD_MODELE_IMAGE à null
  * désactive la capacité `images` (voir automation/capabilities.ts).
  *
@@ -17,7 +17,7 @@ import { ELYNDOR_CLOUD_POD } from './elyndorCloud';
  * n'aura qu'à implémenter `GenerateurImage`.
  */
 export const ELYNDOR_CLOUD_IMAGES_URL = `https://${ELYNDOR_CLOUD_POD}-7860.proxy.runpod.net/v1`;
-export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'lustify-sdxl-v4';
+export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'big-lust-v16';
 
 /** Limite du nombre d'images de référence envoyées par requête. */
 export const MAX_REFERENCES_IMAGE = 6;

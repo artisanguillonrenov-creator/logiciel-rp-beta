@@ -34,12 +34,12 @@ if [ ! -x "$RACINE/llama.cpp/build/bin/llama-server" ]; then
 fi
 
 # 3. Modèles : Anubis 70B v1.2 Q3_K_M (tient entièrement dans le GPU à côté
-#    de SDXL) et Lustify SDXL v4 au format diffusers.
+#    de SDXL) et Big Lust 1.6 (SDXL) au format diffusers.
 [ -f "$RACINE/models/text/TheDrummer_Anubis-70B-v1.2-Q3_K_M.gguf" ] || \
   "$HF" download bartowski/TheDrummer_Anubis-70B-v1.2-GGUF TheDrummer_Anubis-70B-v1.2-Q3_K_M.gguf \
     --local-dir "$RACINE/models/text"
-[ -f "$RACINE/models/image/lustify-v4/model_index.json" ] || \
-  "$HF" download John6666/lustify-sdxl-nsfwsfw-v4-sdxl --local-dir "$RACINE/models/image/lustify-v4"
+[ -f "$RACINE/models/image/big-lust-v16/model_index.json" ] || \
+  "$HF" download John6666/big-lust-v16-sdxl --local-dir "$RACINE/models/image/big-lust-v16"
 
 # 4. IP-Adapter SDXL (visage + continuité de scène) et son encodeur ViT-H.
 [ -f "$RACINE/models/ip-adapter/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors" ] || \

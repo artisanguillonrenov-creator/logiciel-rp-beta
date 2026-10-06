@@ -1,4 +1,4 @@
-"""Serveur d'images Elyndor Cloud (Lustify SDXL v4).
+"""Serveur d'images Elyndor Cloud (Big Lust 1.6, SDXL).
 
 Contrat attendu par l'app (src/engine/elyndorCloudImages.ts) :
 POST /v1/images/generations
@@ -35,8 +35,12 @@ from pydantic import BaseModel
 RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
 # Horodatage de la dernière requête : lu par watchdog.sh pour arrêter le pod inactif.
 ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
-MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/lustify-v4"))
-MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
+# Big Lust 1.6 (dérivé de Lustify) : choisi au comparatif du 6 octobre, il garde
+# le niveau explicite de Lustify tout en respectant mieux les personnages
+# (peau ébène et oreilles des Elfes Noirs, scènes à deux). Lustify reste sur
+# le volume (models/image/lustify-v4) pour revenir en arrière via ELYNDOR_IMAGE_DIR.
+MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/big-lust-v16"))
+MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "big-lust-v16")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
 EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
