@@ -45,10 +45,15 @@ function compter(texte: string, motif: RegExp): number {
 
 export function detecterRacePnj(titre: string, contenu: string): RacePnj | null {
   const texte = ` ${normaliser(`${titre} ${contenu}`)} `;
-  const trouvee = MOTIFS_RACE.find(([, motif]) => motif.test(texte));
-  const race = trouvee && RACES_ELYNDOR.find((r) => r.id === trouvee[0]);
+  // La race du personnage est la première citée (« Humaine qui traque les
+  // elfes noirs » est humaine) ; à position égale, la plus précise l'emporte.
+  const trouvee = MOTIFS_RACE
+    .map(([id, motif], rang) => ({ id, rang, position: texte.search(motif) }))
+    .filter((m) => m.position >= 0)
+    .sort((a, b) => a.position - b.position || a.rang - b.rang)[0];
+  const race = trouvee && RACES_ELYNDOR.find((r) => r.id === trouvee.id);
   if (!race) return null;
-  const feminin = compter(texte, /\b(elle|femme|fille|jeune femme|guerriere|noire|naine|geante|humaine|reine|princesse|pretresse|esclave elle)\b/g);
+  const feminin = compter(texte, /\b(elle|femme|fille|guerriere|noire|naine|geante|humaine|haute|reine|princesse|pretresse|valkyries?|amazones?|sirenes?)\b/g);
   const masculin = compter(texte, /\b(il|homme|garcon|guerrier|noir|nain|geant|humain|roi|prince|pretre)\b/g);
   const sexe = feminin > masculin ? 'Femme' : masculin > feminin ? 'Homme' : 'Autre';
   return { race, sexe };

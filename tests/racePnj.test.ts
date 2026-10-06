@@ -18,3 +18,11 @@ test('la race et le sexe d’un PNJ sont lus dans sa fiche', () => {
 test('sans race reconnaissable, aucun portrait de référence n’est imposé', () => {
   assert.equal(detecterRacePnj('Marcus', 'Marchand d’esclaves des couloirs souterrains de Paris.'), null);
 });
+
+test('la race du sujet est la première citée, le sexe se lit aussi dans un nom de race féminin', () => {
+  assert.equal(detecterRacePnj('Mara', 'Humaine qui traque les elfes noirs.')?.race.id, 'humains');
+  assert.equal(detecterRacePnj('Sigrun', 'Une Valkyrie.')?.sexe, 'Femme');
+  assert.equal(detecterRacePnj('Nyx', 'Amazone sombre.')?.race.id, 'amazones-sombres');
+  assert.equal(detecterRacePnj('Nyx', 'Amazone sombre.')?.sexe, 'Femme');
+  assert.equal(detecterRacePnj('Maris', 'Sirène des récifs.')?.sexe, 'Femme');
+});
