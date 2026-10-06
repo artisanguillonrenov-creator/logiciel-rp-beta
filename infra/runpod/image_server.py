@@ -19,7 +19,7 @@ POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
 normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
 laisse la mémoire vidéo à Anubis et à SDXL.
 """
-import base64, io, os, threading, time
+import base64, io, os, pathlib, threading, time
 
 from PIL import Image
 
@@ -30,13 +30,17 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", "/root/models/image/lustify-v4")
+# Tout est sur le volume réseau (/workspace), conservé quand le pod s'arrête.
+RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
+# Horodatage de la dernière requête : lu par watchdog.sh pour arrêter le pod inactif.
+ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
+MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/lustify-v4"))
 MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
 PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
 GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
-EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", "/root/models/bge-m3")
+EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
 EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
-IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", "/root/models/ip-adapter")
+IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", os.path.join(RACINE, "models/ip-adapter"))
 POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
 POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
 NEGATIF_BASE = "text, logo, watermark, signature, duplicate, extra limbs, extra fingers, deformed hands, deformed face, bad anatomy, blurry, lowres, child, minor, underage"
@@ -88,6 +92,13 @@ app = FastAPI()
 # La version web d'Elyndor (GitHub Pages) appelle ce serveur depuis le
 # navigateur : sans en-têtes CORS, la requête serait bloquée.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def noter_activite(requete, suivant):
+    if requete.url.path != "/health":
+        ACTIVITE.touch()
+    return await suivant(requete)
 
 
 class Requete(BaseModel):
