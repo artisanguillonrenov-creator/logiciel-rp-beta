@@ -516,26 +516,58 @@ async function genererTourInterne(
   let deltaEtat = premiere.delta;
 
   const canon = corpusCanonHistoire(storyCourante, messageJoueur);
+  const debutValidationLocale = Date.now();
   const controlesLocaux = fusionnerRapports(
     validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
     validerProfilContenuHeuristique(reponse, appSettings.profilContenu),
     validerRepetitionHeuristique(reponse, storyCourante),
     verifierEntitesCanoniques(reponse, canon),
   );
+  ajouterEtapeDiagnostic(
+    'Contrôles locaux',
+    'validation',
+    controlesLocaux.ok ? 'ok' : 'erreur',
+    Date.now() - debutValidationLocale,
+    controlesLocaux.ok ? undefined : controlesLocaux.checks.filter((x) => !x.ok).map((x) => x.raison).join(' | '),
+    [`${controlesLocaux.checks.length} signalement(s)`],
+  );
   // V13 : l'appel de validation au modèle (un second appel complet, très
   // coûteux sur un modèle local) n'a lieu que si les contrôles locaux sont
   // passés et que la réponse semble défaire un fait établi.
-  const llm = controlesLocaux.ok && contradictionProbable(reponse, storyCourante)
-    ? await validerReponseLLM({
+  const contradictionDetectee = controlesLocaux.ok && contradictionProbable(reponse, storyCourante);
+  let llm = rapportOk();
+  if (contradictionDetectee) {
+    llm = await mesurerEtapeDiagnostic(
+      'Validation LLM approfondie',
+      'validation',
+      () => validerReponseLLM({
         ...configurationLLM(appSettings, modelePourAppel),
         reponse,
         faits: ctxBase.faits,
         meta: ctxBase.meta,
-      })
-    : rapportOk();
+      }),
+    );
+  } else {
+    ajouterEtapeDiagnostic(
+      'Validation LLM approfondie',
+      'validation',
+      'ignoree',
+      0,
+      controlesLocaux.ok
+        ? 'contradictionProbable() = false'
+        : 'contrôles locaux déjà en échec',
+    );
+  }
   const rapport = fusionnerRapports(controlesLocaux, llm);
 
   const strategie = determinerStrategie(rapport);
+  ajouterEtapeDiagnostic(
+    'Choisir stratégie de correction',
+    'validation',
+    strategie === 'aucune' ? 'ignoree' : 'ok',
+    0,
+    strategie === 'aucune' ? 'Aucune correction nécessaire.' : `Stratégie : ${strategie}`,
+  );
   let aEteCorrige = strategie !== 'aucune';
 
   if (strategie === 'patch_local') {
@@ -564,6 +596,7 @@ async function genererTourInterne(
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
+        diagnosticLabel: 'Narration RP — régénération complète',
       }));
       reponse = regeneree.texte;
       deltaEtat = regeneree.delta;
@@ -584,6 +617,14 @@ async function genererTourInterne(
     const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
     if (nettoyee) reponse = nettoyee;
   }
+
+  ajouterEtapeDiagnostic(
+    'Vérification finale canon / agentivité',
+    'validation',
+    canonFinal.ok ? 'ok' : 'repli',
+    0,
+    canonFinal.ok ? undefined : 'Patch local final appliqué.',
+  );
 
   if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
     annulerMesureTokens();
@@ -609,9 +650,17 @@ async function genererTourInterne(
   };
 
   const messages = [...storyCourante.messages, messageUtilisateur, messageAssistant];
+  const debutValidationEtat = Date.now();
   const storyFinale = validerTour(
     { ...storyCourante, messages },
     { messageJoueur: messageUtilisateur, messageNarrateur: messageAssistant, delta: deltaEtat, corrige: aEteCorrige },
+  );
+  ajouterEtapeDiagnostic(
+    'Intégrer STATE DELTA au noyau',
+    'état',
+    deltaEtat ? 'ok' : 'repli',
+    Date.now() - debutValidationEtat,
+    deltaEtat ? undefined : 'Aucun delta exploitable : repli du noyau.',
   );
   const debugMemoire = debugMemoireNarrative(evenements.length, blocs);
 
