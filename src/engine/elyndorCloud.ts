@@ -21,7 +21,7 @@ import type { AppSettings } from '../types';
  * après une migration, il suffit de modifier ce fichier, sans nouvelle
  * version de l'app. La valeur intégrée sert de repli.
  */
-export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'mjp2vk70p1sw4g';
+export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'idy3olt817129o';
 export const URL_CONFIG_POD_ELYNDOR_CLOUD = 'https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/elyndor-cloud.json';
 const DELAI_CONFIG_POD_MS = 4000;
 
