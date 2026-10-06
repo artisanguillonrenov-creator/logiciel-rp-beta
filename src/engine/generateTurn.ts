@@ -103,7 +103,7 @@ const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /**
  * Fenêtre étroite : modèle sur l'appareil ou serveur du réseau local. Le pod
- * Elyndor Cloud (fenêtre de 32 768 jetons, voir infra/runpod/start.sh) reçoit
+ * Elyndor Cloud (fenêtre de 24 576 jetons, voir infra/runpod/start.sh) reçoit
  * les budgets larges : avec les budgets étroits, l'en-tête occupait presque
  * tout le prompt et la mémoire et le lore n'avaient plus que quelques
  * centaines de caractères.

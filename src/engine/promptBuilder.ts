@@ -9,13 +9,18 @@ import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from '
 // Ces plafonds sont exprimés en caractères, volontairement conservateurs :
 // ils laissent de la place à la réponse et évitent de dépasser la fenêtre
 // après tokenisation, qui varie selon le fournisseur.
-export const BUDGET_SYSTEM_DISTANT = 24000;
+//
+// Distant = Elyndor Cloud (fenêtre de 24 576 jetons). Le budget système
+// inclut les 15 métamoteurs envoyés en entier (~41 000 caractères) : il en
+// reste ~17 000 pour l'en-tête, la mémoire et le lore. Système + conversation
+// (~71 000 caractères) + réponse tiennent dans la fenêtre du pod.
+export const BUDGET_SYSTEM_DISTANT = 58000;
 export const BUDGET_SYSTEM_LOCAL = 12000;
 
 // Budget global réservé au fil de conversation brut (message joueur courant
 // compris). Il remplace l'ancienne frontière arbitraire « 10 messages » et
 // l'ancienne coupe de 900 caractères par message.
-export const BUDGET_CONVERSATION_DISTANT = 18000;
+export const BUDGET_CONVERSATION_DISTANT = 13000;
 export const BUDGET_CONVERSATION_LOCAL = 9000;
 
 function tronquer(texte: string, longueur: number): string {
@@ -228,19 +233,20 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.14));
   const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
   // Les 15 métamoteurs sont actifs à chaque réponse, en texte intégral : ils
-  // s'ajoutent au budget système au lieu d'y puiser et ne sont jamais rognés.
+  // sont réservés en premier sur le budget système et ne sont jamais rognés.
   const metamoteurs = ctx.metamoteursSelectionnes.length
     ? `\n\n[MÉTAMOTEURS ACTIFS]\n${ctx.metamoteursSelectionnes.map((e) => `### ${e.titre}\n${e.contenu}`).join('\n\n')}`
     : '';
+  const budgetHorsMetamoteurs = Math.max(0, budget - metamoteurs.length);
 
   // L'en-tête, qui contient désormais le Lore Core garanti, n'est jamais
   // sacrifié au classement du lore dynamique. Seul le milieu récupéré est
   // rogné lorsque le budget système est saturé.
   const milieu = tronquer(
     `${resume}${faits}${blocs}${lore}${etat}${souvenirs}`,
-    Math.max(0, budget - entete.length),
+    Math.max(0, budgetHorsMetamoteurs - entete.length),
   );
-  return `${tronquer(`${entete}${milieu}`, budget)}${metamoteurs}`;
+  return `${tronquer(`${entete}${milieu}`, budgetHorsMetamoteurs)}${metamoteurs}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
