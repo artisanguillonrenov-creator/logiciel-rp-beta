@@ -227,16 +227,20 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.20), 650);
   const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.14));
   const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
-  const socle = formaterLore(ctx.metamoteursSelectionnes, 'MÉTAMOTEURS ACTIFS POUR CETTE SCÈNE', Math.floor(budget * 0.30), 900);
+  // Les 15 métamoteurs sont actifs à chaque réponse, en texte intégral : ils
+  // s'ajoutent au budget système au lieu d'y puiser et ne sont jamais rognés.
+  const metamoteurs = ctx.metamoteursSelectionnes.length
+    ? `\n\n[MÉTAMOTEURS ACTIFS]\n${ctx.metamoteursSelectionnes.map((e) => `### ${e.titre}\n${e.contenu}`).join('\n\n')}`
+    : '';
 
   // L'en-tête, qui contient désormais le Lore Core garanti, n'est jamais
   // sacrifié au classement du lore dynamique. Seul le milieu récupéré est
   // rogné lorsque le budget système est saturé.
   const milieu = tronquer(
-    `${resume}${faits}${blocs}${lore}${etat}${souvenirs}${socle}`,
+    `${resume}${faits}${blocs}${lore}${etat}${souvenirs}`,
     Math.max(0, budget - entete.length),
   );
-  return tronquer(`${entete}${milieu}`, budget);
+  return `${tronquer(`${entete}${milieu}`, budget)}${metamoteurs}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

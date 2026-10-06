@@ -20,7 +20,7 @@ sleep 3
 # plafond de jetons. DRY casse les séquences répétées, la pénalité de
 # répétition légère et min-p écartent les mots improbables.
 setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias cydonia-24b-v4.3 \
-  --host 0.0.0.0 --port 8000 -ngl 99 -c 24576 -np 1 -fa on --metrics --jinja \
+  --host 0.0.0.0 --port 8000 -ngl 99 -c 32768 -np 1 -fa on --metrics --jinja \
   --cache-type-k q8_0 --cache-type-v q8_0 -t 16 \
   --min-p 0.05 --repeat-penalty 1.05 --repeat-last-n 512 \
   --dry-multiplier 0.8 --dry-base 1.75 --dry-allowed-length 2 --dry-penalty-last-n 2048 \

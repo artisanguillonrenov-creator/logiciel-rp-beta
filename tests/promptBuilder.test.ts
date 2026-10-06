@@ -28,7 +28,8 @@ function contexte() {
     faits: Array.from({ length: 30 }, (_, i) => ({
       id: `f-${i}`, type: 'autre' as const, texte: `Fait établi ${i} `.repeat(40), niveau: 'canon' as const, dernierAcces: i,
     })),
-    metamoteursSelectionnes: Array.from({ length: 15 }, (_, i) => ({ id: `m-${i}`, titre: `Meta ${i}`, contenu: `Instruction de scène ${i} `.repeat(150) })),
+    // Vide comme pour un moteur à fenêtre étroite ; les métamoteurs ont leur propre test.
+    metamoteursSelectionnes: [] as Array<{ id: string; titre: string; contenu: string }>,
     loreElyndor: Array.from({ length: 20 }, (_, i) => ({ id: `l-${i}`, titre: `Lore ${i}`, contenu: `Détail de lore ${i} `.repeat(120), score: 0.9 })),
     messagesRecents: Array.from({ length: 20 }, (_, i) => ({ id: `msg-${i}`, role: i % 2 ? 'assistant' as const : 'user' as const, content: `Message récent ${i} `.repeat(40), timestamp: i })),
     messageJoueur: 'Je regarde autour de moi. '.repeat(20),
@@ -98,4 +99,15 @@ test('le registre Adulte (avec M08) reste entier dans l’en-tête, même avec m
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_DISTANT);
   assert.ok(systeme.content.includes(m08));
   assert.match(systeme.content, /\[MÉMOIRE NARRATIVE PERTINENTE\]/);
+});
+
+test('les 15 métamoteurs sont envoyés en entier, hors budget système', () => {
+  const metamoteurs = Array.from({ length: 15 }, (_, i) => ({ id: `m-${i}`, titre: `[MÉTA] Meta ${i}`, contenu: `Instruction ${i}. `.repeat(200) + `Fin ${i}.` }));
+  const [systeme] = construireMessages(
+    { ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(2000), metamoteursSelectionnes: metamoteurs },
+    { budgetSysteme: BUDGET_SYSTEM_DISTANT, budgetConversation: BUDGET_CONVERSATION_DISTANT },
+  );
+  assert.match(systeme.content, /\[MÉTAMOTEURS ACTIFS\]/);
+  for (const m of metamoteurs) assert.ok(systeme.content.includes(`### ${m.titre}\n${m.contenu}`));
+  assert.match(systeme.content, /AUTONOMIE DU JOUEUR STRICTE/);
 });

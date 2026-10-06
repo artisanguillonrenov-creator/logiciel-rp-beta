@@ -1,12 +1,11 @@
 import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
-import type { AppSettings, DiagnosticTour, Message, StoryState } from '../types';
+import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
   chargerMetamoteurs,
   prioriserLoreCanon,
   selectionnerLoreElyndorSemantique,
-  selectionnerMetamoteursSemantique,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
@@ -90,20 +89,21 @@ const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 const M08_REGISTRE = METAMOTEURS.find((e) => e.titre === METAMOTEUR_REGISTRE);
 
 /**
- * Les métamoteurs ne sont plus envoyés au narrateur (METAMOTEURS_DANS_LE_PROMPT),
- * sauf M08 : il n'a pas d'équivalent codé et règle le cru, la violence et le
- * sexe du profil Adulte. Il suit donc le registre Adulte, dans l'en-tête du
- * prompt, jamais rogné.
+ * Les 15 métamoteurs sont envoyés en entier à chaque réponse (voir
+ * calculerSelectionLore). Un moteur à fenêtre étroite ne peut pas les
+ * recevoir : il garde seulement M08, qui règle le cru, la violence et le
+ * sexe du profil Adulte, à la suite du registre Adulte.
  */
-function registreAdulteAvecM08(settings: StoryState['settings']): string {
+function registreAdulte(settings: StoryState['settings'], appSettings: AppSettings): string {
   const registre = instructionRegistreAdulte(settings);
-  return M08_REGISTRE ? `${registre}\n\n${M08_REGISTRE.titre}\n${M08_REGISTRE.contenu}` : registre;
+  if (!moteurAFenetreEtroite(appSettings) || !M08_REGISTRE) return registre;
+  return `${registre}\n\n${M08_REGISTRE.titre}\n${M08_REGISTRE.contenu}`;
 }
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /**
  * Fenêtre étroite : modèle sur l'appareil ou serveur du réseau local. Le pod
- * Elyndor Cloud (fenêtre de 24 576 jetons, voir infra/runpod/start.sh) reçoit
+ * Elyndor Cloud (fenêtre de 32 768 jetons, voir infra/runpod/start.sh) reçoit
  * les budgets larges : avec les budgets étroits, l'en-tête occupait presque
  * tout le prompt et la mémoire et le lore n'avaient plus que quelques
  * centaines de caractères.
@@ -164,18 +164,12 @@ function construireTexteRequete(story: StoryState, messageJoueur: string, appSet
 }
 
 interface SelectionLore {
-  metamoteursSelectionnes: ReturnType<typeof selectionnerMetamoteursSemantique>;
+  metamoteursSelectionnes: LoreEntry[];
   loreElyndor: ReturnType<typeof selectionnerLoreElyndorSemantique>;
   souvenirs: Souvenir[];
   debugLore: DebugLore;
 }
 
-/**
- * Métamoteurs texte injectés dans le prompt : désactivés temporairement,
- * leur logique est codée dans l'application (à valider avant de retirer
- * définitivement la version texte). Vaut pour la voie sémantique comme lexicale.
- */
-const METAMOTEURS_DANS_LE_PROMPT = false;
 
 export async function calculerSelectionLore(
   story: StoryState,
@@ -194,6 +188,12 @@ export async function calculerSelectionLore(
     : METAMOTEURS.filter(
         (e) => e.titre !== METAMOTEUR_REGISTRE && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
       );
+  // Tous les métamoteurs, à chaque réponse, sans tri par pertinence (voie
+  // sémantique comme lexicale). Fenêtre étroite : M08 seul, via le registre.
+  const metamoteursSelectionnes: LoreEntry[] = moteurAFenetreEtroite(appSettings)
+    ? []
+    : metamoteursDisponibles.map((e) => ({ id: e.id, titre: e.titre, contenu: e.contenu }));
+  const debugMetamoteurs = metamoteursSelectionnes.map((e) => e.titre);
 
   const poolElyndorBrut = [
     ...LORE_ELYNDOR,
@@ -249,11 +249,11 @@ export async function calculerSelectionLore(
       ],
     );
     return {
-      metamoteursSelectionnes: [],
+      metamoteursSelectionnes,
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: [],
+        metamoteurs: debugMetamoteurs,
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
@@ -263,11 +263,6 @@ export async function calculerSelectionLore(
   if (!embeddingsDisponibles(appSettings)) return selectionLexicale('Embeddings indisponibles : repli lexical.');
 
   try {
-    // Métamoteurs volontairement inactifs dans le prompt : ils sont désormais
-    // codés dans l'application et seront retirés du texte une fois validés.
-    const vecteursMetamoteurs = METAMOTEURS_DANS_LE_PROMPT
-      ? await assurerEmbeddings(metamoteursDisponibles.map((e) => ({ id: e.id, contenu: e.contenu })), appSettings, 'Métamoteurs')
-      : {};
     const [vecteursElyndor, { vecteurs: [vecteurRequete] }, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         poolElyndor.map((e) => ({ id: e.id, contenu: e.contenu })),
@@ -278,9 +273,6 @@ export async function calculerSelectionLore(
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
-    const metamoteursSelectionnes = METAMOTEURS_DANS_LE_PROMPT
-      ? selectionnerMetamoteursSemantique(metamoteursDisponibles, vecteurRequete, vecteursMetamoteurs)
-      : [];
     const loreElyndor = prioriserLoreCanon(
       texteRequete,
       selectionnerLoreElyndorSemantique(poolElyndor, texteRequete, vecteurRequete, vecteursElyndor, undefined, optionsLoreElyndor),
@@ -309,7 +301,7 @@ export async function calculerSelectionLore(
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: metamoteursSelectionnes.map((e) => formaterDebug(e.titre, e.score)),
+        metamoteurs: debugMetamoteurs,
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
@@ -385,7 +377,7 @@ export function construireCtxBase(
     loreElyndor: selection.loreElyndor,
     messagesRecents,
     messageJoueur,
-    registreAdulte: profilAdulte ? registreAdulteAvecM08(story.settings) : undefined,
+    registreAdulte: profilAdulte ? registreAdulte(story.settings, appSettings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
     engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
