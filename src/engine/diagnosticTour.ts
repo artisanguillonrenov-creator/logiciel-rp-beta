@@ -5,6 +5,7 @@ import type {
   DiagnosticStatut,
   DiagnosticTour,
 } from '../types';
+import { definirLecteurTourCourant } from './journalDiagnostic';
 
 /**
  * Instrumentation passive du pipeline narratif.
@@ -14,6 +15,7 @@ import type {
  * (LLM / embeddings) sans modifier leurs résultats ni leurs décisions.
  */
 let courant: DiagnosticTour | null = null;
+definirLecteurTourCourant(() => courant?.id);
 
 function entier(valeur: unknown): number {
   const n = typeof valeur === 'number' ? valeur : Number(valeur);

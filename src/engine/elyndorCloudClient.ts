@@ -3,6 +3,7 @@ import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolC
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 import { enregistrerUsageAppel } from './mesureTokens';
 import { enregistrerAppelIADiagnostic } from './diagnosticTour';
+import { journaliser } from './journalDiagnostic';
 import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
 
 /**
@@ -258,6 +259,11 @@ async function appelerChatDetaille(
     }),
   }, signal);
   } catch (erreur) {
+    journaliser('appel-ia', {
+      composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
+      dureeMs: Date.now() - debutAppel, statut: 'erreur',
+      raison: erreur instanceof Error ? erreur.message : 'Erreur réseau',
+    });
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
       modele: ELYNDOR_CLOUD_MODELE,
@@ -272,6 +278,11 @@ async function appelerChatDetaille(
 
   if (!response.ok) {
     const detail = await detailErreur(response);
+    journaliser('appel-ia', {
+      composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
+      dureeMs: Date.now() - debutAppel, statut: 'erreur',
+      raison: `HTTP ${response.status}${detail ? ` : ${detail}` : ''}`,
+    });
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
       modele: ELYNDOR_CLOUD_MODELE,
@@ -299,6 +310,19 @@ async function appelerChatDetaille(
   const message = data?.choices?.[0]?.message ?? data?.message ?? {};
   appliquerPolitiqueRaisonnement(message, profil);
   const finishReason = String(data?.choices?.[0]?.finish_reason ?? data?.finish_reason ?? '');
+  journaliser('appel-ia', {
+    composant: diagnosticLabel ?? 'Elyndor Cloud',
+    temperature,
+    maxTokens,
+    outils: Array.isArray(tools) ? tools.length : 0,
+    messages,
+    reponse: message.content ?? null,
+    appelsOutils: message.tool_calls ?? undefined,
+    finishReason,
+    dureeMs: Date.now() - debutAppel,
+    usage: data?.usage ?? null,
+    statut: 'ok',
+  });
   return { message, finishReason };
 }
 

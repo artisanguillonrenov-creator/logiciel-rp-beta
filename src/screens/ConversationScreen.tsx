@@ -47,6 +47,8 @@ import Panneau from '../components/Panneau';
 import TexteMessageFormate from '../components/TexteMessageFormate';
 import BoutonDictee from '../components/BoutonDictee';
 import { useLangue } from '../i18n/LangueProvider';
+import { definirHistoireJournal, definirPuitsJournal } from '../engine/journalDiagnostic';
+import { ajouterAuJournal } from '../storage/journalDiagnosticStore';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/cour-des-serments.png');
 
@@ -151,6 +153,15 @@ export default function ConversationScreen({ route, navigation }: Props) {
   const [chargementPrompt, setChargementPrompt] = useState(false);
   const [majForceeEnCours, setMajForceeEnCours] = useState(false);
   const [messageConcepteur, setMessageConcepteur] = useState('');
+
+  // Journal de diagnostic (export « Diagnostic complet ») : rattaché à
+  // l'histoire ouverte. Volontairement pas remis à zéro en quittant l'écran,
+  // pour garder les tâches de fond qui finissent après.
+  useEffect(() => {
+    if (!story?.meta.id) return;
+    definirPuitsJournal(ajouterAuJournal);
+    definirHistoireJournal(story.meta.id);
+  }, [story?.meta.id]);
 
   useEffect(() => {
     let actif = true;
@@ -450,7 +461,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     if (!story || exportEnCours) return;
     setExportEnCours(format);
     try {
-      await exporterConversation(story, format);
+      await exporterConversation(story, format, appSettings ?? undefined);
       setModalExportOuvert(false);
     } catch (e) {
       setErreur(messageErreur(e, "Impossible de générer l'export pour le moment."));
@@ -1133,7 +1144,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         <Pressable style={styles.superpositionSuppression} onPress={() => setModalExportOuvert(false)}>
           <Panneau style={styles.panneauSuppression}>
             <Text style={styles.titreModal}>{t('Télécharger la conversation')}</Text>
-            {(['texte', 'pdf', 'epub'] as FormatExport[]).map((format) => (
+            {(['texte', 'pdf', 'epub', 'diagnostic'] as FormatExport[]).map((format) => (
               <Bouton
                 key={format}
                 titre={
@@ -1143,7 +1154,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
                       ? t('Texte brut (.txt)')
                       : format === 'pdf'
                         ? 'PDF'
-                        : t('EPUB (liseuse)')
+                        : format === 'epub'
+                          ? t('EPUB (liseuse)')
+                          : t('Diagnostic complet (.json)')
                 }
                 variante="secondaire"
                 desactive={!!exportEnCours}
