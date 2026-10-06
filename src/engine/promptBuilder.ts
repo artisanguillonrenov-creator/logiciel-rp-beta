@@ -101,8 +101,8 @@ export const INSTRUCTION_FIN_DE_REPONSE =
 export function libelleViolence(niveau: StorySettings['violence']): string {
   switch (niveau) {
     case 'faible': return 'suggérée plutôt que montrée, jamais le centre de la scène';
-    case 'eleve': return 'pleinement montrée, sans retenue quand la scène l’appelle';
-    case 'extreme': return 'graphique et frontale, sans atténuation, quand la scène l’appelle';
+    case 'eleve': return 'pleinement montrée, crue et sans retenue quand la scène l’appelle';
+    case 'extreme': return 'graphique, frontale et détaillée, sans aucune atténuation, quand la scène l’appelle';
     default: return 'présente et décrite quand la scène l’appelle, sans excès systématique';
   }
 }
@@ -111,7 +111,7 @@ export function libelleRomance(niveau: StorySettings['romance']): string {
   switch (niveau) {
     case 'aucun': return "absente — pas d'intrigue amoureuse ni de tension romantique";
     case 'faible': return 'en toile de fond seulement, jamais le sujet principal de la scène';
-    case 'eleve': return 'pleinement développée quand la scène l’appelle';
+    case 'eleve': return 'pleinement développée, explicite, graphique et vulgaire quand la scène l’appelle';
     default: return 'présente et développée quand la scène l’appelle, sans excès systématique';
   }
 }
