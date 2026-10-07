@@ -33,8 +33,8 @@ RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
 ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
 MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/chroma1-hd"))
 MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "chroma1-hd")
-PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
-GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "4.0"))
+PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "40"))
+GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "3.0"))
 EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
 EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
 NEGATIF_BASE = "low quality, ugly, unfinished, out of focus, deformed, disfigure, blurry, smudged, restricted palette, flat colors, text, logo, watermark, signature, extra limbs, extra fingers, deformed hands, bad anatomy, child, minor, underage"
@@ -58,11 +58,11 @@ verrou_embeddings = threading.Lock()
 os.makedirs(os.path.join(RACINE, "cache"), exist_ok=True)
 cache_embeddings = sqlite3.connect(os.path.join(RACINE, "cache", f"embeddings-{EMBEDDINGS_ID}.sqlite"), check_same_thread=False)
 cache_embeddings.execute("CREATE TABLE IF NOT EXISTS vecteurs (cle TEXT PRIMARY KEY, vecteur BLOB NOT NULL)")
-# Le narrateur 70B occupe ~47 Go du GPU. Par défaut (« modele »), l'encodeur
-# T5, le transformer et le VAE ne montent en mémoire vidéo que pendant leur
-# passage. « aucun » garde Chroma entier sur le GPU (~27 Go, H100 80 Go) :
-# bien plus rapide ; repli sur le déchargement si la mémoire manque.
-DECHARGEMENT = os.environ.get("ELYNDOR_IMAGE_DECHARGEMENT", "modele")
+# Le narrateur 70B occupe ~47 Go du GPU. Par défaut (« aucun »), Chroma reste
+# entier sur le GPU (~27 Go, H100 80 Go) : ~25 s par image au lieu de ~90 s.
+# Repli sur le déchargement si la mémoire manque. « modele » ne monte
+# l'encodeur T5, le transformer et le VAE qu'à leur passage (petites cartes).
+DECHARGEMENT = os.environ.get("ELYNDOR_IMAGE_DECHARGEMENT", "aucun")
 if DECHARGEMENT == "aucun":
     try:
         pipe.to("cuda")
