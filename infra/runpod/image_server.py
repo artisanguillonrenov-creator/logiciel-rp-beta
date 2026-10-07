@@ -58,9 +58,21 @@ verrou_embeddings = threading.Lock()
 os.makedirs(os.path.join(RACINE, "cache"), exist_ok=True)
 cache_embeddings = sqlite3.connect(os.path.join(RACINE, "cache", f"embeddings-{EMBEDDINGS_ID}.sqlite"), check_same_thread=False)
 cache_embeddings.execute("CREATE TABLE IF NOT EXISTS vecteurs (cle TEXT PRIMARY KEY, vecteur BLOB NOT NULL)")
-# Le narrateur 70B occupe ~47 Go du GPU : l'encodeur T5, le transformer et
-# le VAE ne sont montés en mémoire vidéo que pendant leur passage.
-pipe.enable_model_cpu_offload()
+# Le narrateur 70B occupe ~47 Go du GPU. Par défaut (« modele »), l'encodeur
+# T5, le transformer et le VAE ne montent en mémoire vidéo que pendant leur
+# passage. « aucun » garde Chroma entier sur le GPU (~27 Go, H100 80 Go) :
+# bien plus rapide ; repli sur le déchargement si la mémoire manque.
+DECHARGEMENT = os.environ.get("ELYNDOR_IMAGE_DECHARGEMENT", "modele")
+if DECHARGEMENT == "aucun":
+    try:
+        pipe.to("cuda")
+    except torch.cuda.OutOfMemoryError:
+        print("mémoire vidéo insuffisante : retour au déchargement CPU")
+        pipe.to("cpu")
+        torch.cuda.empty_cache()
+        DECHARGEMENT = "modele"
+if DECHARGEMENT != "aucun":
+    pipe.enable_model_cpu_offload()
 pipe.vae.enable_tiling()
 verrou = threading.Lock()
 
@@ -161,7 +173,7 @@ def embeddings(req: RequeteEmbeddings):
 
 @app.get("/health")
 def sante():
-    return {"status": "ok", "modele": MODELE_ID, "embeddings": encodeur is not None}
+    return {"status": "ok", "modele": MODELE_ID, "dechargement": DECHARGEMENT, "pas": PAS, "cfg": GUIDANCE, "embeddings": encodeur is not None}
 
 
 @app.post("/v1/images/generations")
