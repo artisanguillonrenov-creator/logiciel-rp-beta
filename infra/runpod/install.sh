@@ -1,13 +1,13 @@
 #!/bin/bash
 # Installation d'Elyndor Cloud sur le volume réseau du pod (image
-# runpod/pytorch, GPU A40 48 Go). Tout est posé sous $ELYNDOR_ROOT
+# runpod/pytorch, GPU H100 80 Go). Tout est posé sous $ELYNDOR_ROOT
 # (/workspace/elyndor), qui survit aux arrêts du pod : à faire une seule fois.
 # Idempotent : chaque étape est sautée si son résultat existe déjà.
 #
 # Disposition :
 #   $ELYNDOR_ROOT/venv       dépendances Python (torch vient de l'image)
 #   $ELYNDOR_ROOT/llama.cpp  serveur de narration compilé avec CUDA
-#   $ELYNDOR_ROOT/models     Cydonia, Lustify, IP-Adapter, bge-m3
+#   $ELYNDOR_ROOT/models     Euryale 70B, Chroma1-HD, bge-m3
 #   $ELYNDOR_ROOT/app        scripts et serveur d'images (copie de infra/runpod)
 #   $ELYNDOR_ROOT/boot.sh    lancé par la commande de démarrage du pod
 set -euo pipefail
@@ -23,7 +23,7 @@ mkdir -p "$RACINE"/{models/text,models/image,app,logs}
 PIP="$RACINE/venv/bin/pip"
 "$PIP" install -q -U --prefer-binary --only-binary=tokenizers \
   huggingface_hub hf_transfer diffusers transformers accelerate safetensors fastapi "uvicorn[standard]" pillow
-"$PIP" install -q --prefer-binary compel sentence-transformers
+"$PIP" install -q --prefer-binary sentence-transformers
 HF="$RACINE/venv/bin/hf"
 
 # 2. llama.cpp compilé avec CUDA (serveur OpenAI-compatible).
@@ -33,23 +33,22 @@ if [ ! -x "$RACINE/llama.cpp/build/bin/llama-server" ]; then
   cmake --build "$RACINE/llama.cpp/build" --config Release -j "$(nproc)" --target llama-server
 fi
 
-# 3. Modèles : Cydonia 24B v4.3 Q6_K (base Mistral Small, choisi au comparatif
-#    des narrateurs du 6 octobre) et Lustify SDXL v4 au format diffusers.
-if [ ! -f "$RACINE/models/text/Cydonia-24B-v4.3-Q6_K.gguf" ]; then
-  "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q6_K.gguf --local-dir "$RACINE/models/text"
-  mv "$RACINE/models/text/Cydonia-24B-v4zg-Q6_K.gguf" "$RACINE/models/text/Cydonia-24B-v4.3-Q6_K.gguf"
-fi
-[ -f "$RACINE/models/image/lustify-v4/model_index.json" ] || \
-  "$HF" download John6666/lustify-sdxl-nsfwsfw-v4-sdxl --local-dir "$RACINE/models/image/lustify-v4"
+# 3. Modèles : L3.3 Euryale 70B v2.3 Q4_K_M (narration NSFW, ~42,5 Go) et
+#    Chroma1-HD au format diffusers (images sans filtre, ~27,5 Go). Fichiers
+#    listés un à un (voir bge-m3 plus bas) : le fichier unique
+#    Chroma1-HD.safetensors (format ComfyUI, 17,8 Go) n'est pas téléchargé.
+[ -f "$RACINE/models/text/L3.3-70B-Euryale-v2.3-Q4_K_M.gguf" ] || \
+  "$HF" download bartowski/L3.3-70B-Euryale-v2.3-GGUF L3.3-70B-Euryale-v2.3-Q4_K_M.gguf --local-dir "$RACINE/models/text"
+[ -f "$RACINE/models/image/chroma1-hd/vae/diffusion_pytorch_model.safetensors" ] || \
+  "$HF" download lodestones/Chroma1-HD model_index.json scheduler/scheduler_config.json \
+    text_encoder/config.json text_encoder/model-00001-of-00002.safetensors text_encoder/model-00002-of-00002.safetensors \
+    text_encoder/model.safetensors.index.json tokenizer/added_tokens.json tokenizer/special_tokens_map.json \
+    tokenizer/spiece.model tokenizer/tokenizer_config.json transformer/config.json \
+    transformer/diffusion_pytorch_model-00001-of-00002.safetensors transformer/diffusion_pytorch_model-00002-of-00002.safetensors \
+    transformer/diffusion_pytorch_model.safetensors.index.json vae/config.json vae/diffusion_pytorch_model.safetensors \
+    --local-dir "$RACINE/models/image/chroma1-hd"
 
-# 4. IP-Adapter SDXL (visage + continuité de scène) et son encodeur ViT-H.
-[ -f "$RACINE/models/ip-adapter/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors" ] || \
-  "$HF" download h94/IP-Adapter \
-    sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors \
-    models/image_encoder/config.json models/image_encoder/model.safetensors \
-    --local-dir "$RACINE/models/ip-adapter"
-
-# 5. bge-m3 (embeddings de la recherche sémantique ObjectBox, servi sur CPU).
+# 4. bge-m3 (embeddings de la recherche sémantique ObjectBox, servi sur CPU).
 #    Fichiers listés un à un : les motifs --exclude multiples de `hf` sont
 #    lus comme des noms de fichiers et téléchargeaient l'inverse.
 [ -f "$RACINE/models/bge-m3/pytorch_model.bin" ] || \
@@ -57,7 +56,7 @@ fi
     pytorch_model.bin sentence_bert_config.json sentencepiece.bpe.model special_tokens_map.json \
     tokenizer.json tokenizer_config.json --local-dir "$RACINE/models/bge-m3"
 
-# 6. Scripts de service. boot.sh est copié en dernier : la commande de
+# 5. Scripts de service. boot.sh est copié en dernier : la commande de
 #    démarrage du pod l'attend pour lancer les serveurs.
 cp "$SOURCES"/start.sh "$SOURCES"/watchdog.sh "$SOURCES"/image_server.py "$RACINE/app/"
 cp "$SOURCES/boot.sh" "$RACINE/boot.sh"

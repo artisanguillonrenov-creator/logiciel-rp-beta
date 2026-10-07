@@ -5,19 +5,19 @@ import { journaliser, resumerReferences } from './journalDiagnostic';
  * Générateur d'images Elyndor Cloud.
  *
  * Comme pour la narration, aucun fournisseur tiers n'est configurable :
- * Lustify SDXL v4 est servi par le pod Elyndor Cloud (infra/runpod/
+ * Chroma1-HD (base Flux, sans filtre) est servi par le pod Elyndor Cloud (infra/runpod/
  * image_server.py, port 7860). Mettre ELYNDOR_CLOUD_MODELE_IMAGE à null
  * désactive la capacité `images` (voir automation/capabilities.ts).
  *
  * Contrat : OpenAI-compatible `/images/generations`, étendu par
  * `aspect_ratio`, `negative_prompt`, `reference_images` et `prompt_sdxl`
- * (prompt court en anglais, prioritaire : le CLIP de SDXL est limité à 77
- * jetons et comprend mal le français).
+ * (prompt court en anglais, prioritaire : l'encodeur T5 de Chroma comprend
+ * mieux l'anglais). `reference_images` est ignoré par Chroma (pas d'IP-Adapter).
  * Toute la logique de continuité (prompt, références, état visuel) reste
  * indépendante de ce module : un autre backend (serveur GPU, modèle local…)
  * n'aura qu'à implémenter `GenerateurImage`.
  */
-export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'lustify-sdxl-v4';
+export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'chroma1-hd';
 
 /** Limite du nombre d'images de référence envoyées par requête. */
 export const MAX_REFERENCES_IMAGE = 6;
