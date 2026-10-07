@@ -19,6 +19,8 @@ const BONUS_ENTREE_CONSTANTE = 0.08;
 // Un nom canonique cité dans la scène (royaume, PNJ, guilde…) remonte sa fiche.
 const BONUS_ANCRE = 0.5;
 const SEPARATEUR_PASSAGES = '\n…\n';
+// Une seule fiche ne doit pas occuper tout le budget du lore.
+const MAX_PASSAGES_PAR_ENTREE = 3;
 
 export interface PassageLore extends ElyndorEntryChargee {
   entreeId: string;
@@ -26,12 +28,12 @@ export interface PassageLore extends ElyndorEntryChargee {
   entreeConstante: boolean;
 }
 
-function couperLong(texte: string): string[] {
-  if (texte.length <= TAILLE_MAX_PASSAGE) return [texte];
+function couperLigne(ligne: string): string[] {
+  if (ligne.length <= TAILLE_MAX_PASSAGE) return [ligne];
+  // Pas de lookbehind dans l'expression : tous les moteurs JS de l'app ne le gèrent pas.
+  const phrases = (ligne.match(/[^.!?]+[.!?]*/g) ?? [ligne]).map((p) => p.trim()).filter(Boolean);
   const morceaux: string[] = [];
   let courant = '';
-  // Pas de lookbehind dans l'expression : tous les moteurs JS de l'app ne le gèrent pas.
-  const phrases = (texte.match(/[^.!?;:\n]+[.!?;:]*/g) ?? [texte]).map((p) => p.trim()).filter(Boolean);
   for (const phrase of phrases) {
     if (courant && (courant + ' ' + phrase).length > TAILLE_MAX_PASSAGE) {
       morceaux.push(courant);
@@ -42,6 +44,22 @@ function couperLong(texte: string): string[] {
       morceaux.push(courant.slice(0, TAILLE_MAX_PASSAGE));
       courant = courant.slice(TAILLE_MAX_PASSAGE);
     }
+  }
+  if (courant) morceaux.push(courant);
+  return morceaux;
+}
+
+/** Coupe un paragraphe trop long ligne par ligne (tables, listes), puis par phrases. */
+function couperLong(texte: string): string[] {
+  if (texte.length <= TAILLE_MAX_PASSAGE) return [texte];
+  const morceaux: string[] = [];
+  let courant = '';
+  for (const ligne of texte.split('\n').flatMap(couperLigne)) {
+    if (courant && courant.length + ligne.length + 1 > TAILLE_MAX_PASSAGE) {
+      morceaux.push(courant);
+      courant = '';
+    }
+    courant = courant ? `${courant}\n${ligne}` : ligne;
   }
   if (courant) morceaux.push(courant);
   return morceaux;
@@ -115,17 +133,27 @@ export function selectionnerPassages(passages: PassageLore[], requete: string, o
       if (details.score === 0) return { passage, score: 0 };
       const score = details.score
         + (passage.entreeConstante ? BONUS_ENTREE_CONSTANTE : 0)
-        + (options.ancres?.has(passage.entreeId) ? BONUS_ANCRE : 0)
         + (options.aleatoire ? Math.random() * 0.1 : 0);
       return { passage, score };
-    })
+    });
+  // L'ancre (nom cité) ne relève que le meilleur passage de sa fiche : sinon
+  // une ville citée occupait le budget avec tous ses passages.
+  const meilleurParAncre = new Map<string, { passage: PassageLore; score: number }>();
+  for (const note of notes) {
+    if (!options.ancres?.has(note.passage.entreeId) || note.score === 0) continue;
+    const actuel = meilleurParAncre.get(note.passage.entreeId);
+    if (!actuel || note.score > actuel.score) meilleurParAncre.set(note.passage.entreeId, note);
+  }
+  for (const note of meilleurParAncre.values()) note.score += BONUS_ANCRE;
+  const classees = notes
     .filter((n) => n.score >= SEUIL_LORE_HYBRIDE)
     .sort((a, b) => b.score - a.score || a.passage.priority - b.passage.priority);
 
   const parEntree = new Map<string, { titre: string; score: number; passages: PassageLore[] }>();
   let utilise = 0;
-  for (const { passage, score } of notes) {
+  for (const { passage, score } of classees) {
     const groupe = parEntree.get(passage.entreeId);
+    if (groupe && groupe.passages.length >= MAX_PASSAGES_PAR_ENTREE) continue;
     const cout = passage.contenu.length + (groupe ? SEPARATEUR_PASSAGES.length : passage.titre.length + 6);
     if (utilise + cout > budget) continue;
     utilise += cout;

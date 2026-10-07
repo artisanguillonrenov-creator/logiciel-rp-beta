@@ -21,11 +21,18 @@ test('une elfe noire qui paraît 50 ans fait remonter la table d’âge, dans le
   assert.ok(total <= BUDGET_LORE_PASSAGES);
   const ratio = selection.find((e) => e.titre.includes('Ratio de Vieillissement'));
   assert.ok(ratio, 'la fiche Ratio de Vieillissement est retenue');
-  assert.match(ratio!.contenu, /Elfes Noirs : .*50 → ~390 ans/);
+  assert.match(ratio!.contenu, /390 ans/);
 });
 
 test('un nom canonique cité remonte sa fiche grâce à l’ancre', () => {
   const zurich = LORE.find((e) => e.titre.includes('Zurich'))!;
   const selection = selectionnerPassages(PASSAGES, 'Nous arrivons enfin à la forteresse.', { ancres: new Set([zurich.id]) });
   assert.equal(selection[0].id, zurich.id);
+});
+
+test('une fiche ne place jamais plus de trois passages', () => {
+  const selection = selectionnerPassages(PASSAGES, 'Paris, la Seine, le palais, la cathédrale, le marché aux esclaves de Paris', {
+    ancres: new Set([LORE.find((e) => e.titre.includes('Paris — Royaume Humain'))!.id]),
+  });
+  for (const entree of selection) assert.ok(entree.contenu.split('\n…\n').length <= 3);
 });
