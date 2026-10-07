@@ -101,65 +101,100 @@ export interface OptionsPassages {
   /** Identifiants d'entrées dont le nom canonique est cité dans la scène. */
   ancres?: Set<string>;
   budget?: number;
+  /** Message du joueur (avec la ville en cours) : la moitié du budget lui revient d'abord. */
+  requeteMessage?: string;
+  vecteurMessage?: number[];
   /** Ouverture d'histoire : un peu de hasard pour varier les détails convoqués. */
   aleatoire?: boolean;
 }
 
-/**
- * Note tous les passages et garde les meilleurs dans le budget. Les passages
- * retenus d'une même entrée sont regroupés sous son titre, dans leur ordre
- * d'origine ; les entrées sont rangées par meilleur passage.
- */
-export function selectionnerPassages(passages: PassageLore[], requete: string, options: OptionsPassages = {}): LoreEntry[] {
-  const budget = options.budget ?? BUDGET_LORE_PASSAGES;
-  const notes = passages
-    .map((passage) => {
-      const vecteur = options.vecteursPassages?.[passage.id];
-      const similarite = vecteur && options.vecteurRequete ? similariteCosinus(options.vecteurRequete, vecteur) : undefined;
-      const details = calculerScoreHybrideLore(
-        {
-          titre: passage.titre,
-          contenu: passage.contenu,
-          primaryKeys: passage.primaryKeys ?? passage.motsClesPrimaires,
-          secondaryKeys: passage.secondaryKeys ?? passage.motsClesSecondaires,
-          negativeKeys: passage.negativeKeys ?? passage.motsClesNegatifs,
-          priority: passage.priority,
-          category: passage.category,
-          scope: passage.scope,
-        },
-        requete,
-        similarite,
-      );
-      if (details.score === 0) return { passage, score: 0 };
-      const score = details.score
-        + (passage.entreeConstante ? BONUS_ENTREE_CONSTANTE : 0)
-        + (options.aleatoire ? Math.random() * 0.1 : 0);
-      return { passage, score };
-    });
+type Note = { passage: PassageLore; score: number };
+
+function noterPassages(
+  passages: PassageLore[],
+  requete: string,
+  vecteurRequete: number[] | undefined,
+  options: OptionsPassages,
+  avecBonusConstante: boolean,
+): Note[] {
+  const notes = passages.map((passage) => {
+    const vecteur = options.vecteursPassages?.[passage.id];
+    const similarite = vecteur && vecteurRequete ? similariteCosinus(vecteurRequete, vecteur) : undefined;
+    const details = calculerScoreHybrideLore(
+      {
+        titre: passage.titre,
+        contenu: passage.contenu,
+        primaryKeys: passage.primaryKeys ?? passage.motsClesPrimaires,
+        secondaryKeys: passage.secondaryKeys ?? passage.motsClesSecondaires,
+        negativeKeys: passage.negativeKeys ?? passage.motsClesNegatifs,
+        priority: passage.priority,
+        category: passage.category,
+        scope: passage.scope,
+      },
+      requete,
+      similarite,
+    );
+    if (details.score === 0) return { passage, score: 0 };
+    const score = details.score
+      + (avecBonusConstante && passage.entreeConstante ? BONUS_ENTREE_CONSTANTE : 0)
+      + (options.aleatoire ? Math.random() * 0.1 : 0);
+    return { passage, score };
+  });
   // L'ancre (nom cité) ne relève que le meilleur passage de sa fiche : sinon
   // une ville citée occupait le budget avec tous ses passages.
-  const meilleurParAncre = new Map<string, { passage: PassageLore; score: number }>();
+  const meilleurParAncre = new Map<string, Note>();
   for (const note of notes) {
     if (!options.ancres?.has(note.passage.entreeId) || note.score === 0) continue;
     const actuel = meilleurParAncre.get(note.passage.entreeId);
     if (!actuel || note.score > actuel.score) meilleurParAncre.set(note.passage.entreeId, note);
   }
   for (const note of meilleurParAncre.values()) note.score += BONUS_ANCRE;
-  const classees = notes
+  return notes;
+}
+
+function classer(notes: Note[]): Note[] {
+  return notes
     .filter((n) => n.score >= SEUIL_LORE_HYBRIDE)
     .sort((a, b) => b.score - a.score || a.passage.priority - b.passage.priority);
+}
+
+/**
+ * Note tous les passages et garde les meilleurs dans le budget. Avec un
+ * message du joueur (requeteMessage), la moitié du budget va d'abord aux
+ * passages qui y répondent (« allons à la guilde » → Guilde des
+ * Aventuriers, maîtresse de guilde de la ville) ; le reste suit la scène et
+ * la mémoire de l'histoire (requete). Les passages d'une même entrée sont
+ * regroupés sous son titre, dans leur ordre d'origine.
+ */
+export function selectionnerPassages(passages: PassageLore[], requete: string, options: OptionsPassages = {}): LoreEntry[] {
+  const budget = options.budget ?? BUDGET_LORE_PASSAGES;
+  const notesScene = noterPassages(passages, requete, options.vecteurRequete, options, true);
+  const notesMessage = options.requeteMessage?.trim()
+    ? noterPassages(passages, options.requeteMessage, options.vecteurMessage, options, false)
+    : undefined;
 
   const parEntree = new Map<string, { titre: string; score: number; passages: PassageLore[] }>();
+  const retenus = new Set<string>();
   let utilise = 0;
-  for (const { passage, score } of classees) {
-    const groupe = parEntree.get(passage.entreeId);
-    if (groupe && groupe.passages.length >= MAX_PASSAGES_PAR_ENTREE) continue;
-    const cout = passage.contenu.length + (groupe ? SEPARATEUR_PASSAGES.length : passage.titre.length + 6);
-    if (utilise + cout > budget) continue;
-    utilise += cout;
-    if (groupe) groupe.passages.push(passage);
-    else parEntree.set(passage.entreeId, { titre: passage.titre, score, passages: [passage] });
-  }
+  const remplir = (classees: Note[], plafond: number) => {
+    for (const { passage, score } of classees) {
+      if (retenus.has(passage.id)) continue;
+      const groupe = parEntree.get(passage.entreeId);
+      if (groupe && groupe.passages.length >= MAX_PASSAGES_PAR_ENTREE) continue;
+      const cout = passage.contenu.length + (groupe ? SEPARATEUR_PASSAGES.length : passage.titre.length + 6);
+      if (utilise + cout > plafond) continue;
+      utilise += cout;
+      retenus.add(passage.id);
+      if (groupe) groupe.passages.push(passage);
+      else parEntree.set(passage.entreeId, { titre: passage.titre, score, passages: [passage] });
+    }
+  };
+
+  if (notesMessage) remplir(classer(notesMessage), Math.floor(budget / 2));
+  const combinees = notesMessage
+    ? notesScene.map((n, i) => ({ passage: n.passage, score: Math.max(n.score, notesMessage[i].score) }))
+    : notesScene;
+  remplir(classer(combinees), budget);
 
   return [...parEntree.entries()].map(([id, groupe]) => ({
     id,

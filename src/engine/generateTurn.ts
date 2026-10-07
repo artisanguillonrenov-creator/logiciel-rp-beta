@@ -163,17 +163,44 @@ function construireTexteRequete(story: StoryState, messageJoueur: string, appSet
     .join('\n');
 }
 
+// Capitales d'Elyndor, lues dans les titres des fiches royaume
+// (« Paris — Royaume Humain » → « Paris »).
+const CAPITALES = LORE_ELYNDOR
+  .filter((e) => e.category === 'ROYAUME')
+  .map((e) => e.titre.replace(/^\[[^\]]+\]\s*/, '').split(/\s+[—–]\s+/)[0].trim())
+  .filter(Boolean);
+
+/** Dernière capitale citée : message du joueur, messages récents, puis point de départ. */
+function villeCourante(story: StoryState, messageJoueur: string): string | undefined {
+  const sources = [messageJoueur, ...story.messages.slice(-6).reverse().map((m) => m.content), story.meta.contexte.lieu, story.meta.pointDeDepart];
+  for (const texte of sources) {
+    const ville = CAPITALES.find((c) => texte?.includes(c));
+    if (ville) return ville;
+  }
+  return undefined;
+}
+
 /**
- * Requête du moteur de recherche du lore : la scène en cours (lieu, deux
- * derniers messages, message du joueur). La fiche du personnage et le point
- * de départ, souvent très longs, noyaient le message du joueur et faisaient
- * remonter les mêmes fiches à chaque tour.
+ * Requêtes du moteur de recherche du lore, consulté après la mémoire de
+ * l'histoire :
+ * - message : ce que le joueur fait ou demande, avec la ville en cours —
+ *   prioritaire (« allons à la guilde » doit trouver la guilde de Paris) ;
+ * - scène : la mémoire de l'histoire (résumé, faits établis) et la dernière
+ *   réponse du narrateur.
+ * La fiche du personnage et le point de départ, très longs, noyaient la
+ * demande du joueur et n'y figurent plus.
  */
-function construireRequeteLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): string {
+function construireRequetesLore(story: StoryState, messageJoueur: string, appSettings: AppSettings) {
   const profil = appSettings.profilContenu;
-  return [story.meta.contexte.lieu, ...story.messages.slice(-2).map((m) => m.content), messageJoueur]
+  const garder = (textes: (string | undefined)[]) => textes
     .filter((texte): texte is string => !!texte && texteCompatibleAvecProfil(texte, profil))
     .join('\n');
+  const ville = villeCourante(story, messageJoueur);
+  const derniereReponse = [...story.messages].reverse().find((m) => m.role === 'assistant')?.content;
+  return {
+    message: garder([ville && `Ville : ${ville}`, messageJoueur]),
+    scene: garder([ville && `Ville : ${ville}`, story.memoire.resume, ...story.memoire.faits.map((f) => f.texte), derniereReponse]),
+  };
 }
 
 interface SelectionLore {
@@ -222,8 +249,8 @@ export async function calculerSelectionLore(
   // Moteur de recherche du lore : tous les passages de toutes les entrées
   // sont notés, seuls les meilleurs partent au narrateur (BUDGET_LORE_PASSAGES).
   const passagesLore = construirePassages(poolElyndor);
-  const requeteLore = construireRequeteLore(story, messageJoueur, appSettings);
-  const ancresLore = new Set(extraireAncresCanoniques(requeteLore, poolElyndor).map((e) => e.id));
+  const requetesLore = construireRequetesLore(story, messageJoueur, appSettings);
+  const ancresLore = new Set(extraireAncresCanoniques(`${requetesLore.message}\n${requetesLore.scene}`, poolElyndor).map((e) => e.id));
 
   // La frontière entre contexte direct et recherche historique n'est plus
   // un nombre fixe de messages. Elle dépend du budget réel de conversation
@@ -247,7 +274,8 @@ export async function calculerSelectionLore(
   // lorsqu'aucun fournisseur n'est configuré que lorsqu'un endpoint
   // d'embeddings configuré refuse ou échoue pendant l'appel.
   const selectionLexicale = (raison: string, statut: 'ok' | 'repli' = 'repli'): SelectionLore => {
-    const loreElyndor = selectionnerPassages(passagesLore, requeteLore, {
+    const loreElyndor = selectionnerPassages(passagesLore, requetesLore.scene, {
+      requeteMessage: requetesLore.message,
       ancres: ancresLore,
       aleatoire: optionsLoreElyndor?.aleatoire,
     });
@@ -281,18 +309,20 @@ export async function calculerSelectionLore(
   if (!embeddingsDisponibles(appSettings)) return selectionLexicale('Embeddings indisponibles : repli lexical.');
 
   try {
-    const [vecteursElyndor, { vecteurs: [vecteurRequete, vecteurRequeteLore] }, vecteursMessagesAnciens] = await Promise.all([
+    const [vecteursElyndor, { vecteurs: [vecteurRequete, vecteurScene, vecteurMessage] }, vecteursMessagesAnciens] = await Promise.all([
       assurerEmbeddings(
         passagesLore.map((p) => ({ id: p.id, contenu: `${p.titre}\n${p.contenu}` })),
         appSettings,
         'Lore Elyndor (passages)',
       ),
-      obtenirEmbeddings([texteRequete, requeteLore], appSettings, 'Requête de recherche'),
+      obtenirEmbeddings([texteRequete, requetesLore.scene, requetesLore.message], appSettings, 'Requête de recherche'),
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
-    const loreElyndor = selectionnerPassages(passagesLore, requeteLore, {
-      vecteurRequete: vecteurRequeteLore ?? vecteurRequete,
+    const loreElyndor = selectionnerPassages(passagesLore, requetesLore.scene, {
+      vecteurRequete: vecteurScene ?? vecteurRequete,
+      requeteMessage: requetesLore.message,
+      vecteurMessage,
       vecteursPassages: vecteursElyndor,
       ancres: ancresLore,
       aleatoire: optionsLoreElyndor?.aleatoire,
