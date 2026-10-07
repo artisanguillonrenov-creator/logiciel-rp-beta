@@ -1,0 +1,25 @@
+{
+  "id": "chicago-1947",
+  "nom": "Chicago 1947",
+  "genre": "Polar noir",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nChicago, hiver 1947. Monde réel, sans surnaturel. L'après-guerre : vétérans désabusés, mafia italienne et irlandaise qui se partagent la ville, police et mairie achetées.\n\nTECHNOLOGIE\nTechnologie des années 1940 uniquement : téléphones à cadran, cabines publiques, voitures à essence, revolvers et pistolets automatiques, mitraillettes Thompson, radio, journaux, appareils photo à flash. Aucun téléphone portable, aucun ordinateur.\n\nPOUVOIRS\nLa famille Moretti contrôle le South Side, les docks et les paris ; le gang irlandais des O'Malley tient le North Side et les syndicats. Le capitaine de police Harlan Briggs touche des deux côtés. Le procureur Whitmore veut faire tomber Moretti.\n\nMONNAIE\nDollars. Un whisky : 50 cents. Une nuit d'hôtel minable : 2 dollars. Un pot-de-vin à un flic : 20 dollars.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Le Blue Velvet", "contenu": "Club de jazz du South Side appartenant à la famille Moretti. Fumée de cigare, banquettes de velours bleu, orchestre noir, chanteuse vedette. Arrière-salle de poker et de comptabilité. Le patron officiel est Sal Gatti." },
+    { "titre": "Famille Moretti", "contenu": "Famille mafieuse dirigée par Don Vittorio Moretti (67 ans, malade, rusé). Son fils Enzo (35 ans, impulsif) veut le pouvoir. Règle : on ne touche pas aux flics ni aux familles, et une trahison se paie dans le lac Michigan." },
+    { "titre": "Bureau de détective — Wabash Avenue", "contenu": "Bureau minable au troisième étage d'un immeuble de Wabash Avenue : porte vitrée dépolie, ventilateur au plafond, bouteille de bourbon dans le tiroir, vue sur le métro aérien." },
+    { "titre": "PNJ — Vivian Lacroix", "contenu": "Vivian Lacroix : 31 ans, chanteuse du Blue Velvet, robe de satin noir fendue, cheveux auburn ondulés, rouge à lèvres carmin, voix grave. Maîtresse d'Enzo Moretti, elle a peur de lui et cherche une sortie." },
+    { "titre": "PNJ — Capitaine Harlan Briggs", "contenu": "Harlan Briggs : 52 ans, capitaine du 1er district, ventripotent, moustache grise, chapeau mou. Corrompu jusqu'à l'os, mais il déteste qu'on tue des civils dans son secteur." },
+    { "titre": "PNJ — Sal Gatti", "contenu": "Sal Gatti : 48 ans, gérant du Blue Velvet, costume rayé, bague en or, sourire de requin. Loyal au Don, il surveille tout et rapporte tout." },
+    { "titre": "Les docks", "contenu": "Docks du lac Michigan : entrepôts, brume, débardeurs syndiqués par les O'Malley, contrebande d'alcool et d'armes. On y retrouve les corps qui remontent au printemps." }
+  ],
+  "personnages": [
+    { "nom": "Jack Callahan", "description": "Homme, 38 ans, détective privé, ancien Marine du Pacifique. Imperméable, chapeau, revolver .38, insomnie et whisky. Honnête à sa façon, ce qui le rend pauvre." },
+    { "nom": "Rose Delaney", "description": "Femme, 33 ans, journaliste au Chicago Herald. Tailleur ajusté, carnet, cigarette. Audacieuse jusqu'à l'imprudence." },
+    { "nom": "Tommy Russo", "description": "Homme, 29 ans, chauffeur et homme de main de la famille Moretti. Costume sombre, mâchoire carrée, mains de boxeur. Veut monter dans la hiérarchie." }
+  ],
+  "departs": [
+    { "lieu": "Bureau de détective, Wabash Avenue", "ambiance": "Pluie sur la vitre, néon clignotant, odeur de tabac froid", "pointDeDepart": "Il est minuit passé dans ton bureau de Wabash Avenue, et le loyer est en retard de deux mois. La porte vitrée s'ouvre sans qu'on frappe : une femme en robe de satin noir, manteau de fourrure sur les épaules, entre en tremblant.\nVIVIAN LACROIX : « On m'a dit que vous n'aviez pas peur des Moretti. J'espère qu'on m'a dit vrai. »" },
+    { "lieu": "Le Blue Velvet, South Side", "ambiance": "Jazz lent, fumée, menace polie", "pointDeDepart": "Tu entres au Blue Velvet pour retrouver un homme qui doit de l'argent à ton client. L'orchestre joue un blues lent et Vivian Lacroix chante sur scène. Sal Gatti quitte le bar et te barre le passage, un sourire figé aux lèvres.\nSAL GATTI : « Je connais tous ceux qui entrent ici. Toi, je ne te connais pas. Ça m'inquiète. »" },
+    { "lieu": "Entrepôt 9, docks du lac Michigan", "ambiance": "Brume, sirènes de bateaux, odeur de poisson et de poudre", "pointDeDepart": "Tu arrives à l'entrepôt 9 pour une livraison qui devait être tranquille. Un camion est renversé, des caisses éventrées laissent voir des mitraillettes Thompson, et un débardeur blessé rampe vers toi.\nDÉBARDEUR : « Les Irlandais… ils ont tout pris. Si tu bosses pour Moretti, cours le prévenir avant qu'ils reviennent. »" }
+  ]
+}

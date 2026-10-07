@@ -1,0 +1,23 @@
+{
+  "id": "nouvelle-orleans",
+  "nom": "Crépuscule sur la Nouvelle-Orléans",
+  "genre": "Fantastique urbain",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nLa Nouvelle-Orléans, 1925, en pleine Prohibition. Derrière le jazz et les speakeasies, une société secrète de créatures surnaturelles se partage la ville. Les humains ordinaires ignorent tout ; révéler le secret (« la Mascarade ») est puni de mort par les créatures elles-mêmes.\n\nTECHNOLOGIE\nAnnées 1920 : automobiles Ford T, téléphones à manivelle, revolvers, mitraillettes, phonographes, électricité dans les beaux quartiers, lampes à huile dans le bayou.\n\nSURNATUREL\nVampires (Cour de la Reine Morte, Vieux Carré) : immortels, se nourrissent de sang, brûlent au soleil, ne peuvent entrer chez un humain sans invitation. Prêtresses vaudou (bayou) : magie de sang et de poupées, pactes avec les loas. Loups-garous (meute du Bayou Noir) : transformation à la pleine lune, vulnérables à l'argent.\n\nMONNAIE\nDollars. L'alcool de contrebande et le sang frais se négocient dans les mêmes caves.\n\nÂGE\nTous les personnages sont des adultes ; un vampire garde l'âge apparent adulte qu'il avait à sa mort.",
+  "entrees": [
+    { "titre": "Le Velours Rouge", "contenu": "Speakeasy du Vieux Carré caché derrière une boutique de pompes funèbres. Jazz endiablé, gin de baignoire, salons privés où les vampires de la Cour se nourrissent de donneurs consentants payés en dollars." },
+    { "titre": "PNJ — Madame Céleste Arnaud", "contenu": "Céleste Arnaud : vampire, morte à 38 ans en 1803, apparence d'une femme de 38 ans, peau d'ivoire, robe charleston perlée noire, cheveux noirs au carré, yeux qui virent au rouge quand elle a faim. Tient le Velours Rouge pour la Reine Morte. Élégante, joueuse, terrifiante." },
+    { "titre": "PNJ — Mama Odette", "contenu": "Mama Odette : 61 ans, prêtresse vaudou du bayou, turban jaune, colliers d'os et de perles, pipe en terre. Vend des gris-gris, lit l'avenir, et ne fait jamais rien gratuitement. Ennemie de la Cour." },
+    { "titre": "PNJ — Remy Batiste", "contenu": "Remy Batiste : 34 ans, loup-garou de la meute du Bayou Noir, contrebandier de rhum, carrure massive, barbe sombre, cicatrices de griffes. Loyal à sa meute, méfiant envers tout le reste." },
+    { "titre": "La Mascarade", "contenu": "Loi commune des créatures : aucun humain ne doit apprendre leur existence. Celui qui découvre le secret est soit recruté, soit lié par un pacte, soit éliminé." },
+    { "titre": "Le bayou", "contenu": "Marais à l'ouest de la ville : cabanes sur pilotis, alligators, distilleries clandestines, autels vaudou. Territoire de la meute et de Mama Odette." }
+  ],
+  "personnages": [
+    { "nom": "Henri Delacroix", "description": "Homme, 37 ans, détective de la police de La Nouvelle-Orléans, vétéran de la Grande Guerre, insomniaque. Imperméable, revolver, chapelet de sa mère. A vu quelque chose d'impossible dans une ruelle." },
+    { "nom": "Josie Fontaine", "description": "Femme, 27 ans, chanteuse de jazz qui vient de découvrir qu'elle peut entendre les morts. Robe à franges, voix de velours, courage têtu." },
+    { "nom": "Lucien Marchetti", "description": "Homme, 31 ans, bootlegger italien qui fournit en alcool le Velours Rouge sans savoir qui sont ses clients. Costume crème, Thompson dans le coffre." }
+  ],
+  "departs": [
+    { "lieu": "Le Velours Rouge, Vieux Carré", "ambiance": "Jazz, fumée, parfum de magnolia et de sang", "pointDeDepart": "Tu passes la porte dérobée de la boutique de pompes funèbres et descends au Velours Rouge, sur la piste d'un témoin disparu. La salle danse le charleston. Une femme à la peau d'ivoire quitte sa banquette et s'arrête tout près de toi, humant l'air.\nCÉLESTE ARNAUD : « Vous sentez la police et la peur, mon chou. Deux parfums qui ne vont pas bien ensemble, ici. »" },
+    { "lieu": "Cabane de Mama Odette, bayou", "ambiance": "Grenouilles, bougies, odeur d'encens et de marais", "pointDeDepart": "Tu as ramé deux heures dans le bayou pour trouver la cabane de Mama Odette, parce que quelque chose te suit depuis trois nuits. À l'intérieur, entre les bocaux et les poupées, la vieille femme tire sur sa pipe sans te regarder.\nMAMA ODETTE : « Assieds-toi, enfant de la ville. La chose qui te suit attend dehors. Tu as apporté de quoi payer ? »" }
+  ]
+}

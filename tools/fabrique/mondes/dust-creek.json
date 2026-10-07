@@ -1,0 +1,23 @@
+{
+  "id": "dust-creek",
+  "nom": "Dust Creek",
+  "genre": "Western",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nTerritoire du Nouveau-Mexique, 1878. Dust Creek est une ville minière née de la ruée vers l'argent. Pas de surnaturel. La loi fédérale est loin ; la Compagnie minière Harlan & Sons achète tout, y compris le shérif.\n\nTECHNOLOGIE\nRevolvers Colt, carabines Winchester, fusils à double canon, dynamite, télégraphe à la gare, diligences, chevaux. Pas d'électricité, pas d'automobile.\n\nPOUVOIRS\nLa Compagnie Harlan contrôle la mine et veut les terres des fermiers et de la réserve apache voisine. Le gang des frères Coyle attaque les convois d'argent. Le shérif Boone Whitaker est payé par la Compagnie.\n\nMONNAIE\nDollars et pépites d'argent. Un whisky : 15 cents. Une chambre avec bain : 1 dollar.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Le saloon du Dernier Dollar", "contenu": "Saloon principal de Dust Creek : portes battantes, piano mécanique, tables de poker, escalier vers les chambres des filles. Tenu par Lily Mae Turner. Les mineurs y dépensent leur paie le samedi." },
+    { "titre": "PNJ — Lily Mae Turner", "contenu": "Lily Mae Turner : 39 ans, patronne du Dernier Dollar, corset rouge et jupons noirs, cheveux blonds relevés, derringer dans la jarretière. Rusée, généreuse avec ceux qui paient, impitoyable avec les tricheurs. Déteste la Compagnie." },
+    { "titre": "PNJ — Shérif Boone Whitaker", "contenu": "Boone Whitaker : 55 ans, shérif, moustache grise tombante, étoile ternie, ventre de buveur. Lâche et vénal, mais tireur encore rapide quand il a peur." },
+    { "titre": "Compagnie Harlan & Sons", "contenu": "Compagnie minière dirigée sur place par Cyrus Harlan (44 ans, costume trois pièces, cruel et poli). Ses hommes de main, les « Pinkertons de la Compagnie », intimident les fermiers." },
+    { "titre": "Les frères Coyle", "contenu": "Gang de quatre frères hors-la-loi menés par Jed Coyle (36 ans, balafré, cache-poussière). Attaquent les convois d'argent de la Compagnie. Les fermiers les voient parfois comme des héros." },
+    { "titre": "La mine d'argent", "contenu": "Mine à flanc de mesa, au nord de la ville. Galeries dangereuses, coups de grisou, mineurs chinois et irlandais sous-payés. Le convoi d'argent part chaque vendredi pour Santa Fe." }
+  ],
+  "personnages": [
+    { "nom": "Wade Callister", "description": "Homme, 40 ans, ancien soldat de la Confédération devenu chasseur de primes. Cache-poussière, deux Colt, regard gris délavé. Peu de mots, beaucoup de cicatrices." },
+    { "nom": "Josephine « Jo » Harper", "description": "Femme, 32 ans, veuve d'un fermier tué par la Compagnie, fusil à double canon, chapeau d'homme, colère froide." },
+    { "nom": "Eli Navarro", "description": "Homme, 28 ans, joueur de poker itinérant et tireur d'élite. Gilet de soie, montre à gousset, sourire insolent." }
+  ],
+  "departs": [
+    { "lieu": "Le saloon du Dernier Dollar", "ambiance": "Piano mécanique, poussière, fumée de cigare", "pointDeDepart": "Tu descends de cheval devant le Dernier Dollar après trois jours de piste, la gorge pleine de poussière. Dans le saloon, une partie de poker tourne mal à une table du fond. Lily Mae Turner s'accoude au bar à côté de toi.\nLILY MAE TURNER : « Étranger, si tu sais te servir de ces revolvers, j'ai peut-être du travail. Sinon, bois ton whisky et ne regarde pas vers la table du fond. »" },
+    { "lieu": "Bureau du shérif", "ambiance": "Chaleur écrasante, mouches, cellule qui pue", "pointDeDepart": "Tu entres au bureau du shérif pour réclamer la prime sur un hors-la-loi que tu as ramené, attaché sur son cheval. Boone Whitaker pose les pieds sur son bureau et crache dans un seau.\nSHÉRIF WHITAKER : « Cette prime-là, mon gars, la Compagnie l'a annulée ce matin. Mais on peut discuter… si t'es raisonnable. »" }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "aldoran",
+  "nom": "Aldoran",
+  "genre": "High fantasy",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nAldoran est un continent de high fantasy classique. Le Royaume d'Aldoran (humains) domine le centre ; les elfes sylvains vivent dans la forêt d'Eryndel ; les nains tiennent les Monts de Fer ; au sud, l'Empire de Khar-Azûl (sorciers-rois) menace la paix.\n\nTECHNOLOGIE\nMédiéval : épées, arcs, arbalètes, armures de plaques, châteaux, navires à voiles. Aucune poudre, sauf les « feux nains » rares et instables.\n\nMAGIE\nLa magie arcanique s'étudie à l'Académie de Lumécourt ; elle fatigue le corps et un sort trop puissant peut tuer son lanceur. Les prêtres de la Flamme Blanche soignent par la foi. La nécromancie est interdite sous peine de bûcher.\n\nMONNAIE\nCouronnes d'or, sous d'argent, liards de cuivre.\n\nÂGE\nTous les personnages sont des adultes ; les elfes paraissent adultes dès 100 ans et vivent un millénaire.",
+  "entrees": [
+    { "titre": "Lumécourt", "contenu": "Capitale du Royaume d'Aldoran : remparts blancs, cathédrale de la Flamme Blanche, Académie des arcanes, bas-quartiers du Port-aux-Rats. Gouvernée par le roi Aldric IV, vieillissant." },
+    { "titre": "L'auberge du Griffon Doré", "contenu": "Auberge réputée de Lumécourt où se recrutent les aventuriers. Tableau des quêtes, ragoût de sanglier, chambres propres. Tenue par Brunhilde Ferrecœur, naine." },
+    { "titre": "PNJ — Brunhilde Ferrecœur", "contenu": "Brunhilde Ferrecœur : naine, 140 ans (adulte mûre), un mètre trente de muscles, tresses rousses ornées d'anneaux de fer, tablier de cuir, hache sous le comptoir. Bourrue, honnête, protège ses clients." },
+    { "titre": "PNJ — Elaria Vensylith", "contenu": "Elaria Vensylith : elfe sylvaine, 312 ans (apparence d'une femme de 30 ans), cheveux argent, yeux verts en amande, tenue de cuir de rôdeuse, arc long. Émissaire d'Eryndel à Lumécourt, hautaine, recrute discrètement des aventuriers." },
+    { "titre": "Empire de Khar-Azûl", "contenu": "Empire du sud gouverné par des sorciers-rois immortels grâce à la magie de sang. Ses espions, les Voilés, s'infiltrent dans Lumécourt." },
+    { "titre": "Port-aux-Rats", "contenu": "Bas-quartiers de Lumécourt : docks, tripots, maisons de plaisir, guilde des voleurs (« la Main Grise »). La garde n'y entre qu'en nombre." }
+  ],
+  "personnages": [
+    { "nom": "Aldwin Corbel", "description": "Homme, 32 ans, chevalier déchu après avoir refusé un ordre injuste. Armure de plaques cabossée, épée bâtarde, blason effacé. Droit et rancunier." },
+    { "nom": "Lysandre Mor", "description": "Femme, 29 ans, magicienne renvoyée de l'Académie pour avoir étudié des grimoires interdits. Robe bleu nuit, bâton de chêne, curiosité dangereuse." },
+    { "nom": "Garrick Fend", "description": "Homme, 37 ans, voleur de la Main Grise, crochets et dagues, sourire facile, dettes nombreuses." }
+  ],
+  "departs": [
+    { "lieu": "L'auberge du Griffon Doré, Lumécourt", "ambiance": "Feu de cheminée, rires, odeur de ragoût", "pointDeDepart": "Tu entres au Griffon Doré, la bourse presque vide, en espérant trouver une quête sur le tableau. Une elfe aux cheveux d'argent, assise seule près de la cheminée, te fixe depuis ton arrivée. Brunhilde pose une chope devant toi.\nBRUNHILDE FERRECŒUR : « L'elfe, là-bas, demande après des gens comme toi depuis ce matin. Moi, je dis ça, je dis rien. Tu bois quoi ? »" },
+    { "lieu": "Ruelle du Port-aux-Rats", "ambiance": "Nuit, brouillard du port, pas qui se rapprochent", "pointDeDepart": "Tu traverses le Port-aux-Rats de nuit quand trois silhouettes encapuchonnées te barrent la ruelle. L'une d'elles s'avance, une dague à la main, et rabat sa capuche : un homme maigre au sourire édenté.\nVOLEUR : « La Main Grise prend une taxe sur tous ceux qui passent ici. Ta bourse, ou on se sert nous-mêmes. »" }
+  ]
+}

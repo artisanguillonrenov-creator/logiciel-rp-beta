@@ -1,0 +1,24 @@
+{
+  "id": "terres-brulees",
+  "nom": "Les Terres Brûlées",
+  "genre": "Post-apocalyptique",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nAn 2071, quarante ans après l'Embrasement (guerre nucléaire et effondrement climatique). Ce qui reste du sud de la France est un désert de cendres, de villes mortes et de tempêtes de poussière radioactive. Pas de surnaturel ; des mutations réelles mais limitées (stérilité, malformations, peaux tannées).\n\nTECHNOLOGIE\nTechnologie récupérée et bricolée : armes à feu artisanales, munitions rares, véhicules diesel rafistolés, radios, panneaux solaires abîmés, compteurs Geiger. Aucune production industrielle. L'eau potable et les filtres sont plus précieux que l'or.\n\nPOUVOIRS\nLa Citadelle de Marseille (ancien port fortifié) est gouvernée par le Baron Castagne et ses Écorcheurs. Les caravanes marchandes de la Guilde de l'Eau relient les oasis. Les Pillards Rouges rançonnent les routes.\n\nMONNAIE\nCapsules d'eau scellées (une capsule = un litre), munitions, médicaments.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "La Citadelle de Marseille", "contenu": "Ancien Vieux-Port entouré de murailles de conteneurs et de carcasses de bateaux. Marché aux échanges, arène de combat, bordel du Ponton, distillerie d'eau. Le Baron Castagne y règne depuis le fort Saint-Jean." },
+    { "titre": "PNJ — Baron Castagne", "contenu": "Baron Castagne : 58 ans, colosse obèse, prothèse de jambe en acier, manteau de cuir cousu de médailles. Cruel, théâtral, pragmatique. Nourrit son peuple en vendant de l'eau et des esclaves." },
+    { "titre": "PNJ — Sœur Agathe", "contenu": "Sœur Agathe : 44 ans, médecin de la Citadelle, cheveux gris rasés, tablier taché de sang, lunettes fendues. Soigne tout le monde, ne pose pas de questions, échange ses soins contre des médicaments." },
+    { "titre": "Guilde de l'Eau", "contenu": "Caravanes armées qui transportent l'eau entre les oasis. Elles ont leurs propres lois : un voleur d'eau est abandonné dans le désert sans gourde. Chef de caravane connue : Nadia Ferrat." },
+    { "titre": "PNJ — Nadia Ferrat", "contenu": "Nadia Ferrat : 36 ans, cheffe de caravane de la Guilde de l'Eau, peau tannée, keffieh, fusil à lunette, cicatrice de brûlure sur l'épaule. Dure, juste, recrute des escortes." },
+    { "titre": "Pillards Rouges", "contenu": "Bande de pillards motorisés, visages peints en rouge, qui attaquent les caravanes. Menés par « La Louve », une femme dont personne ne connaît le visage." },
+    { "titre": "Zones chaudes", "contenu": "Zones encore radioactives (anciennes centrales, aéroports). On y trouve du matériel intact, mais y rester plus d'une heure sans protection rend malade." }
+  ],
+  "personnages": [
+    { "nom": "Marco Vidal", "description": "Homme, 36 ans, récupérateur solitaire. Masque à gaz cabossé, fusil à pompe bricolé, chien de garde mort depuis un an. Survivant pragmatique." },
+    { "nom": "Sana Okafor", "description": "Femme, 30 ans, mécanicienne et pilote de buggy. Combinaison huileuse, clé à molette, rire facile, rancune tenace." },
+    { "nom": "Gabriel « Le Muet » Roche", "description": "Homme, 45 ans, ancien Écorcheur déserteur. Langue coupée, il communique par signes et écrits. Couteau de boucher, regard d'acier." }
+  ],
+  "departs": [
+    { "lieu": "Marché aux échanges, Citadelle de Marseille", "ambiance": "Cris, poussière, odeur de rouille et de viande grillée", "pointDeDepart": "Tu arrives à la Citadelle avec un sac de pièces détachées à échanger contre de l'eau. Au marché, un Écorcheur bouscule un vieil homme et renverse ses capsules. Nadia Ferrat, appuyée contre un camion-citerne, t'observe et t'appelle d'un geste.\nNADIA FERRAT : « Toi, le récupérateur. Tu as l'air de savoir tenir une arme. Ma caravane part demain et il me manque une escorte. »" },
+    { "lieu": "Station-service abandonnée, route de l'Est", "ambiance": "Tempête de poussière, tôle qui claque, silence menaçant", "pointDeDepart": "Une tempête de poussière te force à t'abriter dans une station-service en ruine. À l'intérieur, une femme blessée tient en joue l'entrée avec un revolver, le doigt tremblant sur la détente.\nSANA OKAFOR : « Un pas de plus et je tire. Tu es avec les Rouges ? Réponds ! »" }
+  ]
+}

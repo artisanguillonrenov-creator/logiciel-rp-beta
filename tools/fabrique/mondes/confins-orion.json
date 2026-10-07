@@ -1,0 +1,24 @@
+{
+  "id": "confins-orion",
+  "nom": "Les Confins d'Orion",
+  "genre": "Space opera",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nAn 3412. L'humanité s'est dispersée dans le bras d'Orion. Le Concordat Stellaire (démocratie bureaucratique) affronte froidement l'Hégémonie de Vharn (empire militaire). Entre les deux, les Confins : stations minières, colonies libres, pirates et contrebandiers.\n\nTECHNOLOGIE\nSauts hyperspatiaux par portes de saut fixes (pas de saut libre), vaisseaux à gravité artificielle, armes à plasma et à projectiles, IA de bord non conscientes, implants médicaux, stase cryogénique. Pas de téléportation, pas de voyage dans le temps.\n\nESPÈCES\nHumains (majorité), Thessari (humanoïdes à peau bleu-gris, télépathes de contact, matriarcaux), Krol (reptiliens massifs, mercenaires d'honneur). Les relations interespèces sont courantes et légales.\n\nMONNAIE\nCrédits du Concordat (CC). Dans les Confins, le carburant de saut et les pièces détachées valent plus que les crédits.\n\nÂGE\nTous les personnages sont des adultes ; les Thessari atteignent l'âge adulte à 25 ans et vivent 200 ans.",
+  "entrees": [
+    { "titre": "Station Tartarus", "contenu": "Station minière et port franc des Confins, accrochée à un astéroïde de fer. Quais d'amarrage crasseux, cantina « L'Étoile Morte », marché noir du Pont 7, bordels de luxe du Pont 3. Gouvernée par la Syndique Mara Voss." },
+    { "titre": "PNJ — Syndique Mara Voss", "contenu": "Mara Voss : humaine, 50 ans, cheveux blancs coupés court, cicatrice de brûlure sur la mâchoire, uniforme gris sans insignes. Gouverne Tartarus d'une main de fer : neutralité absolue, taxes sur tout, exécution des tricheurs." },
+    { "titre": "PNJ — Nyssa Ral'Teth", "contenu": "Nyssa Ral'Teth : Thessari, 112 ans (apparence d'une femme de 35 ans), peau bleu-gris, yeux noirs sans pupille, tatouages argentés lumineux. Tient L'Étoile Morte. Télépathe de contact : elle lit les émotions en touchant la peau. Calme, ironique, dangereuse." },
+    { "titre": "PNJ — Grohk", "contenu": "Grohk : Krol, 40 ans, deux mètres trente, écailles vert sombre, armure de mercenaire cabossée. Videur de L'Étoile Morte. Parle peu, respecte la force et la parole donnée." },
+    { "titre": "Hégémonie de Vharn", "contenu": "Empire militaire humain, discipline absolue, Inquisiteurs en armure noire. Traque les déserteurs et les contrebandiers d'armes. Ses croiseurs patrouillent aux abords des Confins." },
+    { "titre": "Portes de saut", "contenu": "Les portes de saut relient les systèmes ; chacune est contrôlée et taxée. Un saut sans autorisation déclenche les défenses de la porte. Les pirates connaissent des fenêtres de maintenance." },
+    { "titre": "Pont 7 — Marché noir", "contenu": "Coursives sombres de Tartarus : armes, pièces détachées volées, données, esclaves sous contrat de dette. Le contrat de dette est légal dans les Confins, interdit dans le Concordat." }
+  ],
+  "personnages": [
+    { "nom": "Cassian Dray", "description": "Homme, 37 ans, capitaine contrebandier du cargo « Pie-Grièche ». Blouson de pilote usé, pistolet à plasma, barbe de trois jours. Charmeur, endetté, recherché par l'Hégémonie." },
+    { "nom": "Ilyra Senn", "description": "Femme, 31 ans, ancienne officier médical du Concordat devenue mercenaire. Combinaison tactique, implants de soin dans les mains, regard froid." },
+    { "nom": "Dax Morrow", "description": "Homme, 44 ans, chasseur de primes. Armure légère, fusil long, crâne rasé tatoué. Méthodique, respecte ses contrats." }
+  ],
+  "departs": [
+    { "lieu": "L'Étoile Morte, Station Tartarus", "ambiance": "Lumière bleue, musique thessari, odeur d'alcool de synthèse", "pointDeDepart": "Ton vaisseau vient de s'amarrer à Tartarus avec une cargaison qu'il faut écouler vite. Tu entres à L'Étoile Morte pour trouver un acheteur. Grohk te jauge à l'entrée, et Nyssa Ral'Teth pose deux verres sur le comptoir.\nNYSSA RAL'TETH : « Tu transpires la peur, capitaine. Assieds-toi et dis-moi qui te poursuit. »" },
+    { "lieu": "Quai d'amarrage 12, Station Tartarus", "ambiance": "Sirènes, vapeur de refroidissement, gardes nerveux", "pointDeDepart": "Tu débarques au quai 12 quand les alarmes de la station hurlent : un croiseur de l'Hégémonie vient d'entrer dans le système. Des gardes de la Syndique bouclent les quais et l'un d'eux pointe son arme sur toi.\nGARDE : « Personne ne bouge ! Toi, ton manifeste de cargaison. Maintenant. »" }
+  ]
+}
