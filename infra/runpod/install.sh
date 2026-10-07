@@ -23,7 +23,7 @@ mkdir -p "$RACINE"/{models/text,models/image,app,logs}
 PIP="$RACINE/venv/bin/pip"
 "$PIP" install -q -U --prefer-binary --only-binary=tokenizers \
   huggingface_hub hf_transfer diffusers transformers accelerate safetensors fastapi "uvicorn[standard]" pillow
-"$PIP" install -q --prefer-binary sentence-transformers
+"$PIP" install -q --prefer-binary sentence-transformers sentencepiece protobuf tiktoken
 HF="$RACINE/venv/bin/hf"
 
 # 2. llama.cpp compilé avec CUDA (serveur OpenAI-compatible).
