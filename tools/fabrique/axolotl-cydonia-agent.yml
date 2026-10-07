@@ -1,4 +1,4 @@
-# Entraînement LoRA (QLoRA) de Cydonia 24B v4.3 (Mistral Small 3.2 24B déjà
+# Module AGENT (Cortana) — entraînement LoRA (QLoRA) de Cydonia 24B v4.3 (Mistral Small 3.2 24B déjà
 # réentraîné au RP par TheDrummer, sans filtre) pour un registre cru.
 # Données : entrainement.jsonl / test.jsonl envoyés au pod (format
 # « messages », champ training = réponses apprises).
