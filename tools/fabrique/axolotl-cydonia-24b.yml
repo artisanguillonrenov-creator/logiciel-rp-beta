@@ -1,7 +1,7 @@
-# Entraînement LoRA (QLoRA) du narrateur léger sur Cydonia 24B v4.3
-# (Mistral Small 3.2 24B déjà réentraîné au RP par TheDrummer, sans filtre).
-# Données : elyndor-rp.jsonl produit par tools/fabrique/exporter.ts
-# (format « messages », seule la réponse finale est apprise).
+# Entraînement LoRA (QLoRA) de Cydonia 24B v4.3 (Mistral Small 3.2 24B déjà
+# réentraîné au RP par TheDrummer, sans filtre) pour un registre cru.
+# Données : entrainement.jsonl / test.jsonl envoyés au pod (format
+# « messages », champ training = réponses apprises).
 base_model: TheDrummer/Cydonia-24B-v4.3
 model_type: AutoModelForCausalLM
 tokenizer_type: AutoTokenizer
@@ -15,22 +15,26 @@ lora_target_linear: true
 
 chat_template: tokenizer_default
 datasets:
-  - path: /workspace/fabrique/elyndor-rp.jsonl
+  - path: /workspace/fabrique/entrainement.jsonl
     type: chat_template
     field_messages: messages
-    message_field_role: role
-    message_field_content: content
+    message_property_mappings:
+      role: role
+      content: content
     message_field_training: training
 test_datasets:
-  - path: /workspace/fabrique/elyndor-rp.test.jsonl
+  - path: /workspace/fabrique/test.jsonl
     type: chat_template
     split: train
     field_messages: messages
-    message_field_role: role
-    message_field_content: content
+    message_property_mappings:
+      role: role
+      content: content
     message_field_training: training
+dataset_prepared_path: /workspace/fabrique/prepare
 
-# Prompt élève : environ 9 000 jetons (24 000 + 9 000 caractères) + réponse.
+# Prompt de l'appli (environ 9 000 jetons) + réponse ; les conversations
+# plus longues sont écartées.
 sequence_len: 12288
 sample_packing: false
 pad_to_sequence_len: false
