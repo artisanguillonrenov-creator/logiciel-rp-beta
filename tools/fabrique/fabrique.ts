@@ -69,7 +69,7 @@ interface Monde {
   departs: Depart[];
 }
 
-export function chargerMondes(dossier = path.join(__dirname, '..', '..', '..', 'tools', 'fabrique', 'mondes')): Monde[] {
+export function chargerMondes(dossier = process.env.FABRIQUE_MONDES ?? path.join(__dirname, '..', '..', '..', 'tools', 'fabrique', 'mondes')): Monde[] {
   return fs.readdirSync(dossier).filter((f) => f.endsWith('.json')).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dossier, f), 'utf8')));
 }
 
