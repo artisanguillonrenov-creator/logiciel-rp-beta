@@ -1,4 +1,5 @@
 import type { ChatMessage } from './openrouter';
+import { BUDGET_LORE_PASSAGES } from './passagesLore';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { LORE_CORE } from '../data/loreCore';
 import { REGLES_IMMUABLES } from './rules';
@@ -11,10 +12,12 @@ import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from '
 // après tokenisation, qui varie selon le fournisseur.
 //
 // Distant = Elyndor Cloud (fenêtre de 24 576 jetons). Le budget système
-// inclut les 15 métamoteurs envoyés en entier (~41 000 caractères) : il en
-// reste ~17 000 pour l'en-tête, la mémoire et le lore. Système + conversation
-// (~71 000 caractères) + réponse tiennent dans la fenêtre du pod.
-export const BUDGET_SYSTEM_DISTANT = 58000;
+// inclut les 15 métamoteurs envoyés en entier (~41 000 caractères), l'en-tête
+// (~12 000), les parts des deux moteurs de recherche (2 × 2 500) et ~6 000
+// pour le résumé, les faits et l'état du monde. Mesuré avec le tokenizer
+// d'Euryale : 58 000 + 13 000 caractères = 20 262 jetons (3,44 car./jeton) ;
+// 64 000 laisse ~1 000 jetons de marge après la réponse la plus longue.
+export const BUDGET_SYSTEM_DISTANT = 64000;
 export const BUDGET_SYSTEM_LOCAL = 12000;
 
 // Budget global réservé au fil de conversation brut (message joueur courant
@@ -233,12 +236,6 @@ ${FORMAT_DIALOGUES_PNJ}
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-  const resume = `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(budget * 0.08))}`;
-  const faits = `\n\n[FAITS CLÉS ÉTABLIS]\n${formaterFaits(ctx.faits, Math.floor(budget * 0.10))}`;
-  const blocs = ctx.blocsContexte ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.floor(budget * 0.14))}` : '';
-  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', Math.floor(budget * 0.20), 650);
-  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(budget * 0.14));
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(budget * 0.06));
   // Les 15 métamoteurs sont actifs à chaque réponse, en texte intégral : ils
   // sont réservés en premier sur le budget système et ne sont jamais rognés.
   const metamoteurs = ctx.metamoteursSelectionnes.length
@@ -249,11 +246,27 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   const rappel = metamoteurs ? RAPPEL_FINAL : '';
   const budgetHorsMetamoteurs = Math.max(0, budget - metamoteurs.length - rappel.length);
 
-  // L'en-tête, qui contient désormais le Lore Core garanti, n'est jamais
-  // sacrifié au classement du lore dynamique. Seul le milieu récupéré est
-  // rogné lorsque le budget système est saturé.
+  // Les deux moteurs de recherche disposent chacun d'une part fixe : le lore
+  // (passages choisis par passagesLore.ts) et l'histoire (mémoire narrative
+  // puis moments anciens retrouvés). Fenêtre étroite : parts réduites.
+  const partRecherche = Math.min(BUDGET_LORE_PASSAGES, Math.floor(budget * 0.15));
+  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', partRecherche + 300, partRecherche);
+  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(partRecherche * 0.4));
+  const blocs = ctx.blocsContexte
+    ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.max(0, partRecherche - souvenirs.length))}`
+    : '';
+
+  // Résumé, faits et état du monde se partagent ce qui reste après l'en-tête
+  // (Lore Core garanti) et les parts des moteurs de recherche.
+  const reste = Math.max(0, budgetHorsMetamoteurs - entete.length - lore.length - blocs.length - souvenirs.length);
+  const resume = reste > 200
+    ? `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(reste * 0.3))}`
+    : '';
+  const faits = reste > 200 ? `\n\n[FAITS CLÉS ÉTABLIS]\n${formaterFaits(ctx.faits, Math.floor(reste * 0.3))}` : '';
+  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(reste * 0.3));
+
   const milieu = tronquer(
-    `${resume}${faits}${blocs}${lore}${etat}${souvenirs}`,
+    `${resume}${faits}${etat ? `\n\n${etat}` : ''}${blocs}${souvenirs}${lore}`,
     Math.max(0, budgetHorsMetamoteurs - entete.length),
   );
   return `${tronquer(`${entete}${milieu}`, budgetHorsMetamoteurs)}${metamoteurs}${rappel}`;
