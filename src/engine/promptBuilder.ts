@@ -122,10 +122,10 @@ export function libelleViolence(niveau: StorySettings['violence']): string {
 
 export function libelleRomance(niveau: StorySettings['romance']): string {
   switch (niveau) {
-    case 'aucun': return "absente — pas d'intrigue amoureuse ni de tension romantique";
-    case 'faible': return 'en toile de fond seulement, jamais le sujet principal de la scène';
-    case 'eleve': return 'pleinement développée, explicite, graphique et vulgaire quand la scène l’appelle';
-    default: return 'présente et développée quand la scène l’appelle, sans excès systématique';
+    case 'aucun': return "aucune — ni intrigue amoureuse ni tendresse";
+    case 'faible': return 'sentiments en toile de fond seulement, jamais le sujet principal de la scène';
+    case 'eleve': return 'intrigues amoureuses et attachement pleinement développés quand la relation l’appelle';
+    default: return 'attachement possible et développé quand la scène l’appelle, sans mièvrerie';
   }
 }
 

@@ -55,9 +55,11 @@ test('les anciens blocs incompatibles peuvent être retirés avant prompt ou emb
 test('profil Adulte : registre adapté aux curseurs configurés', () => {
   const extreme = instructionRegistreAdulte({ violence: 'extreme', romance: 'eleve' });
   assert.match(extreme, /Violence : plafond extrême/);
-  assert.match(extreme, /Romance \/ sensualité : plafond élevé/);
+  assert.match(extreme, /Romance \(sentiments\) : plafond élevé/);
+  assert.match(extreme, /Sexe : toujours explicite/);
 
   const faible = instructionRegistreAdulte({ violence: 'faible', romance: 'aucun' });
   assert.match(faible, /Violence : plafond faible/);
-  assert.match(faible, /Romance \/ sensualité : désactivée/);
+  assert.match(faible, /Romance \(sentiments\) : aucune/);
+  assert.match(faible, /Sexe : toujours explicite/);
 });
