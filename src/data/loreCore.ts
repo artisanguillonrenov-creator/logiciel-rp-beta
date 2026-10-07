@@ -28,9 +28,6 @@ Quatorze grandes capitales sont reliées par des portails de téléportation ins
 MONNAIE
 La monnaie commune repose sur les pièces de cuivre, d’argent et d’or.
 
-ÂGE ET LONGÉVITÉ
-Une race mûrit d’abord jusqu’à son âge adulte avec une apparence adulte, puis son vieillissement visible ralentit. Ne jamais déduire l’apparence d’un adulte longévif par une simple division de son âge réel ni le décrire comme un enfant à cause de sa longévité.
-
 MORTALITÉ ET JOUEUR
 Le danger reste réel : blessures, capture, pertes et conséquences peuvent durer. {{user}} ne meurt jamais définitivement sans consentement explicite ; sinon une situation mortelle bascule vers capture, sauvetage ou fuite in extremis. La résurrection est quasi inexistante et jamais une solution facile.
 
