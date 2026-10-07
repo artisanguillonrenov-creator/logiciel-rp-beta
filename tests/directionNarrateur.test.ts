@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AppSettings } from '../src/types';
 import { creerNouvelleHistoire } from '../src/engine/story';
-import { messagesDirection, promptSdxlTropCourt } from '../src/engine/directionArtistique';
+import { completerAmorce, messagesDirection, promptSdxlTropCourt } from '../src/engine/directionArtistique';
 
 function histoire() {
   const story = creerNouvelleHistoire({
@@ -44,4 +44,22 @@ test('un prompt image d’une seule phrase est redemandé au narrateur', () => {
   assert.equal(promptSdxlTropCourt(undefined), true);
   assert.equal(promptSdxlTropCourt('Medium shot of a scarred human man in plate armor before a smiling woman.'), true);
   assert.equal(promptSdxlTropCourt(Array(90).fill('word').join(' ')), false);
+});
+
+test('les personnages du lore de la scène arrivent avec leur description officielle, les fiches hors scène restent dehors', () => {
+  const story = histoire();
+  story.loreEmergent = [
+    { id: 'kael', categorie: 'pnj', titre: 'Maître Kael', contenu: 'Chef de guilde en robe noire.', statut: 'provisoire', premiereMention: 1, dernierAcces: 1 },
+  ];
+  const contenu = messagesDirection(story, reglages, 'CONTEXTE')[1].content;
+  assert.match(contenu, /Séraphine Duvall \(Maîtresse de la Guilde des Aventuriers, Paris\) : .*Corsage de cuir noir/);
+  assert.doesNotMatch(contenu, /Maître Kael/);
+});
+
+test('la réponse amorcée par le début du JSON est recomposée', () => {
+  const messages = messagesDirection(histoire(), reglages, 'CONTEXTE');
+  assert.equal(messages[messages.length - 1].role, 'assistant');
+  assert.equal(completerAmorce('interieur","action":"x"}', true), '{"profil":"interieur","action":"x"}');
+  assert.equal(completerAmorce('{"profil":"interieur"}', true), '{"profil":"interieur"}');
+  assert.equal(completerAmorce('{"profil":"combat"}', false), '{"profil":"combat"}');
 });

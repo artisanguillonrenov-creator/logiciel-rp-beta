@@ -1,6 +1,8 @@
 import type { AppSettings, StoryState } from '../types';
 import { appellerModele, configurationLLM } from './elyndorCloudClient';
 import { canonRace, detecterRacePnj } from './racePnj';
+import { ROLES_CANON } from './canonElyndor';
+import { prenomRole } from './rolesCanon';
 import { RACES_ELYNDOR } from '../data/races';
 import { filtrerTextePourProfil } from './contenuAdulte';
 import {
@@ -52,13 +54,14 @@ Règles :
 - Distingue personnage MENTIONNÉ, personnage PRÉSENT et personnage VISIBLE dans le cadrage. Seuls les visibles vont dans "personnagesVisibles" ; les présents hors cadre vont dans "horsCadre" ; un simple mentionné n'apparaît nulle part.
 - Les figurants sans nom sont permis ("Garde n°1").
 - L'ÉTAT VISUEL PERSISTANT fait autorité : ne réinvente ni tenue, ni blessure, ni arme, ni décor. Ne change une apparence que si le récit l'établit.
+- L'apparence et la tenue d'un personnage viennent de sa fiche ou du lore (personnages du lore, PNJ connus) tant que le récit n'en établit pas d'autres : reprends-les mot pour mot (matières, couleurs, coupe), n'en invente pas une générique.
 - "changementsVisuels" : uniquement les changements DURABLES survenus dans les messages récents (tenue, armure, armes visibles, accessoires, coiffure, blessures, cicatrices, sang, poussière, boue, propreté, transformations, objets portés ; pour le décor : lieu, type de lieu, architecture, disposition, heure, météo, lumière, sources lumineuses, dégâts, incendies, portes ouvertes/fermées, objets importants, mobilier, traces). Chaque changement cite dans "evenement" la phrase exacte du récit qui l'établit. Sans citation, n'ajoute pas le changement.
 - Choisis le profil de cadrage adapté : dialogue, combat, tension, decouverte, groupe, interieur ou paysage.
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
 - "promptSdxl" : la MÊME image décrite EN ANGLAIS pour le modèle image (Chroma, encodeur T5), en phrases naturelles, concrètes et précises, 100 à 180 mots, dans cet ordre :
   1. type de plan, angle et objectif (ex. "low angle wide shot, 35mm lens") ;
   2. nombre exact de personnages visibles et place de chacun dans le cadre (gauche, droite, centre, premier plan, arrière-plan) ;
-  3. pour chacun : race, sexe, âge apparent adulte en chiffre, carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
+  3. pour chacun : race, sexe, âge apparent adulte en chiffre (celui que le personnage paraît selon sa fiche, ex. « looks about 50 years old »), carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
   4. l'action exacte à cet instant et l'interaction physique entre les personnages (qui touche ou frappe qui, gestes, regards, distance) ;
   5. le décor : lieu, matériaux, objets, figurants en arrière-plan ;
   6. la lumière : sources, couleur, direction, et l'ambiance.
@@ -166,6 +169,18 @@ function decrireEtatVisuel(etat: EtatVisuelHistoire): string {
  * mémoire, lore, fiche de scène) ; seuls restent les PNJ avec le canon de
  * leur race, l'état visuel et les derniers messages.
  */
+// Titres qui ne désignent personne en particulier (« mon maître »).
+const TITRES = /^(ma[iî]tre|ma[iî]tresse|chef|dame|sir|seigneur|messire|capitaine|p[èe]re|m[èe]re|fr[èe]re|s[œo]eur)$/i;
+
+/** Personnage nommé dans la scène : titre complet, ou premier mot s'il n'est pas un simple titre. */
+function pnjDansLaScene(titre: string, texteSceneMinuscule: string): boolean {
+  const t = titre.trim().toLowerCase();
+  if (!t) return false;
+  if (texteSceneMinuscule.includes(t)) return true;
+  const mots = t.split(/\s+/);
+  return mots.length > 1 && mots[0].length > 2 && !TITRES.test(mots[0]) && texteSceneMinuscule.includes(mots[0]);
+}
+
 export function construireContexteDirection(story: StoryState, settings: AppSettings, allege = false): string {
   const etat = lireEtatVisuel(story);
   const raceJoueur = RACES_ELYNDOR.find((r) => r.id === story.meta.raceOrigineId);
@@ -192,7 +207,28 @@ export function construireContexteDirection(story: StoryState, settings: AppSett
   const scene = `[MESSAGES RÉCENTS — le dernier message du narrateur est la scène à illustrer]\n${recents.join('\n\n') || texteSur(story.meta.pointDeDepart, 1200)}`;
   if (allege) {
     const race = raceJoueur ? `[RACE DE ${story.meta.personnageNom}]\n${canonRace({ race: raceJoueur, sexe: 'Autre' })}` : '';
-    return [race, `[PNJ CONNUS]\n${pnj || 'Aucun.'}`, decrireEtatVisuel(etat), scene].filter(Boolean).join('\n\n');
+    // Seuls les personnages de la scène à illustrer : une fiche ancienne
+    // (« Maître Kael… robe noire ») déteignait sur la maîtresse de guilde.
+    const texteScene = [texteDerniereScene(story), ...(story.scene?.presents ?? [])].join('\n').toLowerCase();
+    const pnjScene = listerPnjVisuels(story)
+      .filter((e) => pnjDansLaScene(e.titre, texteScene))
+      .map((e) => {
+        const raceE = detecterRacePnj(e.titre, e.contenu);
+        return `- ${e.titre} : ${texteSur(texteProfil(e.contenu, settings), 400)}${raceE ? `\n  ${canonRace(raceE)}` : ''}`;
+      })
+      .join('\n');
+    // Personnages fixés par le lore présents dans la scène, description entière.
+    const canon = ROLES_CANON
+      .filter((r) => new RegExp(`\\b${prenomRole(r).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(texteScene))
+      .map((r) => `- ${r.nom} (${r.libelle}, ${r.ville}) : ${r.description}`)
+      .join('\n');
+    return [
+      race,
+      canon ? `[PERSONNAGES DU LORE DANS LA SCÈNE — apparence et tenue officielles, font autorité]\n${canon}` : '',
+      `[PNJ DE LA SCÈNE]\n${pnjScene || 'Aucun.'}`,
+      decrireEtatVisuel(etat),
+      scene,
+    ].filter(Boolean).join('\n\n');
   }
   return [
     joueur,
@@ -318,7 +354,7 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
 // forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
 const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Chroma, encodeur T5) qui ne connaît rien de l'histoire et lit bien mieux l'anglais.
 Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases naturelles, concrètes et précises, 100 à 180 mots.
-Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre, carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
+Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre (celui que le personnage paraît selon sa fiche, ex. « looks about 50 years old »), carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
 Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). N'invente rien qui ne soit pas dans la description fournie.`;
 
 const MOTS_MIN_PROMPT_SDXL = 70;
@@ -423,7 +459,18 @@ export function messagesDirection(story: StoryState, settings: AppSettings, cont
   return [
     { role: 'system' as const, content: contexteNarrateur },
     { role: 'user' as const, content: `${construireContexteDirection(story, settings, true)}\n\n${PAUSE_NARRATION}\n\n${INSTRUCTION_DIRECTION}` },
+    // Réponse amorcée par le début du JSON : sans elle, Euryale refusait
+    // une fois sur deux (« Je ne peux pas créer… ») et l'illustration
+    // retombait sur le repli local.
+    { role: 'assistant' as const, content: AMORCE_DIRECTION },
   ];
+}
+
+const AMORCE_DIRECTION = '{"profil":"';
+
+/** Le serveur renvoie l'amorce avec la suite, ou la suite seule selon les moteurs. */
+export function completerAmorce(sortie: string, amorcee: boolean): string {
+  return amorcee && !sortie.trimStart().startsWith('{') ? `${AMORCE_DIRECTION}${sortie}` : sortie;
 }
 
 export async function demanderDirectionArtistique(
@@ -433,16 +480,18 @@ export async function demanderDirectionArtistique(
   contexteNarrateur?: string,
 ): Promise<DirectionArtistique> {
   try {
-    const sortie = await appellerModele({
+    const demander = async (temperature: number) => completerAmorce(await appellerModele({
       ...configurationLLM(settings),
       storyId: story.meta.id,
-      temperature: 0.3,
+      temperature,
       maxTokens: 1600,
       signal,
       diagnosticLabel: 'Direction artistique',
       messages: messagesDirection(story, settings, contexteNarrateur),
-    });
-    const direction = analyserReponseDirection(sortie, story);
+    }), !!contexteNarrateur);
+    // Un refus ou un JSON illisible : un second essai, le contexte est en cache.
+    const direction = analyserReponseDirection(await demander(0.3), story)
+      ?? analyserReponseDirection(await demander(0.6), story);
     if (direction && (direction.structure.personnages.length > 0 || direction.structure.action)) {
       // Le joueur est un personnage établi : sa fiche complète l'apparence
       // quand le modèle ne l'a pas redite.
