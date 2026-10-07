@@ -307,7 +307,7 @@ export function construirePromptSdxl(structure: PromptImageStructure): string | 
 }
 
 /** Modules LoRA du serveur d'images (Lustify) : réalisme et style Elyndor partout. */
-export const MODULES_BASE: Readonly<Record<string, number>> = { peau: 0.4, peau2: 0.3, details: 0.5, mains: 0.5, elyndor: 0.6 };
+export const MODULES_BASE: Readonly<Record<string, number>> = { peau: 0.4, peau2: 0.3, details: 0.5, mains: 0.5, elyndor: 1.2 };
 const SCENE_HORREUR = /\b(horror|undead|corpse|zombie|ghoul|crypt|grave|vampire|rotting|skeleton|gore|demon)\b/i;
 
 /** Modules choisis selon le type de scène et le contenu du prompt anglais. */
