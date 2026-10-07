@@ -28,13 +28,29 @@ import pyarrow.parquet as pq
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from preparer_publics import douteux  # noqa: E402
 
+# Filtre anti-minorité pour les textes français : le filtre anglais repère
+# « son » (fils) dans « son épée ».
+INDICES_MINORITE_FR = re.compile(
+    r"(?<!\w)(enfants?|gamine?s?|fillettes?|garçonnets?|adolescente?s?|ados?|mineure?s?|puberté|collégienne?s?|lycéenne?s?|"
+    r"écolière?s?|écoliers?|bébés?|nourrissons?|(?:1[0-7]|[1-9]) ans)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def douteux_fr(texte: str) -> bool:
+    return bool(INDICES_MINORITE_FR.search(texte or ""))
+
+
 MAX_CARACTERES = 36000  # ~10 000 jetons : tient dans sequence_len 12288
 
 
 def telecharger(dossier, ident, config, split, max_fichiers=1):
     liste = json.load(urllib.request.urlopen(f"https://huggingface.co/api/datasets/{ident}/parquet/{config}/{split}", timeout=60))
+    # max_fichiers : nombre de premiers fichiers, ou liste d'indices précis.
+    indices = max_fichiers if isinstance(max_fichiers, list) else range(min(max_fichiers, len(liste)))
     chemins = []
-    for i, url in enumerate(liste[:max_fichiers]):
+    for i in indices:
+        url = liste[i]
         chemin = os.path.join(dossier, "brut", ident.replace("/", "__"), config, split, f"{i}.parquet")
         if not os.path.exists(chemin):
             os.makedirs(os.path.dirname(chemin), exist_ok=True)
@@ -100,11 +116,14 @@ def charger_json(valeur):
 def rp(d):
     sortie = []
 
-    # Novelist : uniquement la prose en français ou en anglais (pas les fiches d'évaluation).
+    # Novelist : récits traduits en français (fichiers 5 à 8) et scènes
+    # anglaises (fichier 9) ; les fichiers 0 à 4 sont des livres entiers ou
+    # des fiches d'évaluation.
     n = 0
-    for l in lignes(d, "Dxniz/Novelist", "default", "train", 2):
+    for l in lignes(d, "Dxniz/Novelist", "default", "train", [5, 6, 7, 8, 9], ["language_code", "record_type", "answer_text", "text", "genre", "tone", "pov"]):
         texte = l.get("answer_text") or l.get("text") or ""
-        if l.get("language_code") not in ("fr", "en") or texte.lstrip().startswith("{") or len(texte) < 1500 or douteux(texte):
+        filtre = douteux_fr if l.get("language_code") == "fr" else douteux
+        if l.get("language_code") not in ("fr", "en") or texte.lstrip().startswith("{") or len(texte) < 1500 or filtre(texte):
             continue
         consigne = f"Écris la suite de ce récit : genre {l.get('genre') or 'libre'}, ton {l.get('tone') or 'libre'}, point de vue {l.get('pov') or 'libre'}." if l["language_code"] == "fr" else \
             f"Write the next scene of this story. Genre: {l.get('genre') or 'free'}; tone: {l.get('tone') or 'free'}; POV: {l.get('pov') or 'free'}."
