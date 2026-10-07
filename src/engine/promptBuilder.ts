@@ -203,13 +203,17 @@ export interface OptionsPrompt {
 
 export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
-  const entete = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
+  // Préfixe identique d'un tour à l'autre (puis les métamoteurs, tout aussi
+  // fixes) : le serveur garde ces jetons en cache au lieu de les relire.
+  // Rien de variable ne doit s'y glisser.
+  const prefixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
 ${LORE_CORE}
 
 ${IDENTITE_NARRATIVE}
 
-${REGLES_IMMUABLES}${ctx.directiveEtat ? `\n\n${ctx.directiveEtat}` : ''}
+${REGLES_IMMUABLES}`;
+  const entete = `${prefixe}
 
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
@@ -234,7 +238,7 @@ Humour : ${libelleHumour(ctx.settings.humour)}.
 
 ${FORMAT_DIALOGUES_PNJ}
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
-${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
+${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
   // Les 15 métamoteurs sont actifs à chaque réponse, en texte intégral : ils
   // sont réservés en premier sur le budget système et ne sont jamais rognés.
@@ -269,7 +273,10 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
     `${resume}${faits}${etat ? `\n\n${etat}` : ''}${blocs}${souvenirs}${lore}`,
     Math.max(0, budgetHorsMetamoteurs - entete.length),
   );
-  return `${tronquer(`${entete}${milieu}`, budgetHorsMetamoteurs)}${metamoteurs}${rappel}`;
+  // Métamoteurs insérés juste après le préfixe fixe ; le reste (personnage,
+  // style, état du tour, recherche) suit et peut être rogné.
+  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsMetamoteurs - prefixe.length));
+  return `${prefixe}${metamoteurs}${suite}${rappel}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

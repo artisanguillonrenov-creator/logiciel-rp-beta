@@ -19,7 +19,13 @@ sleep 3
 # sans pénalité, le narrateur pouvait boucler sur les mêmes phrases jusqu'au
 # plafond de jetons. DRY casse les séquences répétées, la pénalité de
 # répétition légère et min-p écartent les mots improbables.
-setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias euryale-70b-v2.3 \
+# Cache des prompts en RAM : entre deux tours, les petits appels (lore
+# émergent, prompts d'image) prennent l'unique slot ; sans ce cache, le
+# narrateur relisait ses ~18 000 jetons à chaque tour. Option ajoutée
+# seulement si ce llama-server la connaît, pour ne jamais bloquer le démarrage.
+CACHE_PROMPTS=""
+"$LLAMA" --help 2>&1 | grep -q -- "--cache-ram" && CACHE_PROMPTS="--cache-ram 16384"
+setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias euryale-70b-v2.3 $CACHE_PROMPTS \
   --host 0.0.0.0 --port 8000 -ngl 99 -c 24576 -np 1 -fa on --metrics --jinja \
   --cache-type-k q8_0 --cache-type-v q8_0 -t 16 \
   --min-p 0.05 --repeat-penalty 1.05 --repeat-last-n 512 \
