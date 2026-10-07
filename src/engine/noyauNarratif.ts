@@ -118,13 +118,13 @@ export function etatNoyauVide(): NarrativeCoreState {
   };
 }
 
-function horloge(c: NarrativeCoreState['clock']): string {
+export function horloge(c: NarrativeCoreState['clock']): string {
   const jour = Math.max(0, Number(c.day) || 0);
   const minute = Math.max(0, Number(c.minute) || 0) % 1440;
   return `J${jour} ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 }
 
-function avancerHorloge(core: NarrativeCoreState, minutes: number): void {
+export function avancerHorloge(core: NarrativeCoreState, minutes: number): void {
   const m = Math.max(0, Math.round(Number(minutes) || 0));
   core.clock.lastAdvanceMinutes = m;
   if (!m) return;

@@ -35,6 +35,10 @@ import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import { rechercherSouvenirsLexical } from './rechercheLexicale';
 import { construirePassages, selectionnerPassages } from './passagesLore';
+import { preparerTour, type PreparationTour } from './ficheScene';
+import { corrigerEtiquettes, validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
+import { ROLES_CANON } from './canonElyndor';
+import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
@@ -163,42 +167,25 @@ function construireTexteRequete(story: StoryState, messageJoueur: string, appSet
     .join('\n');
 }
 
-// Capitales d'Elyndor, lues dans les titres des fiches royaume
-// (« Paris — Royaume Humain » → « Paris »).
-const CAPITALES = LORE_ELYNDOR
-  .filter((e) => e.category === 'ROYAUME')
-  .map((e) => e.titre.replace(/^\[[^\]]+\]\s*/, '').split(/\s+[—–]\s+/)[0].trim())
-  .filter(Boolean);
-
-/** Dernière capitale citée : message du joueur, messages récents, puis point de départ. */
-function villeCourante(story: StoryState, messageJoueur: string): string | undefined {
-  const sources = [messageJoueur, ...story.messages.slice(-6).reverse().map((m) => m.content), story.meta.contexte.lieu, story.meta.pointDeDepart];
-  for (const texte of sources) {
-    const ville = CAPITALES.find((c) => texte?.includes(c));
-    if (ville) return ville;
-  }
-  return undefined;
-}
-
 /**
  * Requêtes du moteur de recherche du lore, consulté après la mémoire de
- * l'histoire :
- * - message : ce que le joueur fait ou demande, avec la ville en cours —
- *   prioritaire (« allons à la guilde » doit trouver la guilde de Paris) ;
+ * l'histoire et guidé par l'intention du joueur (ficheScene.ts) :
+ * - message : ce que le joueur fait ou demande, avec la ville et le lieu
+ *   visé — prioritaire (« allons à la guilde » doit trouver la guilde de Paris) ;
  * - scène : la mémoire de l'histoire (résumé, faits établis) et la dernière
  *   réponse du narrateur.
  * La fiche du personnage et le point de départ, très longs, noyaient la
  * demande du joueur et n'y figurent plus.
  */
-function construireRequetesLore(story: StoryState, messageJoueur: string, appSettings: AppSettings) {
+function construireRequetesLore(story: StoryState, messageJoueur: string, appSettings: AppSettings, preparation: PreparationTour) {
   const profil = appSettings.profilContenu;
-  const garder = (textes: (string | undefined)[]) => textes
+  const garder = (textes: (string | false | undefined)[]) => textes
     .filter((texte): texte is string => !!texte && texteCompatibleAvecProfil(texte, profil))
     .join('\n');
-  const ville = villeCourante(story, messageJoueur);
+  const { ville, intention } = preparation;
   const derniereReponse = [...story.messages].reverse().find((m) => m.role === 'assistant')?.content;
   return {
-    message: garder([ville && `Ville : ${ville}`, messageJoueur]),
+    message: garder([ville && `Ville : ${ville}`, intention.lieu && `Lieu visé : ${intention.lieu.libelle}`, ...intention.fiches, messageJoueur]),
     scene: garder([ville && `Ville : ${ville}`, story.memoire.resume, ...story.memoire.faits.map((f) => f.texte), derniereReponse]),
   };
 }
@@ -249,8 +236,14 @@ export async function calculerSelectionLore(
   // Moteur de recherche du lore : tous les passages de toutes les entrées
   // sont notés, seuls les meilleurs partent au narrateur (BUDGET_LORE_PASSAGES).
   const passagesLore = construirePassages(poolElyndor);
-  const requetesLore = construireRequetesLore(story, messageJoueur, appSettings);
-  const ancresLore = new Set(extraireAncresCanoniques(`${requetesLore.message}\n${requetesLore.scene}`, poolElyndor).map((e) => e.id));
+  const preparation = preparerTour(story, messageJoueur);
+  const requetesLore = construireRequetesLore(story, messageJoueur, appSettings, preparation);
+  // Fiches du lieu visé (Guilde des Aventuriers, Maîtresses de Guilde…) :
+  // traitées comme des noms cités, leur meilleur passage remonte d'office.
+  const ancresLore = new Set([
+    ...extraireAncresCanoniques(`${requetesLore.message}\n${requetesLore.scene}`, poolElyndor).map((e) => e.id),
+    ...poolElyndor.filter((e) => preparation.intention.fiches.some((f) => e.titre.includes(f))).map((e) => e.id),
+  ]);
 
   // La frontière entre contexte direct et recherche historique n'est plus
   // un nombre fixe de messages. Elle dépend du budget réel de conversation
@@ -433,6 +426,8 @@ export function construireCtxBase(
     souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
     blocsContexte: filtrer([noyau?.texte, formaterBlocsContexte(blocs.blocs)].filter(Boolean).join('\n\n')),
     directiveEtat: noyau?.directive,
+    // Étapes 1 à 4 de la logique de réponse : fiche préparée par l'application.
+    ficheScene: avecNoyau ? filtrer(preparerTour(story, messageJoueur).fiche) : undefined,
   };
 }
 
@@ -587,8 +582,19 @@ async function genererTourInterne(
   const debutValidationLocale = Date.now();
   // Verdict de chaque règle, respectée ou non, dans le diagnostic du tour :
   // c'est ce qui permet de vérifier que le modèle suit les règles codées.
+  // Étape 8 : rôles fixés de la ville en cours et gestes du joueur.
+  const preparationTour = preparerTour(storyCourante, messageJoueur);
+  const rolesVille = rolesDeLaVille(ROLES_CANON, preparationTour.ville);
+  const nomsConnus = [
+    storyCourante.meta.personnageNom,
+    ...(storyCourante.scene?.presents ?? []),
+    ...storyCourante.loreEmergent.map((e) => e.titre),
+    ...ROLES_CANON.map((r) => prenomRole(r)),
+  ];
   const verdictsLocaux: Array<[string, RapportValidation]> = [
     ['Autonomie du joueur (règles 1 et 7)', validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom)],
+    ['Gestes du joueur (protocole du tour)', validerGestesDuJoueur(reponse, messageJoueur, storyCourante.meta.personnageNom)],
+    ['Rôles fixés par le lore (fiche de scène)', validerRolesCanon(reponse, rolesVille, nomsConnus)],
     ['Profil de contenu', validerProfilContenuHeuristique(reponse, appSettings.profilContenu)],
     ['Répétitions', validerRepetitionHeuristique(reponse, storyCourante)],
     ['Canon et mots inventés (règles 2 et 5)', verifierEntitesCanoniques(reponse, canon)],
@@ -696,6 +702,10 @@ async function genererTourInterne(
     const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
     if (nettoyee) reponse = nettoyee;
   }
+
+  // Étiquettes de répliques écorchées (« SÉRAPHINE DUVALLY : ») ramenées au
+  // nom connu, pour que l'avatar du personnage s'affiche.
+  reponse = corrigerEtiquettes(reponse, [...nomsConnus, ...ROLES_CANON.map((r) => r.nom)]);
 
   ajouterEtapeDiagnostic(
     'Vérification finale canon / agentivité',
@@ -808,6 +818,10 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
       dernierBeatIndex: Math.min(storyCourante.directeur.dernierBeatIndex, messages.length - 2),
     },
     loreEmergentDernierIndex: Math.min(storyCourante.loreEmergentDernierIndex ?? 0, messages.length - 2),
+    scene: storyCourante.scene && {
+      ...storyCourante.scene,
+      majMessageIndex: Math.min(storyCourante.scene.majMessageIndex, messages.length - 2),
+    },
   };
 
   return genererTour(storySansDernierEchange, appSettings, avantDernier.content);
