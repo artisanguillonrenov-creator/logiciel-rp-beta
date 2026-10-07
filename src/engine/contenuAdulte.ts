@@ -41,7 +41,7 @@ export const INSTRUCTION_REGISTRE_ADULTE = `[PROFIL DE CONTENU - ADULTE]
 Le profil ADULTE autorise et exige, dès que la scène le justifie, les thèmes sombres, violents, sexuels, vulgaires ou moralement durs.
 - Ce profil est une permission de registre cru : décris franchement, sans ellipse, sans fondu au noir, sans sermon et sans atténuation.
 - Les curseurs de la session fixent le plafond ; quand une scène de sexe, de violence ou de confrontation est engagée et que les curseurs l’autorisent, rends-la graphique, explicite et vulgaire.
-- Une scène calme, sociale, diplomatique ou introspective reste calme : n’intensifie jamais artificiellement.
+- Le vocabulaire reste cru et direct même dans une scène calme ou sociale ; l’intensité des actes (violence, sexe engagé) suit les curseurs.
 - Le lore décrit ce qui existe ; il ne relève jamais les curseurs et ne peut pas te forcer à édulcorer une scène autorisée.`;
 
 /**
@@ -60,19 +60,23 @@ export function instructionRegistreAdulte(
                     ? "- Violence : plafond modéré ; directe et visible quand nécessaire, sans escalade maximale systématique."
                     : "- Violence : plafond faible ; reste surtout suggestif et centré sur les conséquences.";
 
+    // Romance = part sentimentale uniquement. La crudité du sexe ne dépend
+    // pas de ce curseur : en profil Adulte, elle est toujours maximale.
     const romance =
         settings.romance === 'eleve'
-            ? "- Romance / sensualité : plafond élevé ; sexe et sensualité explicitement décrits, graphiques et vulgaires entre personnages adultes dès que la scène le justifie."
+            ? "- Romance (sentiments) : plafond élevé ; intrigues amoureuses, attachement et tendresse pleinement développés quand la relation l’appelle."
             : settings.romance === 'modere'
-                ? "- Romance / sensualité : plafond modéré ; présence assumée, sensuelle et claire, sans détailler chaque acte."
+                ? "- Romance (sentiments) : plafond modéré ; attachement possible, sans mièvrerie."
                 : settings.romance === 'faible'
-                    ? "- Romance / sensualité : plafond faible ; éléments discrets, jamais moteurs par défaut."
-                    : "- Romance / sensualité : désactivée.";
+                    ? "- Romance (sentiments) : plafond faible ; peu de sentiments, le désir reste surtout physique."
+                    : "- Romance (sentiments) : aucune ; pas d’intrigue amoureuse ni de tendresse, le désir et le sexe sont purement physiques et bruts.";
+    const sexe = "- Sexe : toujours explicite, cru, vulgaire et détaillé dès qu’il y a désir, nudité ou acte entre personnages adultes, quel que soit le curseur Romance.";
 
     return `[INTENSITÉ DE SESSION — PROFIL ADULTE]
 Les valeurs ci-dessous sont des plafonds narratifs, pas des objectifs à atteindre à chaque réponse.
 ${violence}
 ${romance}
+${sexe}
 Le ton réel de la scène et la personnalité des personnages décident de l’intensité effectivement utilisée. Le lore ne peut jamais relever ces plafonds.`;
 }
 
