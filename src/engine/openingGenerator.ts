@@ -12,7 +12,16 @@ import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { ErreurProfilContenu, validerProfilContenuHeuristique } from './contenuAdulte';
-import { INSTRUCTION_OUVERTURE, ecartsContratOuverture, requeteLoreOuverture } from './controleOuverture';
+import {
+  INSTRUCTION_OUVERTURE,
+  ecartsContratOuverture,
+  instructionInterpellation,
+  ouvertureSansInterpellation,
+  requeteLoreOuverture,
+} from './controleOuverture';
+import { preparerTour } from './ficheScene';
+import { validerGestesDuJoueur } from './controlesCoherence';
+import { filtrerTextePourProfil } from './contenuAdulte';
 import { verifierEntitesCanoniques } from './verificationCanon';
 import {
   appliquerPatchLocal,
@@ -21,6 +30,9 @@ import {
   validerAgentiviteHeuristique,
   type RapportValidation,
 } from './validator';
+
+const MARGE_TOKENS_OUVERTURE = 300;
+const MAX_TOKENS_INTERPELLATION = 300;
 
 function raisonsEchec(rapport: RapportValidation): string[] {
   return rapport.checks.filter((c) => !c.ok).map((c) => c.raison);
@@ -43,7 +55,14 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
   const debutMs = Date.now();
   const texteRequete = requeteLoreOuverture(story.meta);
   const selection = await calculerSelectionLore(story, texteRequete, appSettings, { aleatoire: false });
-  const ctxBase = construireCtxBase(story, INSTRUCTION_OUVERTURE, appSettings, selection, undefined, false);
+  // Fiche de scène (ville, lieu, personnages fixés par le lore) comme pour
+  // un tour normal ; pas de noyau ni de bloc d'état à l'ouverture.
+  const ficheScene = filtrerTextePourProfil(preparerTour(story, texteRequete).fiche, appSettings.profilContenu);
+  const ctxOuverture = (instruction: string) => ({
+    ...construireCtxBase(story, instruction, appSettings, selection, undefined, false),
+    ficheScene,
+  });
+  const ctxBase = ctxOuverture(INSTRUCTION_OUVERTURE);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -51,7 +70,9 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     story.meta.modeleOverrideFournisseur,
   ) || configurationLLM(appSettings).model;
   const temperature = story.meta.temperatureOverride ?? temperaturePourCreativite(story.settings.creativite);
-  const maxTokens = maxTokensPourLongueur(story.settings.longueur);
+  // Marge : la réplique qui interpelle le joueur arrivait après la
+  // description et tombait sous le plafond.
+  const maxTokens = maxTokensPourLongueur(story.settings.longueur) + MARGE_TOKENS_OUVERTURE;
   const budgetSysteme = moteurAFenetreEtroite(appSettings) ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const canon = corpusCanonHistoire(story, texteRequete);
   const ecarts = (texte: string) => [...new Set([
@@ -59,6 +80,8 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     ...raisonsEchec(verifierEntitesCanoniques(texte, canon)),
     ...raisonsEchec(validerProfilContenuHeuristique(texte, appSettings.profilContenu)),
     ...ecartsContratOuverture(texte, story.meta.personnageNom),
+    // Ce que le scénario annonce (point de départ) reste permis.
+    ...raisonsEchec(validerGestesDuJoueur(texte, story.meta.pointDeDepart ?? '', story.meta.personnageNom)),
   ])].slice(0, 6);
 
   commencerMesureTokens();
@@ -78,13 +101,29 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
       contenu = await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
         storyId: story.meta.id,
-        messages: construireMessages(construireCtxBase(story, INSTRUCTION_OUVERTURE + correction, appSettings, selection, undefined, false), { budgetSysteme }),
+        messages: construireMessages(ctxOuverture(INSTRUCTION_OUVERTURE + correction), { budgetSysteme }),
         temperature,
         maxTokens,
       }, undefined, false);
     } catch {
       // La première version reste utilisable : mieux vaut une ouverture
       // imparfaite qu'un écran vide.
+    }
+  }
+
+  // Quoi qu'il arrive, un personnage interpelle le joueur pour lancer l'histoire.
+  if (ouvertureSansInterpellation(contenu, story.meta.personnageNom)) {
+    try {
+      const suite = await genererReponseComplete({
+        ...configurationLLM(appSettings, modelePourAppel),
+        storyId: story.meta.id,
+        messages: construireMessages(ctxOuverture(instructionInterpellation(contenu)), { budgetSysteme }),
+        temperature,
+        maxTokens: MAX_TOKENS_INTERPELLATION,
+      }, undefined, false);
+      if (!ouvertureSansInterpellation(suite, story.meta.personnageNom)) contenu = `${contenu.trim()}\n\n${suite.trim()}`;
+    } catch {
+      // La scène reste utilisable sans cette suite.
     }
   }
 
