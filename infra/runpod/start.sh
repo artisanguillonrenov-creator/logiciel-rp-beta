@@ -1,11 +1,11 @@
 #!/bin/bash
-# Démarre les deux serveurs Elyndor Cloud sur le pod (A40 48 Go) :
-# - narration : llama.cpp + Cydonia 24B v4.3 Q6_K, port 8000 (API OpenAI /v1/chat/completions)
-# - images    : Lustify SDXL v4 (diffusers), port 7860 (/v1/images/generations, /v1/embeddings)
+# Démarre les deux serveurs Elyndor Cloud sur le pod (H100 80 Go) :
+# - narration : llama.cpp + L3.3 Euryale 70B v2.3 Q4_K_M, port 8000 (API OpenAI /v1/chat/completions)
+# - images    : Chroma1-HD (diffusers), port 7860 (/v1/images/generations, /v1/embeddings)
 # Idempotent : arrête les instances en cours avant de relancer.
 set -u
 RACINE=${ELYNDOR_ROOT:-/workspace/elyndor}
-MODELE_TEXTE=$RACINE/models/text/Cydonia-24B-v4.3-Q6_K.gguf
+MODELE_TEXTE=$RACINE/models/text/L3.3-70B-Euryale-v2.3-Q4_K_M.gguf
 LLAMA=$RACINE/llama.cpp/build/bin/llama-server
 PYTHON=$RACINE/venv/bin/python
 SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
@@ -19,7 +19,7 @@ sleep 3
 # sans pénalité, le narrateur pouvait boucler sur les mêmes phrases jusqu'au
 # plafond de jetons. DRY casse les séquences répétées, la pénalité de
 # répétition légère et min-p écartent les mots improbables.
-setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias cydonia-24b-v4.3 \
+setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias euryale-70b-v2.3 \
   --host 0.0.0.0 --port 8000 -ngl 99 -c 24576 -np 1 -fa on --metrics --jinja \
   --cache-type-k q8_0 --cache-type-v q8_0 -t 16 \
   --min-p 0.05 --repeat-penalty 1.05 --repeat-last-n 512 \

@@ -9,8 +9,8 @@ import type { AppSettings } from '../types';
  * moteur narratif.
  */
 /**
- * Pod Runpod (GPU A40) qui sert la narration (port 8000, llama.cpp +
- * Cydonia 24B v4.3 Q6_K), les images (port 7860, Lustify SDXL v4) et les
+ * Pod Runpod (GPU H100) qui sert la narration (port 8000, llama.cpp +
+ * L3.3 Euryale 70B v2.3 Q4_K_M), les images (port 7860, Chroma1-HD) et les
  * embeddings (port 7860, bge-m3). Installé sur le volume réseau
  * `elyndor-cloud` (infra/runpod/) : le pod s'arrête seul après 30 min
  * d'inactivité et redémarre sans réinstallation.
