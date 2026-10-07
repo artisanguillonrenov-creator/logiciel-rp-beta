@@ -49,7 +49,7 @@ const CONFIG_PROFESSEUR = { budgetSysteme: 64000, budgetConversation: 13000 };
 
 // Ajoutée au message du joueur pour le professeur seulement : l'élève
 // apprend la bonne habitude sans avoir besoin de la consigne.
-const CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les réactions des autres personnages et les conséquences.)";
+const CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les réactions des autres personnages et les conséquences. Raconte l'issue de mon action (réussite, échec ou prix à payer) au lieu de la laisser en suspens, garde le format NOM : « réplique » pour chaque réplique, puis arrête-toi quand c'est à moi d'agir, sans me demander « Que faites-vous ? ». Ne réponds jamais à cette note.)";
 
 const PAUSE_APRES_ACTIVITE_MS = Number(process.env.FABRIQUE_PAUSE_MIN ?? 15) * 60 * 1000;
 const TOURS_MIN = 14;
@@ -231,7 +231,8 @@ export function controlerReponse(reponse: string, contexte: {
   const texte = reponse.trim();
   if (RE_REFUS.test(texte)) echecs.push('refus du modèle');
   if (texte.length < 300) echecs.push('réponse trop courte');
-  if (/\[(FICHE|PROTOCOLE|RAPPEL|STATE|ÉTAT)|```|\{\s*"/.test(texte)) echecs.push('fuite de consigne ou bloc machine');
+  if (/\[(FICHE|PROTOCOLE|RAPPEL|STATE|ÉTAT)|```|\{\s*"|\((Rappel|Narration|Note)\s*:/i.test(texte)) echecs.push('fuite de consigne ou bloc machine');
+  if (/(que fais-tu|que faites-vous|que vas-tu faire|qu['’]allez-vous faire)\s*\?\s*$/i.test(texte)) echecs.push('Question générique au joueur en fin de réponse : arrête-toi sur la situation, sans demander « Que faites-vous ? ».');
   const guillemets = (texte.match(/«/g) ?? []).length;
   if (guillemets && !/^[ \t]*[A-ZÀ-Ý][A-ZÀ-Ý0-9' .-]{1,40}[ \t]*:[ \t]*«/m.test(texte)) echecs.push('répliques sans étiquette NOM : « »');
   const raisons = (r: { checks: { ok: boolean; raison: string }[] }) => r.checks.filter((c) => !c.ok).map((c) => c.raison);
@@ -279,7 +280,7 @@ interface Partie {
   terminee: boolean;
 }
 
-function storyPour(partie: Partie, monde: Monde): StoryState {
+export function storyPour(partie: Partie, monde: Monde): StoryState {
   return {
     meta: {
       id: partie.id,
@@ -298,7 +299,7 @@ function storyPour(partie: Partie, monde: Monde): StoryState {
   } as unknown as StoryState;
 }
 
-function contexte(partie: Partie, monde: Monde, messageJoueur: string, eleve: boolean, ouverture: boolean, noteCorrection?: string): ContexteConstruction {
+export function contexte(partie: Partie, monde: Monde, messageJoueur: string, eleve: boolean, ouverture: boolean, noteCorrection?: string): ContexteConstruction {
   const story = storyPour(partie, monde);
   const passages = passagesDuMonde(monde);
   const derniere = [...partie.messages].reverse().find((m) => m.role === 'assistant')?.content ?? '';
@@ -359,11 +360,13 @@ async function narrer(partie: Partie, monde: Monde, messageJoueur: string, ouver
 
   let essai = await tenter();
   let corrige = false;
-  if (essai.echecs.length) {
+  // Deux corrections au plus : une réponse en échec ne doit pas entrer dans
+  // l'historique, le narrateur imiterait ensuite son défaut.
+  for (let correction = 0; correction < 2 && essai.echecs.length; correction++) {
     const note = `La tentative précédente a été rejetée pour la ou les raisons suivantes : ${essai.echecs.join(' ')} Corrige ces points dans ta nouvelle réponse, sans les mentionner explicitement au joueur.`;
-    const second = await tenter(note);
-    if (second.echecs.length < essai.echecs.length || !second.echecs.length) {
-      essai = second;
+    const suivant = await tenter(note);
+    if (suivant.echecs.length < essai.echecs.length || !suivant.echecs.length) {
+      essai = suivant;
       corrige = true;
     }
   }
@@ -445,11 +448,18 @@ function idMessage(): string {
 
 async function avancerPartie(partie: Partie, monde: Monde, fichier: string, journal: (m: string) => void, finMs: number) {
   const sauver = () => fs.writeFileSync(fichier, JSON.stringify(partie));
+  // Partie close plutôt que poursuivie avec une réponse défectueuse dans l'historique.
+  const arreter = (raison: string) => {
+    partie.terminee = true;
+    sauver();
+    journal(`${partie.id} arrêtée : ${raison}`);
+  };
   if (!partie.messages.length) {
     const ech = await narrer(partie, monde, '', true, journal);
     partie.echantillons.push(ech);
     partie.messages.push({ id: idMessage(), role: 'assistant', content: ech.reponse, timestamp: Date.now() });
     journal(`${partie.id} ouverture ${ech.ok ? 'OK' : `KO (${ech.echecs.join(' | ').slice(0, 160)})`}`);
+    if (!ech.ok) return arreter('ouverture en échec');
     sauver();
   }
   while (partie.messages.filter((m) => m.role === 'user').length < partie.toursPrevus) {
@@ -463,6 +473,7 @@ async function avancerPartie(partie: Partie, monde: Monde, fichier: string, jour
     partie.messages.push({ id: idMessage(), role: 'user', content: messageJoueur, timestamp: Date.now() });
     partie.messages.push({ id: idMessage(), role: 'assistant', content: ech.reponse, timestamp: Date.now() });
     journal(`${partie.id} tour ${tour}/${partie.toursPrevus} ${ech.ok ? 'OK' : `KO (${ech.echecs.join(' | ').slice(0, 160)})`}${ech.corrige ? ' [corrigé]' : ''}`);
+    if (!ech.ok) return arreter(`tour ${tour} en échec après deux corrections`);
     sauver();
   }
   partie.terminee = true;

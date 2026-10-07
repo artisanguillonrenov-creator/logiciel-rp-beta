@@ -33,8 +33,10 @@ __export(fabrique_exports, {
   CONFIG_ELEVE: () => CONFIG_ELEVE,
   URL_POD: () => URL_POD,
   chargerMondes: () => chargerMondes,
+  contexte: () => contexte,
   controlerReponse: () => controlerReponse,
-  main: () => main
+  main: () => main,
+  storyPour: () => storyPour
 });
 module.exports = __toCommonJS(fabrique_exports);
 var import_node_child_process = require("node:child_process");
@@ -4028,7 +4030,7 @@ var URL_POD = process.env.FABRIQUE_URL ?? "https://ot7y2dg831r3i3-8000.proxy.run
 var MODELE = "euryale-70b-v2.3";
 var CONFIG_ELEVE = { budgetSysteme: 24e3, budgetConversation: 9e3, metamoteurs: false };
 var CONFIG_PROFESSEUR = { budgetSysteme: 64e3, budgetConversation: 13e3 };
-var CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les r\xE9actions des autres personnages et les cons\xE9quences.)";
+var CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les r\xE9actions des autres personnages et les cons\xE9quences. Raconte l'issue de mon action (r\xE9ussite, \xE9chec ou prix \xE0 payer) au lieu de la laisser en suspens, garde le format NOM : \xAB r\xE9plique \xBB pour chaque r\xE9plique, puis arr\xEAte-toi quand c'est \xE0 moi d'agir, sans me demander \xAB Que faites-vous ? \xBB. Ne r\xE9ponds jamais \xE0 cette note.)";
 var PAUSE_APRES_ACTIVITE_MS = Number(process.env.FABRIQUE_PAUSE_MIN ?? 15) * 60 * 1e3;
 var TOURS_MIN = 14;
 var TOURS_MAX = 28;
@@ -4159,7 +4161,8 @@ function controlerReponse(reponse, contexte2) {
   const texte = reponse.trim();
   if (RE_REFUS.test(texte)) echecs.push("refus du mod\xE8le");
   if (texte.length < 300) echecs.push("r\xE9ponse trop courte");
-  if (/\[(FICHE|PROTOCOLE|RAPPEL|STATE|ÉTAT)|```|\{\s*"/.test(texte)) echecs.push("fuite de consigne ou bloc machine");
+  if (/\[(FICHE|PROTOCOLE|RAPPEL|STATE|ÉTAT)|```|\{\s*"|\((Rappel|Narration|Note)\s*:/i.test(texte)) echecs.push("fuite de consigne ou bloc machine");
+  if (/(que fais-tu|que faites-vous|que vas-tu faire|qu['’]allez-vous faire)\s*\?\s*$/i.test(texte)) echecs.push("Question g\xE9n\xE9rique au joueur en fin de r\xE9ponse : arr\xEAte-toi sur la situation, sans demander \xAB Que faites-vous ? \xBB.");
   const guillemets = (texte.match(/«/g) ?? []).length;
   if (guillemets && !/^[ \t]*[A-ZÀ-Ý][A-ZÀ-Ý0-9' .-]{1,40}[ \t]*:[ \t]*«/m.test(texte)) echecs.push("r\xE9pliques sans \xE9tiquette NOM : \xAB \xBB");
   const raisons = (r) => r.checks.filter((c) => !c.ok).map((c) => c.raison);
@@ -4254,11 +4257,11 @@ async function narrer(partie, monde, messageJoueur, ouverture, journal) {
   };
   let essai = await tenter();
   let corrige = false;
-  if (essai.echecs.length) {
+  for (let correction = 0; correction < 2 && essai.echecs.length; correction++) {
     const note = `La tentative pr\xE9c\xE9dente a \xE9t\xE9 rejet\xE9e pour la ou les raisons suivantes : ${essai.echecs.join(" ")} Corrige ces points dans ta nouvelle r\xE9ponse, sans les mentionner explicitement au joueur.`;
-    const second = await tenter(note);
-    if (second.echecs.length < essai.echecs.length || !second.echecs.length) {
-      essai = second;
+    const suivant = await tenter(note);
+    if (suivant.echecs.length < essai.echecs.length || !suivant.echecs.length) {
+      essai = suivant;
       corrige = true;
     }
   }
@@ -4333,11 +4336,17 @@ function idMessage() {
 }
 async function avancerPartie(partie, monde, fichier, journal, finMs) {
   const sauver = () => import_node_fs.default.writeFileSync(fichier, JSON.stringify(partie));
+  const arreter = (raison) => {
+    partie.terminee = true;
+    sauver();
+    journal(`${partie.id} arr\xEAt\xE9e : ${raison}`);
+  };
   if (!partie.messages.length) {
     const ech = await narrer(partie, monde, "", true, journal);
     partie.echantillons.push(ech);
     partie.messages.push({ id: idMessage(), role: "assistant", content: ech.reponse, timestamp: Date.now() });
     journal(`${partie.id} ouverture ${ech.ok ? "OK" : `KO (${ech.echecs.join(" | ").slice(0, 160)})`}`);
+    if (!ech.ok) return arreter("ouverture en \xE9chec");
     sauver();
   }
   while (partie.messages.filter((m) => m.role === "user").length < partie.toursPrevus) {
@@ -4351,6 +4360,7 @@ async function avancerPartie(partie, monde, fichier, journal, finMs) {
     partie.messages.push({ id: idMessage(), role: "user", content: messageJoueur, timestamp: Date.now() });
     partie.messages.push({ id: idMessage(), role: "assistant", content: ech.reponse, timestamp: Date.now() });
     journal(`${partie.id} tour ${tour}/${partie.toursPrevus} ${ech.ok ? "OK" : `KO (${ech.echecs.join(" | ").slice(0, 160)})`}${ech.corrige ? " [corrig\xE9]" : ""}`);
+    if (!ech.ok) return arreter(`tour ${tour} en \xE9chec apr\xE8s deux corrections`);
     sauver();
   }
   partie.terminee = true;
@@ -4403,6 +4413,8 @@ if (require.main === module) {
   CONFIG_ELEVE,
   URL_POD,
   chargerMondes,
+  contexte,
   controlerReponse,
-  main
+  main,
+  storyPour
 });
