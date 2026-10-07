@@ -47,6 +47,8 @@ export interface RequeteImage {
   /** Version courte en anglais pour les modèles à encodeur CLIP (SDXL). */
   promptCourt?: string;
   negatif?: string;
+  /** Modules LoRA et leur poids ; sans eux, le serveur applique ses modules par défaut. */
+  modules?: Record<string, number>;
   /** Déjà triées par priorité (voir selectionnerReferencesGenerateur). */
   references: ReferenceImage[];
   format: FormatImage;
@@ -75,6 +77,7 @@ export function construireCorpsRequeteImage(requete: RequeteImage, modele: strin
     prompt: requete.prompt,
     ...(requete.promptCourt ? { prompt_sdxl: requete.promptCourt } : {}),
     ...(requete.negatif ? { negative_prompt: requete.negatif } : {}),
+    ...(requete.modules ? { modules: requete.modules } : {}),
     n: 1,
     size: `${width}x${height}`,
     aspect_ratio: requete.format,

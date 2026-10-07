@@ -19,6 +19,8 @@ import {
   appliquerModeRegeneration,
   consoliderAvecEtatVisuel,
   construirePromptSdxl,
+  modulesPourScene,
+  MODULES_BASE,
   formaterPromptImage,
   structureDeRepli,
   personnageSceneVide,
@@ -402,4 +404,16 @@ test('le prompt anglais rédigé par le modèle narratif est extrait et nettoyé
   assert.equal(direction?.structure.promptSdxl, 'medium shot, 1 man, scarred human, black leather coat');
   assert.equal(nettoyerPromptSdxl('Prompt: "close-up, dark elf woman, white braided hair"\nautre ligne'), 'close-up, dark elf woman, white braided hair');
   assert.equal(nettoyerPromptSdxl('\n\n'), undefined);
+});
+
+test('les modules du serveur d’images suivent le type de scène', () => {
+  const base = structureDeRepli({ profil: 'dialogue', personnages: [personnageSceneVide('William')], texteScene: 'Discussion.', lieu: 'Taverne' });
+  assert.deepEqual(modulesPourScene(base), MODULES_BASE);
+  const combat = { ...base, profil: 'combat' as const, promptSdxl: 'adult woman fighting a rotting ghoul in a crypt' };
+  const modules = modulesPourScene(combat);
+  assert.equal(modules.tarantino, 0.5);
+  assert.equal(modules.horreur, 0.6);
+  assert.match(construirePromptSdxl(combat) ?? '', /Director Quentin Tarantino style/);
+  const corps = construireCorpsRequeteImage({ prompt: 'p', modules, references: [], format: '16:9' }, 'lustify-sdxl-v4');
+  assert.deepEqual(corps.modules, modules);
 });
