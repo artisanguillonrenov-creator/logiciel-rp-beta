@@ -431,6 +431,30 @@ export function construireCtxBase(
   };
 }
 
+/** Place laissée à la consigne visuelle et aux derniers messages dans la fenêtre du pod. */
+export const BUDGET_SYSTEM_ILLUSTRATION = 56000;
+
+/**
+ * Contexte du narrateur pour illustrer la scène qu'il vient d'écrire : même
+ * lore, même mémoire, même fiche de scène que pour répondre au joueur (le
+ * dernier message du joueur sert de requête, la dernière réponse du
+ * narrateur guide la recherche). Le préfixe et les métamoteurs restent
+ * identiques : le serveur les reprend de son cache.
+ */
+export async function construireContexteNarrateurPourIllustration(story: StoryState, appSettings: AppSettings): Promise<string> {
+  const messageJoueur = [...story.messages].reverse().find((m) => m.role === 'user')?.content ?? story.meta.pointDeDepart ?? '';
+  const evenements = synchroniserMemoireNarrative(story);
+  const storyCourante = assurerNoyau(story, evenements);
+  const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings);
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs);
+  // Pas de bloc d'état machine : la réponse attendue est la direction artistique.
+  return construireSystemPrompt(
+    { ...ctx, directiveEtat: undefined },
+    { budgetSysteme: moteurAFenetreEtroite(appSettings) ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_ILLUSTRATION },
+  );
+}
+
 export async function construirePromptDebug(
   story: StoryState,
   messageJoueur: string,
