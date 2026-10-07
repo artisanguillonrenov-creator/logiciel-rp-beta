@@ -30,6 +30,7 @@ module horreur Muapi/realistic-horror-style-one realistic-horror-style-one.safet
 module tarantino KappaNeuro/director-quentin-tarantino-style "Director Quentin Tarantino style.safetensors"
 module grain artificialguybr/filmgrain-redmond-filmgrain-lora-for-sdxl FilmGrainRedmond-FilmGrain-FilmGrainAF.safetensors
 rm -f "$M/kodachrome.safetensors" "$M/negatif/unaestheticxl.pt"  # illisibles
+module age Muapi/multiple-xl-sliders-age-weight-hands-etc multiple-xl-sliders-age-weight-hands-etc.safetensors
 module kodachrome2 BlaireSilver13/Kodachrome kodachrome2.safetensors
 [ -f "$M/negatif/unaestheticxl.safetensors" ] || { "$HF" download dn118/unaestheticXL unaestheticXLv31.safetensors \
   --local-dir "$M/.hf/negatif" > /dev/null && mv "$M/.hf/negatif/unaestheticXLv31.safetensors" "$M/negatif/unaestheticxl.safetensors"; }

@@ -104,8 +104,15 @@ def lire_modules(texte: str) -> dict[str, float]:
     return poids
 
 
+# Curseurs bidirectionnels : un poids négatif rajeunirait les corps. Ils ne
+# s'appliquent que dans le sens « vieillir », jamais en dessous de l'âge adulte.
+MODULES_SENS_UNIQUE = {"age"}
+
+
 def appliquer_modules(demandes: dict[str, float] | None) -> dict[str, float]:
-    choisis = {n: p for n, p in (demandes if demandes is not None else lire_modules(MODULES_DEFAUT)).items() if n in MODULES and p}
+    choisis = {n: (max(0.0, p) if n in MODULES_SENS_UNIQUE else p)
+               for n, p in (demandes if demandes is not None else lire_modules(MODULES_DEFAUT)).items() if n in MODULES}
+    choisis = {n: p for n, p in choisis.items() if p}
     if choisis:
         pipe.enable_lora()
         pipe.set_adapters(list(choisis), adapter_weights=list(choisis.values()))
