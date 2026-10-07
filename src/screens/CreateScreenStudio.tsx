@@ -431,7 +431,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
             <View>
               <TitreEtape index={0} titre="Choisis ton monde" sousTitre="Une porte d’entrée visuelle, pas un formulaire." />
               <View style={[styles.deuxColonnes, !tablette && styles.colonneUnique]}>
-                <View style={styles.colonneIllustration}>
+                <View style={[styles.colonneIllustration, tablette && styles.colonneIllustrationHaut]}>
                   <Image source={mondeActif?.image ?? IMAGES_ETAPES[0]} style={styles.imageHero} resizeMode="cover" />
                   <View style={styles.cartoucheHero}>
                     <Text style={styles.nomHero}>{mondeActif?.nom ?? 'Elyndor'}</Text>
@@ -720,10 +720,14 @@ const styles = StyleSheet.create({
   sousTitreEtape: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 15, marginTop: 4, marginLeft: 28 },
   deuxColonnes: { flexDirection: 'row', alignItems: 'stretch', gap: espacement.lg },
   colonneUnique: { flexDirection: 'column' },
-  colonneIllustration: { flex: 0.85, minHeight: 420, borderWidth: 1, borderColor: couleurs.bordureDoree, backgroundColor: couleurs.fondCarteDense, overflow: 'hidden', borderRadius: rayon.sm },
+  // Hauteur bornée par un ratio : avec flex: 1, l'image prenait sa hauteur
+  // native et la colonne s'étirait sur toute la page (tablette Android).
+  colonneIllustration: { flex: 0.85, borderWidth: 1, borderColor: couleurs.bordureDoree, backgroundColor: couleurs.fondCarteDense, overflow: 'hidden', borderRadius: rayon.sm },
   colonnePortrait: { flex: 0.72, minWidth: 0 },
   colonneChoix: { flex: 1.28, minWidth: 0 },
-  imageHero: { width: '100%', flex: 1, minHeight: 360 },
+  // En deux colonnes, la colonne garde sa propre hauteur au lieu de s'étirer.
+  colonneIllustrationHaut: { alignSelf: 'flex-start' },
+  imageHero: { width: '100%', aspectRatio: 4 / 5, maxHeight: 560 },
   cartoucheHero: { padding: espacement.md, backgroundColor: couleurs.fondCarteDense },
   nomHero: { color: couleurs.doreClair, fontFamily: polices.titre, fontSize: 24 },
   metaHero: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 13, marginTop: 2 },

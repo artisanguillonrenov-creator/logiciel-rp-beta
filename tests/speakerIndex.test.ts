@@ -37,3 +37,23 @@ test('une réplique nommée écrite au milieu d’un paragraphe est isolée et a
   const propre = 'Narration.\nKAELEN : « Tu es venu seul. »\nSuite.';
   assert.equal(isolerRepliquesNommees(propre), propre);
 });
+
+test('une réplique nommée entre guillemets droits ou anglais garde son locuteur', () => {
+  const texte = 'Le marchand se penche. LE VIEUX MARCHAND : "Celle-ci te plaira." Il sourit.\nL\'ELFE NOIRE : “Approche.”';
+  const repliques = analyserMessage(texte).filter((s) => s.type === 'repliquePersonnage');
+  assert.deepEqual(repliques.map((r) => [r.locuteur, r.contenu]), [
+    ['LE VIEUX MARCHAND', 'Celle-ci te plaira.'],
+    ["L'ELFE NOIRE", 'Approche.'],
+  ]);
+});
+
+test('les répliques suivantes du même paragraphe reviennent au dernier locuteur nommé', () => {
+  const texte = 'LE MARCHAND : « Une elfe noire ? » Il montre une femme. « Elle s\'appelle Akua. »\n\nUne voix au fond : « Silence ! »';
+  const segments = analyserMessage(texte);
+  const repliques = segments.filter((s) => s.type === 'repliquePersonnage');
+  assert.deepEqual(repliques.map((r) => [r.locuteur, r.contenu]), [
+    ['LE MARCHAND', 'Une elfe noire ?'],
+    ['LE MARCHAND', "Elle s'appelle Akua."],
+  ]);
+  assert.ok(segments.some((s) => s.type === 'dialogue' && s.contenu === '« Silence ! »'));
+});

@@ -23,7 +23,9 @@ const GUILLEMETS = ['"', '«', '»', '“', '”'];
 // phrase de narration qui contiendrait incidemment un ":". Une seule ligne
 // (pas de guillemet multi-lignes ici) : la réplique elle-même peut être
 // vide, mais pas franchir un saut de ligne.
-const REGLE_REPLIQUE_NOMMEE = /^[ \t]*([A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ' -]{1,29}?)[ \t]*:[ \t]*«([^»\n]*)»[ \t]*$/gm;
+// Guillemets droits ou anglais acceptés aussi : certains narrateurs (Euryale)
+// écrivent NOM : "réplique" malgré la consigne des guillemets français.
+const REGLE_REPLIQUE_NOMMEE = /^[ \t]*([A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ][A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ' -]{1,29}?)[ \t]*:[ \t]*[«"“]([^»"”\n]*)[»"”][ \t]*$/gm;
 
 function analyserSegmentsSansLocuteur(texte: string): SegmentMessage[] {
   const segments: SegmentMessage[] = [];
@@ -70,8 +72,8 @@ const NOM_LOCUTEUR = `[${LETTRES_MAJ}][${LETTRES_MAJ}' -]{1,29}?`;
 // Réplique nommée écrite au milieu d'un paragraphe (« … sa marchandise.
 // MARCUS : « Vous… » Il fait… ») : le modèle ne respecte pas toujours la
 // consigne « sur sa propre ligne ». On la remet sur sa ligne avant l'analyse.
-const AVANT_REPLIQUE_EN_LIGNE = new RegExp(`([^\\n${LETTRES_MAJ}])[ \\t]+(?=${NOM_LOCUTEUR}[ \\t]*:[ \\t]*«)`, 'g');
-const APRES_REPLIQUE_EN_LIGNE = new RegExp(`^([ \\t]*${NOM_LOCUTEUR}[ \\t]*:[ \\t]*«[^»\\n]*»)[ \\t]+(?=\\S)`, 'gm');
+const AVANT_REPLIQUE_EN_LIGNE = new RegExp(`([^\\n${LETTRES_MAJ}])[ \\t]+(?=${NOM_LOCUTEUR}[ \\t]*:[ \\t]*[«"“])`, 'g');
+const APRES_REPLIQUE_EN_LIGNE = new RegExp(`^([ \\t]*${NOM_LOCUTEUR}[ \\t]*:[ \\t]*[«"“][^»"”\\n]*[»"”])[ \\t]+(?=\\S)`, 'gm');
 
 /** Place chaque réplique « NOM : « … » » sur sa propre ligne. */
 export function isolerRepliquesNommees(texte: string): string {
@@ -98,5 +100,26 @@ export function analyserMessage(brut: string): SegmentMessage[] {
   if (curseur < texte.length) {
     segments.push(...analyserSegmentsSansLocuteur(texte.slice(curseur)));
   }
-  return segments.length > 0 ? segments : [{ type: 'texte', contenu: texte }];
+  return segments.length > 0 ? attribuerRepliquesSuivantes(segments) : [{ type: 'texte', contenu: texte }];
+}
+
+/**
+ * Le narrateur nomme souvent la première réplique d'un PNJ puis enchaîne
+ * « Il ricane. « … » » dans le même paragraphe. Ces répliques entre
+ * guillemets français reviennent au dernier locuteur nommé, jusqu'au
+ * prochain paragraphe (ligne vide) : au-delà, l'attribution serait un pari.
+ */
+function attribuerRepliquesSuivantes(segments: SegmentMessage[]): SegmentMessage[] {
+  let locuteur: string | undefined;
+  return segments.map((segment) => {
+    if (segment.type === 'repliquePersonnage') {
+      locuteur = segment.locuteur;
+      return segment;
+    }
+    if (segment.type === 'dialogue' && locuteur && segment.contenu.startsWith('«')) {
+      return { type: 'repliquePersonnage', contenu: segment.contenu.replace(/^«\s*|\s*»$/g, ''), locuteur };
+    }
+    if (/\n\s*\n/.test(segment.contenu)) locuteur = undefined;
+    return segment;
+  });
 }
