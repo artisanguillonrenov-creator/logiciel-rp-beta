@@ -358,14 +358,14 @@ test('la requête porte le prompt court anglais et une régénération ne touche
     promptSdxl: 'low angle medium shot, 1 man, black leather coat, sword',
   };
   const court = construirePromptSdxl(structure) ?? '';
-  assert.match(court, /^low angle medium shot, 1 man/);
+  assert.match(court, /^elyndor style, low angle medium shot, 1 man/);
   assert.match(court, /cinematic film still/);
   assert.equal(construirePromptSdxl({ ...structure, promptSdxl: undefined }), undefined);
 
   const angle = appliquerModeRegeneration(structure, 'autre-angle', 1);
   assert.equal(angle.promptSdxl, structure.promptSdxl);
   assert.ok(angle.indiceCameraSdxl);
-  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`${angle.indiceCameraSdxl}, low angle medium shot`));
+  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`elyndor style, ${angle.indiceCameraSdxl}, low angle medium shot`));
 
   const corps = construireCorpsRequeteImage({ prompt: 'p', promptCourt: court, references: [], format: '16:9' }, 'lustify-sdxl-v4');
   assert.equal(corps.prompt_sdxl, court);
@@ -411,7 +411,7 @@ test('les modules du serveur d’images suivent le type de scène', () => {
   assert.deepEqual(modulesPourScene(base), MODULES_BASE);
   const combat = { ...base, profil: 'combat' as const, promptSdxl: 'adult woman fighting a rotting ghoul in a crypt' };
   const modules = modulesPourScene(combat);
-  assert.equal(modules.tarantino, 0.6);
+  assert.equal(modules.tarantino, 0.5);
   assert.match(construirePromptSdxl({ ...base, promptSdxl: 'two adults talking' }) ?? '', /Director Quentin Tarantino style/);
   assert.equal(modules.horreur, 0.6);
   assert.match(construirePromptSdxl(combat) ?? '', /Director Quentin Tarantino style/);
