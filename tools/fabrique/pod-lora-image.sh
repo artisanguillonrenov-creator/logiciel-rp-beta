@@ -3,9 +3,12 @@
 # Images : portraits et scènes du dépôt (légendes tirées des noms de fichiers).
 # Résultat : https://<pod>-8080.proxy.runpod.net/$JETON/elyndor-style.safetensors
 set -u
-W=/workspace/style
+W=${STYLE_DIR:-/workspace/style}
+BASE=${LUSTIFY_DIR:-/workspace/lustify}
+LOT=${LOT:-2}
+ACCU=${ACCU:-2}
 mkdir -p "$W/images"
-cd /workspace
+cd "$W"
 SHA=${FABRIQUE_SHA:?}
 RAW=https://raw.githubusercontent.com/artisanguillonrenov-creator/logiciel-rp-beta/$SHA
 python3 -c "import urllib.request,sys;urllib.request.urlretrieve(sys.argv[1],sys.argv[2])" "$RAW/tools/fabrique/serveur_depot.py" serveur_depot.py
@@ -47,14 +50,15 @@ with open(f"{out}/metadata.jsonl", "w") as m:
 print(len(fichiers), "images")
 PY
 etat "téléchargement de Lustify"
-HF_HUB_ENABLE_HF_TRANSFER=1 python3 -c "from huggingface_hub import snapshot_download;snapshot_download('John6666/lustify-sdxl-nsfwsfw-v4-sdxl',local_dir='/workspace/lustify')" >> "$W/install.log" 2>&1
+[ -f "$BASE/model_index.json" ] || HF_HUB_ENABLE_HF_TRANSFER=1 python3 -c "import sys;from huggingface_hub import snapshot_download;snapshot_download('John6666/lustify-sdxl-nsfwsfw-v4-sdxl',local_dir=sys.argv[1])" "$BASE" >> "$W/install.log" 2>&1
 etat "entraînement"
 accelerate launch --mixed_precision=bf16 train.py \
-  --pretrained_model_name_or_path=/workspace/lustify --pretrained_vae_model_name_or_path=madebyollin/sdxl-vae-fp16-fix \
+  --pretrained_model_name_or_path="$BASE" --pretrained_vae_model_name_or_path=madebyollin/sdxl-vae-fp16-fix \
   --train_data_dir="$W/images" --caption_column=text --resolution=1024 --random_flip \
-  --train_batch_size=2 --gradient_accumulation_steps=2 --gradient_checkpointing --max_train_steps=1200 \
+  --train_batch_size=$LOT --gradient_accumulation_steps=$ACCU --gradient_checkpointing --max_train_steps=1200 \
   --learning_rate=1e-4 --lr_scheduler=cosine --lr_warmup_steps=60 --rank=32 --mixed_precision=bf16 \
   --checkpointing_steps=400 --seed=42 --output_dir="$W/sortie" > "$W/train.log" 2>&1 || { etat "ÉCHEC entraînement (train.log)"; sleep infinity; }
 cp "$W/sortie/pytorch_lora_weights.safetensors" "$W/elyndor-style.safetensors"
+[ -n "${MODULES_DIR:-}" ] && cp "$W/elyndor-style.safetensors" "$MODULES_DIR/elyndor.safetensors"
 etat "TERMINÉ"
 sleep infinity
