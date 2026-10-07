@@ -61,7 +61,7 @@ Règles :
 - "promptSdxl" : la MÊME image décrite EN ANGLAIS pour le modèle image (Chroma, encodeur T5), en phrases naturelles, concrètes et précises, 100 à 180 mots, dans cet ordre :
   1. type de plan, angle et objectif (ex. "low angle wide shot, 35mm lens") ;
   2. nombre exact de personnages visibles et place de chacun dans le cadre (gauche, droite, centre, premier plan, arrière-plan) ;
-  3. pour chacun : race, sexe, âge apparent adulte en chiffre (celui que le personnage paraît selon sa fiche, ex. « looks about 50 years old »), carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
+  3. pour chacun : race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20), suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
   4. l'action exacte à cet instant et l'interaction physique entre les personnages (qui touche ou frappe qui, gestes, regards, distance) ;
   5. le décor : lieu, matériaux, objets, figurants en arrière-plan ;
   6. la lumière : sources, couleur, direction, et l'ambiance.
@@ -354,7 +354,7 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
 // forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
 const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Chroma, encodeur T5) qui ne connaît rien de l'histoire et lit bien mieux l'anglais.
 Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases naturelles, concrètes et précises, 100 à 180 mots.
-Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre (celui que le personnage paraît selon sa fiche, ex. « looks about 50 years old »), carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
+Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20), suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
 Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). N'invente rien qui ne soit pas dans la description fournie.`;
 
 const MOTS_MIN_PROMPT_SDXL = 70;

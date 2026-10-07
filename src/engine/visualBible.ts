@@ -291,16 +291,32 @@ const INDICES_CAMERA_ANGLAIS: Record<'autre-cadrage' | 'autre-angle' | 'autre-co
   'autre-composition': ['off-center composition', 'strong foreground framing', 'symmetrical composition', 'rule of thirds'],
 };
 
-// Style Elyndor : image de cinéma façon Quentin Tarantino, photoréaliste,
-// étalonnage chaud et saturé, fort contraste, grain de pellicule.
-const STYLE_SDXL_ELYNDOR = 'cinematic film still, Quentin Tarantino style, dark fantasy, photorealistic, 35mm film grain, saturated warm color grading, high contrast, dramatic chiaroscuro lighting, sharp focus, highly detailed';
-export const STYLE_PORTRAIT_SDXL = 'cinematic portrait, Quentin Tarantino style, dark fantasy, photorealistic skin texture, 35mm film grain, saturated warm color grading, high contrast, dramatic rim lighting, sharp focus, highly detailed';
+// Style Elyndor : image de cinéma photoréaliste, étalonnage chaud et saturé,
+// fort contraste, grain de pellicule. « elyndor style » active le module
+// entraîné sur les portraits et scènes de l'app.
+const STYLE_SDXL_ELYNDOR = 'elyndor style, cinematic film still, dark fantasy, photorealistic, 35mm film grain, saturated warm color grading, high contrast, dramatic chiaroscuro lighting, sharp focus, highly detailed';
+export const STYLE_PORTRAIT_SDXL = 'elyndor style, cinematic portrait, dark fantasy, photorealistic skin texture, 35mm film grain, saturated warm color grading, high contrast, dramatic rim lighting, sharp focus, highly detailed';
 
 /** Prompt court anglais envoyé aux modèles CLIP ; undefined s'il n'existe pas. */
 export function construirePromptSdxl(structure: PromptImageStructure): string | undefined {
   const base = structure.promptSdxl?.trim();
   if (!base) return undefined;
-  return [structure.indiceCameraSdxl, base, STYLE_SDXL_ELYNDOR].filter(Boolean).join(', ');
+  // Mot déclencheur du module Tarantino, appliqué aux combats.
+  const declencheur = structure.profil === 'combat' ? 'Director Quentin Tarantino style' : undefined;
+  return [structure.indiceCameraSdxl, base, declencheur, STYLE_SDXL_ELYNDOR].filter(Boolean).join(', ');
+}
+
+/** Modules LoRA du serveur d'images (Lustify) : réalisme et style Elyndor partout. */
+export const MODULES_BASE: Readonly<Record<string, number>> = { peau: 0.4, peau2: 0.3, details: 0.5, mains: 0.5, elyndor: 1.2 };
+const SCENE_HORREUR = /\b(horror|undead|corpse|zombie|ghoul|crypt|grave|vampire|rotting|skeleton|gore|demon)\b/i;
+
+/** Modules choisis selon le type de scène et le contenu du prompt anglais. */
+export function modulesPourScene(structure: PromptImageStructure): Record<string, number> {
+  const modules: Record<string, number> = { ...MODULES_BASE };
+  if (structure.profil === 'combat') Object.assign(modules, { tarantino: 0.5, cinema: 0.5, grain: 0.3 });
+  else if (structure.profil === 'paysage' || structure.profil === 'decouverte') modules.cinema = 0.5;
+  if (SCENE_HORREUR.test(structure.promptSdxl ?? '')) modules.horreur = 0.6;
+  return modules;
 }
 
 /** Variante de mise en scène pour une régénération : le canon reste identique. */

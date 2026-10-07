@@ -1,0 +1,62 @@
+# Module AGENT (Cortana) — entraînement LoRA (QLoRA) de Cydonia 24B v4.3 (Mistral Small 3.2 24B déjà
+# réentraîné au RP par TheDrummer, sans filtre) pour un registre cru.
+# Données : entrainement.jsonl / test.jsonl envoyés au pod (format
+# « messages », champ training = réponses apprises).
+base_model: TheDrummer/Cydonia-24B-v4.3
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+load_in_4bit: true
+adapter: qlora
+lora_r: 32
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_linear: true
+
+chat_template: tokenizer_default
+datasets:
+  - path: /workspace/fabrique/entrainement.jsonl
+    type: chat_template
+    field_messages: messages
+    message_property_mappings:
+      role: role
+      content: content
+    message_field_training: training
+test_datasets:
+  - path: /workspace/fabrique/test.jsonl
+    type: chat_template
+    split: train
+    field_messages: messages
+    message_property_mappings:
+      role: role
+      content: content
+    message_field_training: training
+dataset_prepared_path: /workspace/fabrique/prepare
+
+# Prompt de l'appli (environ 9 000 jetons) + réponse ; les conversations
+# plus longues sont écartées.
+sequence_len: 12288
+sample_packing: false
+pad_to_sequence_len: false
+
+# Une passe : le corpus est large et la carte (A40) lente.
+num_epochs: 1
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 0.0001
+lr_scheduler: cosine
+warmup_ratio: 0.05
+optimizer: paged_adamw_8bit
+weight_decay: 0.0
+max_grad_norm: 1.0
+
+bf16: auto
+# Attention SDPA de PyTorch : pas de compilation de flash-attn au démarrage.
+flash_attention: false
+sdp_attention: true
+gradient_checkpointing: true
+
+eval_steps: 200
+save_steps: 200
+logging_steps: 5
+output_dir: /workspace/fabrique/sortie-lora

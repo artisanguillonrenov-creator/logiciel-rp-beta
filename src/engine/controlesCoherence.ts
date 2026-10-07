@@ -163,3 +163,23 @@ export function corrigerEtiquettes(reponse: string, nomsConnus: string[]): strin
     return meilleure && meilleurEcart > 0 && meilleurEcart <= Math.min(3, Math.floor(nom.length / 4)) ? `${debut}${meilleure}${fin}` : tout;
   });
 }
+
+const PRONOMS_APRES_TU = new Set(['te', 'la', 'le', 'les', 'lui', 'leur', 'en', 'y', 'ne', 'me', 'se']);
+
+/**
+ * Écho du joueur : la réponse s'ouvre en reformulant ce que le joueur vient
+ * d'écrire (« Je prends une gorgée » → « Tu prends une gorgée… »). Tic
+ * fréquent des modèles de RP, qui allonge la réponse sans rien apporter.
+ * Repéré quand la première phrase commence par « Tu » suivi d'un verbe que le
+ * message du joueur contient déjà.
+ */
+export function trouverEchoDuJoueur(reponse: string, messageJoueur: string): string | undefined {
+  if (!messageJoueur.trim()) return undefined;
+  const premiere = normaliser(reponse.trim().split(/(?<=[.!?])\s|\n/)[0] ?? '').replace(/’/g, "'");
+  const mots = premiere.replace(/^tu\s+/, (m) => m).split(/[\s']+/).filter(Boolean);
+  if (mots[0] !== 'tu' && mots[0] !== 't') return undefined;
+  const verbe = mots.slice(1).find((m) => !PRONOMS_APRES_TU.has(m) && m.length > 2);
+  if (!verbe) return undefined;
+  const racine = verbe.slice(0, Math.min(5, Math.max(4, verbe.length - 2)));
+  return normaliser(messageJoueur).includes(racine) ? verbe : undefined;
+}

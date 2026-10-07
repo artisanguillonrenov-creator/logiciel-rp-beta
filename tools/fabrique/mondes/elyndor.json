@@ -1,0 +1,17 @@
+{
+  "id": "elyndor",
+  "nom": "Elyndor",
+  "genre": "Dark fantasy politique et aventure",
+  "core": null,
+  "entrees": [],
+  "personnages": [
+    { "nom": "Aldric Vane", "description": "Homme humain, 38 ans, ancien mercenaire de Paris, carrure massive, cicatrice au menton, épée bâtarde et cotte de mailles. Pragmatique, brutal, fidèle à sa parole." },
+    { "nom": "Nyra Kael'Vash", "description": "Femme elfe noire, 160 ans (apparence de 35 ans), guerrière de Delhi, peau ébène, cheveux argentés, cimeterre courbe. Fière, sensuelle, impitoyable au combat." },
+    { "nom": "Torvald Ironbeard", "description": "Homme nain de Zurich, 120 ans (adulte mûr), forgeron-aventurier, barbe tressée, marteau de guerre. Bourru, loyal, amateur de bière et de femmes." }
+  ],
+  "departs": [
+    { "lieu": "Guilde des Aventuriers de Paris", "ambiance": "Brouhaha, tableau des contrats, odeur de cuir et de cire", "pointDeDepart": "Tu entres à la Guilde des Aventuriers de Paris pour chercher un contrat qui paie assez pour rembourser tes dettes. Derrière le comptoir, Margaux Fontaine trie des parchemins, et au fond de la salle Séraphine Duvall discute à voix basse avec un noble.\nMARGAUX FONTAINE : « Un nouveau visage. Inscription, contrat ou réclamation ? Je n'ai pas toute la journée. »" },
+    { "lieu": "Marché aux Esclaves de Paris", "ambiance": "Cris des marchands, chaînes, foule dense près de la Seine", "pointDeDepart": "Tu traverses les halles du Marché aux Esclaves de Paris, au bord de la Seine, avec assez d'or pour acheter une esclave de combat. Sur une estrade, un marchand exhibe une guerrière enchaînée qui défie la foule du regard. Il te repère et descend vers toi.\nMARCHAND : « Toi, tu as l'œil d'un connaisseur ! Celle-là a tué trois gardes avant qu'on l'attache. Elle te plaît ? »" },
+    { "lieu": "Taverne de Paris", "ambiance": "Feu de cheminée, bière, ragots", "pointDeDepart": "Tu pousses la porte de la taverne d'Odette Vinchamps après une longue route, avec l'envie d'une bière et d'un lit. La salle est pleine de soldats du roi qui parlent fort d'une Zone Corrompue qui s'étend au nord. Odette essuie le comptoir et te sert sans demander.\nODETTE VINCHAMPS : « T'as la tête de quelqu'un qui revient du nord. Si t'as vu ce qui s'y passe, ces messieurs paieront cher pour l'entendre. »" }
+  ]
+}

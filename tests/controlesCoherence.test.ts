@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ROLES_CANON } from '../src/engine/canonElyndor';
-import { corrigerEtiquettes, trouverGestesDuJoueur, trouverRolesUsurpes, validerRolesCanon } from '../src/engine/controlesCoherence';
+import { corrigerEtiquettes, trouverEchoDuJoueur, trouverGestesDuJoueur, trouverRolesUsurpes, validerRolesCanon } from '../src/engine/controlesCoherence';
 import { determinerStrategie } from '../src/engine/validator';
 import { rolesDeLaVille } from '../src/engine/rolesCanon';
 
@@ -38,4 +38,11 @@ test('un trajet annoncé n’est permis qu’en début de réponse', () => {
   assert.deepEqual(trouverGestesDuJoueur(debut, 'Ok allons à la guilde'), []);
   const loin = `${debut}${'Séraphine parle longuement de la mission. '.repeat(15)}Vous quittez la Guilde, prêts.`;
   assert.deepEqual(trouverGestesDuJoueur(loin, 'Ok allons à la guilde'), ['quittez']);
+});
+
+test('l’écho du joueur en ouverture de réponse est repéré', () => {
+  assert.equal(trouverEchoDuJoueur('Tu prends une gorgée appréciative de ta bière, laissant son goût se répandre.', 'Je prends une gorgée de ma bière pendant qu’elle parle.'), 'prends');
+  assert.equal(trouverEchoDuJoueur('Tu te penches en avant, tes yeux brûlant d’intérêt.', 'Je me penche un peu en avant.'), 'penches');
+  assert.equal(trouverEchoDuJoueur('Althea sourit et repose son verre.', 'Je prends une gorgée de ma bière.'), undefined);
+  assert.equal(trouverEchoDuJoueur('Tu sens le regard du garde peser sur toi.', 'J’entre dans la taverne.'), undefined);
 });

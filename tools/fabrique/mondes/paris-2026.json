@@ -1,0 +1,23 @@
+{
+  "id": "paris-2026",
+  "nom": "Paris Nocturne",
+  "genre": "Thriller contemporain et romance adulte",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nParis, 2026, monde réel et contemporain, sans surnaturel. Le récit se déroule dans les milieux de la nuit parisienne : clubs privés, galeries d'art, hôtels de luxe, police judiciaire, réseaux d'influence.\n\nTECHNOLOGIE\nTechnologie actuelle : smartphones, messageries chiffrées, réseaux sociaux, caméras de surveillance, voitures, métro, cartes bancaires. Les armes à feu sont rares et illégales ; une bagarre finit plus souvent à l'hôpital qu'à la morgue.\n\nPOUVOIRS\nLe club privé « Le Cercle Saphir » réunit l'élite (politiques, industriels, artistes) et cache un réseau de chantage par vidéos compromettantes. La brigade criminelle du 36 enquête. Les tabloïds paient cher les scandales.\n\nMONNAIE\nEuros. Un cocktail au Saphir : 40 €. Une chambre au Palace Vendôme : 1 200 € la nuit.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Le Cercle Saphir", "contenu": "Club privé dans un hôtel particulier du 8e arrondissement. Accès par cooptation, masques vénitiens les soirs de « bal », salons privés à l'étage, caméras cachées dans les miroirs. Dirigé par Hélène de Vaucresson." },
+    { "titre": "PNJ — Hélène de Vaucresson", "contenu": "Hélène de Vaucresson : 49 ans, directrice du Cercle Saphir, tailleur Chanel noir, chignon blond platine, voix douce et sourire implacable. Détient des secrets sur la moitié du gouvernement." },
+    { "titre": "PNJ — Commandante Inès Benali", "contenu": "Inès Benali : 41 ans, commandante à la brigade criminelle, cheveux bruns attachés, blouson en cuir, regard qui ne lâche rien. Enquête sur la mort suspecte d'un député qui fréquentait le Saphir." },
+    { "titre": "PNJ — Lucas Morel", "contenu": "Lucas Morel : 33 ans, photographe paparazzi, barbe négligée, appareil toujours en bandoulière, scooter rayé. Vend n'importe quoi au plus offrant, mais a un code : jamais de mineurs, jamais de victimes." },
+    { "titre": "Galerie Aubry, Marais", "contenu": "Galerie d'art contemporain du Marais, vernissages mondains le jeudi. Sert de façade au blanchiment d'argent du Saphir. La galeriste, Chloé Aubry (35 ans, robe rouge, rire nerveux), est terrifiée." },
+    { "titre": "Le Palace Vendôme", "contenu": "Hôtel de luxe place Vendôme. Les suites du 6e étage sont louées à l'année par des clients du Saphir. Le concierge, Bertrand (60 ans), sait tout et se tait contre pourboire." }
+  ],
+  "personnages": [
+    { "nom": "Alexandre Roy", "description": "Homme, 36 ans, ancien flic devenu détective privé pour une agence de luxe. Costume sombre, montre d'occasion, charme fatigué. Discret et obstiné." },
+    { "nom": "Camille Lenoir", "description": "Femme, 31 ans, journaliste d'investigation indépendante. Trench beige, carnet et dictaphone, insolente, prête à tout pour un scoop." },
+    { "nom": "Julien Castel", "description": "Homme, 40 ans, avocat pénaliste brillant et séduisant, endetté au jeu, client du Saphir malgré lui." }
+  ],
+  "departs": [
+    { "lieu": "Soirée masquée au Cercle Saphir", "ambiance": "Champagne, masques vénitiens, musique feutrée", "pointDeDepart": "Grâce à une invitation volée, tu entres au bal masqué du Cercle Saphir pour retrouver la trace d'un député mort la semaine dernière. Sous les lustres, les invités masqués se frôlent. Une femme en tailleur noir, sans masque, s'approche avec deux coupes de champagne.\nHÉLÈNE DE VAUCRESSON : « Je connais chaque visage sous chaque masque, ce soir. Sauf le vôtre. Qui vous a invité ? »" },
+    { "lieu": "Bar de l'hôtel Palace Vendôme", "ambiance": "Velours, jazz discret, regards en coin", "pointDeDepart": "Tu attends un informateur au bar du Palace Vendôme depuis une heure. Il ne viendra pas. À la place, une femme en blouson de cuir s'assoit sur le tabouret voisin et pose une carte de police sur le comptoir.\nINÈS BENALI : « Votre informateur a été retrouvé dans la Seine il y a deux heures. Vous allez me dire ce qu'il comptait vous vendre. »" }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "mer-des-caraibes",
+  "nom": "La Mer des Lames",
+  "genre": "Piraterie",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nMer des Caraïbes, 1715. L'âge d'or de la piraterie. Nassau est une république de pirates ; l'Espagne, l'Angleterre et la France se disputent les îles et l'or des galions. Pas de surnaturel, seulement des superstitions de marins.\n\nTECHNOLOGIE\nNavires à voiles (sloops, brigantins, frégates, galions), canons, pistolets à silex, sabres d'abordage, mousquets, longues-vues. Une pistole ne tire qu'un coup avant d'être rechargée.\n\nPOUVOIRS\nLe Code des pirates (partage égal du butin, vote du capitaine, châtiment du traître) règne à Nassau. Le gouverneur espagnol de La Havane, Don Alvaro de Mendoza, a mis la tête des capitaines à prix. La Royal Navy prépare une flotte pour reprendre Nassau.\n\nMONNAIE\nPièces de huit espagnoles, doublons d'or, rhum et poudre comme monnaie d'échange.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Nassau", "contenu": "Port pirate de New Providence : épaves échouées, tavernes en planches, tentes, marché du butin sur la plage, fort délabré. Pas de loi sauf le Code et le conseil des capitaines." },
+    { "titre": "Taverne de la Sirène Borgne", "contenu": "Taverne principale de Nassau, sur pilotis. Rhum coupé à l'eau de mer, combats de coqs, chambres à l'étage. Tenue par Anne « La Borgne » Kerrigan." },
+    { "titre": "PNJ — Anne Kerrigan", "contenu": "Anne Kerrigan dite La Borgne : 42 ans, ancienne pirate irlandaise, cache-œil en cuir, cheveux roux tressés, bras tatoués, pistolet toujours à la ceinture. Tient la Sirène Borgne, vend des informations sur les navires marchands." },
+    { "titre": "PNJ — Capitaine Isabeau Duval", "contenu": "Isabeau Duval : 34 ans, capitaine française du brigantin « La Veuve Noire », redingote bordeaux, tricorne à plume, rapière, peau hâlée, sourire carnassier. Ambitieuse, cherche un équipage pour attaquer un galion espagnol." },
+    { "titre": "Code des pirates", "contenu": "Chaque homme a une voix au vote ; le capitaine est élu et peut être destitué ; le butin est partagé (deux parts pour le capitaine, une et demie pour le quartier-maître) ; le vol entre frères se paie par le marronnage sur un îlot désert." },
+    { "titre": "Don Alvaro de Mendoza", "contenu": "Gouverneur espagnol de La Havane, 55 ans, perruque poudrée, cruel et dévot. Paie 500 pièces de huit par tête de capitaine pirate." }
+  ],
+  "personnages": [
+    { "nom": "Thomas Blackwood", "description": "Homme, 35 ans, ancien officier de la Royal Navy passé pirate après une mutinerie. Redingote bleue délavée, sabre d'officier, cicatrice de fouet dans le dos." },
+    { "nom": "Marisol Reyes", "description": "Femme, 29 ans, navigatrice espagnole en fuite, chemise ample, pistolets croisés, connaît les routes des galions." },
+    { "nom": "Jean-Baptiste Lafleur", "description": "Homme, 38 ans, chirurgien de bord et tricheur aux dés. Gilet brodé taché, trousse de scalpels, humour noir." }
+  ],
+  "departs": [
+    { "lieu": "Taverne de la Sirène Borgne, Nassau", "ambiance": "Rhum, sueur, chants de marins, bagarre imminente", "pointDeDepart": "Tu débarques à Nassau sans navire et presque sans argent, décidé à trouver un équipage. La Sirène Borgne est pleine à craquer. Une capitaine en redingote bordeaux monte sur une table et le silence se fait.\nISABEAU DUVAL : « Je cherche des hommes qui n'ont pas peur de l'or espagnol ! Toi, au fond — oui, toi. Tu as une tête à savoir te battre. Approche. »" },
+    { "lieu": "Pont d'un navire marchand capturé", "ambiance": "Fumée de canon, cris, sang sur le pont", "pointDeDepart": "L'abordage est terminé : le navire marchand anglais est pris. Sur le pont jonché de cordages, les prisonniers sont alignés. Le quartier-maître te tend un pistolet et désigne un officier anglais à genoux.\nQUARTIER-MAÎTRE : « Le capitaine dit que c'est toi qui décides. Celui-là a tué deux des nôtres. On le pend, ou on le garde pour la rançon ? »" }
+  ]
+}

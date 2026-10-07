@@ -1,0 +1,24 @@
+{
+  "id": "ravenmoor",
+  "nom": "Ravenmoor",
+  "genre": "Horreur gothique",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nAngleterre, automne 1891. Ravenmoor est un bourg isolé des landes du Yorkshire, dominé par le manoir des Ashcombe. Le surnaturel existe mais reste caché, rare et terrifiant : la plupart des gens n'y croient pas.\n\nTECHNOLOGIE\nÉpoque victorienne : lampes à pétrole et à gaz, chemin de fer (gare à 10 miles), télégraphe au bureau de poste, revolvers, fusils de chasse, médecine rudimentaire, laudanum. Pas d'électricité dans le bourg.\n\nSURNATUREL\nUne lignée de goules vit sous le cimetière ; la comtesse Ashcombe a fait un pacte avec une entité ancienne (« Celui qui attend sous la lande ») ; les morts du marais reviennent parfois les nuits de brouillard. Le surnaturel obéit à des règles : le fer froid blesse les goules, le sel arrête les revenants, l'entité exige un sacrifice à chaque nouvelle lune.\n\nMONNAIE\nLivres, shillings, pence.\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Manoir Ashcombe", "contenu": "Manoir élisabéthain noirci par le temps, sur la colline au-dessus du bourg. Domestiques silencieux, portraits aux yeux grattés, aile est condamnée. On entend la nuit des chants venant des caves." },
+    { "titre": "PNJ — Comtesse Eleanor Ashcombe", "contenu": "Eleanor Ashcombe : 46 ans, veuve, beauté glaciale, robe de deuil en soie noire, collier de jais, cheveux noirs striés de blanc. Courtoise, cultivée, d'une sensualité inquiétante. Liée par pacte à l'entité de la lande." },
+    { "titre": "L'auberge du Corbeau Pendu", "contenu": "Seule auberge de Ravenmoor : poutres basses, feu de tourbe, bière tiède, chambres froides à l'étage. Les villageois s'y taisent quand un étranger entre." },
+    { "titre": "PNJ — Martha Greaves", "contenu": "Martha Greaves : 52 ans, aubergiste du Corbeau Pendu, carrure de lavandière, tablier taché, regard méfiant. A perdu sa fille il y a deux ans dans le brouillard. Sait des choses qu'elle ne dit pas." },
+    { "titre": "PNJ — Révérend Josiah Crane", "contenu": "Josiah Crane : 60 ans, pasteur de Ravenmoor, maigre, soutane élimée, mains tremblantes. Il sait pour les goules et nourrit le cimetière en secret pour protéger le bourg. Rongé par la culpabilité et le gin." },
+    { "titre": "Le cimetière et les goules", "contenu": "Cimetière derrière l'église : tombes effondrées, ifs centenaires. Des tunnels mènent aux galeries des goules — humanoïdes pâles, aveugles, à l'odorat redoutable. Elles craignent le fer froid et la lumière vive." },
+    { "titre": "Le marais de Blackfen", "contenu": "Marais à l'est du bourg. Les nuits de brouillard, les noyés en remontent et appellent les vivants par leur nom. Le sel tracé en cercle les arrête." }
+  ],
+  "personnages": [
+    { "nom": "Edmund Hale", "description": "Homme, 35 ans, inspecteur de Scotland Yard envoyé enquêter sur des disparitions. Manteau de tweed, revolver Webley, esprit rationnel qui va être mis à l'épreuve." },
+    { "nom": "Clara Whitlock", "description": "Femme, 30 ans, médecin formée à Édimbourg, venue reprendre le cabinet du bourg. Robe sombre pratique, sacoche médicale, curiosité scientifique." },
+    { "nom": "Silas Graves", "description": "Homme, 42 ans, chasseur d'occultes discret. Long manteau, cicatrices de griffes, poignard en fer froid, flasque de sel béni." }
+  ],
+  "departs": [
+    { "lieu": "L'auberge du Corbeau Pendu", "ambiance": "Brouillard, feu de tourbe, silence hostile", "pointDeDepart": "Tu arrives à Ravenmoor à la tombée de la nuit, après dix miles de lande sous la bruine, pour enquêter sur trois disparitions. Dans la salle du Corbeau Pendu, les conversations s'arrêtent net. Martha Greaves pose bruyamment une chope devant toi.\nMARTHA GREAVES : « Les chambres sont à deux shillings. Et quoi que vous entendiez cette nuit, vous n'ouvrez pas la fenêtre. »" },
+    { "lieu": "Salon du manoir Ashcombe", "ambiance": "Bougies, velours noir, horloge qui ne marche pas", "pointDeDepart": "Une invitation cachetée de cire noire t'a conduit au manoir Ashcombe. Un majordome muet te fait entrer dans un salon éclairé à la bougie, où la comtesse t'attend près du feu, un verre de porto à la main.\nCOMTESSE ASHCOMBE : « Vous êtes venu. Les étrangers sont si rares, ici… et si peu restent assez longtemps pour devenir intéressants. »" }
+  ]
+}

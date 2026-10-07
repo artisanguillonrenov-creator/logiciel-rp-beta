@@ -205,6 +205,10 @@ export interface ContexteConstruction {
   ficheScene?: string;
   // Consigne machine ajoutée juste après les règles (noyau narratif V12).
   directiveEtat?: string;
+  // Autre monde qu'Elyndor (mondes.ts prévoit d'en accueillir) : son canon
+  // garanti et le titre de son bloc de lore. Absents : Elyndor.
+  loreCore?: string;
+  titreLore?: string;
 }
 
 export interface OptionsPrompt {
@@ -219,7 +223,7 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
   // Rien de variable ne doit s'y glisser.
   const prefixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
-${LORE_CORE}
+${ctx.loreCore ?? LORE_CORE}
 
 ${IDENTITE_NARRATIVE}
 
@@ -265,7 +269,7 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   // (passages choisis par passagesLore.ts) et l'histoire (mémoire narrative
   // puis moments anciens retrouvés). Fenêtre étroite : parts réduites.
   const partRecherche = Math.min(BUDGET_LORE_PASSAGES, Math.floor(budget * 0.15));
-  const lore = formaterLore(ctx.loreElyndor, 'LORE ELYNDOR PERTINENT', partRecherche + 300, partRecherche);
+  const lore = formaterLore(ctx.loreElyndor, ctx.titreLore ?? 'LORE ELYNDOR PERTINENT', partRecherche + 300, partRecherche);
   const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(partRecherche * 0.4));
   const blocs = ctx.blocsContexte
     ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.max(0, partRecherche - souvenirs.length))}`

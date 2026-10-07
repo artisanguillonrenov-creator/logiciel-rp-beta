@@ -1,0 +1,23 @@
+{
+  "id": "skjaldheim",
+  "nom": "Skjaldheim",
+  "genre": "Fantasy nordique",
+  "core": "[LORE CORE — CANON GARANTI]\n\nIDENTITÉ\nSkjaldheim est un archipel glacé inspiré de la Scandinavie mythique. Clans de guerriers, jarls rivaux, dieux qui se manifestent rarement et toujours à un prix. Les hivers durent six mois.\n\nTECHNOLOGIE\nÂge du fer : drakkars, haches, épées, boucliers ronds, arcs, cottes de mailles pour les riches. Aucune poudre à canon. Runes gravées pour la magie.\n\nMAGIE\nLa magie runique (seiðr) est pratiquée par les völvas, presque toujours des femmes. Une rune puissante coûte du sang et des souvenirs. Les géants des glaces (jötnar) vivent au nord ; les draugar (morts-vivants) gardent les tertres funéraires.\n\nPOUVOIRS\nLe Jarl Ulfhrafn tient Hvítafjörðr, la plus grande ville. La reine-völva Sigrún du clan Ormr menace de s'emparer de l'île sud. Les clans se réunissent au Thing chaque été pour régler les différends.\n\nMONNAIE\nArgent pesé (hacksilver), anneaux de bras, fourrures, esclaves (thralls).\n\nÂGE\nTous les personnages sont des adultes.",
+  "entrees": [
+    { "titre": "Hvítafjörðr", "contenu": "Ville portuaire au fond d'un fjord : longues maisons de bois au toit de tourbe, halle du jarl, port à drakkars, marché aux thralls, forge de Hallveig. Odeur de poisson séché, de fumée et de goudron." },
+    { "titre": "PNJ — Jarl Ulfhrafn", "contenu": "Ulfhrafn : 52 ans, jarl de Hvítafjörðr, barbe grise tressée, cicatrice en travers de l'œil, manteau de loup, anneaux d'or aux bras. Rusé, généreux avec les braves, impitoyable avec les parjures." },
+    { "titre": "PNJ — Hallveig la Forgeronne", "contenu": "Hallveig : 38 ans, forgeronne de Hvítafjörðr, épaules larges, bras couverts de brûlures, tablier de cuir, cheveux blonds rasés sur les côtés. Rire tonitruant, forge les meilleures haches de l'archipel." },
+    { "titre": "PNJ — Sigrún du clan Ormr", "contenu": "Sigrún : 45 ans, reine-völva du clan Ormr, cheveux noirs jusqu'aux reins, yeux pâles, peau tatouée de runes, manteau de plumes de corbeau. Puissante, patiente, cruelle." },
+    { "titre": "La halle du jarl", "contenu": "Grande halle de Hvítafjörðr : feu central, bancs de chêne, boucliers aux murs, cornes d'hydromel. Les skaldes y chantent les exploits. Tirer une arme dans la halle est puni de mort." },
+    { "titre": "Les tertres et les draugar", "contenu": "Tertres funéraires sur les falaises. Les draugar y gardent l'or des morts : peau bleue, force de trois hommes, insensibles au froid. Le fer runique ou le feu les détruit." }
+  ],
+  "personnages": [
+    { "nom": "Bjorn Eiriksson", "description": "Homme, 33 ans, guerrier exilé de son clan pour un meurtre qu'il n'a pas commis. Hache à deux mains, barbe rousse, tatouages de loup. Fier et colérique." },
+    { "nom": "Astrid Haldorsdóttir", "description": "Femme, 28 ans, skjaldmær (guerrière au bouclier), tresses blondes, bouclier peint d'un serpent, lance. Ambitieuse, veut son propre drakkar." },
+    { "nom": "Kári le Marchand", "description": "Homme, 41 ans, marchand-voyageur venu du sud, manteau de laine teinte, balance à argent, langue bien pendue. Plus dangereux qu'il n'en a l'air." }
+  ],
+  "departs": [
+    { "lieu": "La halle du jarl Ulfhrafn, Hvítafjörðr", "ambiance": "Feu, hydromel, chants de skalde, tension entre clans", "pointDeDepart": "Tu arrives à Hvítafjörðr au cœur de l'hiver et demandes l'hospitalité à la halle du jarl. Les guerriers se taisent en te voyant entrer, la neige encore sur les épaules. Sur son haut-siège, le jarl lève sa corne vers toi.\nJARL ULFHRAFN : « Un étranger qui marche seul dans la tempête est soit un héros, soit un fugitif. Lequel es-tu ? »" },
+    { "lieu": "Forge de Hallveig", "ambiance": "Coups de marteau, chaleur, étincelles", "pointDeDepart": "Ta hache s'est brisée sur le crâne d'un draugr, et tu viens la faire reforger. Dans la forge brûlante, une femme aux bras couverts de brûlures pose son marteau et examine ta lame cassée.\nHALLVEIG : « Par Thor, qu'est-ce qui a fait ça ? Ce n'est pas un os d'homme qui casse une lame pareille. Raconte. »" }
+  ]
+}
