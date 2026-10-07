@@ -1,4 +1,4 @@
-"""Serveur d'images Elyndor Cloud (Chroma1-HD, base Flux, sans filtre).
+"""Serveur d'images Elyndor Cloud (Lustify SDXL v4 + modules LoRA).
 
 Contrat attendu par l'app (src/engine/elyndorCloudImages.ts) :
 POST /v1/images/generations
@@ -7,22 +7,34 @@ POST /v1/images/generations
 → {created, data: [{b64_json}]}
 
 `prompt_sdxl` (anglais, court, rédigé par le modèle narratif) est
-prioritaire : l'encodeur T5 de Chroma comprend bien mieux l'anglais que le
-français. Sinon le prompt complet est utilisé (512 jetons T5 au plus).
+prioritaire : le CLIP de SDXL est limité à 77 jetons et comprend mal le
+français. Sinon le prompt complet est encodé par morceaux via compel.
 
-`reference_images` est accepté mais ignoré : IP-Adapter n'existe pas pour
-Chroma. Les traits de race passent par le texte du prompt.
+`reference_images` : [{role: "personnage"|"scene"|"race", image: data URL}] (une
+chaîne seule vaut « personnage »). Deux IP-Adapter SDXL les exploitent :
+« plus-face » pour le visage du personnage principal, « plus » à faible poids
+pour la continuité du décor, de la lumière et de l'ambiance.
 
 POST /v1/embeddings (contrat OpenAI) : bge-m3 sur le CPU du pod, vecteurs
 normalisés de 1024 dimensions pour l'index HNSW ObjectBox de l'app. Le CPU
-laisse la mémoire vidéo au narrateur et à Chroma.
+laisse la mémoire vidéo au narrateur et à SDXL.
+
+Modules (LoRA SDXL) : tous les .safetensors de models/image/modules sont
+chargés au démarrage, nommés d'après leur fichier. `modules` dans la requête
+({"peau": 0.5, "tarantino": 0.6}) choisit lesquels appliquer et leur poids ;
+sans ce champ, ELYNDOR_IMAGE_MODULES (« peau=0.4,details=0.5 ») s'applique.
+Un module illisible (autre architecture) est ignoré sans bloquer le serveur.
+L'embedding négatif unaestheticXL (models/image/modules/negatif/*.pt) est
+ajouté au négatif s'il est présent.
 """
 import base64, ctypes, gc, hashlib, io, os, pathlib, sqlite3, threading, time
 
 import numpy as np
+from PIL import Image
 
 import torch
-from diffusers import ChromaPipeline
+from compel import Compel, ReturnedEmbeddingsType
+from diffusers import EulerAncestralDiscreteScheduler, StableDiffusionXLPipeline
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -31,15 +43,74 @@ from pydantic import BaseModel
 RACINE = os.environ.get("ELYNDOR_ROOT", "/workspace/elyndor")
 # Horodatage de la dernière requête : lu par watchdog.sh pour arrêter le pod inactif.
 ACTIVITE = pathlib.Path(os.environ.get("ELYNDOR_ACTIVITE", "/tmp/elyndor-activite"))
-MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/chroma1-hd"))
-MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "chroma1-hd")
-PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "40"))
-GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "3.0"))
+MODELE_DIR = os.environ.get("ELYNDOR_IMAGE_DIR", os.path.join(RACINE, "models/image/lustify-v4"))
+MODELE_ID = os.environ.get("ELYNDOR_IMAGE_MODELE", "lustify-sdxl-v4")
+PAS = int(os.environ.get("ELYNDOR_IMAGE_STEPS", "30"))
+GUIDANCE = float(os.environ.get("ELYNDOR_IMAGE_CFG", "5.5"))
 EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "models/bge-m3"))
 EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
-NEGATIF_BASE = "low quality, ugly, unfinished, out of focus, deformed, disfigure, blurry, smudged, restricted palette, flat colors, text, logo, watermark, signature, extra limbs, extra fingers, deformed hands, bad anatomy, child, minor, underage"
+IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", os.path.join(RACINE, "models/ip-adapter"))
+POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
+POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
+# Portrait prédéfini de la race : allure (peau, cheveux, parure), pas le visage.
+POIDS_RACE = float(os.environ.get("ELYNDOR_IP_RACE", "0.5"))
+MODULES_DIR = os.environ.get("ELYNDOR_IMAGE_MODULES_DIR", os.path.join(RACINE, "models/image/modules"))
+MODULES_DEFAUT = os.environ.get("ELYNDOR_IMAGE_MODULES", "")
+NEGATIF_BASE = "text, logo, watermark, signature, duplicate, extra limbs, extra fingers, deformed hands, deformed face, bad anatomy, blurry, lowres, child, minor, underage"
 
-pipe = ChromaPipeline.from_pretrained(MODELE_DIR, torch_dtype=torch.bfloat16)
+pipe = StableDiffusionXLPipeline.from_pretrained(MODELE_DIR, torch_dtype=torch.float16, use_safetensors=True)
+# DPM++ Karras plante avec la config de ce checkpoint (IndexError sur sigmas) :
+# Euler a, recommandé aussi pour Lustify, est stable.
+pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
+# Ordre des adaptateurs : [scène (général), visage]. Chargés avant le
+# déchargement CPU pour que l'encodeur d'image soit géré comme le reste.
+IP_ADAPTER = os.path.isdir(os.path.join(IP_ADAPTER_DIR, "sdxl_models"))
+if IP_ADAPTER:
+    pipe.load_ip_adapter(
+        IP_ADAPTER_DIR,
+        subfolder="sdxl_models",
+        weight_name=["ip-adapter-plus_sdxl_vit-h.safetensors", "ip-adapter-plus-face_sdxl_vit-h.safetensors"],
+        image_encoder_folder="models/image_encoder",
+        torch_dtype=torch.float16,
+    )
+VIDE = Image.new("RGB", (224, 224))
+
+MODULES: list[str] = []
+for fichier in sorted(pathlib.Path(MODULES_DIR).glob("*.safetensors")):
+    try:
+        pipe.load_lora_weights(str(fichier.parent), weight_name=fichier.name, adapter_name=fichier.stem)
+        MODULES.append(fichier.stem)
+    except Exception as erreur:
+        print("module ignoré :", fichier.name, erreur)
+print("modules chargés :", MODULES)
+JETON_NEGATIF = None
+for fichier in sorted(pathlib.Path(MODULES_DIR, "negatif").glob("*.pt"))[:1]:
+    try:
+        etat = torch.load(fichier, map_location="cpu")
+        pipe.load_textual_inversion(etat["clip_g"], token="unaestheticxl", text_encoder=pipe.text_encoder_2, tokenizer=pipe.tokenizer_2)
+        pipe.load_textual_inversion(etat["clip_l"], token="unaestheticxl", text_encoder=pipe.text_encoder, tokenizer=pipe.tokenizer)
+        JETON_NEGATIF = "unaestheticxl"
+    except Exception as erreur:
+        print("embedding négatif ignoré :", erreur)
+
+
+def lire_modules(texte: str) -> dict[str, float]:
+    poids = {}
+    for morceau in texte.split(","):
+        nom, _, valeur = morceau.partition("=")
+        if nom.strip():
+            poids[nom.strip()] = float(valeur or 1.0)
+    return poids
+
+
+def appliquer_modules(demandes: dict[str, float] | None) -> dict[str, float]:
+    choisis = {n: p for n, p in (demandes if demandes is not None else lire_modules(MODULES_DEFAUT)).items() if n in MODULES and p}
+    if choisis:
+        pipe.enable_lora()
+        pipe.set_adapters(list(choisis), adapter_weights=list(choisis.values()))
+    elif MODULES:
+        pipe.disable_lora()
+    return choisis
 
 # Embeddings : chargés à part, pour qu'un échec ne bloque jamais les images.
 encodeur = None
@@ -52,28 +123,37 @@ try:
 except Exception as erreur:  # le service d'images reste disponible
     print("embeddings indisponibles :", erreur)
 verrou_embeddings = threading.Lock()
-# Cache persistant (volume réseau) : le lore Elyndor coûte plusieurs minutes
-# de CPU ; un texte déjà vu revient instantanément, même si l'app a perdu son
-# propre cache.
+# Cache persistant (volume réseau) : le lore Elyndor (~265 entrées) coûte
+# 2 à 3 minutes de CPU ; un texte déjà vu revient instantanément, même si
+# l'app a perdu son propre cache.
 os.makedirs(os.path.join(RACINE, "cache"), exist_ok=True)
 cache_embeddings = sqlite3.connect(os.path.join(RACINE, "cache", f"embeddings-{EMBEDDINGS_ID}.sqlite"), check_same_thread=False)
 cache_embeddings.execute("CREATE TABLE IF NOT EXISTS vecteurs (cle TEXT PRIMARY KEY, vecteur BLOB NOT NULL)")
-# Le narrateur 70B occupe ~47 Go du GPU. Par défaut (« aucun »), Chroma reste
-# entier sur le GPU (~27 Go, H100 80 Go) : ~25 s par image au lieu de ~90 s.
-# Repli sur le déchargement si la mémoire manque. « modele » ne monte
-# l'encodeur T5, le transformer et le VAE qu'à leur passage (petites cartes).
+# Le narrateur occupe une grande partie du GPU : chaque sous-modèle (encodeurs, UNet, VAE)
+# n'est monté en mémoire vidéo que pendant son passage, puis rendu au CPU.
+# « modele » : chaque sous-modèle n'est monté qu'à son passage (petites
+# cartes). Par défaut SDXL (~8 Go) reste entier sur le GPU à côté du narrateur.
 DECHARGEMENT = os.environ.get("ELYNDOR_IMAGE_DECHARGEMENT", "aucun")
 if DECHARGEMENT == "aucun":
     try:
         pipe.to("cuda")
     except torch.cuda.OutOfMemoryError:
-        print("mémoire vidéo insuffisante : retour au déchargement CPU")
         pipe.to("cpu")
         torch.cuda.empty_cache()
         DECHARGEMENT = "modele"
 if DECHARGEMENT != "aucun":
     pipe.enable_model_cpu_offload()
 pipe.vae.enable_tiling()
+compel = Compel(
+    tokenizer=[pipe.tokenizer, pipe.tokenizer_2],
+    text_encoder=[pipe.text_encoder, pipe.text_encoder_2],
+    returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+    requires_pooled=[False, True],
+    truncate_long_prompts=False,
+    # Avec le déchargement CPU, les encodeurs « vivent » sur le CPU : les
+    # jetons doivent quand même partir sur le GPU où les hooks les exécutent.
+    device="cuda",
+)
 verrou = threading.Lock()
 
 try:
@@ -85,8 +165,8 @@ except OSError:
 def rendre_memoire() -> None:
     """Rend au système la mémoire libérée après une génération.
 
-    Avec le déchargement CPU, chaque image fait transiter transformer, VAE
-    et encodeur entre CPU et GPU : la mémoire libérée restait réservée par
+    Avec le déchargement CPU, chaque image fait transiter UNet, VAE et
+    encodeurs entre CPU et GPU : la mémoire libérée restait réservée par
     l'allocateur (~10 Go de plus par image), jusqu'à la limite de 50 Go du
     pod, où le serveur était tué (erreur 502 dans l'app).
     """
@@ -120,6 +200,9 @@ class Requete(BaseModel):
     reference_images: list[str | dict] | None = None
     seed: int | None = None
     poids_race: float | None = None
+    modules: dict[str, float] | None = None
+    steps: int | None = None
+    guidance: float | None = None
 
 
 def dimensions(taille: str) -> tuple[int, int]:
@@ -130,6 +213,51 @@ def dimensions(taille: str) -> tuple[int, int]:
     if not (512 <= l <= 1536 and 512 <= h <= 1536):
         raise HTTPException(400, "size hors limites (512-1536)")
     return l - l % 8, h - h % 8
+
+
+def lire_image(data_url: str) -> Image.Image | None:
+    try:
+        brut = data_url.split(",", 1)[1] if data_url.startswith("data:") else data_url
+        return Image.open(io.BytesIO(base64.b64decode(brut))).convert("RGB")
+    except Exception:
+        return None
+
+
+def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None, Image.Image | None]:
+    """Première référence de personnage (visage), de scène et de race."""
+    visage = scene = race = None
+    for ref in req.reference_images or []:
+        role, image = ("personnage", ref) if isinstance(ref, str) else (ref.get("role"), ref.get("image", ""))
+        if not isinstance(image, str):
+            continue
+        if role == "scene" and scene is None:
+            scene = lire_image(image)
+        elif role == "race" and race is None:
+            race = lire_image(image)
+        elif role != "scene" and visage is None:
+            visage = lire_image(image)
+    return visage, scene, race
+
+
+def egaliser_longueurs(a: torch.Tensor, b: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Complète le conditionnement le plus court par des blocs de 77 jetons vides.
+
+    Remplace compel.pad_conditioning_tensors_to_same_length, qui plante en
+    2.4 avec les deux encodeurs de SDXL (« no attribute empty_z ») dès qu'un
+    prompt dépasse 77 jetons.
+    """
+    if a.shape[1] == b.shape[1]:
+        return a, b
+    vide, _ = compel("")
+    vide = vide.to(a.device, a.dtype)
+
+    def completer(t: torch.Tensor, longueur: int) -> torch.Tensor:
+        while t.shape[1] < longueur:
+            t = torch.cat([t, vide[:, : longueur - t.shape[1]]], dim=1)
+        return t
+
+    longueur = max(a.shape[1], b.shape[1])
+    return completer(a, longueur), completer(b, longueur)
 
 
 @app.get("/v1/models")
@@ -173,21 +301,38 @@ def embeddings(req: RequeteEmbeddings):
 
 @app.get("/health")
 def sante():
-    return {"status": "ok", "modele": MODELE_ID, "dechargement": DECHARGEMENT, "pas": PAS, "cfg": GUIDANCE, "embeddings": encodeur is not None}
+    return {"status": "ok", "ip_adapter": IP_ADAPTER, "embeddings": encodeur is not None,
+            "modules": MODULES, "negatif": JETON_NEGATIF is not None}
 
 
 @app.post("/v1/images/generations")
 def generer(req: Requete):
     largeur, hauteur = dimensions(req.size)
     positif = (req.prompt_sdxl or req.prompt).strip()
-    negatif = ", ".join(x for x in [req.negative_prompt, NEGATIF_BASE] if x)
+    negatif = ", ".join(x for x in [JETON_NEGATIF, req.negative_prompt, NEGATIF_BASE] if x)
     with verrou:
         try:
+            appliquer_modules(req.modules)
+            cond, pooled = compel(positif)
+            ncond, npooled = compel(negatif)
+            cond, ncond = egaliser_longueurs(cond, ncond)
             graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
+            options = {}
+            if IP_ADAPTER:
+                visage, scene, race = references(req)
+                # L'adaptateur général sert la scène précédente, ou à défaut le
+                # portrait de race (portraits de PNJ, qui n'ont pas de scène).
+                general = scene or race
+                poids_race = req.poids_race if req.poids_race is not None else POIDS_RACE
+                poids_general = POIDS_SCENE if scene else poids_race if race else 0.0
+                pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visage else 0.0])
+                options["ip_adapter_image"] = [general or VIDE, visage or VIDE]
             image = pipe(
-                prompt=positif, negative_prompt=negatif,
-                width=largeur, height=hauteur, num_inference_steps=PAS, guidance_scale=GUIDANCE,
-                generator=torch.Generator("cpu").manual_seed(graine),
+                prompt_embeds=cond, pooled_prompt_embeds=pooled,
+                negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,
+                width=largeur, height=hauteur, num_inference_steps=min(req.steps or PAS, 80), guidance_scale=req.guidance or GUIDANCE,
+                generator=torch.Generator("cuda").manual_seed(graine),
+                **options,
             ).images[0]
         finally:
             # Aussi après une erreur (OOM CUDA récupérable…) : sinon la mémoire

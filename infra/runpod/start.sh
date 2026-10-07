@@ -1,7 +1,7 @@
 #!/bin/bash
 # Démarre les deux serveurs Elyndor Cloud sur le pod (H100 80 Go) :
 # - narration : llama.cpp + L3.3 Euryale 70B v2.3 Q4_K_M, port 8000 (API OpenAI /v1/chat/completions)
-# - images    : Chroma1-HD (diffusers), port 7860 (/v1/images/generations, /v1/embeddings)
+# - images    : Lustify SDXL v4 + modules LoRA (diffusers), port 7860 (/v1/images/generations, /v1/embeddings)
 # Idempotent : arrête les instances en cours avant de relancer.
 set -u
 RACINE=${ELYNDOR_ROOT:-/workspace/elyndor}
