@@ -26,3 +26,16 @@ test('un PNJ fixé cité par son nom est repéré, une simple remarque n’est p
   assert.equal(i.pnjCites[0]?.nom, 'Séraphine Duvall');
   assert.equal(analyserIntention('La guilde me doit encore de l’argent', ROLES).deplacement, false);
 });
+
+test('la requête d’ouverture du Marché aux Esclaves ne convoque pas la Guilde des Aventuriers', () => {
+  const requete = [
+    "[RECHERCHE D'OUVERTURE — PRIORITÉ CANON]",
+    'Lieu exact : Marché aux esclaves de Paris',
+    'Situation de départ : un marchand interpelle William.',
+    'Priorités de recherche : territoire et pouvoir local, souverain ou autorité canonique, factions/guildes/religions applicables.',
+  ].join('\n');
+  const intention = analyserIntention(requete, ROLES);
+  assert.equal(intention.lieu?.type, 'marche_esclaves');
+  assert.ok(!intention.roles.includes('maitresse_guilde'));
+  assert.ok(!intention.fiches.includes('Maîtresses de Guilde'));
+});

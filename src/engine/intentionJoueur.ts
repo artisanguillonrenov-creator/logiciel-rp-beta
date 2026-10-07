@@ -18,24 +18,26 @@ interface DefinitionLieu extends LieuConnu {
   motif: RegExp;
 }
 
-// Ordre important : le premier motif reconnu l'emporte (« guilde des
-// marchands » avant la simple « guilde », qui désigne celle des aventuriers).
+// Ordre important : le premier motif reconnu l'emporte. Les lieux précis
+// passent avant la simple « guilde » (celle des aventuriers), qui n'est
+// reconnue qu'au singulier : la requête d'ouverture cite « factions/guildes »
+// et envoyait la maîtresse de guilde au Marché aux Esclaves.
 const LIEUX: DefinitionLieu[] = [
   { type: 'guilde_marchands', libelle: 'Guilde des Marchands', motif: /guilde des marchands/i, roles: [], fiches: ['Guilde des Marchands'] },
   { type: 'ordre_mages', libelle: 'Ordre des Mages', motif: /ordre des mages|tour des mages/i, roles: [], fiches: ['Ordre des Mages'] },
   { type: 'guilde_ombres', libelle: 'Guilde des Ombres', motif: /guilde des ombres/i, roles: [], fiches: ['Guilde des Ombres'] },
+  { type: 'marche_esclaves', libelle: 'Marché aux Esclaves', motif: /march[ée]s? aux esclaves/i, roles: [], fiches: ['Marchés aux Esclaves'] },
+  { type: 'porte_astra', libelle: 'Porte Astra', motif: /porte astra|passeuse/i, roles: ['passeuse'], fiches: ['Portes Astra', 'Passeuses Astra'] },
+  { type: 'palais', libelle: 'palais royal', motif: /\b(palais|ch[âa]teau royal|salle du tr[ôo]ne|cour royale)\b/i, roles: ['souverain'], fiches: ['Souverains'] },
+  { type: 'taverne', libelle: 'taverne', motif: /\b(taverne|auberge|cabaret|estaminet)\b/i, roles: ['taverniere'], fiches: ['Tavernières'] },
+  { type: 'forge', libelle: 'forge', motif: /\b(forge|forgeronn?e?|armurier|armurerie)\b/i, roles: ['forgeronne'], fiches: ['Forgeronnes'] },
   {
     type: 'guilde_aventuriers',
     libelle: 'comptoir de la Guilde des Aventuriers',
-    motif: /guilde|tableau des missions|comptoir des aventuriers/i,
+    motif: /\bguilde\b(?!s)|tableau des missions|comptoir des aventuriers/i,
     roles: ['maitresse_guilde', 'receptionniste'],
     fiches: ['Guilde des Aventuriers', 'Maîtresses de Guilde', 'Réceptionnistes'],
   },
-  { type: 'marche_esclaves', libelle: 'Marché aux Esclaves', motif: /march[ée]s? aux esclaves/i, roles: [], fiches: ['Marchés aux Esclaves'] },
-  { type: 'taverne', libelle: 'taverne', motif: /\b(taverne|auberge|cabaret|estaminet)\b/i, roles: ['taverniere'], fiches: ['Tavernières'] },
-  { type: 'forge', libelle: 'forge', motif: /\b(forge|forgeronn?e?|armurier|armurerie)\b/i, roles: ['forgeronne'], fiches: ['Forgeronnes'] },
-  { type: 'porte_astra', libelle: 'Porte Astra', motif: /porte astra|passeuse/i, roles: ['passeuse'], fiches: ['Portes Astra', 'Passeuses Astra'] },
-  { type: 'palais', libelle: 'palais royal', motif: /\b(palais|ch[âa]teau royal|salle du tr[ôo]ne|cour royale)\b/i, roles: ['souverain'], fiches: ['Souverains'] },
 ];
 
 // Rôles cités sans le lieu (« je demande à voir la maîtresse de guilde »).
