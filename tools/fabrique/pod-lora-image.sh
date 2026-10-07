@@ -12,7 +12,7 @@ python3 -c "import urllib.request,sys;urllib.request.urlretrieve(sys.argv[1],sys
 python3 serveur_depot.py 8080 "$W" "$JETON" > "$W/serveur.log" 2>&1 &
 etat() { echo "$(date -u +%FT%TZ) $*" | tee -a "$W/etat.txt"; }
 etat "installation"
-pip install -q "diffusers==0.35.1" "transformers==4.53.3" "accelerate==1.8.1" "peft==0.15.2" "datasets<4" bitsandbytes huggingface_hub hf_transfer > "$W/install.log" 2>&1
+pip install -q "diffusers==0.35.1" "transformers==4.53.3" "accelerate==1.8.1" "peft==0.17.1" "datasets<4" bitsandbytes huggingface_hub hf_transfer > "$W/install.log" 2>&1
 python3 -c "import urllib.request;urllib.request.urlretrieve('https://raw.githubusercontent.com/huggingface/diffusers/v0.35.1/examples/text_to_image/train_text_to_image_lora_sdxl.py','train.py')"
 etat "images et légendes"
 python3 - "$RAW" "$W/images" <<'PY'
