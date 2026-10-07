@@ -50,7 +50,9 @@ weight_decay: 0.0
 max_grad_norm: 1.0
 
 bf16: auto
-flash_attention: true
+# Attention SDPA de PyTorch : pas de compilation de flash-attn au démarrage.
+flash_attention: false
+sdp_attention: true
 gradient_checkpointing: true
 
 eval_steps: 50

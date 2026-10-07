@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pod d'entraînement (image axolotlai/axolotl). Attend les données envoyées
+# Pod d'entraînement (image runpod/pytorch, Axolotl installé au démarrage). Attend les données envoyées
 # sur le serveur de dépôt, entraîne la LoRA, fusionne, convertit en GGUF.
 # Journaux et résultats : https://<pod>-8080.proxy.runpod.net/$JETON/<fichier>
 set -u
@@ -15,6 +15,9 @@ for f in serveur_depot.py axolotl-cydonia-24b.yml; do
 done
 python3 src/tools/fabrique/serveur_depot.py 8080 "$W" "$JETON" > "$W/serveur.log" 2>&1 &
 etat() { echo "$(date -u +%FT%TZ) $*" | tee -a "$W/etat.txt"; }
+etat "installation d'Axolotl"
+pip install -q --upgrade pip > "$W/install.log" 2>&1
+pip install -q axolotl >> "$W/install.log" 2>&1 || { etat "ÉCHEC installation (install.log)"; sleep infinity; }
 etat "pod prêt, en attente des données"
 until [ -f "$W/go" ]; do sleep 10; done
 
