@@ -411,7 +411,8 @@ test('les modules du serveur d’images suivent le type de scène', () => {
   assert.deepEqual(modulesPourScene(base), MODULES_BASE);
   const combat = { ...base, profil: 'combat' as const, promptSdxl: 'adult woman fighting a rotting ghoul in a crypt' };
   const modules = modulesPourScene(combat);
-  assert.equal(modules.tarantino, 0.5);
+  assert.equal(modules.tarantino, 0.6);
+  assert.match(construirePromptSdxl({ ...base, promptSdxl: 'two adults talking' }) ?? '', /Director Quentin Tarantino style/);
   assert.equal(modules.horreur, 0.6);
   assert.match(construirePromptSdxl(combat) ?? '', /Director Quentin Tarantino style/);
   const corps = construireCorpsRequeteImage({ prompt: 'p', modules, references: [], format: '16:9' }, 'lustify-sdxl-v4');
