@@ -15,6 +15,9 @@ export HF_HUB_ENABLE_HF_TRANSFER=1
     sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors \
     models/image_encoder/config.json models/image_encoder/model.safetensors \
     --local-dir "$R/models/ip-adapter"
+# Modèle porno photoréaliste de comparaison (choisi par ELYNDOR_IMAGE_DIR).
+[ -f "$R/models/image/pornworks-v04/model_index.json" ] || \
+  "$HF" download John6666/pornworks-real-porn-v04-sdxl --local-dir "$R/models/image/pornworks-v04"
 M="$R/models/image/modules"
 mkdir -p "$M/negatif" "$M/.hf"
 module() {  # nom dépôt fichier
@@ -29,9 +32,7 @@ module cinema Muapi/juggernaut-cinematic-xl-lora juggernaut-cinematic-xl-lora.sa
 module horreur Muapi/realistic-horror-style-one realistic-horror-style-one.safetensors
 module tarantino KappaNeuro/director-quentin-tarantino-style "Director Quentin Tarantino style.safetensors"
 module grain artificialguybr/filmgrain-redmond-filmgrain-lora-for-sdxl FilmGrainRedmond-FilmGrain-FilmGrainAF.safetensors
-rm -f "$M/age.safetensors" "$M/kodachrome.safetensors" "$M/negatif/unaestheticxl.pt"  # illisibles
-module penis movieguy753/Circumcised-Penis-SDXL-V4 "Circumcised Penis SDXL V4 (Penis).safetensors"
-module vulve Amberamberamber/SDXL_pussy_check_up_v2 "pussy check up v2.safetensors"
+rm -f "$M/penis.safetensors" "$M/vulve.safetensors" "$M/age.safetensors" "$M/kodachrome.safetensors" "$M/negatif/unaestheticxl.pt"  # illisibles
 module kodachrome2 BlaireSilver13/Kodachrome kodachrome2.safetensors
 [ -f "$M/negatif/unaestheticxl.safetensors" ] || { "$HF" download dn118/unaestheticXL unaestheticXLv31.safetensors \
   --local-dir "$M/.hf/negatif" > /dev/null && mv "$M/.hf/negatif/unaestheticXLv31.safetensors" "$M/negatif/unaestheticxl.safetensors"; }
