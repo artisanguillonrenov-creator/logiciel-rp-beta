@@ -1,7 +1,8 @@
-# Entraînement LoRA (QLoRA) du narrateur léger sur Mistral Small 24B.
+# Entraînement LoRA (QLoRA) du narrateur léger sur Cydonia 24B v4.3
+# (Mistral Small 3.2 24B déjà réentraîné au RP par TheDrummer, sans filtre).
 # Données : elyndor-rp.jsonl produit par tools/fabrique/exporter.ts
 # (format « messages », seule la réponse finale est apprise).
-base_model: mistralai/Mistral-Small-24B-Instruct-2501
+base_model: TheDrummer/Cydonia-24B-v4.3
 model_type: AutoModelForCausalLM
 tokenizer_type: AutoTokenizer
 

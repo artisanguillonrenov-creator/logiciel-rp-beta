@@ -1,5 +1,5 @@
 /**
- * Fabrique d'exemples pour entraîner un narrateur léger (Mistral Small 24B).
+ * Fabrique d'exemples pour entraîner un narrateur léger (Cydonia 24B, base Mistral Small 3.2).
  *
  * Le professeur (Euryale 70B sur le pod) joue des parties complètes avec le
  * vrai moteur de prompt de l'application : prompt complet, métamoteurs
