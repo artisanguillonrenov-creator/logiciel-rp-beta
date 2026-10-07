@@ -229,7 +229,7 @@ ${REGLES_IMMUABLES}`;
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
 Description : ${tronquer(ctx.meta.personnageDescription, 750)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 650)}${formaterContexte(ctx.meta)}
+Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 1000)}${formaterContexte(ctx.meta)}
 Const style : ""
 
 [STYLE & FILTRE SYSTEME]
