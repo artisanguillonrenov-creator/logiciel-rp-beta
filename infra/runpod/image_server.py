@@ -84,9 +84,10 @@ for fichier in sorted(pathlib.Path(MODULES_DIR).glob("*.safetensors")):
         print("module ignoré :", fichier.name, erreur)
 print("modules chargés :", MODULES)
 JETON_NEGATIF = None
-for fichier in sorted(pathlib.Path(MODULES_DIR, "negatif").glob("*.pt"))[:1]:
+for fichier in sorted(pathlib.Path(MODULES_DIR, "negatif").glob("*.safetensors"))[:1]:
     try:
-        etat = torch.load(fichier, map_location="cpu")
+        from safetensors.torch import load_file
+        etat = load_file(str(fichier))
         pipe.load_textual_inversion(etat["clip_g"], token="unaestheticxl", text_encoder=pipe.text_encoder_2, tokenizer=pipe.tokenizer_2)
         pipe.load_textual_inversion(etat["clip_l"], token="unaestheticxl", text_encoder=pipe.text_encoder, tokenizer=pipe.tokenizer)
         JETON_NEGATIF = "unaestheticxl"

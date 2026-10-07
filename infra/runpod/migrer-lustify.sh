@@ -29,10 +29,10 @@ module cinema Muapi/juggernaut-cinematic-xl-lora juggernaut-cinematic-xl-lora.sa
 module horreur Muapi/realistic-horror-style-one realistic-horror-style-one.safetensors
 module tarantino KappaNeuro/director-quentin-tarantino-style "Director Quentin Tarantino style.safetensors"
 module grain artificialguybr/filmgrain-redmond-filmgrain-lora-for-sdxl FilmGrainRedmond-FilmGrain-FilmGrainAF.safetensors
-module kodachrome strkyyy/kodachrome-1970s kodachrome-1970s.safetensors
-[ -f "$M/negatif/unaestheticxl.pt" ] || { "$HF" download imagepipeline/unaestheticXL-Negative-Jug6 \
-  2ed29bf7-7889-4b53-bbaa-1420ef212e2f.pt --local-dir "$M/.hf/negatif" > /dev/null && \
-  mv "$M/.hf/negatif/2ed29bf7-7889-4b53-bbaa-1420ef212e2f.pt" "$M/negatif/unaestheticxl.pt"; }
+rm -f "$M/kodachrome.safetensors" "$M/negatif/unaestheticxl.pt"  # illisibles
+module kodachrome2 BlaireSilver13/Kodachrome kodachrome2.safetensors
+[ -f "$M/negatif/unaestheticxl.safetensors" ] || { "$HF" download dn118/unaestheticXL unaestheticXLv31.safetensors \
+  --local-dir "$M/.hf/negatif" > /dev/null && mv "$M/.hf/negatif/unaestheticXLv31.safetensors" "$M/negatif/unaestheticxl.safetensors"; }
 # Chroma (~27 Go) n'est plus utilisé.
 [ -f "$R/models/image/lustify-v4/model_index.json" ] && rm -rf "${R:?}/models/image/chroma1-hd"
 ls -la "$M" "$R/models/image"
