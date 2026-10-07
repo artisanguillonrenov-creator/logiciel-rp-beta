@@ -100,6 +100,14 @@ export const INSTRUCTION_STYLE_JOUEUR = [
   'Ne conclus jamais à la place du joueur un paiement, une signature, un achat ou un accord qu’il n’a pas explicitement fait : arrête la scène avant et laisse-le agir.',
 ].join('\n');
 
+// Format que l'app reconnaît pour afficher le nom et l'avatar du locuteur
+// (voir messageFormatter.ts). Rappelé en toute fin de prompt : après les
+// métamoteurs, un modèle comme Euryale oubliait la consigne de l'en-tête.
+export const FORMAT_DIALOGUES_PNJ = `Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
+KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »`;
+
+const RAPPEL_FINAL = `\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIALOGUES_PNJ}\nUn PNJ sans nom propre prend sa désignation en MAJUSCULES (LE MARCHAND, L'ELFE NOIRE). Jamais de réplique de PNJ glissée dans un paragraphe de narration.`;
+
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
 
@@ -221,8 +229,7 @@ Violence : ${libelleViolence(ctx.settings.violence)}.
 Romance : ${libelleRomance(ctx.settings.romance)}.
 Humour : ${libelleHumour(ctx.settings.humour)}.
 
-Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
-KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »
+${FORMAT_DIALOGUES_PNJ}
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
 ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
@@ -237,7 +244,10 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
   const metamoteurs = ctx.metamoteursSelectionnes.length
     ? `\n\n[MÉTAMOTEURS ACTIFS]\n${ctx.metamoteursSelectionnes.map((e) => `### ${e.titre}\n${e.contenu}`).join('\n\n')}`
     : '';
-  const budgetHorsMetamoteurs = Math.max(0, budget - metamoteurs.length);
+  // Le rappel suit les métamoteurs : sans eux (fenêtre étroite), la consigne
+  // de l'en-tête reste proche de la fin et le rappel coûterait du budget.
+  const rappel = metamoteurs ? RAPPEL_FINAL : '';
+  const budgetHorsMetamoteurs = Math.max(0, budget - metamoteurs.length - rappel.length);
 
   // L'en-tête, qui contient désormais le Lore Core garanti, n'est jamais
   // sacrifié au classement du lore dynamique. Seul le milieu récupéré est
@@ -246,7 +256,7 @@ ${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 9
     `${resume}${faits}${blocs}${lore}${etat}${souvenirs}`,
     Math.max(0, budgetHorsMetamoteurs - entete.length),
   );
-  return `${tronquer(`${entete}${milieu}`, budgetHorsMetamoteurs)}${metamoteurs}`;
+  return `${tronquer(`${entete}${milieu}`, budgetHorsMetamoteurs)}${metamoteurs}${rappel}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
