@@ -25,6 +25,22 @@ interface Partie {
   echantillons: Echantillon[];
 }
 
+// Garde-fou du jeu d'entraînement : aucun échantillon qui associe un
+// vocabulaire sexuel à un indice de minorité, même ambigu (une enfant en
+// arrière-plan d'une scène de sexe suffit à l'écarter).
+// Limites de mots Unicode : \b ne reconnaît pas les lettres accentuées.
+const INDICES_MINORITE = /(?<!\p{L})(enfants?|gamine?s?|fillettes?|gar[çc]onnets?|adolescente?s?|ados?|mineure?s?|pubert[ée]|collégienne?s?|lycéenne?s?|écolière?s?|\d{1,2} ans)(?!\p{L})/iu;
+const VOCABULAIRE_SEXUEL = /(?<!\p{L})(sexe|seins?|tétons?|chatte|bite|queue|sperme|jouir|jouissance|orgasmes?|pénètre|pénétration|baiser|baise|suce|fellation|nue?s?|nudité|entrejambe|érection|cuisses écartées)(?!\p{L})/iu;
+
+export function echantillonAEcarter(texte: string): boolean {
+  if (!VOCABULAIRE_SEXUEL.test(texte)) return false;
+  if (!INDICES_MINORITE.test(texte)) return false;
+  // « 35 ans », « 200 ans » : âges adultes explicites, seuls les âges < 18 comptent.
+  const ages = [...texte.matchAll(/(?<!\d)(\d{1,2}) ans(?!\p{L})/giu)].map((m) => Number(m[1]));
+  const autresIndices = texte.replace(/(?<!\d)\d{1,2} ans(?!\p{L})/giu, '');
+  return INDICES_MINORITE.test(autresIndices) || ages.some((a) => a < 18);
+}
+
 export function versLigne(e: Echantillon) {
   return {
     messages: [
@@ -44,7 +60,9 @@ export function main() {
   const test = parties.slice(0, nbTest);
   const entrainement = parties.slice(nbTest);
   const ecrire = (fichier: string, liste: Partie[]) => {
-    const lignes = liste.flatMap((p) => p.echantillons.filter((e) => e.ok).map((e) => JSON.stringify(versLigne(e))));
+    const lignes = liste.flatMap((p) => p.echantillons
+      .filter((e) => e.ok && !echantillonAEcarter(`${e.messages.slice(-3).map((m) => m.content).join('\n')}\n${e.reponse}`))
+      .map((e) => JSON.stringify(versLigne(e))));
     fs.writeFileSync(fichier, `${lignes.join('\n')}\n`);
     return lignes.length;
   };
