@@ -18,6 +18,9 @@ etat() { echo "$(date -u +%FT%TZ) $*" | tee -a "$W/etat.txt"; }
 etat "installation d'Axolotl"
 pip install -q --upgrade pip > "$W/install.log" 2>&1
 pip install -q axolotl >> "$W/install.log" 2>&1 || { etat "ÉCHEC installation (install.log)"; sleep infinity; }
+# Axolotl met PyTorch à jour : les torchvision/torchaudio de l'image, liés à
+# l'ancienne version, cassent l'import de transformers. Inutiles ici.
+pip uninstall -y -q torchvision torchaudio >> "$W/install.log" 2>&1
 etat "pod prêt, en attente des données"
 until [ -f "$W/go" ]; do sleep 10; done
 
