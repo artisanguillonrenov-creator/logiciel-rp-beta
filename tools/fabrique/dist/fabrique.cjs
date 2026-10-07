@@ -4029,7 +4029,7 @@ var MODELE = "euryale-70b-v2.3";
 var CONFIG_ELEVE = { budgetSysteme: 24e3, budgetConversation: 9e3, metamoteurs: false };
 var CONFIG_PROFESSEUR = { budgetSysteme: 64e3, budgetConversation: 13e3 };
 var CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les r\xE9actions des autres personnages et les cons\xE9quences.)";
-var PAUSE_APRES_ACTIVITE_MS = 15 * 60 * 1e3;
+var PAUSE_APRES_ACTIVITE_MS = Number(process.env.FABRIQUE_PAUSE_MIN ?? 15) * 60 * 1e3;
 var TOURS_MIN = 14;
 var TOURS_MAX = 28;
 var RESUME_TOUS_LES = 6;
@@ -4127,7 +4127,7 @@ async function attendreLibre(journal) {
     await attendre(2e4);
     await sonderActivite();
   }
-  if (annonce) journal("reprise : plus d\u2019activit\xE9 depuis 15 min");
+  if (annonce) journal("reprise : plus d\u2019activit\xE9 sur le pod");
 }
 var surveillance;
 async function appeler(appel, journal) {

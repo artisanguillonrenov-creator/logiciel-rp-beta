@@ -51,7 +51,7 @@ const CONFIG_PROFESSEUR = { budgetSysteme: 64000, budgetConversation: 13000 };
 // apprend la bonne habitude sans avoir besoin de la consigne.
 const CONSIGNE_PROFESSEUR = "\n\n(Narration : ne reformule pas ce que je viens de faire ou dire ; commence directement par les réactions des autres personnages et les conséquences.)";
 
-const PAUSE_APRES_ACTIVITE_MS = 15 * 60 * 1000;
+const PAUSE_APRES_ACTIVITE_MS = Number(process.env.FABRIQUE_PAUSE_MIN ?? 15) * 60 * 1000;
 const TOURS_MIN = 14;
 const TOURS_MAX = 28;
 const RESUME_TOUS_LES = 6;
@@ -185,7 +185,7 @@ async function attendreLibre(journal: (m: string) => void) {
     await attendre(20000);
     await sonderActivite();
   }
-  if (annonce) journal('reprise : plus d’activité depuis 15 min');
+  if (annonce) journal('reprise : plus d’activité sur le pod');
 }
 
 let surveillance: NodeJS.Timeout | undefined;
