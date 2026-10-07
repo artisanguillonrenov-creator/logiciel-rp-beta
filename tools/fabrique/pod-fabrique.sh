@@ -10,6 +10,8 @@ cd /data
 rm -rf src
 git clone --depth 1 -b "${FABRIQUE_BRANCHE:-claude/practical-meitner-mwe2ju}" https://github.com/artisanguillonrenov-creator/logiciel-rp-beta.git src
 ln -sfn /data/fab "/data/web/${FABRIQUE_JETON:-prive}"
+# Page vide à la racine : pas de liste du dossier, le chemin reste secret.
+echo "" > /data/web/index.html
 (cd /data/web && python3 -m http.server 8080 > /data/http.log 2>&1 &)
 FABRIQUE_MONDES=/data/src/tools/fabrique/mondes FABRIQUE_TMP=/tmp \
   node /data/src/tools/fabrique/dist/fabrique.cjs /data/fab "${FABRIQUE_PARTIES:-40}" "${FABRIQUE_MINUTES:-6000}" >> /data/fab/stdout.txt 2>&1
