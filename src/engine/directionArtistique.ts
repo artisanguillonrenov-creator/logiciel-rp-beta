@@ -49,7 +49,14 @@ Règles :
 - "changementsVisuels" : uniquement les changements DURABLES survenus dans les messages récents (tenue, armure, armes visibles, accessoires, coiffure, blessures, cicatrices, sang, poussière, boue, propreté, transformations, objets portés ; pour le décor : lieu, type de lieu, architecture, disposition, heure, météo, lumière, sources lumineuses, dégâts, incendies, portes ouvertes/fermées, objets importants, mobilier, traces). Chaque changement cite dans "evenement" la phrase exacte du récit qui l'établit. Sans citation, n'ajoute pas le changement.
 - Choisis le profil de cadrage adapté : dialogue, combat, tension, decouverte, groupe, interieur ou paysage.
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
-- "promptSdxl" : la MÊME image décrite EN ANGLAIS pour le modèle image (Chroma, encodeur T5), en phrases naturelles et précises, 60 à 120 mots, dans cet ordre : type de plan et angle, nombre de personnages, puis pour chacun son apparence physique précise (race, carnation, âge apparent adulte, cheveux, yeux, tenue ou nudité, blessures, arme), l'action et l'interaction entre eux, le décor, la lumière, la météo. Aucun nom propre : le modèle ne connaît pas les personnages.
+- "promptSdxl" : la MÊME image décrite EN ANGLAIS pour le modèle image (Chroma, encodeur T5), en phrases naturelles, concrètes et précises, 100 à 180 mots, dans cet ordre :
+  1. type de plan, angle et objectif (ex. "low angle wide shot, 35mm lens") ;
+  2. nombre exact de personnages visibles et place de chacun dans le cadre (gauche, droite, centre, premier plan, arrière-plan) ;
+  3. pour chacun : race, sexe, âge apparent adulte en chiffre, carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
+  4. l'action exacte à cet instant et l'interaction physique entre les personnages (qui touche ou frappe qui, gestes, regards, distance) ;
+  5. le décor : lieu, matériaux, objets, figurants en arrière-plan ;
+  6. la lumière : sources, couleur, direction, et l'ambiance.
+  Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). Aucun nom propre : le modèle ne connaît pas les personnages.
 
 Champs autorisés pour "champ" :
 - personnage : tenue, armure, coiffure, proprete, armesVisibles, accessoires, blessures, cicatrices, salissures, transformations, objetsPortes
@@ -269,7 +276,7 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
       emotion: texteSur(ambiance.emotion, 200),
       rendu: texteSur(ambiance.rendu, 200),
     },
-    promptSdxl: texteSur(brut.promptSdxl, 900) || undefined,
+    promptSdxl: texteSur(brut.promptSdxl, 1400) || undefined,
   };
 
   const changements: ChangementVisuel[] = (Array.isArray(brut.changementsVisuels) ? brut.changementsVisuels : [])
@@ -294,9 +301,9 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
 // ce qu'il reçoit est rédigé par le modèle narratif, en anglais, sous la
 // forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
 const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Chroma, encodeur T5) qui ne connaît rien de l'histoire et lit bien mieux l'anglais.
-Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases naturelles et précises, 60 à 120 mots.
-Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, sujet(s) et apparence physique précise (race, carnation, âge apparent, cheveux, yeux, tenue, blessures, armes, accessoires), action ou expression, décor, lumière.
-N'invente rien qui ne soit pas dans la description fournie.`;
+Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases naturelles, concrètes et précises, 100 à 180 mots.
+Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre, carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
+Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). N'invente rien qui ne soit pas dans la description fournie.`;
 
 export function nettoyerPromptSdxl(sortie: string): string | undefined {
   const ligne = (sortie.split('\n').map((l) => l.trim()).find(Boolean) ?? '')
@@ -304,7 +311,7 @@ export function nettoyerPromptSdxl(sortie: string): string | undefined {
     .replace(/["`*]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return ligne ? ligne.slice(0, 900) : undefined;
+  return ligne ? ligne.slice(0, 1400) : undefined;
 }
 
 /** Fait rédiger par le modèle narratif un prompt SDXL anglais à partir d'une description. */
@@ -319,7 +326,7 @@ export async function redigerPromptSdxl(
     ...configurationLLM(settings),
     storyId,
     temperature: 0.2,
-    maxTokens: 320,
+    maxTokens: 420,
     signal,
     messages: [
       { role: 'system', content: CONSIGNE_PROMPT_SDXL },
