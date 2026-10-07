@@ -30,7 +30,13 @@ import {
 // appliqués que s'ils citent un passage réel du récit (visualState.ts).
 
 const MESSAGES_CONTEXTE = 10;
+const MESSAGES_CONTEXTE_ALLEGE = 4;
 const LONGUEUR_MESSAGE_CONTEXTE = 1400;
+
+// Avec le contexte complet du narrateur, la direction artistique est une
+// pause dans le récit : la consigne le dit avant les règles habituelles.
+const PAUSE_NARRATION = `[PAUSE DANS LE RÉCIT — ILLUSTRATION]
+Tu n'écris pas la suite de l'histoire. Tu illustres la scène que tu viens d'écrire (ton dernier message), avec tout ce que tu sais : lore, mémoire, fiche de scène, rôles fixés par le lore, fiches des personnages. L'apparence d'un personnage vient de sa fiche ou du lore (race, âge, carnation, cheveux, tenue) : ne l'invente jamais quand elle y figure.`;
 
 export interface DirectionArtistique {
   structure: PromptImageStructure;
@@ -155,7 +161,12 @@ function decrireEtatVisuel(etat: EtatVisuelHistoire): string {
   ].join('\n\n');
 }
 
-export function construireContexteDirection(story: StoryState, settings: AppSettings): string {
+/**
+ * allege : le contexte complet du narrateur est déjà fourni (personnage,
+ * mémoire, lore, fiche de scène) ; seuls restent les PNJ avec le canon de
+ * leur race, l'état visuel et les derniers messages.
+ */
+export function construireContexteDirection(story: StoryState, settings: AppSettings, allege = false): string {
   const etat = lireEtatVisuel(story);
   const raceJoueur = RACES_ELYNDOR.find((r) => r.id === story.meta.raceOrigineId);
   const joueur = `[PERSONNAGE DU JOUEUR — ${story.meta.personnageNom}]\n${texteProfil(story.meta.personnageDescription || 'Aucune fiche.', settings)}`
@@ -174,10 +185,15 @@ export function construireContexteDirection(story: StoryState, settings: AppSett
     ? `[MÉMOIRE DU RÉCIT]\n${texteSur(texteProfil(story.memoire.resume, settings), 1200)}`
     : '';
   const zones = story.monde.zones.filter((z) => z.niveau === 'active').map((z) => `- ${z.nom} : ${texteSur(z.description, 200)}`);
-  const recents = story.messages.slice(-MESSAGES_CONTEXTE).map((m) => {
+  const recents = story.messages.slice(allege ? -MESSAGES_CONTEXTE_ALLEGE : -MESSAGES_CONTEXTE).map((m) => {
     const auteur = m.role === 'assistant' ? 'NARRATEUR' : story.meta.personnageNom.toUpperCase();
     return `${auteur} : ${texteSur(texteProfil(m.content, settings), LONGUEUR_MESSAGE_CONTEXTE)}`;
   });
+  const scene = `[MESSAGES RÉCENTS — le dernier message du narrateur est la scène à illustrer]\n${recents.join('\n\n') || texteSur(story.meta.pointDeDepart, 1200)}`;
+  if (allege) {
+    const race = raceJoueur ? `[RACE DE ${story.meta.personnageNom}]\n${canonRace({ race: raceJoueur, sexe: 'Autre' })}` : '';
+    return [race, `[PNJ CONNUS]\n${pnj || 'Aucun.'}`, decrireEtatVisuel(etat), scene].filter(Boolean).join('\n\n');
+  }
   return [
     joueur,
     `[PNJ CONNUS]\n${pnj || 'Aucun.'}`,
@@ -185,7 +201,7 @@ export function construireContexteDirection(story: StoryState, settings: AppSett
     memoire,
     zones.length ? `[ZONES ACTIVES]\n${zones.join('\n')}` : '',
     decrireEtatVisuel(etat),
-    `[MESSAGES RÉCENTS — le dernier message du narrateur est la scène à illustrer]\n${recents.join('\n\n') || texteSur(story.meta.pointDeDepart, 1200)}`,
+    scene,
   ].filter(Boolean).join('\n\n');
 }
 
@@ -305,6 +321,12 @@ Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases natu
 Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre, carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
 Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). N'invente rien qui ne soit pas dans la description fournie.`;
 
+const MOTS_MIN_PROMPT_SDXL = 70;
+
+export function promptSdxlTropCourt(prompt: string | undefined): boolean {
+  return !prompt || prompt.split(/\s+/).filter(Boolean).length < MOTS_MIN_PROMPT_SDXL;
+}
+
 export function nettoyerPromptSdxl(sortie: string): string | undefined {
   const ligne = (sortie.split('\n').map((l) => l.trim()).find(Boolean) ?? '')
     .replace(/^(?:sdxl\s+)?prompt\s*:\s*/i, '')
@@ -390,10 +412,25 @@ export function directionDeRepli(story: StoryState): DirectionArtistique {
   };
 }
 
+/** Messages de l'appel : contexte complet du narrateur quand il est fourni. */
+export function messagesDirection(story: StoryState, settings: AppSettings, contexteNarrateur?: string) {
+  if (!contexteNarrateur) {
+    return [
+      { role: 'system' as const, content: construireContexteDirection(story, settings) },
+      { role: 'user' as const, content: INSTRUCTION_DIRECTION },
+    ];
+  }
+  return [
+    { role: 'system' as const, content: contexteNarrateur },
+    { role: 'user' as const, content: `${construireContexteDirection(story, settings, true)}\n\n${PAUSE_NARRATION}\n\n${INSTRUCTION_DIRECTION}` },
+  ];
+}
+
 export async function demanderDirectionArtistique(
   story: StoryState,
   settings: AppSettings,
   signal?: AbortSignal,
+  contexteNarrateur?: string,
 ): Promise<DirectionArtistique> {
   try {
     const sortie = await appellerModele({
@@ -402,10 +439,8 @@ export async function demanderDirectionArtistique(
       temperature: 0.3,
       maxTokens: 1600,
       signal,
-      messages: [
-        { role: 'system', content: construireContexteDirection(story, settings) },
-        { role: 'user', content: INSTRUCTION_DIRECTION },
-      ],
+      diagnosticLabel: 'Direction artistique',
+      messages: messagesDirection(story, settings, contexteNarrateur),
     });
     const direction = analyserReponseDirection(sortie, story);
     if (direction && (direction.structure.personnages.length > 0 || direction.structure.action)) {
@@ -415,17 +450,18 @@ export async function demanderDirectionArtistique(
       direction.structure.personnages = direction.structure.personnages.map((p) =>
         p.nom === story.meta.personnageNom && !p.apparence ? { ...p, apparence: fiche } : p,
       );
-      if (!direction.structure.promptSdxl) {
+      if (promptSdxlTropCourt(direction.structure.promptSdxl)) {
         // Consigne permanente : le prompt image est toujours rédigé par le
-        // modèle narratif ; s'il l'a omis, on le lui redemande à partir de
-        // sa propre direction artistique.
+        // modèle narratif ; s'il l'a omis ou bâclé (une phrase au lieu de
+        // 100 à 180 mots), on le lui redemande à partir de sa propre
+        // direction artistique, qui contient tous les détails.
         direction.structure.promptSdxl = await redigerPromptSdxl(
           settings,
           formaterPromptImage(direction.structure).split('[STYLE VISUEL]')[0],
           `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
           signal,
           story.meta.id,
-        ).catch(() => undefined);
+        ).catch(() => undefined) ?? direction.structure.promptSdxl;
       }
       return direction;
     }

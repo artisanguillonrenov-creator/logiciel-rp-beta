@@ -6,6 +6,7 @@ import {
   obtenirOuGenererAvatarPnj,
 } from '../engine/images';
 import { demanderDirectionArtistique, textesNarratifsEtablis } from '../engine/directionArtistique';
+import { construireContexteNarrateurPourIllustration } from '../engine/generateTurn';
 import { appliquerModeRegeneration, consoliderAvecEtatVisuel } from '../engine/visualBible';
 import {
   ajouterSceneIllustree,
@@ -156,7 +157,10 @@ async function genererScene(
       creeLe: Date.now(),
     };
   } else {
-    const direction = await demanderDirectionArtistique(story, settings);
+    // Même contexte que pour répondre au joueur ; sans lui (lore ou
+    // embeddings indisponibles), la direction garde son contexte propre.
+    const contexteNarrateur = await construireContexteNarrateurPourIllustration(story, settings).catch(() => undefined);
+    const direction = await demanderDirectionArtistique(story, settings, undefined, contexteNarrateur);
     const resultat = appliquerChangementsVisuels(
       etatInitial,
       direction.changements,
