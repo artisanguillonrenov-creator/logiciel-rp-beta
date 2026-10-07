@@ -335,6 +335,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
         situationNom: situationActive?.nom,
         situationDescription: situationActive?.description,
         extraitLore,
+        villeDepart: raceActive?.sousTitre.split('—').pop()?.trim() || undefined,
       });
       setScenario(texte);
     } catch (e) {
