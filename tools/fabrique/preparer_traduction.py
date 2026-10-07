@@ -38,17 +38,31 @@ def normaliser(texte: str) -> str:
     return unicodedata.normalize("NFC", texte.lower()).replace("’", "'")
 
 
+# Le lexique contient aussi des mots ordinaires (« agacer », « andouille »…) :
+# seuls les termes construits sur une racine vraiment grossière sont gardés.
+RACINES_GROSSIERES = re.compile(
+    r"(cul|con\b|conn|merd|putain|pute|bite|couill|chatte|foutr|fout\b|baise|baiser|encul|niqu|salop|branl|chier|chié|"
+    r"bordel|nichon|queue|gueule|enfoir|pisse|band|suc|trique|gaule|pine|teub|zob|chibre|foutre|bouffon|ta mère|sa mère|"
+    r"bâtard|batard|ordure|fumier|charogne|garce|pétasse|petasse|grognasse|poufiasse|pouffiasse|cochonne|salaud|merdeux)",
+    re.IGNORECASE,
+)
+
+
+# Mots seuls qui ont aussi un sens ordinaire (« faire la queue », « la Gaule »).
+AMBIGUS = {"queue", "bande", "gaule", "gueule", "pine", "baiser", "con", "ordure", "fumier", "garce", "band", "suce"}
+
+
 def charger_lexique(dossier: str):
     lignes = pq.read_table(os.path.join(dossier, "lexique", "fr.parquet")).to_pylist()
     termes = set()
     for l in lignes:
         t = normaliser(l["text"]).strip()
-        if len(t) < 3 or t in INSULTES_HAINEUSES or any(h in t for h in INSULTES_HAINEUSES):
+        if len(t) < 3 or t in INSULTES_HAINEUSES or any(h in t for h in INSULTES_HAINEUSES) or not RACINES_GROSSIERES.search(t) or t in AMBIGUS:
             continue
         termes.add(t)
     # Une seule expression régulière, termes les plus longs d'abord.
     motif = "|".join(re.escape(t) for t in sorted(termes, key=len, reverse=True))
-    return termes, re.compile(rf"(?<![\w]){motif}(?![\w])", re.IGNORECASE)
+    return termes, re.compile(rf"(?<![\w-])(?:{motif})(?![\w-])", re.IGNORECASE)
 
 
 def main():
