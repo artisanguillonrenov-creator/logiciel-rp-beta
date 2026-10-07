@@ -269,6 +269,9 @@ export function determinerStrategie(rapport: RapportValidation): StrategieRepara
   // Entité majeure inventée (V13) : la réécrire partiellement laisserait
   // des traces du faux royaume ailleurs dans la scène.
   if (echecs.some((c) => c.nom === 'canon' && c.gravite === 'grave')) return 'regeneration_complete';
+  // Joueur qu'on fait agir : une réparation ciblée remplaçait « tu » par
+  // « vous » sans retirer les gestes ; le narrateur réécrit avec tout son contexte.
+  if (echecs.some((c) => c.nom === 'contrat_joueur' && c.gravite === 'grave')) return 'regeneration_complete';
 
   const pireGravite = echecs.reduce<Gravite>(
     (pire, c) => (ORDRE_GRAVITE[c.gravite] > ORDRE_GRAVITE[pire] ? c.gravite : pire),

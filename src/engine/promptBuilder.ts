@@ -109,7 +109,15 @@ export const INSTRUCTION_STYLE_JOUEUR = [
 export const FORMAT_DIALOGUES_PNJ = `Format des dialogues des PNJ : chaque réplique d'un PNJ doit être précédée de son nom en MAJUSCULES suivi de « : », sur sa propre ligne, puis le texte de la réplique entre guillemets français « ». Exemple :
 KAELEN : « Tu es venu seul. C'est soit du courage, soit de la bêtise. »`;
 
-const RAPPEL_FINAL = `\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIALOGUES_PNJ}\nUn PNJ sans nom propre prend sa désignation en MAJUSCULES (LE MARCHAND, L'ELFE NOIRE). Jamais de réplique de PNJ glissée dans un paragraphe de narration.`;
+// Étapes 5 à 8 de la logique de réponse ; les étapes 1 à 4 (intention,
+// situation, mémoire, lore) sont préparées par l'application (ficheScene.ts).
+export const PROTOCOLE_TOUR = `[PROTOCOLE DU TOUR]
+1. Pour chaque personnage présent : ce qu'il sait, veut et ressent. Un PNJ ignore ce dont il n'a pas été témoin.
+2. Applique les conséquences et les règles du monde (fiche de scène, lore, engagements).
+3. Écris la scène, puis arrête-toi avant toute décision, parole ou geste de {{user}} : décris ce que les autres lui font et ce qu'il perçoit, jamais ce qu'il fait ou dit.
+4. Relis-toi : ville, lieu et noms conformes à la fiche de scène, aucun rôle fixé remplacé par un personnage inventé, aucun geste de {{user}}, format NOM : « réplique ».`;
+
+const RAPPEL_FINAL = `\n\n${PROTOCOLE_TOUR}\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIALOGUES_PNJ}\nUn PNJ sans nom propre prend sa désignation en MAJUSCULES (LE MARCHAND, L'ELFE NOIRE). Jamais de réplique de PNJ glissée dans un paragraphe de narration.`;
 
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
@@ -192,6 +200,9 @@ export interface ContexteConstruction {
   blocsContexte?: string;
   // Registre du profil Adulte, juste après les règles immuables.
   registreAdulte?: string;
+  // Fiche de scène préparée par l'application (ficheScene.ts), placée en fin
+  // de prompt juste avant le protocole du tour.
+  ficheScene?: string;
   // Consigne machine ajoutée juste après les règles (noyau narratif V12).
   directiveEtat?: string;
 }
@@ -262,7 +273,8 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
 
   // Résumé, faits et état du monde se partagent ce qui reste après l'en-tête
   // (Lore Core garanti) et les parts des moteurs de recherche.
-  const reste = Math.max(0, budgetHorsMetamoteurs - entete.length - lore.length - blocs.length - souvenirs.length);
+  const fiche = ctx.ficheScene ? `\n\n${ctx.ficheScene}` : '';
+  const reste = Math.max(0, budgetHorsMetamoteurs - entete.length - fiche.length - lore.length - blocs.length - souvenirs.length);
   const resume = reste > 200
     ? `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(reste * 0.3))}`
     : '';
@@ -275,8 +287,8 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   );
   // Métamoteurs insérés juste après le préfixe fixe ; le reste (personnage,
   // style, état du tour, recherche) suit et peut être rogné.
-  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsMetamoteurs - prefixe.length));
-  return `${prefixe}${metamoteurs}${suite}${rappel}`;
+  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsMetamoteurs - prefixe.length - fiche.length));
+  return `${prefixe}${metamoteurs}${suite}${fiche}${rappel}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

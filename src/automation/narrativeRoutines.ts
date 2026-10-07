@@ -5,6 +5,9 @@ import { mettreAJourMonde } from '../engine/worldSimulation';
 import { mettreAJourSocial } from '../engine/socialDynamics';
 import { mettreAJourLoreEmergent } from '../engine/emergentLore';
 import { filtrerTextePourProfil } from '../engine/contenuAdulte';
+import { CAPITALES } from '../engine/canonElyndor';
+import { avancerHorloge } from '../engine/noyauNarratif';
+import { lireEtatScene, releverEtatScene } from '../engine/etatScene';
 import { enqueueAutomation, registerAutomationHandler } from './kernel';
 import { calculerRevisionNarrative } from './storyRevision';
 import type { NarrativeStorySavedEvent } from './storyEvents';
@@ -23,8 +26,8 @@ export interface NarrativeAutomationDeps {
 
 export type NarrativeDerivedPatch = Pick<
   StoryState,
-  'memoire' | 'directeur' | 'monde' | 'social' | 'loreEmergent' | 'loreEmergentDernierIndex'
-> & { diagnosticPostTraitement?: DiagnosticPostTraitement };
+  'memoire' | 'directeur' | 'monde' | 'social' | 'loreEmergent' | 'loreEmergentDernierIndex' | 'scene'
+> & { diagnosticPostTraitement?: DiagnosticPostTraitement; minutesEcoulees?: number };
 
 export function besoinRattrapageNarratif(story: StoryState): boolean {
   return (
@@ -125,6 +128,19 @@ export async function calculerRattrapageNarratif(
       }))
     : null;
 
+  // État de scène (ville, lieu, présents, temps écoulé) : à chaque tour,
+  // comme le lore émergent, en parallèle et sans retarder l'affichage.
+  const scenePromise = loreDue
+    ? mesurer('État de scène', () => releverEtatScene({
+        appSettings,
+        storyId: story.meta.id,
+        actuel: lireEtatScene(story, CAPITALES),
+        messages: messagesSecurises,
+        capitales: CAPITALES,
+        personnageNom,
+      })).catch(() => null)
+    : null;
+
   if (!periodicDue) {
     const raison = `Cadence non atteinte : ${story.messages.length - story.memoire.dernierMessageIndexMaj}/8 messages depuis la dernière mise à jour.`;
     for (const nom of ['Mémoire L0-L5', 'Directeur narratif', 'Simulation du monde', 'Social / engagements']) {
@@ -142,6 +158,7 @@ export async function calculerRattrapageNarratif(
     loreEmergent = await lorePromise;
     loreEmergentDernierIndex = story.messages.length;
   }
+  const releve = scenePromise ? await scenePromise : null;
 
   return {
     memoire,
@@ -150,6 +167,8 @@ export async function calculerRattrapageNarratif(
     social,
     loreEmergent,
     loreEmergentDernierIndex,
+    scene: releve?.scene ?? story.scene,
+    minutesEcoulees: releve?.minutesEcoulees,
     diagnosticPostTraitement: {
       dureeTotaleMs: Date.now() - debutPostTraitement,
       etapes: etapesDiagnostic,
@@ -176,7 +195,7 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
 
     const patch = await calculerRattrapageNarratif(snapshot, await deps.getSettings());
     if (!patch) return;
-    const { diagnosticPostTraitement, ...etatPatch } = patch;
+    const { diagnosticPostTraitement, minutesEcoulees, ...etatPatch } = patch;
 
     const miseAJour = await deps.updateStoryIf(
       job.storyId,
@@ -193,7 +212,13 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
           }
           return message;
         }).reverse();
-        return { ...courante, ...etatPatch, messages };
+        // L'horloge du noyau V12 avance du temps relevé avec l'état de scène.
+        let narrativeCore = courante.narrativeCore;
+        if (narrativeCore && minutesEcoulees) {
+          narrativeCore = { ...narrativeCore, clock: { ...narrativeCore.clock } };
+          avancerHorloge(narrativeCore, minutesEcoulees);
+        }
+        return { ...courante, ...etatPatch, narrativeCore, messages };
       },
     );
     if (miseAJour) await deps.afterNarrativeUpdate?.(miseAJour);

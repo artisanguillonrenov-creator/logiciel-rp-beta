@@ -377,6 +377,18 @@ export interface StoryState {
   // Optionnel, sans bump de VERSION_SCHEMA_HISTOIRE : absent = état vide
   // (lireEtatVisuel), ce qui garde les sauvegardes compatibles avec la V13.
   etatVisuel?: EtatVisuelHistoire;
+  // État de la scène tenu par l'application (src/engine/etatScene.ts) :
+  // ville, lieu et personnages présents, mis à jour après chaque tour.
+  // Optionnel : absent = déduit du lieu et du point de départ de l'histoire.
+  scene?: EtatScene;
+}
+
+export interface EtatScene {
+  ville?: string;
+  lieu?: string;
+  presents: string[];
+  /** Nombre de messages de l'histoire à la dernière mise à jour. */
+  majMessageIndex: number;
 }
 
 // Contrôle d'âge (brief Phase 2) : profil déclaré une fois par appareil
