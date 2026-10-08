@@ -124,10 +124,12 @@ const RAPPEL_FINAL = `\n\n${PROTOCOLE_TOUR}\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIAL
 // les modèles de 24B (narration polie, littéraire). Des exemples concrets en
 // dernière position la rendent effective.
 export const RAPPEL_REGISTRE_ADULTE = `\n\n[RAPPEL DE REGISTRE — PROFIL ADULTE]
-Registre CRU et VULGAIRE à chaque réponse, y compris dans une scène calme, sociale ou de dialogue :
-- les PNJ parlent comme de vraies gens de ce monde brutal : ils jurent, insultent, menacent (putain, merde, bordel, enfoiré, connard, salope, fils de pute, ta gueule, je vais te crever…) selon leur caractère ;
-- la narration est directe et sale : odeurs, sueur, crasse, corps, désir et violence nommés sans détour, jamais de tournures polies ou littéraires (« darde ses rayons », « voix soyeuse ») ;
-- le sexe se nomme avec les mots crus (bite, chatte, cul, seins, baiser, sucer…), jamais par euphémisme.`;
+Registre CRU, VULGAIRE, SALACE et SORDIDE à chaque réponse, y compris dans une scène calme, sociale ou de dialogue, et AUSSI DANS LA NARRATION, pas seulement dans les répliques :
+- la narration est sale et charnelle : puanteur, sueur, pisse, merde, crasse, sang, fluides, peau, seins, culs, entrejambes et regards lubriques décrits sans pudeur ; les corps et le désir sont toujours présents, même en arrière-plan ;
+- interdiction des tournures polies, poétiques ou littéraires (« darde ses rayons », « voix soyeuse », « regard empreint de ») : phrases directes, mots de la rue ;
+- les PNJ parlent comme de vraies gens de ce monde brutal : ils jurent, insultent, menacent, font des remarques obscènes (putain, merde, bordel, enfoiré, connard, salope, fils de pute, ta gueule, je vais te crever…) selon leur caractère ;
+- le sexe et la nudité se nomment avec les mots crus (bite, chatte, cul, nichons, baiser, sucer, foutre…), jamais par euphémisme ;
+- LIMITE ABSOLUE : tout personnage nu, exposé, vendu, désiré ou impliqué dans une scène sexuelle ou salace est un ADULTE (au moins 20 ans, corps et visage adultes). Jamais d'âge inférieur à 18 ans, jamais de mot comme « gamine », « adolescente », « fillette », « jeune fille » ou « enfant » dans ces scènes ; en cas de doute, écris son âge adulte.`;
 
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
