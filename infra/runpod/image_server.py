@@ -255,14 +255,19 @@ def references(req: "Requete") -> tuple[list[Image.Image], Image.Image | None, I
 
 
 def masques_visages(nombre: int, largeur: int, hauteur: int):
-    """Une bande verticale par personnage, de gauche à droite (léger chevauchement)."""
+    """Une bande verticale par personnage, de gauche à droite.
+
+    Bords fondus et larges chevauchements : des bandes nettes coupaient
+    l'image en panneaux distincts (effet diptyque).
+    """
+    from PIL import ImageFilter
     pas = largeur / nombre
-    marge = int(pas * 0.1)
+    marge = int(pas * 0.25)
     masques = []
     for i in range(nombre):
         m = Image.new("L", (largeur, hauteur), 0)
         m.paste(255, (max(0, int(i * pas) - marge), 0, min(largeur, int((i + 1) * pas) + marge), hauteur))
-        masques.append(m)
+        masques.append(m.filter(ImageFilter.GaussianBlur(radius=max(8, int(pas * 0.2)))))
     return processeur_masques.preprocess(masques, height=hauteur, width=largeur).reshape(1, nombre, hauteur, largeur)
 
 
