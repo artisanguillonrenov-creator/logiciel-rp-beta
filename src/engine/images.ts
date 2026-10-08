@@ -119,7 +119,10 @@ export async function collecterReferencesScene(
       libelle: rang === 0 ? 'scène illustrée précédente (continuité)' : 'avant-dernière scène illustrée (continuité)',
     });
   }
-  return ordonnerReferences(candidats, MAX_REFERENCES_IMAGE);
+  // Ordre d'apparition conservé : les visages suivent l'ordre des personnages
+  // visibles ; ordonnerReferences ne sert qu'à dédoublonner et tronquer.
+  const gardes = new Set(ordonnerReferences(candidats, MAX_REFERENCES_IMAGE));
+  return candidats.filter((ref) => gardes.has(ref));
 }
 
 // Chroma sait produire du contenu explicite : hors profil Adulte, il
