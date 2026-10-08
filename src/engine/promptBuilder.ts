@@ -119,6 +119,16 @@ export const PROTOCOLE_TOUR = `[PROTOCOLE DU TOUR]
 
 const RAPPEL_FINAL = `\n\n${PROTOCOLE_TOUR}\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIALOGUES_PNJ}\nUn PNJ sans nom propre prend sa désignation en MAJUSCULES (LE MARCHAND, L'ELFE NOIRE). Jamais de réplique de PNJ glissée dans un paragraphe de narration.`;
 
+// Rappel du registre Adulte en toute fin de prompt système : noyée au milieu
+// d'un prompt de ~10 000 jetons, la consigne de vulgarité était ignorée par
+// les modèles de 24B (narration polie, littéraire). Des exemples concrets en
+// dernière position la rendent effective.
+export const RAPPEL_REGISTRE_ADULTE = `\n\n[RAPPEL DE REGISTRE — PROFIL ADULTE]
+Registre CRU et VULGAIRE à chaque réponse, y compris dans une scène calme, sociale ou de dialogue :
+- les PNJ parlent comme de vraies gens de ce monde brutal : ils jurent, insultent, menacent (putain, merde, bordel, enfoiré, connard, salope, fils de pute, ta gueule, je vais te crever…) selon leur caractère ;
+- la narration est directe et sale : odeurs, sueur, crasse, corps, désir et violence nommés sans détour, jamais de tournures polies ou littéraires (« darde ses rayons », « voix soyeuse ») ;
+- le sexe se nomme avec les mots crus (bite, chatte, cul, seins, baiser, sucer…), jamais par euphémisme.`;
+
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
 
@@ -292,7 +302,8 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   // Métamoteurs insérés juste après le préfixe fixe ; le reste (personnage,
   // style, état du tour, recherche) suit et peut être rogné.
   const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsMetamoteurs - prefixe.length - fiche.length));
-  return `${prefixe}${metamoteurs}${suite}${fiche}${rappel}`;
+  const registre = ctx.registreAdulte ? RAPPEL_REGISTRE_ADULTE : '';
+  return `${prefixe}${metamoteurs}${suite}${fiche}${rappel}${registre}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
