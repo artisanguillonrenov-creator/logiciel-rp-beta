@@ -43,7 +43,7 @@ test('sans contexte du narrateur, la direction garde son contexte propre', () =>
 test('un prompt image d’une seule phrase est redemandé au narrateur', () => {
   assert.equal(promptSdxlTropCourt(undefined), true);
   assert.equal(promptSdxlTropCourt('Medium shot of a scarred human man in plate armor before a smiling woman.'), true);
-  assert.equal(promptSdxlTropCourt(Array(90).fill('word').join(' ')), false);
+  assert.equal(promptSdxlTropCourt(Array(50).fill('word').join(' ')), false);
 });
 
 test('les personnages du lore de la scène arrivent avec leur description officielle, les fiches hors scène restent dehors', () => {
