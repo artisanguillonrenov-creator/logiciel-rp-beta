@@ -1,3 +1,4 @@
+import type { StoryState } from '../types';
 // Contrat d'ouverture (moteur d'ouverture v11.5 de la V13) : la première
 // scène doit déjà être en mouvement et un personnage doit interpeller le
 // joueur. Ces contrôles sont locaux ; en cas d'écart, une seconde passe
@@ -79,4 +80,10 @@ export function requeteLoreOuverture(meta: { contexte?: { lieu?: string; ambianc
     meta.personnageDescription && `Personnage joueur : ${meta.personnageDescription}`,
     'Priorités de recherche : territoire et pouvoir local, souverain ou autorité canonique, factions/guildes/religions applicables, règles sociales et lois du lieu, PNJ canonique directement pertinent, dangers ou tensions propres à cette situation.',
   ].filter(Boolean).join('\n');
+}
+
+
+/** L'histoire ne contient encore que la scène d'ouverture (aucun tour joué). */
+export function estSeuleOuverture(story: Pick<StoryState, 'messages'>): boolean {
+  return story.messages.length === 1 && story.messages[0].role === 'assistant';
 }

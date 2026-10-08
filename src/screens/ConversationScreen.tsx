@@ -28,6 +28,8 @@ import {
   regenererDernierTour,
   type DebugLore,
 } from '../engine/generateTurn';
+import { regenererOuverture } from '../engine/openingGenerator';
+import { estSeuleOuverture } from '../engine/controleOuverture';
 import { annulerTours } from '../engine/noyauNarratif';
 import { creerBranche } from '../engine/story';
 import { detecterCommandeRetenir, verrouillerFait } from '../engine/memory';
@@ -365,7 +367,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setEnCours(true);
     setErreur('');
     try {
-      const { story: storyMaj, debugLore: debugMaj } = await regenererDernierTour(story, appSettings);
+      // La scène d'ouverture n'a pas de message joueur : elle est réécrite par le moteur d'ouverture.
+      const { story: storyMaj, debugLore: debugMaj } = estSeuleOuverture(story)
+        ? await regenererOuverture(story, appSettings)
+        : await regenererDernierTour(story, appSettings);
       setStory(storyMaj);
       debugLoreMessageIdRef.current = [...storyMaj.messages].reverse().find((m) => m.role === 'user')?.id ?? null;
       setDebugLore(debugMaj);
