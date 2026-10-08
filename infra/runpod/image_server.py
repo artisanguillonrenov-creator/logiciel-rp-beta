@@ -329,7 +329,7 @@ def embeddings(req: RequeteEmbeddings):
 @app.get("/health")
 def sante():
     return {"status": "ok", "ip_adapter": IP_ADAPTER, "embeddings": encodeur is not None,
-            "modules": MODULES, "negatif": JETON_NEGATIF is not None}
+            "modules": MODULES, "negatif": JETON_NEGATIF is not None, "dechargement": DECHARGEMENT}
 
 
 @app.post("/v1/images/generations")

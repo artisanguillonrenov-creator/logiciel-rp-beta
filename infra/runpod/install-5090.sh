@@ -36,6 +36,12 @@ etat "Cydonia 24B Q5_K_M"
   "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q5_K_M.gguf --local-dir "$RACINE/models/text" > /dev/null &&
   mv "$RACINE/models/text/Cydonia-24B-v4zg-Q5_K_M.gguf" "$RACINE/models/text/Cydonia-24B-v4.3-Q5_K_M.gguf"; }
 
+# Q4_K_M : ~2,5 Go de moins que Q5, pour laisser Lustify entier sur le GPU.
+etat "Cydonia 24B Q4_K_M"
+[ -f "$RACINE/models/text/Cydonia-24B-v4.3-Q4_K_M.gguf" ] || {
+  "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q4_K_M.gguf --local-dir "$RACINE/models/text" > /dev/null &&
+  mv "$RACINE/models/text/Cydonia-24B-v4zg-Q4_K_M.gguf" "$RACINE/models/text/Cydonia-24B-v4.3-Q4_K_M.gguf"; }
+
 etat "bge-m3"
 [ -f "$RACINE/models/bge-m3/pytorch_model.bin" ] || \
   "$HF" download BAAI/bge-m3 config.json 1_Pooling/config.json config_sentence_transformers.json modules.json \
@@ -44,6 +50,9 @@ etat "bge-m3"
 
 etat "Lustify et modules d'image"
 bash "$SOURCES/migrer-lustify.sh" > "$RACINE/logs/migration.log" 2>&1
+# Module « style Elyndor » (entraîné sur les images de l'app), déposé avec
+# les modules du narrateur.
+[ -f "$RACINE/models/text/elyndor.safetensors" ] && cp "$RACINE/models/text/elyndor.safetensors" "$RACINE/models/image/modules/elyndor.safetensors"
 
 cp "$SOURCES"/start.sh "$SOURCES"/watchdog.sh "$SOURCES"/image_server.py "$RACINE/app/"
 cp "$SOURCES/boot.sh" "$RACINE/boot.sh"
