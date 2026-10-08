@@ -83,7 +83,7 @@ export function requeteLoreOuverture(meta: { contexte?: { lieu?: string; ambianc
 }
 
 
-/** L'histoire ne contient encore que la scène d'ouverture (aucun tour joué). */
+/** Aucun tour joué : la réponse affichée est la scène d'ouverture (éventuellement suivie d'une suite). */
 export function estSeuleOuverture(story: Pick<StoryState, 'messages'>): boolean {
-  return story.messages.length === 1 && story.messages[0].role === 'assistant';
+  return story.messages.length > 0 && story.messages.at(-1)?.role === 'assistant' && !story.messages.some((m) => m.role === 'user');
 }
