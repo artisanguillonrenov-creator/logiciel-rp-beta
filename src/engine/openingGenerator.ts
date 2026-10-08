@@ -6,6 +6,7 @@ import {
   temperaturePourCreativite,
   BUDGET_SYSTEM_LOCAL,
   BUDGET_SYSTEM_DISTANT,
+  RAPPEL_REGISTRE_ADULTE,
 } from './promptBuilder';
 import { configurationLLM } from './openrouter';
 import { genererReponseComplete } from './completionReponse';
@@ -62,7 +63,13 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     ...construireCtxBase(story, instruction, appSettings, selection, undefined, false),
     ficheScene,
   });
-  const ctxBase = ctxOuverture(INSTRUCTION_OUVERTURE);
+  // Profil Adulte : l'instruction d'ouverture, lue en dernier, rappelle le
+  // registre ; le point de départ du scénario (prose soignée) est réécrit
+  // dans ce registre au lieu d'être recopié.
+  const instructionOuverture = appSettings.profilContenu === 'adulte'
+    ? `${INSTRUCTION_OUVERTURE}\n\nREGISTRE : réécris la situation de départ dans le registre ci-dessous, sans recopier les phrases du scénario.${RAPPEL_REGISTRE_ADULTE}`
+    : INSTRUCTION_OUVERTURE;
+  const ctxBase = ctxOuverture(instructionOuverture);
 
   const modelePourAppel = modeleOverridePourFournisseur(
     appSettings,
@@ -101,7 +108,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
       contenu = await genererReponseComplete({
         ...configurationLLM(appSettings, modelePourAppel),
         storyId: story.meta.id,
-        messages: construireMessages(ctxOuverture(INSTRUCTION_OUVERTURE + correction), { budgetSysteme }),
+        messages: construireMessages(ctxOuverture(instructionOuverture + correction), { budgetSysteme }),
         temperature,
         maxTokens,
       }, undefined, false);
