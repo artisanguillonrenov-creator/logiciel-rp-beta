@@ -1,0 +1,77 @@
+{#- Modèle de conversation de Cydonia 24B (Mistral Small v7 « tekken ») avec les
+    outils au format appris par le module agent Cortana : liste dans <tools>
+    (message système), appels dans <tool_call>, résultats dans <tool_response>.
+    La balise <tool_call> fait relire les appels par llama-server (format Hermes). -#}
+{%- set today = strftime_now("%Y-%m-%d") %}
+{%- set default_system_message = "You are Mistral Small 3, a Large Language Model (LLM) created by Mistral AI, a French startup headquartered in Paris.\nYour knowledge base was last updated on 2023-10-01. The current date is " + today + ".\n\nWhen you're not sure about some information, you say that you don't have the information and don't make up anything.\nIf the user's question is not clear, ambiguous, or does not provide enough context for you to accurately answer the question, you do not try to answer it right away and you rather ask the user to clarify their request (e.g. \"What are some good restaurants around me?\" => \"Where are you?\" or \"When is the next flight to Tokyo\" => \"Where do you travel from?\")" %}
+
+{{- bos_token }}
+
+{%- if messages[0]['role'] == 'system' %}
+    {%- if messages[0]['content'] is string %}
+        {%- set system_message = messages[0]['content'] %}
+    {%- else %}
+        {%- set system_message = messages[0]['content'][0]['text'] %}
+    {%- endif %}
+    {%- set loop_messages = messages[1:] %}
+{%- else %}
+    {%- set system_message = default_system_message %}
+    {%- set loop_messages = messages %}
+{%- endif %}
+{%- if tools %}
+    {%- set ns = namespace(liste='') %}
+    {%- for tool in tools %}
+        {%- set ns.liste = ns.liste + '\n' + (tool | tojson) %}
+    {%- endfor %}
+    {%- set system_message = system_message + '\n\nYou can call these tools:\n<tools>' + ns.liste + '\n</tools>\nTo call a tool, answer only with one or more blocks <tool_call>{"name": "tool_name", "arguments": {...}}</tool_call>. Use a tool whenever it can answer or act; otherwise answer normally.' %}
+{%- endif %}
+{{- '[SYSTEM_PROMPT]' + system_message + '[/SYSTEM_PROMPT]' }}
+
+{%- for message in loop_messages %}
+    {%- if message['role'] == 'user' %}
+        {%- if message['content'] is string %}
+            {{- '[INST]' + message['content'] + '[/INST]' }}
+        {%- else %}
+            {{- '[INST]' }}
+            {%- for block in message['content'] %}
+                {%- if block['type'] == 'text' %}
+                    {{- block['text'] }}
+                {%- elif block['type'] in ['image', 'image_url'] %}
+                    {{- '[IMG]' }}
+                {%- endif %}
+            {%- endfor %}
+            {{- '[/INST]' }}
+        {%- endif %}
+    {%- elif message['role'] == 'system' %}
+        {%- if message['content'] is string %}
+            {{- '[SYSTEM_PROMPT]' + message['content'] + '[/SYSTEM_PROMPT]' }}
+        {%- else %}
+            {{- '[SYSTEM_PROMPT]' + message['content'][0]['text'] + '[/SYSTEM_PROMPT]' }}
+        {%- endif %}
+    {%- elif message['role'] == 'assistant' %}
+        {%- if message['content'] %}
+            {%- if message['content'] is string %}
+                {{- message['content'] }}
+            {%- else %}
+                {{- message['content'][0]['text'] }}
+            {%- endif %}
+        {%- endif %}
+        {%- if message['tool_calls'] %}
+            {%- for appel in message['tool_calls'] %}
+                {%- set f = appel['function'] if appel['function'] is defined else appel %}
+                {%- if f['arguments'] is string %}
+                    {{- '<tool_call>{"name": "' + f['name'] + '", "arguments": ' + f['arguments'] + '}</tool_call>' }}
+                {%- else %}
+                    {{- '<tool_call>{"name": "' + f['name'] + '", "arguments": ' + (f['arguments'] | tojson) + '}</tool_call>' }}
+                {%- endif %}
+            {%- endfor %}
+        {%- endif %}
+        {{- eos_token }}
+    {%- elif message['role'] == 'tool' %}
+        {%- if message['content'] is string %}
+            {{- '[INST]<tool_response>\n' + message['content'] + '\n</tool_response>[/INST]' }}
+        {%- else %}
+            {{- '[INST]<tool_response>\n' + message['content'][0]['text'] + '\n</tool_response>[/INST]' }}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
