@@ -112,3 +112,12 @@ test('les 15 métamoteurs sont envoyés en entier, hors budget système', () => 
   for (const m of metamoteurs) assert.ok(systeme.content.includes(`### ${m.titre}\n${m.contenu}`));
   assert.match(systeme.content, /AUTONOMIE DU JOUEUR STRICTE/);
 });
+
+test('la fiche de création détaillée du joueur arrive entière au narrateur', () => {
+  const base = contexte();
+  const fin = 'DETAIL-FINAL-DE-LA-FICHE';
+  const description = `Sexe : Homme\nRace / origine : Humain\nÂge : 39 ans\nApparence : ${'cicatrice, '.repeat(40)}\n${'Ancien chevalier déchu. '.repeat(70)}${fin}`;
+  assert.ok(description.length > 2000 && description.length < 3000);
+  const [systeme] = construireMessages({ ...base, meta: { ...base.meta, personnageDescription: description } }, { budgetSysteme: BUDGET_SYSTEM_DISTANT, budgetConversation: BUDGET_CONVERSATION_DISTANT });
+  assert.ok(systeme.content.includes(fin));
+});
