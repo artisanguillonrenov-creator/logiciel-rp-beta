@@ -483,14 +483,24 @@ export function selectionnerReferencesGenerateur(
   references: readonly ReferenceVisuelle[],
 ): { role: 'personnage' | 'scene'; image: string }[] {
   const estScene = (ref: ReferenceVisuelle) => ref.type === 'scene-precedente' || ref.type === 'scene-avant-derniere';
-  const ordonnees = ordonnerReferences(references, references.length);
-  const visage = ordonnees.find((ref) => !estScene(ref));
-  const scene = ordonnees.find(estScene);
+  // Un visage par personnage visible, dans l'ordre des personnages de la
+  // scène (le serveur place chaque visage dans sa bande, de gauche à droite).
+  // Le joueur n'en garde qu'un : portrait de création, sinon avatar.
+  const portraitJoueur = references.some((ref) => ref.type === 'joueur-portrait' && !!ref.uri);
+  const visages = references.filter((ref) => !!ref.uri && !estScene(ref) && !(portraitJoueur && ref.type === 'joueur-avatar'));
+  const scene = ordonnerReferences(references.filter(estScene), 1)[0];
+  const vus = new Set<string>();
   return [
-    ...(visage ? [{ role: 'personnage' as const, image: visage.uri }] : []),
+    ...visages
+      .filter((ref) => (vus.has(ref.uri) ? false : (vus.add(ref.uri), true)))
+      .slice(0, MAX_VISAGES_SCENE)
+      .map((ref) => ({ role: 'personnage' as const, image: ref.uri })),
     ...(scene ? [{ role: 'scene' as const, image: scene.uri }] : []),
   ];
 }
+
+/** Visages transmis au serveur d'images (un par personnage visible). */
+export const MAX_VISAGES_SCENE = 4;
 
 /**
  * Trie les références par priorité (identité des personnages visibles

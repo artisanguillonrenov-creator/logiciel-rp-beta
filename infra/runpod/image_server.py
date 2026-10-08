@@ -51,6 +51,8 @@ EMBEDDINGS_DIR = os.environ.get("ELYNDOR_EMBEDDINGS_DIR", os.path.join(RACINE, "
 EMBEDDINGS_ID = os.environ.get("ELYNDOR_EMBEDDINGS_MODELE", "bge-m3")
 IP_ADAPTER_DIR = os.environ.get("ELYNDOR_IP_ADAPTER_DIR", os.path.join(RACINE, "models/ip-adapter"))
 POIDS_VISAGE = float(os.environ.get("ELYNDOR_IP_VISAGE", "0.6"))
+# Tous les personnages visibles gardent leur visage : chacun dans sa bande de l'image.
+MAX_VISAGES = int(os.environ.get("ELYNDOR_IP_MAX_VISAGES", "4"))
 POIDS_SCENE = float(os.environ.get("ELYNDOR_IP_SCENE", "0.3"))
 # Portrait prédéfini de la race : allure (peau, cheveux, parure), pas le visage.
 POIDS_RACE = float(os.environ.get("ELYNDOR_IP_RACE", "0.5"))
@@ -74,6 +76,8 @@ if IP_ADAPTER:
         torch_dtype=torch.float16,
     )
 VIDE = Image.new("RGB", (224, 224))
+from diffusers.image_processor import IPAdapterMaskProcessor
+processeur_masques = IPAdapterMaskProcessor()
 
 MODULES: list[str] = []
 for fichier in sorted(pathlib.Path(MODULES_DIR).glob("*.safetensors")):
@@ -231,9 +235,10 @@ def lire_image(data_url: str) -> Image.Image | None:
         return None
 
 
-def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None, Image.Image | None]:
-    """Première référence de personnage (visage), de scène et de race."""
-    visage = scene = race = None
+def references(req: "Requete") -> tuple[list[Image.Image], Image.Image | None, Image.Image | None]:
+    """Visages de tous les personnages (dans l'ordre reçu), première scène et première race."""
+    visages: list[Image.Image] = []
+    scene = race = None
     for ref in req.reference_images or []:
         role, image = ("personnage", ref) if isinstance(ref, str) else (ref.get("role"), ref.get("image", ""))
         if not isinstance(image, str):
@@ -242,9 +247,28 @@ def references(req: "Requete") -> tuple[Image.Image | None, Image.Image | None, 
             scene = lire_image(image)
         elif role == "race" and race is None:
             race = lire_image(image)
-        elif role != "scene" and visage is None:
+        elif role != "scene" and len(visages) < MAX_VISAGES:
             visage = lire_image(image)
-    return visage, scene, race
+            if visage is not None:
+                visages.append(visage)
+    return visages, scene, race
+
+
+def masques_visages(nombre: int, largeur: int, hauteur: int):
+    """Une bande verticale par personnage, de gauche à droite.
+
+    Bords fondus et larges chevauchements : des bandes nettes coupaient
+    l'image en panneaux distincts (effet diptyque).
+    """
+    from PIL import ImageFilter
+    pas = largeur / nombre
+    marge = int(pas * 0.25)
+    masques = []
+    for i in range(nombre):
+        m = Image.new("L", (largeur, hauteur), 0)
+        m.paste(255, (max(0, int(i * pas) - marge), 0, min(largeur, int((i + 1) * pas) + marge), hauteur))
+        masques.append(m.filter(ImageFilter.GaussianBlur(radius=max(8, int(pas * 0.2)))))
+    return processeur_masques.preprocess(masques, height=hauteur, width=largeur).reshape(1, nombre, hauteur, largeur)
 
 
 def egaliser_longueurs(a: torch.Tensor, b: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -310,7 +334,7 @@ def embeddings(req: RequeteEmbeddings):
 @app.get("/health")
 def sante():
     return {"status": "ok", "ip_adapter": IP_ADAPTER, "embeddings": encodeur is not None,
-            "modules": MODULES, "negatif": JETON_NEGATIF is not None}
+            "modules": MODULES, "negatif": JETON_NEGATIF is not None, "dechargement": DECHARGEMENT}
 
 
 @app.post("/v1/images/generations")
@@ -327,14 +351,22 @@ def generer(req: Requete):
             graine = req.seed if req.seed is not None else int(time.time() * 1000) % 2**31
             options = {}
             if IP_ADAPTER:
-                visage, scene, race = references(req)
+                visages, scene, race = references(req)
                 # L'adaptateur général sert la scène précédente, ou à défaut le
                 # portrait de race (portraits de PNJ, qui n'ont pas de scène).
                 general = scene or race
                 poids_race = req.poids_race if req.poids_race is not None else POIDS_RACE
                 poids_general = POIDS_SCENE if scene else poids_race if race else 0.0
-                pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visage else 0.0])
-                options["ip_adapter_image"] = [general or VIDE, visage or VIDE]
+                if len(visages) <= 1:
+                    pipe.set_ip_adapter_scale([poids_general, POIDS_VISAGE if visages else 0.0])
+                    options["ip_adapter_image"] = [general or VIDE, visages[0] if visages else VIDE]
+                else:
+                    # Plusieurs personnages : un masque par visage, l'adaptateur
+                    # général couvre toute l'image.
+                    pipe.set_ip_adapter_scale([[poids_general], [POIDS_VISAGE] * len(visages)])
+                    options["ip_adapter_image"] = [[general or VIDE], visages]
+                    plein = processeur_masques.preprocess([Image.new("L", (largeur, hauteur), 255)], height=hauteur, width=largeur)
+                    options["cross_attention_kwargs"] = {"ip_adapter_masks": [plein.reshape(1, 1, hauteur, largeur), masques_visages(len(visages), largeur, hauteur)]}
             image = pipe(
                 prompt_embeds=cond, pooled_prompt_embeds=pooled,
                 negative_prompt_embeds=ncond, negative_pooled_prompt_embeds=npooled,

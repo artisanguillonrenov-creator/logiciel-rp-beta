@@ -372,7 +372,7 @@ test('la requête porte le prompt court anglais et une régénération ne touche
   assert.equal(corps.reference_images, undefined);
 });
 
-test('le serveur reçoit un visage prioritaire et la scène la plus récente, avec leur rôle', () => {
+test('le serveur reçoit le visage de chaque personnage visible et la scène la plus récente', () => {
   const refs: ReferenceVisuelle[] = [
     { type: 'scene-avant-derniere', uri: 'data:s2', libelle: 's2' },
     { type: 'scene-precedente', uri: 'data:s1', libelle: 's1' },
@@ -381,6 +381,7 @@ test('le serveur reçoit un visage prioritaire et la scène la plus récente, av
     { type: 'joueur-portrait', uri: 'data:portrait', libelle: 'portrait' },
   ];
   assert.deepEqual(selectionnerReferencesGenerateur(refs), [
+    { role: 'personnage', image: 'data:sylvana' },
     { role: 'personnage', image: 'data:portrait' },
     { role: 'scene', image: 'data:s1' },
   ]);
@@ -391,6 +392,7 @@ test('le serveur reçoit un visage prioritaire et la scène la plus récente, av
     prompt: 'p', format: '16:9', references: selectionnerReferencesGenerateur(refs),
   }, 'lustify-sdxl-v4');
   assert.deepEqual(corps.reference_images, [
+    { role: 'personnage', image: 'data:sylvana' },
     { role: 'personnage', image: 'data:portrait' },
     { role: 'scene', image: 'data:s1' },
   ]);

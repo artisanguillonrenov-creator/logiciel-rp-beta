@@ -5,7 +5,16 @@
 # Idempotent : arrête les instances en cours avant de relancer.
 set -u
 RACINE=${ELYNDOR_ROOT:-/workspace/elyndor}
-MODELE_TEXTE=$RACINE/models/text/L3.3-70B-Euryale-v2.3-Q4_K_M.gguf
+# Variables du pod (RTX 5090 : Cydonia 24B + modules RP et agent) ; sans
+# elles, configuration H100 historique (Euryale 70B).
+MODELE_TEXTE=${ELYNDOR_MODELE_TEXTE:-$RACINE/models/text/L3.3-70B-Euryale-v2.3-Q4_K_M.gguf}
+ALIAS=${ELYNDOR_ALIAS:-euryale-70b-v2.3}
+CONTEXTE=${ELYNDOR_CONTEXTE:-24576}
+# Modules LoRA du narrateur, dans l'ordre : le premier (RP) est appliqué par
+# défaut, les suivants (agent Cortana) restent à 0 et se choisissent par requête
+# (champ « lora » de l'API llama-server).
+MODULES_TEXTE=""
+for m in ${ELYNDOR_LORAS:-}; do [ -f "$m" ] && MODULES_TEXTE="$MODULES_TEXTE --lora $m"; done
 LLAMA=$RACINE/llama.cpp/build/bin/llama-server
 PYTHON=$RACINE/venv/bin/python
 SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
@@ -25,8 +34,9 @@ sleep 3
 # seulement si ce llama-server la connaît, pour ne jamais bloquer le démarrage.
 CACHE_PROMPTS=""
 "$LLAMA" --help 2>&1 | grep -q -- "--cache-ram" && CACHE_PROMPTS="--cache-ram 16384"
-setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias euryale-70b-v2.3 $CACHE_PROMPTS \
-  --host 0.0.0.0 --port 8000 -ngl 99 -c 24576 -np 1 -fa on --metrics --jinja \
+[ -n "$MODULES_TEXTE" ] && MODULES_TEXTE="$MODULES_TEXTE --lora-init-without-apply"
+setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias "$ALIAS" $CACHE_PROMPTS $MODULES_TEXTE \
+  --host 0.0.0.0 --port 8000 -ngl 99 -c "$CONTEXTE" -np 1 -fa on --metrics --jinja \
   --cache-type-k q8_0 --cache-type-v q8_0 -t 16 \
   --min-p 0.05 --repeat-penalty 1.05 --repeat-last-n 512 \
   --dry-multiplier 0.8 --dry-base 1.75 --dry-allowed-length 2 --dry-penalty-last-n 2048 \
@@ -35,6 +45,11 @@ setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias euryale-70b-v2.3 $CACHE_PROMPTS
 # Le serveur d'images démarre après le chargement du narrateur pour que la
 # mémoire vidéo réservée par llama.cpp soit connue.
 until curl -sf localhost:8000/health > /dev/null; do sleep 2; done
+# Module RP actif par défaut (scale 1), les autres à 0.
+if [ -n "$MODULES_TEXTE" ]; then
+  curl -sf localhost:8000/lora-adapters -H 'Content-Type: application/json' \
+    -d "$(python3 -c "import json,sys;n=int(sys.argv[1]);print(json.dumps([{'id':i,'scale':1.0 if i==0 else 0.0} for i in range(n)]))" "$(echo $MODULES_TEXTE | grep -o -- '--lora ' | wc -l)")" > /dev/null
+fi
 # Boucle de relance : si le serveur d'images s'arrête (mémoire, plantage),
 # il redémarre seul au lieu de laisser l'app en erreur 502 jusqu'au
 # prochain démarrage du pod. MALLOC_ARENA_MAX limite la fragmentation de

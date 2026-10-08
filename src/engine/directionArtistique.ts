@@ -60,7 +60,7 @@ Règles :
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
 - "promptSdxl" : la MÊME image pour le modèle image (Lustify SDXL, encodeur CLIP), EN ANGLAIS et en MOTS CLÉS séparés par des virgules, jamais en phrases, 40 à 70 mots, du plus important au moins important (CLIP lit ~75 jetons et pèse surtout les premiers), dans cet ordre :
   1. cadrage et angle (ex. "low angle medium shot") ;
-  2. nombre de personnages visibles (ex. "1 woman, 1 man") ;
+  2. nombre de personnages visibles (ex. "1 woman, 1 man"), puis chacun décrit de GAUCHE à DROITE dans le cadre, dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite) ;
   3. pour chacun : race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20) suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, expression ; tenue précise (matières, couleurs, état) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang ; armes et accessoires ;
   4. l'action et l'interaction physique, en mots clés (ex. "slashing with katana", "kissing", "holding hands") ;
   5. le décor : lieu, matériaux, objets ;
