@@ -10,9 +10,10 @@ RACINE=${ELYNDOR_ROOT:-/workspace/elyndor}
 MODELE_TEXTE=${ELYNDOR_MODELE_TEXTE:-$RACINE/models/text/L3.3-70B-Euryale-v2.3-Q4_K_M.gguf}
 ALIAS=${ELYNDOR_ALIAS:-euryale-70b-v2.3}
 CONTEXTE=${ELYNDOR_CONTEXTE:-24576}
-# Modules LoRA du narrateur, dans l'ordre : le premier (RP) est appliqué par
-# défaut, les suivants (agent Cortana) restent à 0 et se choisissent par requête
-# (champ « lora » de l'API llama-server).
+# Modules LoRA du narrateur (RP Elyndor, agent Cortana) : chargés mais à 0
+# par défaut, choisis par requête (champ « lora » de l'API llama-server).
+# ELYNDOR_LORA_DEFAUT=1 active le premier par défaut. Le module RP rendait
+# le narrateur plus sage et plus court : il est désactivé.
 MODULES_TEXTE=""
 for m in ${ELYNDOR_LORAS:-}; do [ -f "$m" ] && MODULES_TEXTE="$MODULES_TEXTE --lora $m"; done
 LLAMA=$RACINE/llama.cpp/build/bin/llama-server
@@ -45,10 +46,10 @@ setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias "$ALIAS" $CACHE_PROMPTS $MODULE
 # Le serveur d'images démarre après le chargement du narrateur pour que la
 # mémoire vidéo réservée par llama.cpp soit connue.
 until curl -sf localhost:8000/health > /dev/null; do sleep 2; done
-# Module RP actif par défaut (scale 1), les autres à 0.
+# Échelles par défaut : tous à 0, sauf le premier si ELYNDOR_LORA_DEFAUT=1.
 if [ -n "$MODULES_TEXTE" ]; then
   curl -sf localhost:8000/lora-adapters -H 'Content-Type: application/json' \
-    -d "$(python3 -c "import json,sys;n=int(sys.argv[1]);print(json.dumps([{'id':i,'scale':1.0 if i==0 else 0.0} for i in range(n)]))" "$(echo $MODULES_TEXTE | grep -o -- '--lora ' | wc -l)")" > /dev/null
+    -d "$(python3 -c "import json,sys;n=int(sys.argv[1]);print(json.dumps([{'id':i,'scale':1.0 if i==0 and sys.argv[2]=='1' else 0.0} for i in range(n)]))" "$(echo $MODULES_TEXTE | grep -o -- '--lora ' | wc -l)" "${ELYNDOR_LORA_DEFAUT:-0}")" > /dev/null
 fi
 # Boucle de relance : si le serveur d'images s'arrête (mémoire, plantage),
 # il redémarre seul au lieu de laisser l'app en erreur 502 jusqu'au

@@ -1,5 +1,5 @@
 import type { AppSettings, Message, StoryState } from '../types';
-import { calculerSelectionLore, construireCtxBase, corpusCanonHistoire, moteurAFenetreEtroite } from './generateTurn';
+import { calculerDebugLore, calculerSelectionLore, construireCtxBase, corpusCanonHistoire, moteurAFenetreEtroite, type ResultatTour } from './generateTurn';
 import {
   construireMessages,
   maxTokensPourLongueur,
@@ -149,4 +149,16 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
     dureeGenerationMs: Date.now() - debutMs,
     usageTokens: terminerMesureTokens(),
   };
+}
+
+
+/**
+ * Régénère la scène d'ouverture (bouton « Régénérer » du chat) : elle n'a pas
+ * de message joueur associé, elle est donc réécrite par le moteur d'ouverture.
+ */
+export async function regenererOuverture(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
+  const sansOuverture: StoryState = { ...story, messages: [] };
+  const ouverture = await genererMessageOuverture(sansOuverture, appSettings);
+  const debugLore = await calculerDebugLore(sansOuverture, requeteLoreOuverture(story.meta), appSettings);
+  return { story: { ...sansOuverture, messages: [ouverture] }, aEteCorrige: false, debugLore };
 }
