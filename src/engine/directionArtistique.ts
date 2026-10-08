@@ -58,14 +58,14 @@ Règles :
 - "changementsVisuels" : uniquement les changements DURABLES survenus dans les messages récents (tenue, armure, armes visibles, accessoires, coiffure, blessures, cicatrices, sang, poussière, boue, propreté, transformations, objets portés ; pour le décor : lieu, type de lieu, architecture, disposition, heure, météo, lumière, sources lumineuses, dégâts, incendies, portes ouvertes/fermées, objets importants, mobilier, traces). Chaque changement cite dans "evenement" la phrase exacte du récit qui l'établit. Sans citation, n'ajoute pas le changement.
 - Choisis le profil de cadrage adapté : dialogue, combat, tension, decouverte, groupe, interieur ou paysage.
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
-- "promptSdxl" : la MÊME image décrite EN ANGLAIS pour le modèle image (Chroma, encodeur T5), en phrases naturelles, concrètes et précises, 100 à 180 mots, dans cet ordre :
-  1. type de plan, angle et objectif (ex. "low angle wide shot, 35mm lens") ;
-  2. nombre exact de personnages visibles et place de chacun dans le cadre (gauche, droite, centre, premier plan, arrière-plan) ;
-  3. pour chacun : race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20), suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux (couleur, longueur, coiffure), yeux, traits du visage, expression ; tenue précise (matières, couleurs, état, ce qui est déchiré ou ouvert) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang, sueur, saleté ; armes et accessoires ;
-  4. l'action exacte à cet instant et l'interaction physique entre les personnages (qui touche ou frappe qui, gestes, regards, distance) ;
-  5. le décor : lieu, matériaux, objets, figurants en arrière-plan ;
-  6. la lumière : sources, couleur, direction, et l'ambiance.
-  Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). Aucun nom propre : le modèle ne connaît pas les personnages.
+- "promptSdxl" : la MÊME image pour le modèle image (Lustify SDXL, encodeur CLIP), EN ANGLAIS et en MOTS CLÉS séparés par des virgules, jamais en phrases, 40 à 70 mots, du plus important au moins important (CLIP lit ~75 jetons et pèse surtout les premiers), dans cet ordre :
+  1. cadrage et angle (ex. "low angle medium shot") ;
+  2. nombre de personnages visibles (ex. "1 woman, 1 man") ;
+  3. pour chacun : race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20) suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, expression ; tenue précise (matières, couleurs, état) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang ; armes et accessoires ;
+  4. l'action et l'interaction physique, en mots clés (ex. "slashing with katana", "kissing", "holding hands") ;
+  5. le décor : lieu, matériaux, objets ;
+  6. la lumière : sources, couleur.
+  Pour renforcer un détail essentiel qui se perd, la syntaxe est (mot clé)1.3 — jamais (mot:1.3). Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing), pas d'articles ni de mots de liaison. Aucun nom propre : le modèle ne connaît pas les personnages.
 
 Champs autorisés pour "champ" :
 - personnage : tenue, armure, coiffure, proprete, armesVisibles, accessoires, blessures, cicatrices, salissures, transformations, objetsPortes
@@ -81,7 +81,7 @@ Réponds UNIQUEMENT avec ce JSON strict :
 "camera":{"typePlan":"","angle":"","position":"","profondeur":"","composition":""},
 "lumiere":{"source":"","direction":"","intensite":"","heure":"","meteo":""},
 "ambiance":{"tension":"","emotion":"","rendu":""},
-"promptSdxl":"Low angle medium shot of a scarred adult human man in dented plate armor facing ...",
+"promptSdxl":"low angle medium shot, 1 man, adult human man, 45 years old, scarred face, dented plate armor, ...",
 "changementsVisuels":[{"cible":"personnage|decor","nom":"","champ":"","operation":"definir|ajouter|retirer","valeur":"","evenement":"citation exacte"}]}`;
 
 function texteSur(valeur: unknown, max = 400): string {
@@ -352,12 +352,12 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
 // Consigne permanente : le modèle image ne voit jamais la conversation. Tout
 // ce qu'il reçoit est rédigé par le modèle narratif, en anglais, sous la
 // forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
-const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Chroma, encodeur T5) qui ne connaît rien de l'histoire et lit bien mieux l'anglais.
-Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en phrases naturelles, concrètes et précises, 100 à 180 mots.
-Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage, angle et objectif ; nombre de sujets et place de chacun dans le cadre ; pour chacun race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20), suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, traits du visage, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière (sources, couleur, direction).
-Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing). N'invente rien qui ne soit pas dans la description fournie.`;
+const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Lustify SDXL, encodeur CLIP) qui ne connaît rien de l'histoire et ne lit bien que l'anglais.
+Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en MOTS CLÉS séparés par des virgules, jamais en phrases, 40 à 70 mots, du plus important au moins important (CLIP pèse surtout les premiers mots).
+Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage et angle ; nombre de sujets ; pour chacun race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20) suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière.
+Pour renforcer un détail essentiel, la syntaxe est (mot clé)1.3 — jamais (mot:1.3). Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing), pas d'articles ni de mots de liaison. N'invente rien qui ne soit pas dans la description fournie.`;
 
-const MOTS_MIN_PROMPT_SDXL = 70;
+const MOTS_MIN_PROMPT_SDXL = 25;
 
 export function promptSdxlTropCourt(prompt: string | undefined): boolean {
   return !prompt || prompt.split(/\s+/).filter(Boolean).length < MOTS_MIN_PROMPT_SDXL;
@@ -501,8 +501,8 @@ export async function demanderDirectionArtistique(
       );
       if (promptSdxlTropCourt(direction.structure.promptSdxl)) {
         // Consigne permanente : le prompt image est toujours rédigé par le
-        // modèle narratif ; s'il l'a omis ou bâclé (une phrase au lieu de
-        // 100 à 180 mots), on le lui redemande à partir de sa propre
+        // modèle narratif ; s'il l'a omis ou bâclé (quelques mots au lieu de
+        // 40 à 70 mots clés), on le lui redemande à partir de sa propre
         // direction artistique, qui contient tous les détails.
         direction.structure.promptSdxl = await redigerPromptSdxl(
           settings,
