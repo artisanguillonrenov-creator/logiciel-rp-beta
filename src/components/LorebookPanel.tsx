@@ -17,6 +17,7 @@ import {
   signalerDoublonsLore, supprimerAjoutLore, validerFiche,
   type EtatLore, type FicheEditable, type FicheAffichee,
 } from '../concepteur/lorebookModele';
+import { dossiersNavigationLore } from '../concepteur/navigationLore';
 import { assisterFicheLore, type ActionAI, type TailleAI, type FideliteAI, type PropositionLoreIA } from '../concepteur/lorebookAssistant';
 import { importerLoreAtelier, lireLoreAtelier, modifierLoreAtelier, restaurerLoreAtelier } from '../concepteur/lorebookStore';
 
@@ -28,7 +29,7 @@ const MODES: Array<{ id: ActionAI; titre: string }> = [
 ];
 const erreurTexte = (e: unknown) => e instanceof Error ? e.message : 'Opération impossible.';
 const separer = (v: string) => v.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
-const dossierFiche = (f: FicheAffichee) => f.dossiers.length ? f.dossiers : ['Catégories/' + f.category];
+const dossierFiche = (f: FicheAffichee) => dossiersNavigationLore(f);
 type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic';
 interface LoreProposition { id: string; titre: string; contenu: string; categorie: string; origine: string; }
 
