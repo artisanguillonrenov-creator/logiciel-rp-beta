@@ -606,6 +606,19 @@ async function genererTourInterne(
   const moteurEtroit = moteurAFenetreEtroite(appSettings);
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
+  const messagesNarrateur = construireMessages(ctxBase, {
+    budgetSysteme: budgetPrompt, budgetConversation,
+  });
+  const tailleSysteme = messagesNarrateur.find(m => m.role === 'system')?.content?.length ?? 0;
+  const tailleHistorique = messagesNarrateur.filter(m => m.role !== 'system')
+    .reduce((total, m) => total + (m.content?.length ?? 0), 0);
+  ajouterEtapeDiagnostic('Budget de contexte effectivement construit', 'contexte', 'ok', 0, undefined, [
+    `Prompt système : ${tailleSysteme} caractères`,
+    `Historique envoyé : ${tailleHistorique} caractères`,
+    `Messages envoyés : ${messagesNarrateur.length}`,
+    `Limites de préparation : système ${budgetPrompt}, historique ${budgetConversation} caractères`,
+    'Les caractères ne sont PAS les tokens réels du modèle.',
+  ]);
 
   commencerMesureTokens();
   // Une réponse coupée par le plafond est complétée par le modèle plutôt que
@@ -616,7 +629,7 @@ async function genererTourInterne(
     () => genererReponseComplete({
       ...configurationLLM(appSettings, modelePourAppel),
       storyId: storyCourante.meta.id,
-      messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
+      messages: messagesNarrateur,
       temperature,
       maxTokens,
       samplers,
