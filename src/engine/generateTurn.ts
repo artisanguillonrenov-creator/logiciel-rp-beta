@@ -357,7 +357,7 @@ export function construireCtxBase(
   avecNoyau = true,
 ): ContexteConstruction {
   const storyNoyau = avecNoyau ? assurerNoyau(story) : story;
-  const noyau = avecNoyau ? construireContexteNoyau(storyNoyau, messageJoueur) : null;
+  const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
   const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
