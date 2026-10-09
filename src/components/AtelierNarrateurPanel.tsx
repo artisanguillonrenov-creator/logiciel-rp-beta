@@ -22,6 +22,28 @@ const NOMS: Record<ProfilAtelier, string> = { production: 'Production', test: 'T
 const LONGUEURS: Array<{ id: Longueur; nom: string }> = [
   { id: 'courte', nom: 'Court' }, { id: 'moyenne', nom: 'Moyen' }, { id: 'longue', nom: 'Long' },
 ];
+const AIDES_SAMPLERS: Record<CleSampler, string> = {
+  top_p: 'Part cumulée des candidats retenus. Peut être neutralisée par Mirostat.',
+  top_k: 'Nombre maximal de candidats considérés. Peut être neutralisé par Mirostat.',
+  min_p: 'Supprime les candidats sous un seuil relatif de probabilité.',
+  typical_p: 'Priorise les candidats proches de la surprise attendue.',
+  repeat_penalty: 'Réduit la répétition lexicale ; trop élevé dégrade les noms.',
+  repeat_last_n: 'Nombre de tokens récents examinés pour la répétition.',
+  frequency_penalty: 'Pénalise les tokens déjà fréquemment employés.',
+  presence_penalty: 'Pénalise les tokens déjà apparus, quelle que soit leur fréquence.',
+  dry_multiplier: 'Force de prévention des répétitions de segments.',
+  dry_base: 'Croissance de la pénalité de répétition DRY.',
+  dry_allowed_length: 'Longueur de séquence répétée tolérée par DRY.',
+  dry_penalty_last_n: 'Fenêtre analysée par DRY.',
+  xtc_probability: 'Probabilité de retirer un token trop évident.',
+  xtc_threshold: 'Seuil de probabilité de XTC.',
+  dynatemp_range: 'Amplitude de la température dynamique autour de la température de base.',
+  dynatemp_exponent: 'Courbure de la température dynamique.',
+  mirostat: 'Mode de contrôle de surprise 0 (arrêt), 1 ou 2.',
+  mirostat_tau: 'Niveau de surprise visé par Mirostat.',
+  mirostat_eta: 'Vitesse d’adaptation de Mirostat.',
+};
+
 const LIBELLES_AVENTURE: Record<keyof StorySettings, string> = {
   ton: 'Style initial', creativite: 'Créativité', longueur: 'Longueur',
   violence: 'Violence', romance: 'Romance', humour: 'Humour',
@@ -235,7 +257,7 @@ export default function AtelierNarrateurPanel() {
         style={[styles.bouton, narrateur.samplersActifs && styles.boutonActif]}>
         <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers envoyés (compatibilité à vérifier)' : 'Autoriser l’envoi des samplers au pod'}</Text>
       </Pressable>
-      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Envoi activé : les 19 champs figurent dans la requête JSON, mais leur acceptation ET leur effet sur le modèle actif ne sont pas encore vérifiés sur RunPod. Aucun curseur ci-dessous ne doit être considéré comme certifié.</Text>
+      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Envoi activé : les champs individuellement sélectionnés figurent dans la requête JSON, mais leur acceptation ET leur effet sur le modèle actif ne sont pas encore vérifiés sur RunPod. Aucun curseur ci-dessous ne doit être considéré comme certifié.</Text>
       <Curseur nom="Correction de température du joueur" valeur={valeurs.temperatureDelta}
         min={LIMITES_ATELIER.temperatureDelta.min} max={LIMITES_ATELIER.temperatureDelta.max}
         pas={LIMITES_ATELIER.temperatureDelta.pas} bloque={operation}
@@ -245,10 +267,23 @@ export default function AtelierNarrateurPanel() {
         <Text style={styles.sousTitre}>{groupe}</Text>
         {CLES_SAMPLERS.filter(k => SAMPLERS_LLAMA_CPP[k].groupe === groupe).map((cle: CleSampler) => {
           const spec = SAMPLERS_LLAMA_CPP[cle];
-          return <Curseur key={cle} nom={spec.nom} valeur={narrateur.samplers[cle]}
-            min={spec.min} max={spec.max} pas={spec.pas}
-            bloque={operation || !narrateur.samplersActifs}
-            onChange={v => changerNarrateur({ ...narrateur, samplers: { ...narrateur.samplers, [cle]: v } }, 'Sampler ' + cle)} />;
+          const conflitMirostat = narrateur.samplers.mirostat > 0 &&
+            narrateur.samplersEnvoyes.mirostat && (['top_p', 'top_k', 'min_p', 'typical_p'] as CleSampler[]).includes(cle);
+          return <View key={cle} style={styles.ligne}>
+            <Text style={styles.aide}>{AIDES_SAMPLERS[cle]} · Défaut du profil : {formatNombre(spec.defaut)}. Support serveur : non vérifié.</Text>
+            <Pressable accessibilityRole="button" disabled={operation || !narrateur.samplersActifs}
+              onPress={() => changerNarrateur({ ...narrateur, samplersEnvoyes: {
+                ...narrateur.samplersEnvoyes, [cle]: !narrateur.samplersEnvoyes[cle],
+              } }, 'Transmission de ' + cle)}
+              style={[styles.onglet, narrateur.samplersEnvoyes[cle] && styles.actif]}>
+              <Text style={styles.nom}>{conflitMirostat ? 'Neutralisé par Mirostat' :
+                narrateur.samplersEnvoyes[cle] ? 'Inclure dans la requête' : 'Ne pas transmettre'}</Text>
+            </Pressable>
+            <Curseur nom={spec.nom} valeur={narrateur.samplers[cle]}
+              min={spec.min} max={spec.max} pas={spec.pas}
+              bloque={operation || !narrateur.samplersActifs || !narrateur.samplersEnvoyes[cle] || conflitMirostat}
+              onChange={v => changerNarrateur({ ...narrateur, samplers: { ...narrateur.samplers, [cle]: v } }, 'Sampler ' + cle)} />
+          </View>;
         })}
       </View>)}
       <Text style={styles.aide}>Température effective selon la créativité : faible {Math.max(0, Math.min(2, temperaturePourCreativite('faible') + valeurs.temperatureDelta)).toFixed(2)} · moyenne {Math.max(0, Math.min(2, temperaturePourCreativite('moyenne') + valeurs.temperatureDelta)).toFixed(2)} · élevée {Math.max(0, Math.min(2, temperaturePourCreativite('elevee') + valeurs.temperatureDelta)).toFixed(2)}. Chaque valeur est bornée entre 0 et 2.</Text>
