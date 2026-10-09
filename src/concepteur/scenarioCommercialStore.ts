@@ -4,8 +4,7 @@ const CLE = '@elyndor/concepteur/commercial-scenario-v1';
 const queue=creerFileSerie();
 let cache: ScenarioCommercial | null=null;
 function stockage(){
-  return require('@react-native-async-storage/async-storage').default
-    as typeof import('@react-native-async-storage/async-storage').default;
+  return require('@react-native-async-storage/async-storage').default as typeof import('@react-native-async-storage/async-storage').default;
 }
 export function lireScenarioCommercial():Promise<ScenarioCommercial>{
   return queue(async()=>{
