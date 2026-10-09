@@ -5,6 +5,7 @@ import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { resumerDiagnosticAtelier, type ResumeDiagnosticAtelier } from '../concepteur/auditAtelier';
 import { couleurs, polices } from '../theme/theme';
 import AtelierConfigurationPanel from './AtelierConfigurationPanel';
+import { analyserSeriesContexte } from '../concepteur/statistiquesContexte';
 import type { ConfigurationAtelier } from '../concepteur/configuration';
 import type { DiagnosticTour, StoryState } from '../types';
 
@@ -53,6 +54,7 @@ export default function AtelierContexteMemoirePanel() {
   const texteMesure = longueurs?.raison ?? NOMBRE_VIDE;
   const params = config?.profils.production;
   const noyau = story?.narrativeCore;
+  const serie = analyserSeriesContexte(story);
   const journal = (d?.etapes ?? []).filter(e => /recherche|contexte|mémoire|tokens|longueur|narratif/i.test(
     e.categorie + ' ' + e.nom));
   const statutUsage = d?.appelsIA.every(a => a.usageComplet) ? 'Données reçues sur chaque appel' :
@@ -107,6 +109,14 @@ export default function AtelierContexteMemoirePanel() {
           detail={a.inputTokens + ' tokens entrée / ' + a.outputTokens + ' sortie ; ' +
             (a.usageComplet ? 'usage fourni' : 'usage indisponible ou partiel')}/>)}
         <Text style={styles.aide}>Coût monétaire RunPod : non mesuré. L'hébergement peut être facturé même hors génération ; aucun tarif n'est déduit arbitrairement des tokens.</Text>
+        <Text style={styles.sousTitre}>Fiabilité sur les tours enregistrés</Text>
+        <Ligne titre="Échantillon réel" valeur={serie.echantillon + ' tours'}
+          detail="Au plus les 120 derniers tours avec un diagnostic persistant ; aucune scène synthétique comptée."/>
+        <Ligne titre="Latence P50" valeur={serie.p50Ms === null ? NOMBRE_VIDE : serie.p50Ms + ' ms'}/>
+        <Ligne titre="Latence P95" valeur={serie.p95Ms === null ? NOMBRE_VIDE : serie.p95Ms + ' ms'}/>
+        <Ligne titre="Tours avec comptage exact enregistré" valeur={serie.toursAvecComptageExact}/>
+        <Ligne titre="Tours non certifiés ou non mesurés" valeur={serie.toursNonVerifies}/>
+        <Ligne titre="Tours avec au moins un repli" valeur={serie.toursAvecRepli}/>
         <Text style={styles.sousTitre}>Mobilisation des responsabilités M01–M15</Text>
         <Text style={styles.aide}>Ce sont des responsabilités du noyau codé, pas quinze agents autonomes.</Text>
         {resume.moteurs.map(m => <Ligne key={m.id} titre={m.id + ' — ' + m.nom}
