@@ -64,17 +64,15 @@ const REGLES_PROMPT_SDXL = `Règles :
   - Pour renforcer un autre détail essentiel qui se perd, la syntaxe est (mot clé)1.3, jamais (mot:1.3) ; au plus 2 renforts en plus de l'âge et de la carnation.
   - Au-delà de la longueur demandée, le modèle d'image ignore la fin du prompt : coupe les détails secondaires plutôt qu'un personnage.`;
 
-const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Suis exactement ce gabarit :
+const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
   (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin and [couleur + coiffure] hair, [tenue : matière + couleur], [action ou posture] in [lieu + 1 ou 2 adjectifs concrets], [lumière], [type de plan]
-  Exemple : (35 years old)1.2 dark elf female ranger with (ebony skin)1.3 and white braided hair, leather armor, standing in a smoky medieval tavern, warm candlelight, cinematic wide shot
   Plusieurs personnages : commence par leur nombre, puis un groupe de 10 à 15 mots par personnage (âge, race, sexe, rôle, carnation, cheveux, tenue, action), de GAUCHE à DROITE dans le cadre et dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite). Le lieu, la lumière et le plan viennent UNE SEULE FOIS, à la fin, jamais répétés pour chaque personnage. Chaque personnage visible figure dans le prompt avec son âge, même un adversaire au second plan ; au-delà de 3, décris les 3 principaux et résume les autres en quelques mots (« 3 guards in background »).
   Sans personnage visible (paysage, décor seul) : commence directement par le lieu, sans âge ni personnage inventé.
-  Exemple à deux : 1 woman, 1 man, (28 years old)1.2 human female mercenary with olive skin and short black hair, studded leather armor, drawing sword, (60 years old)1.2 dwarf male priest with braided white beard, grey wool robe, raising holy symbol, in a ruined stone chapel, torchlight, medium shot
+  À plusieurs : [nombre de personnages], [groupe du 1er personnage], [groupe du 2e personnage], [interaction], in [lieu], [lumière], [type de plan]
   ${REGLES_PROMPT_SDXL}`;
 
-const GABARIT_PROMPT_PORTRAIT_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 40 mots au total. Suis exactement ce gabarit :
+const GABARIT_PROMPT_PORTRAIT_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 40 mots au total. Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
   (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin, [couleur] eyes and [couleur + coiffure] hair, [traits du visage : cicatrice, barbe, tatouage, maquillage], [expression], [tenue visible aux épaules : matière + couleur], [bijou ou accessoire], dark plain background, close-up portrait
-  Exemple : (52 years old)1.2 human male blacksmith with tanned weathered skin, grey eyes and short grey hair, thick stubble beard, crow's feet, stern gaze, soot-stained leather apron over linen shirt, dark plain background, close-up portrait
   ${REGLES_PROMPT_SDXL}`;
 
 const INSTRUCTION_DIRECTION = `Tu es le directeur artistique d'Elyndor. Tu prépares l'illustration de l'instant présent de la scène (la fin du dernier message du narrateur) pour un modèle image qui ne connaît rien de l'histoire.

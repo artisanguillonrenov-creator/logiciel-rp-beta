@@ -52,7 +52,8 @@ test('le prompt image suit le gabarit des essais du pod : âge renforcé en têt
   const direction = messagesDirection(histoire(), reglages, 'CONTEXTE')[1].content;
   for (const consigne of [direction, CONSIGNE_PROMPT_SDXL]) {
     assert.match(consigne, /\(N years old\)1\.2 \[race\] \[female\|male\] \[rôle\]/);
-    assert.match(consigne, /\(35 years old\)1\.2 dark elf female ranger with \(ebony skin\)1\.3 and white braided hair, leather armor, standing in a smoky medieval tavern, warm candlelight, cinematic wide shot/);
+    assert.doesNotMatch(consigne, /dark elf female ranger|smoky medieval tavern|blacksmith/);
+    assert.match(consigne, /déjà enregistrés/);
     assert.match(consigne, /25 à 45 mots/);
     assert.match(consigne, /UNE SEULE FOIS, à la fin/);
     assert.match(consigne, /Sans personnage visible/);
@@ -65,6 +66,7 @@ test('le prompt image suit le gabarit des essais du pod : âge renforcé en têt
     assert.doesNotMatch(consigne, /40 à 70/);
   }
   assert.match(CONSIGNE_PROMPT_PORTRAIT_SDXL, /\(N years old\)1\.2 .*dark plain background, close-up portrait/);
+  assert.doesNotMatch(CONSIGNE_PROMPT_PORTRAIT_SDXL, /blacksmith/);
   assert.match(CONSIGNE_PROMPT_PORTRAIT_SDXL, /jamais moins de 20/);
   assert.match(CONSIGNE_PROMPT_PORTRAIT_SDXL, /omis, jamais inventé/);
 });
