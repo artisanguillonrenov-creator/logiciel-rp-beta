@@ -67,7 +67,7 @@ const REGLES_PROMPT_SDXL = `Règles :
 const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Suis exactement ce gabarit :
   (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin and [couleur + coiffure] hair, [tenue : matière + couleur], [action ou posture] in [lieu + 1 ou 2 adjectifs concrets], [lumière], [type de plan]
   Exemple : (35 years old)1.2 dark elf female ranger with (ebony skin)1.3 and white braided hair, leather armor, standing in a smoky medieval tavern, warm candlelight, cinematic wide shot
-  Plusieurs personnages : commence par leur nombre, puis un groupe de 10 à 15 mots par personnage (âge, race, sexe, rôle, carnation, cheveux, tenue, action), de GAUCHE à DROITE dans le cadre et dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite). Le lieu, la lumière et le plan viennent UNE SEULE FOIS, à la fin, jamais répétés pour chaque personnage. Chaque personnage visible figure dans le prompt, même un adversaire au second plan.
+  Plusieurs personnages : commence par leur nombre, puis un groupe de 10 à 15 mots par personnage (âge, race, sexe, rôle, carnation, cheveux, tenue, action), de GAUCHE à DROITE dans le cadre et dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite). Le lieu, la lumière et le plan viennent UNE SEULE FOIS, à la fin, jamais répétés pour chaque personnage. Chaque personnage visible figure dans le prompt avec son âge, même un adversaire au second plan ; au-delà de 3, décris les 3 principaux et résume les autres en quelques mots (« 3 guards in background »).
   Sans personnage visible (paysage, décor seul) : commence directement par le lieu, sans âge ni personnage inventé.
   Exemple à deux : 1 woman, 1 man, (28 years old)1.2 human female mercenary with olive skin and short black hair, studded leather armor, drawing sword, (60 years old)1.2 dwarf male priest with braided white beard, grey wool robe, raising holy symbol, in a ruined stone chapel, torchlight, medium shot
   ${REGLES_PROMPT_SDXL}`;
@@ -401,6 +401,16 @@ export function promptSdxlTropLong(prompt: string | undefined): boolean {
   return !!prompt && nombreMots(prompt) > MOTS_MAX_PROMPT_SDXL;
 }
 
+// Au-delà de 3 personnages, la consigne fait résumer les autres (« 3 guards
+// in background ») : seuls les 3 premiers doivent avoir leur âge.
+const MAX_PERSONNAGES_DECRITS = 3;
+
+/** Vrai s'il manque un personnage visible : un âge « years old » par personnage décrit. */
+export function personnagesManquantsPromptSdxl(prompt: string | undefined, nombreVisibles: number): boolean {
+  const ages = (prompt ?? '').match(/\byears? old\b/gi)?.length ?? 0;
+  return ages < Math.min(nombreVisibles, MAX_PERSONNAGES_DECRITS);
+}
+
 export function nettoyerPromptSdxl(sortie: string): string | undefined {
   const ligne = (sortie.split('\n').map((l) => l.trim()).find(Boolean) ?? '')
     .replace(/^(?:sdxl\s+)?prompt\s*:\s*/i, '')
@@ -540,17 +550,20 @@ export async function demanderDirectionArtistique(
         p.nom === story.meta.personnageNom && !p.apparence ? { ...p, apparence: fiche } : p,
       );
       const promptSdxl = direction.structure.promptSdxl;
-      const sansAge = direction.structure.personnages.length > 0 && !/\byears? old\b/i.test(promptSdxl ?? '');
-      if (promptSdxlTropCourt(promptSdxl) || promptSdxlTropLong(promptSdxl) || sansAge) {
+      const visibles = direction.structure.personnages.map((p) => p.nom);
+      if (promptSdxlTropCourt(promptSdxl) || promptSdxlTropLong(promptSdxl) || personnagesManquantsPromptSdxl(promptSdxl, visibles.length)) {
         // Consigne permanente : le prompt image est toujours rédigé par le
         // modèle narratif ; s'il l'a omis, bâclé (quelques mots au lieu de
-        // 25 à 45 mots clés, ou sans l'âge des personnages visibles) ou trop
-        // allongé, on le lui redemande à partir de sa propre direction
-        // artistique, qui contient tous les détails.
+        // 25 à 45 mots clés), trop allongé ou s'il a oublié un personnage
+        // visible (un âge par personnage), on le lui redemande à partir de sa
+        // propre direction artistique, qui contient tous les détails.
         direction.structure.promptSdxl = await redigerPromptSdxl(
           settings,
           formaterPromptImage(direction.structure).split('[STYLE VISUEL]')[0],
-          `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
+          [
+            `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
+            visibles.length ? `${visibles.length} personnage(s) visible(s), tous à décrire, de gauche à droite : ${visibles.join(', ')}` : 'aucun personnage visible',
+          ].join(' ; '),
           signal,
           story.meta.id,
         ).catch(() => undefined) ?? direction.structure.promptSdxl;

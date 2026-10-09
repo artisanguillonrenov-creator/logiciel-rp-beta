@@ -8,6 +8,7 @@ import {
   completerAmorce,
   messagesDirection,
   promptSdxlTropCourt,
+  personnagesManquantsPromptSdxl,
   promptSdxlTropLong,
 } from '../src/engine/directionArtistique';
 
@@ -55,6 +56,7 @@ test('le prompt image suit le gabarit des essais du pod : âge renforcé en têt
     assert.match(consigne, /25 à 45 mots/);
     assert.match(consigne, /UNE SEULE FOIS, à la fin/);
     assert.match(consigne, /Sans personnage visible/);
+    assert.match(consigne, /3 guards in background/);
     assert.match(consigne, /l'âge APPARENT/);
     assert.match(consigne, /\(ebony skin\)1\.3/);
     assert.match(consigne, /de GAUCHE à DROITE/);
@@ -77,6 +79,15 @@ test('un prompt image trop long (lieu et lumière répétés pour chaque personn
   assert.equal(promptSdxlTropLong(undefined), false);
   assert.equal(promptSdxlTropLong(Array(45).fill('word').join(' ')), false);
   assert.equal(promptSdxlTropLong(Array(78).fill('word').join(' ')), true);
+});
+
+test('un prompt image qui oublie un personnage visible (un âge par personnage) est redemandé', () => {
+  const deux = '1 woman, 1 man, (28 years old)1.2 human female mercenary, (60 years old)1.2 dwarf male priest, in a chapel';
+  assert.equal(personnagesManquantsPromptSdxl(deux, 2), false);
+  assert.equal(personnagesManquantsPromptSdxl('1 woman, (28 years old)1.2 dark elf female ranger, snowy forest', 2), true);
+  assert.equal(personnagesManquantsPromptSdxl('ruined chapel at dawn, fog', 0), false);
+  // Au-delà de 3, les autres personnages sont résumés.
+  assert.equal(personnagesManquantsPromptSdxl(`${deux}, (40 years old)1.2 human guard, 3 guards in background`, 6), false);
 });
 
 test('les personnages du lore de la scène arrivent avec leur description officielle, les fiches hors scène restent dehors', () => {
