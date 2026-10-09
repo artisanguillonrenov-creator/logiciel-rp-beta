@@ -55,7 +55,7 @@ async function ecrire(storyId: string): Promise<void> {
 export function ajouterAuJournal(storyId: string, entree: EntreeJournal): void {
   let t = tampons.get(storyId);
   if (!t) {
-    t = { lignes: [], taille: 0, charge: false };
+    t = { lignes: [], charge: false };
     tampons.set(storyId, t);
   }
   const ligne = JSON.stringify(entree);
