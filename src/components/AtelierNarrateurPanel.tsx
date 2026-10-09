@@ -69,9 +69,9 @@ function Curseur({ nom, valeur, min, max, pas, onChange, bloque }: {
       onResponderRelease={ev => { const prochain = lirePosition(ev); setBrouillon(null); if (prochain !== valeur) onChange(prochain); }}
       onResponderTerminate={() => setBrouillon(null)}>
       <View style={styles.piste}>
-        <View style={[styles.progression, { width: ((actuel - min) / (max - min)) * 100 + '%' }]} />
+        <View style={[styles.progression, { width: ((actuel - min) / (max - min)) * largeur }]} />
       </View>
-      <View style={[styles.poignee, { left: ((actuel - min) / (max - min)) * 100 + '%' }]} />
+      <View style={[styles.poignee, { left: ((actuel - min) / (max - min)) * largeur }]} />
     </View>
     <View style={styles.bornes}><Text style={styles.aideMini}>{formatNombre(min)}</Text><Text style={styles.aideMini}>{formatNombre(max)}</Text></View>
   </View>;
@@ -104,7 +104,7 @@ export default function AtelierNarrateurPanel() {
     } catch (e) { setErreur(e instanceof Error ? e.message : String(e)); }
     finally { setOperation(false); }
   }
-  const profil = config?.profilActif;
+  const profil: ProfilAtelier = config?.profilActif ?? 'production';
   const valeurs = profil ? config?.profils[profil] : undefined;
   const narrateur = valeurs?.narrateur;
 
