@@ -1,4 +1,6 @@
 import { Image } from 'react-native';
+import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
+import { appliquerPresetVisuel, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
 import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
@@ -144,11 +146,12 @@ export async function genererImageScene(
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
   }
+  const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
   return generateurCourant({
     prompt: formaterPromptImage(structure, references),
     promptCourt: construirePromptSdxl(structure),
-    negatif: negatifPourProfil(profil),
-    modules: modulesPourScene(structure),
+    negatif: enrichirNegatifVisuel(negatifPourProfil(profil), visuel),
+    modules: appliquerPresetVisuel(modulesPourScene(structure), visuel),
     references: selectionnerReferencesGenerateur(references),
     format: '16:9',
     storyId,
@@ -186,13 +189,14 @@ async function genererPortrait(
   if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
     throw new ErreurImagesIndisponibles();
   }
+  const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
   return generateurCourant({
     prompt,
     promptCourt,
-    negatif: [negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '),
+    negatif: enrichirNegatifVisuel([negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '), visuel),
     // Mêmes modules que les scènes (style Elyndor, Tarantino, peau, mains),
     // sans dépendre des modules par défaut configurés sur le pod.
-    modules: { ...MODULES_BASE },
+    modules: appliquerPresetVisuel(MODULES_BASE, visuel),
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
     storyId,
