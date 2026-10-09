@@ -102,5 +102,8 @@ export async function controlerLongueurNarration({
   }
   // Tokenizer non disponible : mieux vaut une fin complète qu'un tronquage.
   const sortie = finDeNarrationComplete(candidate) ? candidate : retirerPhraseInachevee(candidate);
+  if (!finDeNarrationComplete(sortie)) {
+    throw new Error('La réponse reste incomplète et ne peut pas être publiée. Régénère ce tour.');
+  }
   return { texte: sortie, tokens: null, conforme: false, corrige: true, verification: 'indisponible' };
 }
