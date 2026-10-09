@@ -5,8 +5,7 @@ const queue = creerFileSerie();
 let cache: ReglagesVisuels | null = null;
 // Ne charge pas AsyncStorage natif lors d'un import des outils purement Node.
 function stockage() {
-  return require('@react-native-async-storage/async-storage').default
-    as typeof import('@react-native-async-storage/async-storage').default;
+  return require('@react-native-async-storage/async-storage').default as typeof import('@react-native-async-storage/async-storage').default;
 }
 /** Sur erreur de lecture on refuse d'écraser le contenu local et on remonte l'erreur. */
 export function lireReglagesVisuels(): Promise<ReglagesVisuels> {
