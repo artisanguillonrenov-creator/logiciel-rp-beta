@@ -123,9 +123,9 @@ async function synchroniserAvatars(story: StoryState, settings: AppSettings): Pr
 
 /**
  * Pipeline V2 d'une illustration de scène :
- * état narratif + état visuel + personnages visibles + 2 dernières scènes
+ * état narratif + état visuel + personnages visibles + références de scènes récentes
  * → direction artistique (modèle narratif) → prompt structuré → image 16:9
- * → mise à jour de l'état visuel → historique glissant des 2 dernières scènes.
+ * → mise à jour de l'état visuel → conservation de toutes les scènes.
  *
  * Une régénération (mode ≠ 'nouvelle') réutilise le canon visuel enregistré
  * pour cette révision : mêmes personnages, apparences, lieu et moment ; seule
@@ -183,8 +183,7 @@ async function genererScene(
   const references = await collecterReferencesScene(story, scene.personnagesVisibles, precedentes);
   const dataUrl = await genererImageScene(scene.structure, references, settings.profilContenu, story.meta.id);
 
-  const { scenes } = ajouterSceneIllustree(etat.scenesIllustrees, scene);
-  const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl, scenes.map((s) => s.revision));
+  const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl);
 
   // Mise à jour inconditionnelle (pas de garde de révision) : l'illustration
   // existe désormais même si le joueur a poursuivi entre-temps, et l'état
