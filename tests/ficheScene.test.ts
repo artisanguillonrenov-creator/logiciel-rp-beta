@@ -30,11 +30,12 @@ test('la fiche et le protocole du tour ferment le prompt système, avant le rapp
   const story = histoire();
   const [systeme] = construireMessages({
     meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: [], messagesRecents: [], messageJoueur: 'Ok allons à la guilde',
-    metamoteursSelectionnes: [{ id: 'm', titre: '[MÉTA] Test', contenu: 'Règle.' }],
+    contratNarratif: '[CONTRAT NARRATIF NATIF V2.1 — RESPONSABILITÉS ACTIVES]\nM01 Production de la réponse',
     ficheScene: preparerTour(story, 'Ok allons à la guilde').fiche,
   });
   const i = systeme.content.indexOf('[FICHE DE SCÈNE');
+  const contrat = systeme.content.indexOf('[CONTRAT NARRATIF NATIF V2.1');
   const j = systeme.content.indexOf('[PROTOCOLE DU TOUR]');
   const k = systeme.content.indexOf('[RAPPEL DE FORMAT]');
-  assert.ok(i > systeme.content.indexOf('[MÉTAMOTEURS ACTIFS]') && i < j && j < k);
+  assert.ok(i >= 0 && i < contrat && contrat < j && j < k);
 });
