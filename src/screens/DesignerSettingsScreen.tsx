@@ -8,6 +8,7 @@ import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/t
 import Bouton from '../components/Bouton';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
+import StorageExplorer from '../components/StorageExplorer';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
 import { retryFailedAutomationJobs } from '../automation/kernel';
 
@@ -177,6 +178,14 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             ) : null}
             {messageJobs ? <Text style={styles.statut}>{messageJobs}</Text> : null}
           </Panneau>
+
+          {modeConcepteur ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>DIAGNOSTIC STOCKAGE</Text>
+              <Text style={styles.titreBloc}>Fichiers et espace disque</Text>
+              <StorageExplorer />
+            </Panneau>
+          ) : null}
 
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>MAINTENANCE SÉMANTIQUE</Text>

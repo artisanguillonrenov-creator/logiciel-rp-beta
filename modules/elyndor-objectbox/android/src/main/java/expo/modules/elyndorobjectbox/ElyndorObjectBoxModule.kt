@@ -74,6 +74,19 @@ class ElyndorObjectBoxModule : Module() {
       }
       true
     }
+
+    // Diagnostic de stockage privé, strictement en lecture seule.
+    AsyncFunction("inspectAppStorage") {
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.summary(context)
+    }
+
+    AsyncFunction("listAppStorageDirectory") { path: String, offset: Int ->
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.list(context, path, offset)
+    }
   }
 
   private fun requireStore(): BoxStore {

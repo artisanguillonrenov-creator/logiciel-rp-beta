@@ -8,6 +8,9 @@ export interface ObjectBoxNativeModule {
   searchHistory(storyId: string, vectorJson: string, maxCount: number): Promise<string>;
   searchHistorySync(storyId: string, vectorJson: string, maxCount: number): string;
   clearStory(storyId: string): Promise<boolean>;
+  /** Inventaire privé natif, sans opération de modification. */
+  inspectAppStorage(): Promise<string>;
+  listAppStorageDirectory(path: string, offset: number): Promise<string>;
 }
 
 const moduleObjectBox = requireOptionalNativeModule<ObjectBoxNativeModule>('ElyndorObjectBox');
