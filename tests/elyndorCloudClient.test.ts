@@ -181,3 +181,22 @@ test('le pod est lu dans la configuration publiée, avec repli sur le pod intég
   assert.equal(await assurerPodElyndorCloud(async () => { throw new Error('ne doit pas être appelé'); }), 'nouveaupod123');
   definirPodElyndorCloud(ELYNDOR_CLOUD_POD_PAR_DEFAUT);
 });
+
+
+test('samplers narratifs explicitement activés sont réellement placés dans la requête llama.cpp', async () => {
+  let body: any;
+  globalThis.fetch = async (_, init) => {
+    body = JSON.parse(String(init?.body));
+    return Response.json({ choices: [{ message: { content: 'Le monde reste cohérent.' }, finish_reason: 'stop' }] });
+  };
+  await appellerModele({
+    apiKey: '', model: '', messages: [{ role: 'user', content: 'Une scène.' }],
+    samplers: { top_k: 72, min_p: 0.08, dry_multiplier: 1.2, repeat_last_n: 512 },
+  });
+  assert.equal(body.top_k, 72);
+  assert.equal(body.min_p, 0.08);
+  assert.equal(body.dry_multiplier, 1.2);
+  assert.equal(body.repeat_last_n, 512);
+  assert.equal(body.temperature, 0.9);
+  assert.equal(body.model, ELYNDOR_CLOUD_MODELE);
+});
