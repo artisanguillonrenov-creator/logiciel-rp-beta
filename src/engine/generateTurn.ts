@@ -41,7 +41,7 @@ import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynam
 import { rechercherSouvenirsLexical } from './rechercheLexicale';
 import { construirePassages, selectionnerPassages } from './passagesLore';
 import { preparerTour, type PreparationTour } from './ficheScene';
-import { corrigerEtiquettes, validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
+import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererReponseComplete } from './completionReponse';
@@ -88,8 +88,6 @@ import {
   fusionnerRapports,
   rapportOk,
   reparerReponse,
-  reponseFaitParlerLeJoueur,
-  retirerRepliqueDuJoueur,
   validerAgentiviteHeuristique,
   validerReponseLLM,
   type RapportValidation,
