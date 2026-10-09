@@ -1,3 +1,5 @@
+import { reglagesNarrateurDefaut, validerReglagesNarrateur, type ReglagesNarrateur } from './reglagesNarrateur';
+
 /**
  * Contrat V1 de l'atelier concepteur. Ce fichier est pur (ni React, ni Android).
  * Le joueur standard reste sur les valeurs de production historiques.
@@ -11,6 +13,7 @@ export interface ParametresAtelier {
   maxSouvenirs: number;
   temperatureDelta: number;
   margeTokensEtat: number;
+  narrateur: ReglagesNarrateur;
 }
 export interface EtatAtelier {
   profilActif: ProfilAtelier;
@@ -41,8 +44,10 @@ export const PARAMETRES_DEFAUT: Readonly<ParametresAtelier> = Object.freeze({
   maxSouvenirs: 3,
   temperatureDelta: 0,
   margeTokensEtat: 350,
+  narrateur: reglagesNarrateurDefaut(),
 });
-export const LIMITES_ATELIER: Readonly<Record<keyof ParametresAtelier, { min: number; max: number; pas: number }>> = Object.freeze({
+export type CleParametreSimple = Exclude<keyof ParametresAtelier, 'narrateur'>;
+export const LIMITES_ATELIER: Readonly<Record<CleParametreSimple, { min: number; max: number; pas: number }>> = Object.freeze({
   budgetLorePassages: { min: 1000, max: 5000, pas: 250 },
   maxSouvenirs: { min: 1, max: 8, pas: 1 },
   temperatureDelta: { min: -0.3, max: 0.3, pas: 0.05 },
@@ -52,7 +57,9 @@ export const LIMITES_ATELIER: Readonly<Record<keyof ParametresAtelier, { min: nu
 function objet(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
-function copierParametres(v: ParametresAtelier): ParametresAtelier { return { ...v }; }
+function copierParametres(v: ParametresAtelier): ParametresAtelier {
+  return { ...v, narrateur: validerReglagesNarrateur(v.narrateur) };
+}
 function copierEtat(v: EtatAtelier): EtatAtelier {
   return { profilActif: v.profilActif, profils: {
     production: copierParametres(v.profils.production),
@@ -72,7 +79,7 @@ export function creerConfigurationAtelier(date = Date.now()): ConfigurationAteli
 function lireParametres(v: unknown): ParametresAtelier {
   if (!objet(v)) throw new Error('Paramètres de profil invalides.');
   const p = {} as ParametresAtelier;
-  for (const nom of Object.keys(LIMITES_ATELIER) as Array<keyof ParametresAtelier>) {
+  for (const nom of Object.keys(LIMITES_ATELIER) as CleParametreSimple[]) {
     const valeur = v[nom], limites = LIMITES_ATELIER[nom];
     if (typeof valeur !== 'number' || !Number.isFinite(valeur) ||
         valeur < limites.min || valeur > limites.max ||
@@ -81,6 +88,8 @@ function lireParametres(v: unknown): ParametresAtelier {
     }
     p[nom] = valeur;
   }
+  // Migration transparente des instantanés V1 créés avant l'atelier narrateur.
+  p.narrateur = v.narrateur === undefined ? reglagesNarrateurDefaut() : validerReglagesNarrateur(v.narrateur);
   return p;
 }
 export function validerEtatAtelier(raw: unknown): EtatAtelier {
