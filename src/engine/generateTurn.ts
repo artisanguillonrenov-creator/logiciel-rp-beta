@@ -1,6 +1,7 @@
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import type { ParametresAtelier } from '../concepteur/configuration';
+import { samplersPourRequete } from '../concepteur/reglagesNarrateur';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
@@ -95,9 +96,10 @@ import {
 const MARGE_TOKENS_ETAT = 350;
 
 async function parametresDeLaSession(settings: AppSettings): Promise<ParametresAtelier | undefined> {
-  if (!settings.modeConcepteur) return undefined;
+  // Les valeurs de production restent actives aussi côté joueur : pas seulement
+  // dans le mode diagnostic du concepteur. Les profils Test/Benchmark sont privés.
   const config = await lireConfigurationAtelier().catch(() => null);
-  return config?.profils[config.profilActif];
+  return config?.profils[settings.modeConcepteur ? config.profilActif : 'production'];
 }
 const LORE_ELYNDOR_BASE = chargerLoreElyndor(elyndorRaw as any);
 let LORE_ELYNDOR = LORE_ELYNDOR_BASE;
@@ -416,6 +418,7 @@ export function construireCtxBase(
   return {
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
+    longueursCibles: reglagesAtelier?.narrateur.longueurs,
     resume: filtrer(story.memoire.resume),
     faits,
     loreElyndor: selection.loreElyndor,
@@ -593,7 +596,9 @@ async function genererTourInterne(
   const temperature = Math.max(0, Math.min(2, temperatureBase + (reglagesAtelier?.temperatureDelta ?? 0)));
   // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
   // il rognait la scène ou arrivait coupé.
-  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT);
+  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur, reglagesAtelier?.narrateur.longueurs) +
+    (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT);
+  const samplers = samplersPourRequete(reglagesAtelier?.narrateur);
   if (reglagesAtelier) ajouterEtapeDiagnostic('Configuration concepteur effective', 'préparation', 'ok', 0, undefined,
     [`Budget lore : ${reglagesAtelier.budgetLorePassages} caractères`, `Souvenirs : ${reglagesAtelier.maxSouvenirs}`,
      `Température effective : ${temperature}`, `Marge tokens état : ${reglagesAtelier.margeTokensEtat}`]);
@@ -613,6 +618,7 @@ async function genererTourInterne(
       messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
       temperature,
       maxTokens,
+      samplers,
       diagnosticLabel: 'Narration RP',
     }),
   ));
@@ -722,6 +728,7 @@ async function genererTourInterne(
         messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
+        samplers,
         diagnosticLabel: 'Narration RP — régénération complète',
       }));
       reponse = regeneree.texte;
