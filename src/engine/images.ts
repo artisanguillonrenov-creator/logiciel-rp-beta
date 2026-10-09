@@ -35,7 +35,7 @@ import {
 } from './visualState';
 
 // Couche image de l'application (V2). Les illustrations de scène SONT
-// persistées : sceneImagesStore conserve les 2 dernières scènes illustrées de
+// persistées : sceneImagesStore conserve les scènes illustrées de
 // chaque histoire (historique glissant) et elles servent de références de
 // continuité à la génération suivante. Les avatars restent rangés par
 // identifiant dans pnjAvatarsStore. Le générateur lui-même est le modèle

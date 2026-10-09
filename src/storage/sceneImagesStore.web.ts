@@ -32,31 +32,18 @@ export async function obtenirIllustrationScene(storyId: string, revision: string
   return valeur;
 }
 
-/** Même historique glissant que la version native (voir sceneImagesStore.ts). */
+/** Conserve toutes les illustrations de scène comme la version native. */
 export async function enregistrerIllustrationScene(
   storyId: string,
   revision: string,
   dataUrl: string,
-  revisionsAConserver: readonly string[] = [],
+  _revisionsAConserver: readonly string[] = [],
 ): Promise<string> {
   const db = await ouvrirDB();
   const cible = cle(storyId, revision);
-  const prefixe = prefixeHistoire(storyId);
-  const conserves = new Set([cible, ...revisionsAConserver.map((r) => cle(storyId, r))]);
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(MAGASIN, 'readwrite');
-    const magasin = tx.objectStore(MAGASIN);
-    const requete = magasin.openCursor();
-    requete.onsuccess = () => {
-      const curseur = requete.result;
-      if (!curseur) {
-        magasin.put(dataUrl, cible);
-        return;
-      }
-      const key = curseur.key;
-      if (typeof key === 'string' && key.startsWith(prefixe) && !conserves.has(key)) curseur.delete();
-      curseur.continue();
-    };
+    tx.objectStore(MAGASIN).put(dataUrl, cible);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error('Enregistrement de l’illustration interrompu.'));

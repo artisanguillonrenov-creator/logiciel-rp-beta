@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stockageEvolutif } from '../storage/stockageEvolutif';
 import { createAutomationJobRepository } from './jobRepositoryCore';
 
-export const automationJobs = createAutomationJobRepository(AsyncStorage);
+export const automationJobs = createAutomationJobRepository(stockageEvolutif);
