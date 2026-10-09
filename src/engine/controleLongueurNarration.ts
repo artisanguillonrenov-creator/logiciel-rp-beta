@@ -3,9 +3,17 @@ import { genererReponseComplete } from './completionReponse';
 import { retirerPhraseInachevee } from './completionReponse';
 import type { PlageLongueur } from '../concepteur/reglagesNarrateur';
 
-/** Clôture narrative visible ; exclut le bloc d'état V12, déjà extrait par generateTurn. */
+/**
+ * Ponctuation de phrase OU réplique close par un guillemet français.
+ * Une guillemeture ouverte n'est pas une fin valide.
+ */
 export function finDeNarrationComplete(texte: string): boolean {
-  return /[.!?…](?:[\s»”"'*)\]]*)$/.test(texte.trim());
+  const propre = texte.trim();
+  if (!propre) return false;
+  const ouverts = (propre.match(/«/g) ?? []).length;
+  const fermes = (propre.match(/»/g) ?? []).length;
+  if (ouverts > fermes) return false;
+  return /(?:[.!?…](?:[\s»”"'*)\]]*)|[»”](?:[\s*)\]]*))$/.test(propre);
 }
 export function plageRespectee(nombre: number, plage: PlageLongueur): boolean {
   return Number.isSafeInteger(nombre) && nombre >= plage.min && nombre <= plage.max;
@@ -15,9 +23,10 @@ export function plageRespectee(nombre: number, plage: PlageLongueur): boolean {
 export async function compterTokensNarration(
   texte: string,
   requete: typeof fetch = fetch,
+  preparerPod: () => Promise<unknown> = assurerPodElyndorCloud,
 ): Promise<number | null> {
   try {
-    await assurerPodElyndorCloud();
+    await preparerPod();
     const controleur = new AbortController();
     const minuteur = setTimeout(() => controleur.abort(), 8000);
     try {
@@ -30,7 +39,7 @@ export async function compterTokensNarration(
       if (!resultat.ok) return null;
       const contenu: unknown = await resultat.json();
       const tokens = (contenu as { tokens?: unknown } | null)?.tokens;
-      return Array.isArray(tokens) && tokens.every(x => typeof x === 'number' && Number.isInteger(x))
+      return Array.isArray(tokens) && (tokens.length > 0 || texte.length === 0) && tokens.every(x => typeof x === 'number' && Number.isSafeInteger(x) && x >= 0)
         ? tokens.length : null;
     } finally {
       clearTimeout(minuteur);
