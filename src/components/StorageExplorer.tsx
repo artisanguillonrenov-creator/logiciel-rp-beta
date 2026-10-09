@@ -15,7 +15,7 @@ function BarreEspace({ part, total }: { part: number; total: number }) {
   const pourcentage = total > 0 ? Math.min(100, Math.max(0, (part / total) * 100)) : 0;
   return (
     <View style={styles.fondBarre}>
-      <View style={[styles.barre, { width: pourcentage.toFixed(1) + '%' }]} />
+      <View style={[styles.barre, { width: (pourcentage.toFixed(1) + '%') as `${number}%` }]} />
     </View>
   );
 }
