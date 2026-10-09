@@ -1,7 +1,8 @@
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import type { ParametresAtelier } from '../concepteur/configuration';
-import { samplersPourRequete } from '../concepteur/reglagesNarrateur';
+import { reglagesNarrateurDefaut, samplersPourRequete } from '../concepteur/reglagesNarrateur';
+import { controlerLongueurNarration } from './controleLongueurNarration';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
@@ -737,6 +738,25 @@ async function genererTourInterne(
       aEteCorrige = false;
     }
   }
+
+  // Vérifier le texte visible après les régénérations, jamais l'état machine.
+  // llama-server /tokenize donne la mesure exacte du modèle chargé.
+  const plageNarration = (reglagesAtelier?.narrateur.longueurs ??
+    reglagesNarrateurDefaut().longueurs)[storyCourante.settings.longueur];
+  const longueurFinale = await mesurerEtapeDiagnostic(
+    'Longueur et clôture de la narration',
+    'validation',
+    () => controlerLongueurNarration({
+      texte: reponse, plage: plageNarration, temperature,
+      storyId: storyCourante.meta.id, samplers,
+    }),
+  );
+  reponse = longueurFinale.texte;
+  ajouterEtapeDiagnostic('Contrôle final des longueurs', 'validation',
+    longueurFinale.conforme ? 'ok' : 'repli', 0,
+    longueurFinale.conforme
+      ? `${longueurFinale.tokens} tokens exacts, fourchette ${plageNarration.min}–${plageNarration.max}`
+      : 'Comptage exact indisponible : réponse close, fourchette non certifiée.');
 
   // Dernier filet : une entité inventée qui a survécu à la correction est
   // remplacée par un terme générique plutôt que d'entrer dans l'histoire.
