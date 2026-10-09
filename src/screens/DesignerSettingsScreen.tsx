@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getSettings, saveSettings } from '../storage/storage';
@@ -9,12 +9,35 @@ import Bouton from '../components/Bouton';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import StorageExplorer from '../components/StorageExplorer';
+import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
+import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
+import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
 import { retryFailedAutomationJobs } from '../automation/kernel';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur'>;
 
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
+type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
+  'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
+  'commercial' | 'profils' | 'instantanes';
+const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
+  { id: 'tableau', titre: 'Tableau de bord', detail: "État du noyau, services et version", pret: true },
+  { id: 'modeles', titre: 'Modèles IA', detail: 'Correction de température, fournisseur', pret: true },
+  { id: 'runpod', titre: 'RunPod et Cloud', detail: 'Administration distante à sécuriser', pret: false },
+  { id: 'narration', titre: 'Narration', detail: 'Température et marge de réponse', pret: true },
+  { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
+  { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
+  { id: 'lorebook', titre: 'Lorebook', detail: 'Édition et vérifications à développer', pret: false },
+  { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images à développer', pret: false },
+  { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
+  { id: 'diagnostics', titre: 'Diagnostics', detail: 'Cache, traces et erreurs', pret: true },
+  { id: 'maintenance', titre: 'Maintenance', detail: 'Versions et mises à jour avancées', pret: false },
+  { id: 'commercial', titre: 'Administration commerciale', detail: 'Gestion des abonnements, plus tard', pret: false },
+  { id: 'profils', titre: 'Profils de configuration', detail: 'Production, Test, Benchmark', pret: true },
+  { id: 'instantanes', titre: 'Instantanés et historique', detail: 'Exporter, importer, restaurer', pret: true },
+];
+const COMMIT_BUNDLE = process.env.EXPO_PUBLIC_GIT_SHA || 'non renseigné';
 
 function EtatLigne({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) {
   return (
@@ -30,6 +53,7 @@ function EtatLigne({ label, ok, detail }: { label: string; ok: boolean; detail?:
 
 export default function DesignerSettingsScreen({ navigation }: Props) {
   const [modeConcepteur, setModeConcepteur] = useState(false);
+  const [section, setSection] = useState<ModuleAtelier>('tableau');
   const [chargement, setChargement] = useState(true);
   const [erreurChargement, setErreurChargement] = useState('');
   const [messageCache, setMessageCache] = useState('');
@@ -142,8 +166,75 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             {messageMode ? <Text style={styles.statut}>{messageMode}</Text> : null}
           </Panneau>
 
+
+          {modeConcepteur ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>CENTRE DE CONTRÔLE</Text>
+              <Text style={styles.titreBloc}>Modules de l'atelier</Text>
+              <Text style={styles.texteBloc}>Choisis un module. Les outils effectifs et les modules prévus sont distincts.</Text>
+              <View style={styles.menuModules}>
+                {MODULES.map((module) => (
+                  <Pressable key={module.id} onPress={() => setSection(module.id)}
+                    accessibilityRole="button" accessibilityLabel={'Ouvrir ' + module.titre}
+                    style={[styles.moduleCarte, section === module.id && styles.moduleActif]}>
+                    <Text style={styles.moduleTitre}>{module.titre}</Text>
+                    <Text style={styles.moduleDetail}>{module.detail}</Text>
+                    <Text style={[styles.moduleStatut, !module.pret && styles.moduleNonPret]}>
+                      {module.pret ? 'FONCTION PRÉSENTE' : 'À DÉVELOPPER'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && (section === 'profils' || section === 'modeles' ||
+            section === 'narration' || section === 'recherche' || section === 'instantanes') ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>CONFIGURATION VERSIONNÉE</Text>
+              <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
+              <AtelierConfigurationPanel section={section} />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && section === 'metamoteurs' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>NOYAU NARRATIF V2.1</Text>
+              <Text style={styles.titreBloc}>15 responsabilités codées</Text>
+              <Text style={styles.texteBloc}>
+                Chaque responsabilité est sélectionnée selon la scène par narrativeBehaviorKernel.ts,
+                puis ajoutée au contrat narratif. Leur déclenchement effectif est consigné dans le
+                diagnostic du tour ; cela ne signifie pas que 15 sous-moteurs autonomes existent déjà.
+              </Text>
+              {RESPONSABILITES_NARRATIVES.map((m) => (
+                <View key={m.id} style={styles.ligneEtat}>
+                  <Text style={styles.nomEtat}>{m.id} — {m.nom}</Text>
+                  <Text style={styles.moduleStatut}>CONTRAT V2.1</Text>
+                </View>
+              ))}
+              <Text style={styles.texteBloc}>
+                Les états d'exécution individuels par tour et les réglages internes de chaque
+                méta-moteur demandent encore une instrumentation spécifique.
+              </Text>
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && MODULES.some((m) => m.id === section && !m.pret) ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>FONCTION EN PRÉPARATION</Text>
+              <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
+              <Text style={styles.texteBloc}>
+                Ce module est prévu dans le cahier des charges mais n'est pas encore relié
+                au système de production. Aucun bouton fictif n'est proposé.
+                Les secrets RunPod et Elyndor Cloud resteront gérés côté serveur.
+              </Text>
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && section === 'tableau' ? (
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>AUTOMATISMES</Text>
+            <Text style={styles.texteBloc}>Version application : {VERSION_APP} · commit du bundle JS : {COMMIT_BUNDLE.slice(0, 12)}</Text>
             <Text style={styles.titreBloc}>État du noyau</Text>
             <Text style={styles.texteBloc}>
               Une source unique de réglages alimente maintenant les capacités et la file persistante de routines.
@@ -178,8 +269,9 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             ) : null}
             {messageJobs ? <Text style={styles.statut}>{messageJobs}</Text> : null}
           </Panneau>
+          ) : null}
 
-          {modeConcepteur ? (
+          {modeConcepteur && section === 'stockage' ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>DIAGNOSTIC STOCKAGE</Text>
               <Text style={styles.titreBloc}>Fichiers et espace disque</Text>
@@ -187,6 +279,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
+          {modeConcepteur && section === 'diagnostics' ? (
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>MAINTENANCE SÉMANTIQUE</Text>
             <Text style={styles.titreBloc}>Cache de recherche vectorielle</Text>
@@ -209,6 +302,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             />
             {messageCache ? <Text style={styles.statut}>{messageCache}</Text> : null}
           </Panneau>
+          ) : null}
 
           <Panneau style={styles.note}>
             <Text style={styles.noteTitre}>Accès temporairement direct</Text>
@@ -397,6 +491,15 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 2,
   },
+  menuModules: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: espacement.md },
+  moduleCarte: { borderWidth: 1, borderRadius: 12, borderColor: couleurs.bordureSubtile,
+    backgroundColor: couleurs.fondCarteDense, padding: 10, minWidth: 135, flexBasis: '46%', flexGrow: 1,
+    minHeight: 88, justifyContent: 'center' },
+  moduleActif: { borderColor: couleurs.dore, backgroundColor: couleurs.fondCarte },
+  moduleTitre: { color: couleurs.texte, fontFamily: polices.corpsMedium, fontSize: 16 },
+  moduleDetail: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 12 },
+  moduleStatut: { color: couleurs.succes, fontFamily: polices.corpsMedium, fontSize: 10, marginTop: 6 },
+  moduleNonPret: { color: couleurs.texteFaible },
   note: {
     marginBottom: espacement.md,
     padding: espacement.md,

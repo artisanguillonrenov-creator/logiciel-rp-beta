@@ -194,12 +194,12 @@ export function rechercherLoreLexical(entrees: LoreEntry[], requete: string): Lo
 }
 
 /** Messages anciens (hors fenêtre récente) qui partagent le plus de termes avec la scène. */
-export function rechercherSouvenirsLexical(messagesAnciens: Message[], requete: string): { message: Message; score: number }[] {
+export function rechercherSouvenirsLexical(messagesAnciens: Message[], requete: string, maxSouvenirs = BUDGET_HISTORIQUE.maxResultats): { message: Message; score: number }[] {
   return classerLexical({
     requete,
     items: messagesAnciens,
     texteDe: (m) => m.content,
     dateDe: (m) => m.timestamp,
-    budget: BUDGET_HISTORIQUE,
+    budget: { ...BUDGET_HISTORIQUE, maxResultats: maxSouvenirs },
   }).map((r) => ({ message: r.item, score: r.score }));
 }

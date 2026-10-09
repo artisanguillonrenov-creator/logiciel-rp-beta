@@ -200,6 +200,7 @@ export interface ContexteConstruction {
   messageJoueur: string;
   /** Directives pertinentes calculées localement par M01–M15. */
   contratNarratif?: string;
+  budgetLorePassages?: number;
   noteCorrection?: string;
   instructionRegistreOverride?: string;
   directionNarrative?: string;
@@ -277,7 +278,7 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   // Les deux moteurs de recherche disposent chacun d'une part fixe : le lore
   // (passages choisis par passagesLore.ts) et l'histoire (mémoire narrative
   // puis moments anciens retrouvés). Fenêtre étroite : parts réduites.
-  const partRecherche = Math.min(BUDGET_LORE_PASSAGES, Math.floor(budget * 0.15));
+  const partRecherche = Math.min(ctx.budgetLorePassages ?? BUDGET_LORE_PASSAGES, Math.floor(budget * 0.15));
   const lore = formaterLore(ctx.loreElyndor, ctx.titreLore ?? 'LORE ELYNDOR PERTINENT', partRecherche + 300, partRecherche);
   const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(partRecherche * 0.4));
   const blocs = ctx.blocsContexte
