@@ -48,6 +48,8 @@ export interface AppelModeleOptions {
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  /** Curseurs du concepteur validés pour llama.cpp. Réservés aux tours narratifs. */
+  samplers?: Record<string, number>;
   moteurInference?: MoteurInference;
   baseUrl?: string;
   signal?: AbortSignal;
@@ -227,8 +229,9 @@ async function appelerChat(
   tools?: unknown[],
   diagnosticLabel?: string,
   storyId?: string,
+  samplers?: Record<string, number>,
 ): Promise<Record<string, any>> {
-  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel, storyId)).message;
+  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel, storyId, samplers)).message;
 }
 
 async function appelerChatDetaille(
@@ -239,6 +242,7 @@ async function appelerChatDetaille(
   tools?: unknown[],
   diagnosticLabel?: string,
   storyId?: string,
+  samplers?: Record<string, number>,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
   const profil = resoudreProfilRaisonnement('serveur', ELYNDOR_CLOUD_MODELE);
   const debutAppel = Date.now();
@@ -253,6 +257,9 @@ async function appelerChatDetaille(
       messages,
       temperature,
       max_tokens: maxTokens,
+      // llama.cpp accepte les paramètres d'échantillonnage directement dans le JSON.
+      // Ne transmettre que les clés prévalidées par reglagesNarrateur.ts.
+      ...(samplers || {}),
       reasoning_effort: 'low',
       // Streaming : le proxy Runpod (Cloudflare) coupe toute réponse qui n'a
       // rien envoyé en 100 s (erreur 524). En flux, les jetons arrivent au fil
@@ -331,6 +338,7 @@ async function appelerChatDetaille(
 }
 
 export async function appellerModele({
+  samplers,
   messages,
   temperature = 0.9,
   maxTokens = 700,
@@ -339,7 +347,7 @@ export async function appellerModele({
   storyId,
 }: AppelModeleOptions): Promise<string> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return contenu;
     if (tentative === TENTATIVES_REPONSE_VIDE) {
@@ -357,6 +365,7 @@ export interface ReponseModele {
 
 /** Comme appellerModele, mais indique si la réponse a été coupée par le plafond de tokens. */
 export async function appellerModeleDetaille({
+  samplers,
   messages,
   temperature = 0.9,
   maxTokens = 700,
@@ -365,7 +374,7 @@ export async function appellerModeleDetaille({
   storyId,
 }: AppelModeleOptions): Promise<ReponseModele> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId);
+    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return { contenu, coupee: finishReason === 'length' };
   }
