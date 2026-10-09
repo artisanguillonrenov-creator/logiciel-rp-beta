@@ -10,6 +10,7 @@ import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import StorageExplorer from '../components/StorageExplorer';
 import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
+import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
@@ -194,6 +195,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               <Text style={styles.label}>CONFIGURATION VERSIONNÉE</Text>
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
               <AtelierConfigurationPanel section={section} />
+              {section === 'instantanes' ? <AtelierDiagnosticPanel mode="instantanes" /> : null}
             </Panneau>
           ) : null}
 
@@ -212,10 +214,8 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
                   <Text style={styles.moduleStatut}>CONTRAT V2.1</Text>
                 </View>
               ))}
-              <Text style={styles.texteBloc}>
-                Les états d'exécution individuels par tour et les réglages internes de chaque
-                méta-moteur demandent encore une instrumentation spécifique.
-              </Text>
+              <AtelierDiagnosticPanel mode="metamoteurs" />
+              <Text style={styles.texteBloc}>Le diagnostic montre les responsabilités mobilisées, pas 15 sous-moteurs indépendants. Le réglage interne de chaque moteur reste à développer.</Text>
             </Panneau>
           ) : null}
 
@@ -301,6 +301,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               style={styles.boutonAction}
             />
             {messageCache ? <Text style={styles.statut}>{messageCache}</Text> : null}
+            <AtelierDiagnosticPanel mode="diagnostics" />
           </Panneau>
           ) : null}
 
