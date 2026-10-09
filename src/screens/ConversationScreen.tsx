@@ -735,7 +735,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     <Panneau style={styles.panneauImageGeneree}>
                       <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
                       <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" accessibilityLabel={t('Illustration générée pour cette scène')} />
-                      <Text style={styles.aideImageGeneree}>{t('Les deux dernières scènes illustrées sont conservées localement pour assurer la continuité visuelle, puis supprimées avec l’histoire.')}</Text>
+                      <Text style={styles.aideImageGeneree}>{t('Les illustrations de tes scènes sont conservées sur la tablette, jusqu’à la suppression volontaire de l’histoire.')}</Text>
                       {imagesDisponibles && (
                         <View style={styles.rangeeRegeneration}>
                           {([
