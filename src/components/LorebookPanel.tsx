@@ -135,10 +135,10 @@ export default function LorebookPanel() {
     setProposition(null);
   };
   async function transaction(action: (avant: EtatLore) => EtatLore, succes: string) {
-    setOcuppe(true); setErreur(''); setMessage('');
+    setOccupe(true); setErreur(''); setMessage('');
     try { setEtat(await modifierLoreAtelier(action)); setMessage(succes); }
     catch (e) { setErreur(erreurTexte(e)); }
-    finally { setOcuppe(false); }
+    finally { setOccupe(false); }
   }
   async function sauvegarder() {
     if (!edition || !id || !etat) return;
@@ -178,7 +178,7 @@ export default function LorebookPanel() {
   }
   async function lancerIA(action: ActionAI) {
     if (!edition || !id) return;
-    setOcuppe(true); setErreur(''); setMessage(''); setProposition(null);
+    setOccupe(true); setErreur(''); setMessage(''); setProposition(null);
     try {
       const resultat = await assisterFicheLore(edition, action, taille, fidelite,
         appliquerLorePublie(BASE, etat ?? creerEtatLore()), id);
@@ -187,7 +187,7 @@ export default function LorebookPanel() {
         ? 'Avis IA disponible (non exhaustif, ne garantit pas le canon).'
         : 'Proposition disponible : ton texte actuel est conservé jusqu’à acceptation.');
     } catch (e) { setErreur(erreurTexte(e)); }
-    finally { setOcuppe(false); }
+    finally { setOccupe(false); }
   }
   function simuler() {
     if (!etat || !simulation.trim()) return;
@@ -199,7 +199,7 @@ export default function LorebookPanel() {
   }
   async function exporter() {
     if (!etat) return;
-    setOcuppe(true); setErreur('');
+    setOccupe(true); setErreur('');
     try {
       const texte = creerExportLore(etat);
       if (await Sharing.isAvailableAsync() && FileSystem.documentDirectory) {
@@ -211,7 +211,7 @@ export default function LorebookPanel() {
         await Clipboard.setStringAsync(texte); setMessage('Export copié dans le presse-papier.');
       }
     } catch (e) { setErreur(erreurTexte(e)); }
-    finally { setOcuppe(false); }
+    finally { setOccupe(false); }
   }
   async function examinerImport() {
     try {
@@ -222,16 +222,16 @@ export default function LorebookPanel() {
         Object.keys(importe.ajouts).length + ' ajouts. Aucune publication automatique.',
         [{ text: 'Annuler', style: 'cancel' }, { text: 'Importer', onPress: () => {
           void (async () => {
-            setOcuppe(true);
+            setOccupe(true);
             try { setEtat(await importerLoreAtelier(texte)); setMessage('Import réussi : vérifie les brouillons.'); }
             catch (e) { setErreur(erreurTexte(e)); }
-            finally { setOcuppe(false); }
+            finally { setOccupe(false); }
           })();
         } }]);
     } catch (e) { setErreur('Import refusé : ' + erreurTexte(e)); }
   }
   async function chargerEmergents() {
-    setOcuppe(true); setErreur('');
+    setOccupe(true); setErreur('');
     try {
       const index = await getStoriesIndex();
       const trouvés: LoreProposition[] = [];
@@ -247,7 +247,7 @@ export default function LorebookPanel() {
       setEmergents(trouvés);
       setMessage('Lore émergent analysé sur ' + Math.min(30, index.length) + ' histoire(s) locales.');
     } catch (e) { setErreur(erreurTexte(e)); }
-    finally { setOcuppe(false); }
+    finally { setOccupe(false); }
   }
 
   if (charge) return <ActivityIndicator color={couleurs.accent}/>;
@@ -416,8 +416,8 @@ export default function LorebookPanel() {
         Alert.alert('Restaurer la révision ' + r.numero + ' ?',
           'La configuration actuelle sera conservée dans l’historique.',
           [{ text:'Annuler',style:'cancel' },{ text:'Restaurer',onPress:()=>{
-            void (async()=>{setOcuppe(true);try{setEtat(await restaurerLoreAtelier(r.numero));setMessage('Révision restaurée.');}
-              catch(e){setErreur(erreurTexte(e));}finally{setOcuppe(false);}})();
+            void (async()=>{setOccupe(true);try{setEtat(await restaurerLoreAtelier(r.numero));setMessage('Révision restaurée.');}
+              catch(e){setErreur(erreurTexte(e));}finally{setOccupe(false);}})();
           }}])}>
         <Text style={styles.texte}>Révision {r.numero} · {new Date(r.date).toLocaleString('fr-FR')} · {r.motif}</Text>
       </Pressable>)}
