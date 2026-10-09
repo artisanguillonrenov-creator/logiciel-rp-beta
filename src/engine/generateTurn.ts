@@ -1,5 +1,7 @@
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
+import type { ParametresAtelier } from '../concepteur/configuration';
+import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import {
   chargerLoreElyndor,
   extraireAncresCanoniques,
@@ -89,6 +91,12 @@ import {
 } from './validator';
 
 const MARGE_TOKENS_ETAT = 350;
+
+async function parametresDeLaSession(settings: AppSettings): Promise<ParametresAtelier | undefined> {
+  if (!settings.modeConcepteur) return undefined;
+  const config = await lireConfigurationAtelier().catch(() => null);
+  return config?.profils[config.profilActif];
+}
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /**
@@ -188,6 +196,7 @@ export async function calculerSelectionLore(
   messageJoueur: string,
   appSettings: AppSettings,
   optionsLoreElyndor?: OptionsSelectionLore,
+  reglagesAtelier?: ParametresAtelier,
 ): Promise<SelectionLore> {
   const debutRecherche = Date.now();
   const profil = appSettings.profilContenu;
@@ -244,8 +253,9 @@ export async function calculerSelectionLore(
       requeteMessage: requetesLore.message,
       ancres: ancresLore,
       aleatoire: optionsLoreElyndor?.aleatoire,
+      budget: reglagesAtelier?.budgetLorePassages,
     });
-    const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete);
+    const souvenirs = rechercherSouvenirsLexical(messagesAnciens, texteRequete, reglagesAtelier?.maxSouvenirs);
     ajouterEtapeDiagnostic(
       'Recherche lore et historique',
       'recherche',
@@ -291,8 +301,9 @@ export async function calculerSelectionLore(
       vecteursPassages: vecteursElyndor,
       ancres: ancresLore,
       aleatoire: optionsLoreElyndor?.aleatoire,
+      budget: reglagesAtelier?.budgetLorePassages,
     });
-    const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens);
+    const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens, reglagesAtelier?.maxSouvenirs);
 
     ajouterEtapeDiagnostic(
       'Recherche lore et historique',
@@ -335,7 +346,8 @@ function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick
 }
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
-  const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  const reglagesAtelier = await parametresDeLaSession(appSettings);
+  const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings, undefined, reglagesAtelier);
   const storyNoyau = assurerNoyau(story);
   const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
   const evenements = synchroniserMemoireNarrative(storyNoyau);
@@ -355,6 +367,7 @@ export function construireCtxBase(
   // Faux pour la scène d'ouverture : aucun tour à intégrer, donc pas de bloc
   // d'état machine à demander au narrateur.
   avecNoyau = true,
+  reglagesAtelier?: ParametresAtelier,
 ): ContexteConstruction {
   const storyNoyau = avecNoyau ? assurerNoyau(story) : story;
   const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
@@ -398,6 +411,7 @@ export function construireCtxBase(
     messagesRecents,
     messageJoueur,
     contratNarratif: filtrer(contrat.texte),
+    budgetLorePassages: reglagesAtelier?.budgetLorePassages,
     registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
@@ -424,9 +438,10 @@ export async function construireContexteNarrateurPourIllustration(story: StorySt
   const messageJoueur = [...story.messages].reverse().find((m) => m.role === 'user')?.content ?? story.meta.pointDeDepart ?? '';
   const evenements = synchroniserMemoireNarrative(story);
   const storyCourante = assurerNoyau(story, evenements);
-  const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings);
+  const reglagesAtelier = await parametresDeLaSession(appSettings);
+  const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings, undefined, reglagesAtelier);
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
-  const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs);
+  const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs, true, reglagesAtelier);
   // Pas de bloc d'état machine : la réponse attendue est la direction artistique.
   return construireSystemPrompt(
     { ...ctx, directiveEtat: undefined },
@@ -439,8 +454,9 @@ export async function construirePromptDebug(
   messageJoueur: string,
   appSettings: AppSettings,
 ): Promise<string> {
-  const { loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { loreElyndor, souvenirs }));
+  const reglagesAtelier = await parametresDeLaSession(appSettings);
+  const { loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings, undefined, reglagesAtelier);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { loreElyndor, souvenirs }, undefined, true, reglagesAtelier));
 }
 
 function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
@@ -532,10 +548,13 @@ async function genererTourInterne(
     [`${evenements.length} événements indexés`],
   );
 
+  const reglagesAtelier = await parametresDeLaSession(appSettings);
   const { loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
     messageJoueur,
     appSettings,
+    undefined,
+    reglagesAtelier,
   );
 
   const contrat = construireContratNarratifNatif(storyCourante, messageJoueur, appSettings.profilContenu);
@@ -544,7 +563,7 @@ async function genererTourInterne(
     [`${contrat.contributions.filter((m) => m.actif).length}/15 responsabilités mobilisées`, ...debugLore.metamoteurs]);
   const debutContexte = Date.now();
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs);
+  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs, true, reglagesAtelier);
   ajouterEtapeDiagnostic(
     'Construire contexte du tour',
     'contexte',
@@ -559,10 +578,14 @@ async function genererTourInterne(
     storyCourante.meta.modeleOverride,
     storyCourante.meta.modeleOverrideFournisseur,
   ) || configurationLLM(appSettings).model;
-  const temperature = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
+  const temperatureBase = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
+  const temperature = Math.max(0, Math.min(2, temperatureBase + (reglagesAtelier?.temperatureDelta ?? 0)));
   // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
   // il rognait la scène ou arrivait coupé.
-  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + MARGE_TOKENS_ETAT;
+  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur) + (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT);
+  if (reglagesAtelier) ajouterEtapeDiagnostic('Configuration concepteur effective', 'préparation', 'ok', 0, undefined,
+    [`Budget lore : ${reglagesAtelier.budgetLorePassages} caractères`, `Souvenirs : ${reglagesAtelier.maxSouvenirs}`,
+     `Température effective : ${temperature}`, `Marge tokens état : ${reglagesAtelier.margeTokensEtat}`]);
   const moteurEtroit = moteurAFenetreEtroite(appSettings);
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;

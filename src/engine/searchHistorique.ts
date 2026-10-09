@@ -43,6 +43,7 @@ export function selectionnerSouvenirs(
   messagesAnciens: Message[],
   vecteurRequete: number[],
   vecteursMessagesAnciens: Record<string, number[]>,
+  maxSouvenirs = MAX_SOUVENIRS,
 ): Souvenir[] {
   return messagesAnciens
     .map((message) => ({
@@ -51,7 +52,7 @@ export function selectionnerSouvenirs(
     }))
     .filter((s) => s.score >= SEUIL_PERTINENCE)
     .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_SOUVENIRS);
+    .slice(0, maxSouvenirs);
 }
 
 /** Formate les souvenirs retrouvés pour le prompt — jamais visible du joueur. */

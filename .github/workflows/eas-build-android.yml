@@ -44,6 +44,7 @@ jobs:
       - name: Build Android APK localement sur GitHub Actions
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_GIT_SHA: ${{ github.sha }}
           EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
         run: eas build --platform android --profile preview --local --non-interactive
 
