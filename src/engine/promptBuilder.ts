@@ -12,9 +12,8 @@ import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from '
 // après tokenisation, qui varie selon le fournisseur.
 //
 // Distant = Elyndor Cloud (fenêtre de 24 576 jetons). Le budget système
-// inclut les 15 métamoteurs envoyés en entier (~41 000 caractères), l'en-tête
-// (~12 000), les parts des deux moteurs de recherche (2 × 2 500) et ~6 000
-// pour le résumé, les faits et l'état du monde. Mesuré avec le tokenizer
+// conserve une marge pour le contrat natif V2.1, l'en-tête, le lore,
+// l'historique et l'état du monde sans perdre les budgets existants. Mesuré avec le tokenizer
 // d'Euryale : 58 000 + 13 000 caractères = 20 262 jetons (3,44 car./jeton) ;
 // 64 000 laisse ~1 000 jetons de marge après la réponse la plus longue.
 export const BUDGET_SYSTEM_DISTANT = 64000;
@@ -124,10 +123,10 @@ const RAPPEL_FINAL = `\n\n${PROTOCOLE_TOUR}\n\n[RAPPEL DE FORMAT]\n${FORMAT_DIAL
 // les modèles de 24B (narration polie, littéraire). Des exemples concrets en
 // dernière position la rendent effective.
 export const RAPPEL_REGISTRE_ADULTE = `\n\n[RAPPEL DE REGISTRE — PROFIL ADULTE]
-Registre CRU et VULGAIRE à chaque réponse, y compris dans une scène calme, sociale ou de dialogue :
+Le registre CRU et VULGAIRE est disponible lorsque la scène et les curseurs le justifient ; ne force pas l'intensité maximale dans une scène calme :
 - les PNJ parlent comme de vraies gens de ce monde brutal : ils jurent, insultent, menacent (putain, merde, bordel, enfoiré, connard, salope, fils de pute, ta gueule, je vais te crever…) selon leur caractère ;
-- la narration est directe et sale : odeurs, sueur, crasse, corps, désir et violence nommés sans détour, jamais de tournures polies ou littéraires (« darde ses rayons », « voix soyeuse ») ;
-- le sexe se nomme avec les mots crus (bite, chatte, cul, seins, baiser, sucer…), jamais par euphémisme.`;
+- la narration reste directe quand la scène l'exige : odeurs, sueur, crasse, corps, désir et violence sans euphémisme artificiel, sans surenchère hors contexte ;
+- les scènes sexuelles adultes, lorsqu'elles sont établies et permises par le profil, peuvent employer les mots crus (bite, chatte, cul, seins, baiser, sucer…) sans euphémisme imposé.`;
 
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
@@ -196,10 +195,11 @@ export interface ContexteConstruction {
   settings: StorySettings;
   resume: string;
   faits: Fact[];
-  metamoteursSelectionnes: LoreEntry[];
   loreElyndor: LoreEntry[];
   messagesRecents: Message[];
   messageJoueur: string;
+  /** Directives pertinentes calculées localement par M01–M15. */
+  contratNarratif?: string;
   noteCorrection?: string;
   instructionRegistreOverride?: string;
   directionNarrative?: string;
@@ -228,8 +228,8 @@ export interface OptionsPrompt {
 
 export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
-  // Préfixe identique d'un tour à l'autre (puis les métamoteurs, tout aussi
-  // fixes) : le serveur garde ces jetons en cache au lieu de les relire.
+  // Préfixe identique d'un tour à l'autre : le serveur conserve ces
+  // jetons en cache même si les responsabilités natives changent.
   // Rien de variable ne doit s'y glisser.
   const prefixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
@@ -265,15 +265,14 @@ ${FORMAT_DIALOGUES_PNJ}
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
 ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
-  // Les 15 métamoteurs sont actifs à chaque réponse, en texte intégral : ils
-  // sont réservés en premier sur le budget système et ne sont jamais rognés.
-  const metamoteurs = ctx.metamoteursSelectionnes.length
-    ? `\n\n[MÉTAMOTEURS ACTIFS]\n${ctx.metamoteursSelectionnes.map((e) => `### ${e.titre}\n${e.contenu}`).join('\n\n')}`
+  // V2.1 : contrat calculé par le noyau TypeScript, non les 15 fiches texte.
+  // Il varie par tour et ne doit pas casser le cache du préfixe statique.
+  const contrat = ctx.contratNarratif
+    ? `\n\n${tronquer(ctx.contratNarratif, 6500)}`
     : '';
-  // Le rappel suit les métamoteurs : sans eux (fenêtre étroite), la consigne
-  // de l'en-tête reste proche de la fin et le rappel coûterait du budget.
-  const rappel = metamoteurs ? RAPPEL_FINAL : '';
-  const budgetHorsMetamoteurs = Math.max(0, budget - metamoteurs.length - rappel.length);
+  const rappel = contrat ? RAPPEL_FINAL : '';
+  const registre = ctx.registreAdulte ? RAPPEL_REGISTRE_ADULTE : '';
+  const budgetHorsContrat = Math.max(0, budget - contrat.length - rappel.length - registre.length);
 
   // Les deux moteurs de recherche disposent chacun d'une part fixe : le lore
   // (passages choisis par passagesLore.ts) et l'histoire (mémoire narrative
@@ -288,7 +287,7 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   // Résumé, faits et état du monde se partagent ce qui reste après l'en-tête
   // (Lore Core garanti) et les parts des moteurs de recherche.
   const fiche = ctx.ficheScene ? `\n\n${ctx.ficheScene}` : '';
-  const reste = Math.max(0, budgetHorsMetamoteurs - entete.length - fiche.length - lore.length - blocs.length - souvenirs.length);
+  const reste = Math.max(0, budgetHorsContrat - entete.length - fiche.length - lore.length - blocs.length - souvenirs.length);
   const resume = reste > 200
     ? `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(reste * 0.3))}`
     : '';
@@ -297,13 +296,12 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
 
   const milieu = tronquer(
     `${resume}${faits}${etat ? `\n\n${etat}` : ''}${blocs}${souvenirs}${lore}`,
-    Math.max(0, budgetHorsMetamoteurs - entete.length),
+    Math.max(0, budgetHorsContrat - entete.length),
   );
-  // Métamoteurs insérés juste après le préfixe fixe ; le reste (personnage,
-  // style, état du tour, recherche) suit et peut être rogné.
-  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsMetamoteurs - prefixe.length - fiche.length));
-  const registre = ctx.registreAdulte ? RAPPEL_REGISTRE_ADULTE : '';
-  return `${prefixe}${metamoteurs}${suite}${fiche}${rappel}${registre}`;
+  // Le contrat V2.1 est placé après le contexte variable, sans invalider
+  // le cache du préfixe fixe ; la mémoire et le lore gardent leur budget.
+  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsContrat - prefixe.length - fiche.length));
+  return `${prefixe}${suite}${fiche}${contrat}${rappel}${registre}`;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {

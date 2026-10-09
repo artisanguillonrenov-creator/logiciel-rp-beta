@@ -1,9 +1,7 @@
-import metamoteursRaw from '../data/metamoteurs.json';
 import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import {
   chargerLoreElyndor,
-  chargerMetamoteurs,
   extraireAncresCanoniques,
   type OptionsSelectionLore,
 } from './loreLoader';
@@ -74,6 +72,10 @@ import {
   validerProfilContenuHeuristique,
 } from './contenuAdulte';
 import {
+  construireContratNarratifNatif,
+  debugContratNarratif,
+} from './narrativeBehaviorKernel';
+import {
   appliquerPatchLocal,
   determinerStrategie,
   fusionnerRapports,
@@ -86,23 +88,7 @@ import {
   type RapportValidation,
 } from './validator';
 
-const METAMOTEUR_REGISTRE = '[MÉTA] Registre et Style Narratif';
 const MARGE_TOKENS_ETAT = 350;
-
-const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
-const M08_REGISTRE = METAMOTEURS.find((e) => e.titre === METAMOTEUR_REGISTRE);
-
-/**
- * Les 15 métamoteurs sont envoyés en entier à chaque réponse (voir
- * calculerSelectionLore). Un moteur à fenêtre étroite ne peut pas les
- * recevoir : il garde seulement M08, qui règle le cru, la violence et le
- * sexe du profil Adulte, à la suite du registre Adulte.
- */
-function registreAdulte(settings: StoryState['settings'], appSettings: AppSettings): string {
-  const registre = instructionRegistreAdulte(settings);
-  if (!moteurAFenetreEtroite(appSettings) || !M08_REGISTRE) return registre;
-  return `${registre}\n\n${M08_REGISTRE.titre}\n${M08_REGISTRE.contenu}`;
-}
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
 
 /**
@@ -191,7 +177,6 @@ function construireRequetesLore(story: StoryState, messageJoueur: string, appSet
 }
 
 interface SelectionLore {
-  metamoteursSelectionnes: LoreEntry[];
   loreElyndor: LoreEntry[];
   souvenirs: Souvenir[];
   debugLore: DebugLore;
@@ -209,18 +194,6 @@ export async function calculerSelectionLore(
   const profilAdulte = profil === 'adulte';
   const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
-
-  const metamoteursDisponibles = profilAdulte
-    ? METAMOTEURS
-    : METAMOTEURS.filter(
-        (e) => e.titre !== METAMOTEUR_REGISTRE && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
-      );
-  // Tous les métamoteurs, à chaque réponse, sans tri par pertinence (voie
-  // sémantique comme lexicale). Fenêtre étroite : M08 seul, via le registre.
-  const metamoteursSelectionnes: LoreEntry[] = moteurAFenetreEtroite(appSettings)
-    ? []
-    : metamoteursDisponibles.map((e) => ({ id: e.id, titre: e.titre, contenu: e.contenu }));
-  const debugMetamoteurs = metamoteursSelectionnes.map((e) => e.titre);
 
   const poolElyndorBrut = [
     ...LORE_ELYNDOR,
@@ -288,11 +261,10 @@ export async function calculerSelectionLore(
       ],
     );
     return {
-      metamoteursSelectionnes,
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: debugMetamoteurs,
+        metamoteurs: [],
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
@@ -339,11 +311,10 @@ export async function calculerSelectionLore(
     );
 
     return {
-      metamoteursSelectionnes,
       loreElyndor,
       souvenirs,
       debugLore: {
-        metamoteurs: debugMetamoteurs,
+        metamoteurs: [],
         loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
@@ -365,21 +336,29 @@ function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick
 
 export async function calculerDebugLore(story: StoryState, messageJoueur: string, appSettings: AppSettings): Promise<DebugLore> {
   const { debugLore } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  const evenements = synchroniserMemoireNarrative(story);
-  return { ...debugLore, ...debugMemoireNarrative(evenements.length, construireBlocsContexte(story, messageJoueur, evenements)) };
+  const storyNoyau = assurerNoyau(story);
+  const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
+  const evenements = synchroniserMemoireNarrative(storyNoyau);
+  return {
+    ...debugLore,
+    metamoteurs: debugContratNarratif(contrat),
+    ...debugMemoireNarrative(evenements.length, construireBlocsContexte(storyNoyau, messageJoueur, evenements)),
+  };
 }
 
 export function construireCtxBase(
   story: StoryState,
   messageJoueur: string,
   appSettings: AppSettings,
-  selection: Pick<SelectionLore, 'metamoteursSelectionnes' | 'loreElyndor' | 'souvenirs'>,
+  selection: Pick<SelectionLore, 'loreElyndor' | 'souvenirs'>,
   blocs: ResultatBlocs = construireBlocsContexte(story, messageJoueur),
   // Faux pour la scène d'ouverture : aucun tour à intégrer, donc pas de bloc
   // d'état machine à demander au narrateur.
   avecNoyau = true,
 ): ContexteConstruction {
+  const storyNoyau = avecNoyau ? assurerNoyau(story) : story;
   const noyau = avecNoyau ? construireContexteNoyau(assurerNoyau(story), messageJoueur) : null;
+  const contrat = construireContratNarratifNatif(storyNoyau, messageJoueur, appSettings.profilContenu);
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const filtrer = (texte: string | undefined) => filtrerTextePourProfil(texte ?? '', profil);
@@ -415,11 +394,11 @@ export function construireCtxBase(
     settings: plafonnerCurseurs(story.settings, profil),
     resume: filtrer(story.memoire.resume),
     faits,
-    metamoteursSelectionnes: selection.metamoteursSelectionnes,
     loreElyndor: selection.loreElyndor,
     messagesRecents,
     messageJoueur,
-    registreAdulte: profilAdulte ? registreAdulte(story.settings, appSettings) : undefined,
+    contratNarratif: filtrer(contrat.texte),
+    registreAdulte: profilAdulte ? instructionRegistreAdulte(story.settings) : undefined,
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
     engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
@@ -460,8 +439,8 @@ export async function construirePromptDebug(
   messageJoueur: string,
   appSettings: AppSettings,
 ): Promise<string> {
-  const { metamoteursSelectionnes, loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
-  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }));
+  const { loreElyndor, souvenirs } = await calculerSelectionLore(story, messageJoueur, appSettings);
+  return construireSystemPrompt(construireCtxBase(story, messageJoueur, appSettings, { loreElyndor, souvenirs }));
 }
 
 function messagesPourProfil(messages: Message[], appSettings: AppSettings): Message[] {
@@ -553,15 +532,19 @@ async function genererTourInterne(
     [`${evenements.length} événements indexés`],
   );
 
-  const { metamoteursSelectionnes, loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
+  const { loreElyndor, souvenirs, debugLore } = await calculerSelectionLore(
     storyCourante,
     messageJoueur,
     appSettings,
   );
 
+  const contrat = construireContratNarratifNatif(storyCourante, messageJoueur, appSettings.profilContenu);
+  debugLore.metamoteurs = debugContratNarratif(contrat);
+  ajouterEtapeDiagnostic('Méta-moteurs V2.1 — contrat narratif', 'contexte', 'ok', 0, undefined,
+    [`${contrat.contributions.filter((m) => m.actif).length}/15 responsabilités mobilisées`, ...debugLore.metamoteurs]);
   const debutContexte = Date.now();
   const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
-  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { metamoteursSelectionnes, loreElyndor, souvenirs }, blocs);
+  const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs);
   ajouterEtapeDiagnostic(
     'Construire contexte du tour',
     'contexte',

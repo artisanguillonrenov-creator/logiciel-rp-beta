@@ -2,14 +2,14 @@
  * Fabrique d'exemples pour entraîner un narrateur léger (Cydonia 24B, base Mistral Small 3.2).
  *
  * Le professeur (Euryale 70B sur le pod) joue des parties complètes avec le
- * vrai moteur de prompt de l'application : prompt complet, métamoteurs
+ * vrai moteur de prompt de l'application : contrat V2.1 du narrateur
  * compris. Un joueur simulé (même modèle, autre consigne) répond à chaque
  * tour. Chaque réponse du narrateur passe les contrôles de l'application ;
  * un échec est régénéré une fois avec la note de correction, comme dans
  * generateTurn.ts.
  *
  * Pour chaque réponse, l'échantillon enregistré est le prompt ÉLÈVE : même
- * moteur, sans métamoteurs et avec des budgets réduits (voir CONFIG_ELEVE).
+ * moteur, sans contrat natif et avec des budgets réduits (voir CONFIG_ELEVE).
  * L'élève apprend ainsi à se comporter comme si les métamoteurs étaient là,
  * avec un prompt qui tient sur un GPU modeste.
  *
@@ -23,12 +23,12 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import metamoteursRaw from '../../src/data/metamoteurs.json';
 import elyndorRaw from '../../src/data/elyndorLore.json';
-import type { LoreEntry, Message, StorySettings, StoryState } from '../../src/types';
+import type { Message, StorySettings, StoryState } from '../../src/types';
 import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite, type ContexteConstruction } from '../../src/engine/promptBuilder';
 import { construirePassages, selectionnerPassages } from '../../src/engine/passagesLore';
-import { chargerLoreElyndor, chargerMetamoteurs, type ElyndorEntryChargee } from '../../src/engine/loreLoader';
+import { chargerLoreElyndor, type ElyndorEntryChargee } from '../../src/engine/loreLoader';
+import { construireContratNarratifNatif } from '../../src/engine/narrativeBehaviorKernel';
 import { instructionRegistreAdulte } from '../../src/engine/contenuAdulte';
 import { corrigerEtiquettes, trouverEchoDuJoueur, validerGestesDuJoueur, validerRolesCanon } from '../../src/engine/controlesCoherence';
 import { validerAgentiviteHeuristique } from '../../src/engine/validator';
@@ -74,7 +74,6 @@ export function chargerMondes(dossier = process.env.FABRIQUE_MONDES ?? path.join
 }
 
 const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
-const METAMOTEURS = chargerMetamoteurs(metamoteursRaw as any);
 
 function entreesDuMonde(monde: Monde): ElyndorEntryChargee[] {
   if (monde.id === 'elyndor') return LORE_ELYNDOR;
@@ -85,15 +84,6 @@ const cachePassages = new Map<string, ReturnType<typeof construirePassages>>();
 function passagesDuMonde(monde: Monde) {
   if (!cachePassages.has(monde.id)) cachePassages.set(monde.id, construirePassages(entreesDuMonde(monde)));
   return cachePassages.get(monde.id)!;
-}
-
-/** Métamoteurs du professeur ; « Elyndor » neutralisé hors d'Elyndor. */
-function metamoteursPour(monde: Monde): LoreEntry[] {
-  return METAMOTEURS.map((e) => ({
-    id: e.id,
-    titre: e.titre,
-    contenu: monde.id === 'elyndor' ? e.contenu : e.contenu.replace(/d['’]Elyndor/g, 'du monde').replace(/Elyndor/g, 'le monde'),
-  }));
 }
 
 // ---------------------------------------------------------------- hasard
@@ -318,7 +308,9 @@ export function contexte(partie: Partie, monde: Monde, messageJoueur: string, el
     settings: partie.settings,
     resume: partie.resume,
     faits: [],
-    metamoteursSelectionnes: eleve ? [] : metamoteursPour(monde),
+    contratNarratif: monde.id === 'elyndor' && !eleve
+      ? construireContratNarratifNatif({ ...story, settings: partie.settings }, messageJoueur, 'adulte').texte
+      : undefined,
     loreElyndor: loreRetenu,
     messagesRecents: partie.messages,
     messageJoueur: ouverture ? INSTRUCTION_OUVERTURE : eleve ? messageJoueur : `${messageJoueur}${CONSIGNE_PROFESSEUR}`,
