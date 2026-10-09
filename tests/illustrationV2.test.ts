@@ -81,24 +81,24 @@ function scene(revision: string, overrides: Partial<SceneIllustree> = {}): Scene
   };
 }
 
-test('historique glissant : au plus les 2 dernières scènes, la plus ancienne évincée', () => {
+test('historique des images conservé sans limite artificielle, régénération en place', () => {
   let scenes: SceneIllustree[] = [];
   let r = ajouterSceneIllustree(scenes, scene('A'));
   assert.deepEqual(r.scenes.map((s) => s.revision), ['A']);
   r = ajouterSceneIllustree(r.scenes, scene('B'));
   assert.deepEqual(r.scenes.map((s) => s.revision), ['A', 'B']);
   r = ajouterSceneIllustree(r.scenes, scene('C'));
-  assert.deepEqual(r.scenes.map((s) => s.revision), ['B', 'C']);
-  assert.deepEqual(r.evincees.map((s) => s.revision), ['A']);
+  assert.deepEqual(r.scenes.map((s) => s.revision), ['A', 'B', 'C']);
+  assert.deepEqual(r.evincees, []);
   r = ajouterSceneIllustree(r.scenes, scene('D'));
-  assert.deepEqual(r.scenes.map((s) => s.revision), ['C', 'D']);
-  assert.deepEqual(r.evincees.map((s) => s.revision), ['B']);
+  assert.deepEqual(r.scenes.map((s) => s.revision), ['A', 'B', 'C', 'D']);
+  assert.deepEqual(r.evincees, []);
   scenes = r.scenes;
 
   // Régénération de la même révision : remplacement en place, pas de rotation.
   const regen = ajouterSceneIllustree(scenes, scene('D', { regenerations: 1 }));
-  assert.deepEqual(regen.scenes.map((s) => s.revision), ['C', 'D']);
-  assert.equal(regen.scenes[1].regenerations, 1);
+  assert.deepEqual(regen.scenes.map((s) => s.revision), ['A', 'B', 'C', 'D']);
+  assert.equal(regen.scenes[3].regenerations, 1);
   assert.deepEqual(regen.evincees, []);
 });
 
