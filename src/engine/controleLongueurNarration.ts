@@ -23,9 +23,10 @@ export function plageRespectee(nombre: number, plage: PlageLongueur): boolean {
 export async function compterTokensNarration(
   texte: string,
   requete: typeof fetch = fetch,
+  preparerPod: () => Promise<unknown> = assurerPodElyndorCloud,
 ): Promise<number | null> {
   try {
-    await assurerPodElyndorCloud();
+    await preparerPod();
     const controleur = new AbortController();
     const minuteur = setTimeout(() => controleur.abort(), 8000);
     try {
@@ -38,7 +39,7 @@ export async function compterTokensNarration(
       if (!resultat.ok) return null;
       const contenu: unknown = await resultat.json();
       const tokens = (contenu as { tokens?: unknown } | null)?.tokens;
-      return Array.isArray(tokens) && tokens.every(x => typeof x === 'number' && Number.isInteger(x))
+      return Array.isArray(tokens) && (tokens.length > 0 || texte.length === 0) && tokens.every(x => typeof x === 'number' && Number.isSafeInteger(x) && x >= 0)
         ? tokens.length : null;
     } finally {
       clearTimeout(minuteur);
