@@ -37,7 +37,17 @@ CACHE_PROMPTS=""
 "$LLAMA" --help 2>&1 | grep -q -- "--cache-ram" && CACHE_PROMPTS="--cache-ram 16384"
 [ -n "$MODULES_TEXTE" ] && MODULES_TEXTE="$MODULES_TEXTE --lora-init-without-apply"
 # Modèle de conversation avec outils (Cortana) : celui de Cydonia les ignore.
+# Pour Cydonia, celui copié à côté de ce script par install-5090.sh (ou celui
+# du dépôt) sert par défaut ; ELYNDOR_CHAT_TEMPLATE le remplace.
 GABARIT=""
+case "$MODELE_TEXTE" in
+  *[Cc]ydonia*)
+    for g in "$SCRIPTS/cydonia-outils.jinja" "$SCRIPTS/templates/cydonia-outils.jinja"; do
+      [ -z "${ELYNDOR_CHAT_TEMPLATE:-}" ] && [ -f "$g" ] && ELYNDOR_CHAT_TEMPLATE=$g
+    done
+    [ -f "${ELYNDOR_CHAT_TEMPLATE:-}" ] || echo "$(date -u +%FT%TZ) modèle de conversation avec outils absent : appels d'outils indisponibles"
+    ;;
+esac
 [ -n "${ELYNDOR_CHAT_TEMPLATE:-}" ] && [ -f "$ELYNDOR_CHAT_TEMPLATE" ] && GABARIT="--chat-template-file $ELYNDOR_CHAT_TEMPLATE"
 setsid nohup "$LLAMA" -m "$MODELE_TEXTE" --alias "$ALIAS" $CACHE_PROMPTS $MODULES_TEXTE $GABARIT \
   --host 0.0.0.0 --port 8000 -ngl 99 -c "$CONTEXTE" -np 1 -fa on --metrics --jinja \

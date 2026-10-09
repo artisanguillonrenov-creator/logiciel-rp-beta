@@ -50,5 +50,11 @@ bash "$SOURCES/migrer-lustify.sh" > "$RACINE/logs/migration.log" 2>&1
 [ -f "$RACINE/models/text/elyndor.safetensors" ] && cp "$RACINE/models/text/elyndor.safetensors" "$RACINE/models/image/modules/elyndor.safetensors"
 
 cp "$SOURCES"/start.sh "$SOURCES"/watchdog.sh "$SOURCES"/image_server.py "$RACINE/app/"
+# Modèle de conversation avec outils (module agent Cortana), lu par start.sh :
+# depuis le dépôt (templates/) ou téléchargé à côté de ce script.
+for g in "$SOURCES/templates/cydonia-outils.jinja" "$SOURCES/cydonia-outils.jinja"; do
+  [ -f "$g" ] && cp "$g" "$RACINE/app/cydonia-outils.jinja" && break
+done
+[ -f "$RACINE/app/cydonia-outils.jinja" ] || etat "ATTENTION modèle de conversation avec outils absent (templates/cydonia-outils.jinja)"
 cp "$SOURCES/boot.sh" "$RACINE/boot.sh"
 etat "INSTALL_OK"
