@@ -1,11 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from './Bouton';
 import {
   analyserStockage,
   formatTailleStockage,
   listerDossierStockage,
+  evaluerNettoyageDiagnostics,
+  nettoyerDiagnostics,
+  supprimerFichierStockage,
+  enregistrerImageDansGalerie,
   type BilanStockage,
   type EntreeStockage,
   type ListeStockage,
@@ -38,6 +42,8 @@ export default function StorageExplorer() {
   const [chargement, setChargement] = useState(false);
   const [suiteEnCours, setSuiteEnCours] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [messageAction, setMessageAction] = useState('');
+  const [operationEnCours, setOperationEnCours] = useState(false);
   const demandeCourante = useRef(0);
 
   async function actualiser() {
@@ -101,6 +107,95 @@ export default function StorageExplorer() {
     }
   }
 
+  async function effectuerSuppression(cible: EntreeStockage) {
+    setOperationEnCours(true);
+    setErreur('');
+    setMessageAction('');
+    try {
+      const resultat = await supprimerFichierStockage(cible.path);
+      setMessageAction("Fichier supprimé : " + formatTailleStockage(resultat.freedBytes) + " libérés.");
+      await actualiser();
+      setMessageAction("Fichier supprimé : " + formatTailleStockage(resultat.freedBytes) + " libérés.");
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : "Suppression impossible.");
+    } finally {
+      setOperationEnCours(false);
+    }
+  }
+
+  function demanderSuppression(cible: EntreeStockage) {
+    Alert.alert(
+      "Supprimer définitivement ce fichier ?",
+      cible.name + "\n" + formatTailleStockage(cible.sizeBytes) +
+        "\n\nL'opération est irréversible. Les fichiers de récit et les bases restent protégés.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Supprimer", style: "destructive", onPress: () => { void effectuerSuppression(cible); } },
+      ],
+    );
+  }
+
+  async function exporterImage(cible: EntreeStockage) {
+    setOperationEnCours(true);
+    setErreur('');
+    setMessageAction('');
+    try {
+      const resultat = await enregistrerImageDansGalerie(cible.path);
+      setMessageAction("Image enregistrée dans " + resultat.destination + " (galerie de la tablette).");
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : "Export de l'image impossible.");
+    } finally {
+      setOperationEnCours(false);
+    }
+  }
+
+  async function demanderNettoyage(joursMinimum: number) {
+    setOperationEnCours(true);
+    setErreur('');
+    setMessageAction('');
+    try {
+      const apercu = await evaluerNettoyageDiagnostics(joursMinimum);
+      if (apercu.count === 0) {
+        setMessageAction("Aucun diagnostic à supprimer dans cette catégorie.");
+        return;
+      }
+      Alert.alert(
+        "Confirmer le nettoyage des diagnostics",
+        String(apercu.count) + " fichier(s) · " + formatTailleStockage(apercu.sizeBytes) +
+          "\n" + (joursMinimum === 0 ? "Tous les diagnostics seront supprimés." :
+            "Uniquement les diagnostics de plus de " + joursMinimum + " jours seront supprimés.") +
+          "\n\nLes conversations, les images et les bases de données sont conservées.",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Nettoyer", style: "destructive", onPress: () => { void executerNettoyage(joursMinimum); } },
+        ],
+      );
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : "Impossible d'analyser les diagnostics.");
+    } finally {
+      setOperationEnCours(false);
+    }
+  }
+
+  async function executerNettoyage(joursMinimum: number) {
+    setOperationEnCours(true);
+    setErreur('');
+    setMessageAction('');
+    try {
+      const resultat = await nettoyerDiagnostics(joursMinimum);
+      await actualiser();
+      setMessageAction(resultat.deletedCount + " diagnostic(s) supprimé(s), " +
+        formatTailleStockage(resultat.freedBytes) + " libérés." +
+        (resultat.failedCount ? " " + resultat.failedCount + " échec(s)." : ""));
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : "Nettoyage impossible.");
+    } finally {
+      setOperationEnCours(false);
+    }
+  }
+
+  const selectionEstImage = !!selection && /^interne\/files\/(scene-images|pnj-avatars)\/[^/]+\.png$/i.test(selection.path);
+  const selectionEstDiagnostic = !!selection && /^interne\/files\/diagnostics\/[^/]+\.jsonl$/i.test(selection.path);
   const precedent = chemin.includes('/') ? chemin.slice(0, chemin.lastIndexOf('/')) : '';
   const espaceOccupe = bilan ? Math.max(0, bilan.totalBytes - bilan.availableBytes) : 0;
   const incomplet = !!(bilan?.incomplete || liste?.entries.some((entree) => entree.incomplete));
@@ -108,8 +203,9 @@ export default function StorageExplorer() {
   return (
     <View>
       <Text style={styles.introduction}>
-        Inventaire des bases, index, images, diagnostics et fichiers d’Elyndor.
-        Lecture seule : aucun fichier n’est ouvert, modifié ou supprimé.
+        Gestion du stockage privé d’Elyndor : consulter l’espace utilisé, enregistrer les images
+        dans la galerie, supprimer les diagnostics et les images choisies. Les conversations et bases
+        de données restent protégées.
       </Text>
       <Bouton
         titre={bilan ? 'Actualiser le diagnostic' : 'Analyser le stockage'}
@@ -120,6 +216,7 @@ export default function StorageExplorer() {
       />
       {chargement ? <ActivityIndicator style={styles.attente} color={couleurs.accent} /> : null}
       {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
+      {messageAction ? <Text style={styles.confirmation}>{messageAction}</Text> : null}
 
       {bilan ? (
         <>
@@ -154,6 +251,28 @@ export default function StorageExplorer() {
               Taille des fichiers mesurés : elle peut différer des « Données » indiquées par Android,
               qui compte aussi certains espaces réservés. Aucun accès aux fichiers des autres applications.
             </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sousTitre}>Nettoyage des diagnostics</Text>
+            <Text style={styles.precision}>
+              Journaux techniques uniquement. Le nettoyage ne supprime ni histoires,
+              ni personnages, ni images. Un nouveau diagnostic peut être créé lors d'une prochaine utilisation.
+            </Text>
+            <Bouton
+              titre="Supprimer les diagnostics de plus de 30 jours"
+              variante="secondaire"
+              onPress={() => void demanderNettoyage(30)}
+              desactive={operationEnCours || chargement}
+              style={styles.bouton}
+            />
+            <Bouton
+              titre="Supprimer tous les diagnostics"
+              variante="secondaire"
+              onPress={() => void demanderNettoyage(0)}
+              desactive={operationEnCours || chargement}
+              style={styles.bouton}
+            />
           </View>
 
           <View style={styles.section}>
@@ -222,7 +341,32 @@ export default function StorageExplorer() {
                     ? new Date(selection.modifiedAt).toLocaleString('fr-FR')
                     : 'inconnue'}
                 </Text>
-                <Text style={styles.precision}>Seules les métadonnées sont consultables, pas le contenu privé.</Text>
+                {selectionEstImage ? (
+                  <Bouton
+                    titre="Enregistrer l'image dans la galerie"
+                    variante="secondaire"
+                    onPress={() => void exporterImage(selection)}
+                    desactive={operationEnCours || chargement}
+                    style={styles.bouton}
+                  />
+                ) : null}
+                {(selectionEstImage || selectionEstDiagnostic) ? (
+                  <Bouton
+                    titre="Supprimer ce fichier"
+                    variante="secondaire"
+                    onPress={() => demanderSuppression(selection)}
+                    desactive={operationEnCours || chargement}
+                    style={styles.bouton}
+                  />
+                ) : (
+                  <Text style={styles.precision}>Fichier protégé : consultation des métadonnées uniquement.</Text>
+                )}
+                {selectionEstImage ? (
+                  <Text style={styles.precision}>
+                    L'export crée une copie dans Images/Elyndor. La suppression efface uniquement
+                    le fichier local, et une image encore utilisée dans le récit pourrait disparaître.
+                  </Text>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -245,6 +389,7 @@ const styles = StyleSheet.create({
   bouton: { marginTop: espacement.md },
   attente: { marginTop: espacement.md },
   erreur: { color: couleurs.danger, fontFamily: polices.corpsMedium, marginTop: espacement.sm, fontSize: 14 },
+  confirmation: { color: couleurs.succes, fontFamily: polices.corpsMedium, marginTop: espacement.sm, fontSize: 14 },
   section: {
     borderTopWidth: 1, borderTopColor: couleurs.bordureSubtile,
     marginTop: espacement.lg, paddingTop: espacement.md,

@@ -64,6 +64,31 @@ class ElyndorObjectBoxModule : Module() {
       searchHistory(store, storyId, parseVector(vectorJson), maxCount).toString()
     }
 
+    // Espace concepteur : export/maintenance, limité à certains fichiers privés.
+    AsyncFunction("deleteManagedStorageFile") { path: String ->
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.deleteManagedFile(context, path)
+    }
+
+    AsyncFunction("inspectDiagnosticCleanup") { minimumDays: Int ->
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.inspectDiagnostics(context, minimumDays)
+    }
+
+    AsyncFunction("cleanDiagnosticFiles") { minimumDays: Int ->
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.cleanDiagnostics(context, minimumDays)
+    }
+
+    AsyncFunction("exportManagedImage") { path: String ->
+      val context = appContext.reactContext
+        ?: throw IllegalStateException("Contexte Android indisponible.")
+      ElyndorStorageInspector.saveImageToGallery(context, path)
+    }
+
     AsyncFunction("clearStory") { storyId: String ->
       val store = requireStore()
       val loreBox = store.boxFor(LoreVectorRecord::class.java)

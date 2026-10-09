@@ -71,3 +71,53 @@ export async function listerDossierStockage(path: string, offset = 0): Promise<L
   if (!Array.isArray(parsed.entries)) throw new Error('Contenu du dossier invalide.');
   return parsed;
 }
+
+
+export interface ResultatNettoyage {
+  deletedCount: number;
+  freedBytes: number;
+  failedCount?: number;
+}
+
+export interface ApercuDiagnostics {
+  count: number;
+  sizeBytes: number;
+}
+
+export interface ImageExportee {
+  uri: string;
+  bytes: number;
+  destination: string;
+}
+
+function moduleMaintenance() {
+  const natif = moduleNatif();
+  if (!natif.deleteManagedStorageFile || !natif.inspectDiagnosticCleanup ||
+      !natif.cleanDiagnosticFiles || !natif.exportManagedImage) {
+    throw new Error('Gestion des fichiers indisponible : installe le nouvel APK Android.');
+  }
+  return natif;
+}
+
+/** Ne peut supprimer que diagnostics .jsonl, PNG de scènes et PNG de portraits. */
+export async function supprimerFichierStockage(path: string): Promise<ResultatNettoyage> {
+  const data = await moduleMaintenance().deleteManagedStorageFile(path);
+  return JSON.parse(data) as ResultatNettoyage;
+}
+
+export async function evaluerNettoyageDiagnostics(joursMinimum: number): Promise<ApercuDiagnostics> {
+  const data = await moduleMaintenance().inspectDiagnosticCleanup(joursMinimum);
+  return JSON.parse(data) as ApercuDiagnostics;
+}
+
+/** Supprime uniquement les journaux de diagnostic ; aucune histoire ou base de données. */
+export async function nettoyerDiagnostics(joursMinimum: number): Promise<ResultatNettoyage> {
+  const data = await moduleMaintenance().cleanDiagnosticFiles(joursMinimum);
+  return JSON.parse(data) as ResultatNettoyage;
+}
+
+/** Copie un PNG dans la galerie système (Images/Elyndor), sans supprimer l'original. */
+export async function enregistrerImageDansGalerie(path: string): Promise<ImageExportee> {
+  const data = await moduleMaintenance().exportManagedImage(path);
+  return JSON.parse(data) as ImageExportee;
+}
