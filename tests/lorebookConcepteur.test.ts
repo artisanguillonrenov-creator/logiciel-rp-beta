@@ -12,7 +12,7 @@ const base: ElyndorEntryChargee[] = [
   {id:'elyndor-0',titre:'[MONDE] Présentation',contenu:'Géographie du monde.',
     category:'MONDE',constant:true,priority:5,scope:'GLOBAL',
     primaryKeys:['monde'],secondaryKeys:[],negativeKeys:[],motsClesNegatifs:[]},
-  {id:'elyndor-4',titre:'[MONDE] Magie',contenu:'Ancienne magie.',
+  {id:'elyndor-14',titre:'[MONDE] Magie',contenu:'Ancienne magie.',
     category:'MONDE',constant:false,priority:60,scope:'GLOBAL',
     primaryKeys:['magie'],secondaryKeys:[],negativeKeys:[],motsClesNegatifs:[]},
 ];
@@ -31,8 +31,8 @@ test('une fiche canonique protégée devient un brouillon et ne change pas le na
 test('une fiche ordinaire devient active après écriture, et peut être désactivée sans effacer son original', () => {
   const actuel = creerEtatLore();
   const fiche = {...ficheOrigine(base[1]), contenu:'Magie modifiée.', actif:false};
-  const next = enregistrerFicheLore(actuel, base, 'elyndor-4', fiche);
-  assert.equal(next.brouillons['elyndor-4'], undefined);
+  const next = enregistrerFicheLore(actuel, base, 'elyndor-14', fiche);
+  assert.equal(next.brouillons['elyndor-14'], undefined);
   assert.deepEqual(appliquerLorePublie(base, next).map(x => x.id), ['elyndor-0']);
   assert.equal(base[1].contenu, 'Ancienne magie.');
   const restaure = restaurerRevisionLore(next, 1);
