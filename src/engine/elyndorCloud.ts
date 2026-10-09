@@ -9,10 +9,10 @@ import type { AppSettings } from '../types';
  * moteur narratif.
  */
 /**
- * Pod Runpod (GPU H100) qui sert la narration (port 8000, llama.cpp +
- * L3.3 Euryale 70B v2.3 Q4_K_M), les images (port 7860, Chroma1-HD) et les
- * embeddings (port 7860, bge-m3). Installé sur le volume réseau
- * `elyndor-cloud` (infra/runpod/) : le pod s'arrête seul après 30 min
+ * Pod Runpod (RTX 5090) qui sert la narration (port 8000, llama.cpp +
+ * Cydonia 24B Q4_K_M), les images (port 7860, Lustify SDXL et ses modules) et
+ * les embeddings (port 7860, bge-m3). Installé sur un volume réseau
+ * (infra/runpod/install-5090.sh) : le pod s'arrête seul après 90 min
  * d'inactivité et redémarre sans réinstallation.
  *
  * L'identifiant du pod change quand Runpod le migre sur une autre machine
@@ -21,7 +21,7 @@ import type { AppSettings } from '../types';
  * après une migration, il suffit de modifier ce fichier, sans nouvelle
  * version de l'app. La valeur intégrée sert de repli.
  */
-export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'ot7y2dg831r3i3';
+export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'u0nb7hefflw2rg';
 export const URL_CONFIG_POD_ELYNDOR_CLOUD = 'https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/elyndor-cloud.json';
 const DELAI_CONFIG_POD_MS = 4000;
 
