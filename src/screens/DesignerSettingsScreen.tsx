@@ -11,6 +11,7 @@ import Panneau from '../components/Panneau';
 import StorageExplorer from '../components/StorageExplorer';
 import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
 import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
+import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
@@ -25,7 +26,7 @@ type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteu
 const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
   { id: 'tableau', titre: 'Tableau de bord', detail: "État du noyau, services et version", pret: true },
   { id: 'modeles', titre: 'Modèles IA', detail: 'Correction de température, fournisseur', pret: true },
-  { id: 'runpod', titre: 'RunPod et Cloud', detail: 'Administration distante à sécuriser', pret: false },
+  { id: 'runpod', titre: 'RunPod et Cloud', detail: 'Pod, connexion et migration sans GitHub', pret: true },
   { id: 'narration', titre: 'Narration', detail: 'Température et marge de réponse', pret: true },
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
@@ -196,6 +197,14 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
               <AtelierConfigurationPanel section={section} />
               {section === 'instantanes' ? <AtelierDiagnosticPanel mode="instantanes" /> : null}
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && section === 'runpod' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>CONFIGURATION RUNPOD</Text>
+              <Text style={styles.titreBloc}>Pod Elyndor Cloud</Text>
+              <AtelierRunpodPanel />
             </Panneau>
           ) : null}
 

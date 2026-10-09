@@ -28,6 +28,11 @@ const DELAI_CONFIG_POD_MS = 4000;
 let podCourant = ELYNDOR_CLOUD_POD_PAR_DEFAUT;
 let chargementPod: Promise<string> | null = null;
 let configPodChargee = false;
+let sourcePod: 'integre' | 'publie' | 'concepteur' = 'integre';
+let revisionPod = 0;
+
+/** Origine du pod réellement utilisé par les trois services. */
+export function originePodElyndorCloud(): 'integre' | 'publie' | 'concepteur' { return sourcePod; }
 
 const FORME_ID_POD = /^[a-z0-9]{8,32}$/;
 
@@ -36,9 +41,11 @@ export function podElyndorCloud(): string {
 }
 
 /** Fixe le pod (identifiant Runpod valide) ; renvoie false si l'identifiant est rejeté. */
-export function definirPodElyndorCloud(id: string): boolean {
+export function definirPodElyndorCloud(id: string, origine: 'integre' | 'publie' | 'concepteur' = 'integre'): boolean {
   if (!FORME_ID_POD.test(id)) return false;
+  revisionPod += 1;
   podCourant = id;
+  sourcePod = origine;
   chargementPod = Promise.resolve(id);
   configPodChargee = true;
   return true;
@@ -54,41 +61,67 @@ export function lirePodDepuisConfig(config: unknown): string | null {
  * Lit une seule fois la configuration publiée ; en cas d'échec (hors ligne,
  * fichier absent ou invalide), garde le pod intégré. Ne lève jamais.
  */
+/**
+ * Résolution : pod local concepteur > configuration publique > valeur intégrée.
+ * La lecture locale a lieu avant le réseau, y compris lors d'un lancement froid.
+ * Un changement manuel en cours de lecture ne peut pas être écrasé par une réponse tardive.
+ */
 export function assurerPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
-  // La configuration distante peut changer pendant que l'application reste
-  // ouverte (migration/redémarrage RunPod). On ne fige donc plus à vie un
-  // ancien identifiant après le premier appel.
   if (configPodChargee && chargementPod) return chargementPod;
   if (!chargementPod) {
+    const revisionAuDepart = revisionPod;
     chargementPod = (async () => {
+      try {
+        const { lirePodConcepteur } = require('../concepteur/podStore') as typeof import('../concepteur/podStore');
+        const personnalise = await lirePodConcepteur();
+        if (revisionPod !== revisionAuDepart) return podCourant;
+        if (personnalise && FORME_ID_POD.test(personnalise)) {
+          podCourant = personnalise;
+          sourcePod = 'concepteur';
+          return podCourant;
+        }
+      } catch {
+        // Stockage inaccessible : retour au pod publié.
+      }
       const controleur = new AbortController();
       const minuteur = setTimeout(() => controleur.abort(), DELAI_CONFIG_POD_MS);
       try {
         const reponse = await lecteur(`${URL_CONFIG_POD_ELYNDOR_CLOUD}?t=${Date.now()}`, {
-          signal: controleur.signal,
-          cache: 'no-store',
+          signal: controleur.signal, cache: 'no-store',
         });
         const pod = reponse.ok ? lirePodDepuisConfig(await reponse.json()) : null;
-        if (pod) podCourant = pod;
+        if (revisionPod === revisionAuDepart && pod) {
+          podCourant = pod; sourcePod = 'publie';
+        }
       } catch {
-        // Repli silencieux sur le pod intégré.
-      } finally {
-        clearTimeout(minuteur);
-        configPodChargee = true;
-      }
+        // Repli non destructif sur le pod déjà connu.
+      } finally { clearTimeout(minuteur); }
       return podCourant;
-    })();
+    })().then((pod) => {
+      configPodChargee = true;
+      return pod;
+    });
   }
   return chargementPod;
 }
 
-/** Force une relecture de la configuration distante (utile après un 404/502). */
+/** Relecture de la configuration distante ; l'override local reste prioritaire. */
 export async function rafraichirPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
+  revisionPod += 1;
   chargementPod = null;
   configPodChargee = false;
   return assurerPodElyndorCloud(lecteur);
 }
 
+/** Après effacement de l'override, revenir au pod publié (ou au repli intégré). */
+export async function revenirAuPodPublieElyndorCloud(lecteur: typeof fetch = fetch): Promise<string> {
+  revisionPod += 1;
+  podCourant = ELYNDOR_CLOUD_POD_PAR_DEFAUT;
+  sourcePod = 'integre';
+  chargementPod = null;
+  configPodChargee = false;
+  return assurerPodElyndorCloud(lecteur);
+}
 /** Narration (llama.cpp, API OpenAI). */
 export function urlNarrationElyndorCloud(): string {
   return `https://${podCourant}-8000.proxy.runpod.net/v1`;
