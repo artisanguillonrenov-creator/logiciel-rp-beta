@@ -100,16 +100,16 @@ test('le registre Adulte (avec M08) reste entier dans l’en-tête, même avec m
 });
 
 test('les responsabilités V2.1 sont dans le prompt sans anciennes fiches textuelles', () => {
-  const contrat = '[CONTRAT NARRATIF NATIF V2.1 — RESPONSABILITÉS ACTIVES]\\nM01 Production de la réponse';
+  const contrat = '[CONTRAT NARRATIF NATIF V2.1 — RESPONSABILITÉS ACTIVES]\nM01 Production de la réponse';
   const [systeme] = construireMessages(
     { ...contexte(), blocsContexte: 'Bloc mémoire '.repeat(2000), contratNarratif: contrat },
     { budgetSysteme: BUDGET_SYSTEM_DISTANT, budgetConversation: BUDGET_CONVERSATION_DISTANT },
   );
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_DISTANT);
   assert.ok(systeme.content.includes(contrat));
-  assert.doesNotMatch(systeme.content, /\\[MÉTAMOTEURS ACTIFS\\]/);
+  assert.ok(!systeme.content.includes('[MÉTAMOTEURS ACTIFS]'));
   assert.match(systeme.content, /AUTONOMIE DU JOUEUR STRICTE/);
-  assert.match(systeme.content, /\\[MÉMOIRE NARRATIVE PERTINENTE\\]/);
+  assert.ok(systeme.content.includes('[MÉMOIRE NARRATIVE PERTINENTE]'));
 });
 
 test('la fiche de création détaillée du joueur arrive entière au narrateur', () => {
