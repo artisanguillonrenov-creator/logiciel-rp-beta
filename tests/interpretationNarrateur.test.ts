@@ -22,7 +22,7 @@ test('un réglage de style modifie une unique consigne Ton, sans changer le cano
   const base = stylesNarratifsDefaut();
   const modifie = { ...base, sombre_realiste: { ...base.sombre_realiste, densite: 'sobre' as const } };
   const contexte = {
-    meta: { personnageNom: 'Joueur', personnageDescription: '', pointDeDepart: '', contexte: { lieu: '', ambiance: '', dateChronique: '', objectifs: '' } },
+    meta: { id: 'scene-test', createdAt: 1, updatedAt: 1, personnageNom: 'Joueur', personnageDescription: '', pointDeDepart: '', contexte: { lieu: '', ambiance: '', dateChronique: '', objectifs: '' } },
     settings: { ...defautsAventure(), ton: 'sombre_realiste' },
     faits: [], resume: '', loreElyndor: [], messagesRecents: [], messageJoueur: 'Je regarde autour de moi.',
     stylesNarratifs: base,
