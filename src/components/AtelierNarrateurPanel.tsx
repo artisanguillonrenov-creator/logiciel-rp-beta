@@ -179,9 +179,9 @@ export default function AtelierNarrateurPanel() {
       <Text style={styles.sousTitre}>Échantillonnage — llama.cpp</Text>
       <Pressable disabled={operation} onPress={() => changerNarrateur({ ...narrateur, samplersActifs: !narrateur.samplersActifs }, 'Samplers narrateur')}
         style={[styles.bouton, narrateur.samplersActifs && styles.boutonActif]}>
-        <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers personnalisés : ACTIVÉS' : 'Activer les samplers personnalisés'}</Text>
+        <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers envoyés (compatibilité à vérifier)' : 'Autoriser l’envoi des samplers au pod'}</Text>
       </Pressable>
-      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Activés : les 19 valeurs ci-dessous sont réellement transmises à chaque génération narrative. Le binaire du pod doit prendre en charge ces paramètres.</Text>
+      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Envoi activé : les 19 champs figurent dans la requête JSON, mais leur acceptation ET leur effet sur le modèle actif ne sont pas encore vérifiés sur RunPod. Aucun curseur ci-dessous ne doit être considéré comme certifié.</Text>
       <Curseur nom="Correction de température du joueur" valeur={valeurs.temperatureDelta}
         min={LIMITES_ATELIER.temperatureDelta.min} max={LIMITES_ATELIER.temperatureDelta.max}
         pas={LIMITES_ATELIER.temperatureDelta.pas} bloque={operation}
@@ -197,7 +197,7 @@ export default function AtelierNarrateurPanel() {
             onChange={v => changerNarrateur({ ...narrateur, samplers: { ...narrateur.samplers, [cle]: v } }, 'Sampler ' + cle)} />;
         })}
       </View>)}
-      <Text style={styles.aide}>Mirostat peut neutraliser Top-K, Top-P et Typical-P. Paramètres non exposés : Top-A, TFS, Smoothing, Repeat Slope et autres non vérifiés sur ce backend. Une validation sur le pod actif reste nécessaire.</Text>
+      <Text style={styles.aide}>Mirostat peut neutraliser Top-K, Top-P et Typical-P ; certaines combinaisons avec température dynamique restent à tester. Paramètres non exposés : Top-A, TFS, Smoothing, Repeat Slope. Les vérifications en simulation ne prouvent pas la compatibilité du binaire RunPod.</Text>
     </View>}
   </View>;
 }
