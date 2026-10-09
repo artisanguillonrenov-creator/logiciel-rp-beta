@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, type GestureResponderEvent } from 'react-native';
 import { couleurs, espacement, polices } from '../theme/theme';
 import { type EtatAtelier, type ConfigurationAtelier, type ProfilAtelier, PROFILS_ATELIER, LIMITES_ATELIER } from '../concepteur/configuration';
@@ -10,6 +10,7 @@ import { temperaturePourCreativite } from '../engine/promptBuilder';
 import { REGLES_IMMUABLES } from '../engine/rules';
 import { IDENTITE_NARRATIVE } from '../engine/identiteNarrative';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
+import { lancerDiagnosticCompatibilitePod, type RapportCompatibilitePod, type EtatSonde } from '../concepteur/diagnosticCompatPod';
 
 type Partie = 'fondamentales' | 'styles' | 'aventures' | 'technique';
 const PARTIES: Array<{ id: Partie; nom: string }> = [
@@ -42,6 +43,13 @@ const AIDES_SAMPLERS: Record<CleSampler, string> = {
   mirostat: 'Mode de contrôle de surprise 0 (arrêt), 1 ou 2.',
   mirostat_tau: 'Niveau de surprise visé par Mirostat.',
   mirostat_eta: 'Vitesse d’adaptation de Mirostat.',
+};
+
+const ETIQUETTES_SONDES: Record<EtatSonde, string> = {
+  accepte: 'Accepté par l’API (effet non vérifié)',
+  rejete: 'Rejeté par le serveur',
+  indetermine: 'Indéterminé',
+  non_teste: 'Non testé',
 };
 
 const LIBELLES_AVENTURE: Record<keyof StorySettings, string> = {
@@ -127,6 +135,41 @@ export default function AtelierNarrateurPanel() {
   const [info, setInfo] = useState('');
   const [erreur, setErreur] = useState('');
   const [plagesSaisie, setPlagesSaisie] = useState<PlagesSaisie | null>(null);
+  const [confirmationTest, setConfirmationTest] = useState(false);
+  const [testEnCours, setTestEnCours] = useState(false);
+  const [progressionTest, setProgressionTest] = useState('');
+  const [rapportDiagnostic, setRapportDiagnostic] = useState<RapportCompatibilitePod | null>(null);
+  const controleDiagnostic = useRef<AbortController | null>(null);
+
+  useEffect(() => () => { controleDiagnostic.current?.abort(); }, []);
+
+  async function demarrerDiagnostic() {
+    if (controleDiagnostic.current) return;
+    const controle = new AbortController();
+    controleDiagnostic.current = controle;
+    setTestEnCours(true);
+    setConfirmationTest(false);
+    setProgressionTest('Connexion au serveur');
+    setRapportDiagnostic(null);
+    try {
+      const resultat = await lancerDiagnosticCompatibilitePod({
+        signal: controle.signal,
+        progression: (rapport, etape) => {
+          if (!controle.signal.aborted) {
+            setRapportDiagnostic(rapport);
+            setProgressionTest(etape);
+          }
+        },
+      });
+      setRapportDiagnostic(resultat);
+      setProgressionTest(resultat.interrompu ? 'Diagnostic interrompu' : 'Diagnostic terminé');
+    } catch (e) {
+      setProgressionTest(e instanceof Error ? e.message : 'Erreur du diagnostic');
+    } finally {
+      controleDiagnostic.current = null;
+      setTestEnCours(false);
+    }
+  }
 
   useEffect(() => {
     let actif = true;
@@ -253,6 +296,45 @@ export default function AtelierNarrateurPanel() {
     </View>}
     {partie === 'technique' && <View style={styles.section}>
       <Text style={styles.sousTitre}>Échantillonnage — llama.cpp</Text>
+      <Text style={styles.sousTitre}>Diagnostic de compatibilité du pod</Text>
+      <Text style={styles.aide}>Test facultatif depuis la tablette, sans terminal. Vérifie le serveur, la tokenisation puis 19 sondes à 3 tokens maximum chacune. Peut déclencher jusqu’à 20 générations et donc une consommation GPU. Ne démarre, n'arrête, ne migre ni ne reconfigure le pod. Aucun réglage Production/Test/Benchmark n'est modifié.</Text>
+      {!confirmationTest && !testEnCours && <Pressable accessibilityRole="button"
+        onPress={() => setConfirmationTest(true)} style={styles.bouton}>
+        <Text style={styles.boutonTexte}>Tester la compatibilité du pod</Text>
+      </Pressable>}
+      {confirmationTest && !testEnCours && <View style={styles.encartDiagnostic}>
+        <Text style={styles.nom}>Confirmer le lancement des requêtes sur RunPod ?</Text>
+        <Text style={styles.aide}>Le pod doit déjà être actif. Les 19 résultats montreront si le JSON est accepté, pas si le sampler produit l'effet attendu. Les appels sont séquentiels et peuvent durer plusieurs minutes.</Text>
+        <Pressable accessibilityRole="button" style={styles.bouton} onPress={() => { void demarrerDiagnostic(); }}>
+          <Text style={styles.boutonTexte}>Confirmer et lancer les tests</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" style={styles.onglet} onPress={() => setConfirmationTest(false)}>
+          <Text style={styles.nom}>Annuler</Text>
+        </Pressable>
+      </View>}
+      {testEnCours && <View style={styles.encartDiagnostic}>
+        <ActivityIndicator color={couleurs.accent}/>
+        <Text style={styles.aide}>{progressionTest} — progression sauvegardée à l'écran seulement.</Text>
+        <Pressable accessibilityRole="button" style={styles.onglet}
+          onPress={() => { controleDiagnostic.current?.abort(); setProgressionTest('Annulation demandée…'); }}>
+          <Text style={styles.nom}>Arrêter les tests (ne coupe pas le pod)</Text>
+        </Pressable>
+      </View>}
+      {rapportDiagnostic && <View style={styles.encartDiagnostic}>
+        <Text style={styles.nom}>Résultats de la session — pod {rapportDiagnostic.pod}</Text>
+        <Text style={styles.aide}>Modèle configuré : {rapportDiagnostic.modeleConfigure} · annoncé par l'API : {rapportDiagnostic.modeleAnnonce ?? 'non obtenu'}</Text>
+        {rapportDiagnostic.identiteBinaire ? <Text style={styles.aide}>Fichier modèle déclaré : {rapportDiagnostic.identiteBinaire}</Text> : null}
+        <Text style={styles.aide}>Santé du serveur : {rapportDiagnostic.sante.disponible ? 'joignable' : rapportDiagnostic.sante.detail} · liste des modèles : {rapportDiagnostic.catalogue.disponible ? 'accessible' : rapportDiagnostic.catalogue.detail}</Text>
+        <Text style={styles.aide}>Tokenisation : {rapportDiagnostic.tokensTemoin === null ? rapportDiagnostic.tokenisation.detail : rapportDiagnostic.tokensTemoin + ' tokens exacts (phrase de test)'}</Text>
+        <Text style={styles.aide}>Génération témoin : {rapportDiagnostic.generationTemoin.disponible ? 'API accessible' : rapportDiagnostic.generationTemoin.detail}</Text>
+        <Text style={styles.aide}>Samplers : {rapportDiagnostic.sondes.filter(s => s.etat === 'accepte').length} acceptés HTTP · {rapportDiagnostic.sondes.filter(s => s.etat === 'rejete').length} refusés · {rapportDiagnostic.sondes.filter(s => s.etat === 'indetermine').length} indéterminés · {rapportDiagnostic.sondes.filter(s => s.etat === 'non_teste').length} non testés.</Text>
+        {rapportDiagnostic.motifArret ? <Text style={styles.erreur}>{rapportDiagnostic.motifArret}</Text> : null}
+        {rapportDiagnostic.sondes.map(s => <View key={s.cle} style={styles.ligne}>
+          <Text style={styles.nom}>{SAMPLERS_LLAMA_CPP[s.cle].nom} — {ETIQUETTES_SONDES[s.etat]}</Text>
+          <Text style={styles.aideMini}>Valeur {formatNombre(s.valeur)} · {s.statutHttp ? 'HTTP ' + s.statutHttp + ' · ' : ''}{s.dureeMs !== undefined ? s.dureeMs + ' ms · ' : ''}{s.detail}</Text>
+        </View>)}
+        <Text style={styles.aide}>Résultat temporaire : aucun paramètre n'est activé automatiquement. Une réponse HTTP 200 ne certifie pas l'application effective du champ ; le serveur peut l'ignorer. Conserve la sélection manuelle.</Text>
+      </View>}
       <Pressable disabled={operation} onPress={() => changerNarrateur({ ...narrateur, samplersActifs: !narrateur.samplersActifs }, 'Samplers narrateur')}
         style={[styles.bouton, narrateur.samplersActifs && styles.boutonActif]}>
         <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers envoyés (compatibilité à vérifier)' : 'Autoriser l’envoi des samplers au pod'}</Text>
@@ -270,7 +352,7 @@ export default function AtelierNarrateurPanel() {
           const conflitMirostat = narrateur.samplers.mirostat > 0 &&
             narrateur.samplersEnvoyes.mirostat && (['top_p', 'top_k', 'min_p', 'typical_p'] as CleSampler[]).includes(cle);
           return <View key={cle} style={styles.ligne}>
-            <Text style={styles.aide}>{AIDES_SAMPLERS[cle]} · Défaut du profil : {formatNombre(spec.defaut)}. Support serveur : non vérifié.</Text>
+            <Text style={styles.aide}>{AIDES_SAMPLERS[cle]} · Défaut du profil : {formatNombre(spec.defaut)}. Support serveur : {rapportDiagnostic?.sondes.find(s => s.cle === cle) ? ETIQUETTES_SONDES[rapportDiagnostic.sondes.find(s => s.cle === cle)!.etat] : 'non vérifié'}.</Text>
             <Pressable accessibilityRole="button" disabled={operation || !narrateur.samplersActifs}
               onPress={() => changerNarrateur({ ...narrateur, samplersEnvoyes: {
                 ...narrateur.samplersEnvoyes, [cle]: !narrateur.samplersEnvoyes[cle],
@@ -319,4 +401,5 @@ const styles = StyleSheet.create({
   boutonTexte: { color: couleurs.texte, fontWeight: '600', fontSize: 14 },
   erreur: { color: couleurs.danger, marginBottom: 8 },
   succes: { color: couleurs.succes, marginBottom: 8 },
+  encartDiagnostic: { padding: 12, borderWidth: 1, borderColor: couleurs.bordureSubtile, borderRadius: 10, marginBottom: 14 },
 });
