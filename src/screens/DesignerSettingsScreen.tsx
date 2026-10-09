@@ -16,6 +16,7 @@ import LorebookPanel from '../components/LorebookPanel';
 import AtelierVisuelPanel from '../components/AtelierVisuelPanel';
 import AtelierMaintenancePanel from '../components/AtelierMaintenancePanel';
 import AtelierCommercialPanel from '../components/AtelierCommercialPanel';
+import AtelierNarrateurPanel from '../components/AtelierNarrateurPanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
@@ -26,12 +27,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur' | '
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
   'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
-  'commercial' | 'profils' | 'instantanes';
+  'commercial' | 'profils' | 'instantanes' | 'narrateur';
 const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
   { id: 'tableau', titre: 'Tableau de bord', detail: "État du noyau, services et version", pret: true },
   { id: 'modeles', titre: 'Modèles IA', detail: 'Correction de température, fournisseur', pret: true },
   { id: 'runpod', titre: 'RunPod et Cloud', detail: 'Pod, connexion et migration sans GitHub', pret: true },
   { id: 'narration', titre: 'Narration', detail: 'Température et marge de réponse', pret: true },
+  { id: 'narrateur', titre: 'Narrateur IA', detail: '20 curseurs llama.cpp et fourchettes Court / Moyen / Long', pret: true },
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
   { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
@@ -202,6 +204,13 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
               <AtelierConfigurationPanel section={section} />
               {section === 'instantanes' ? <AtelierDiagnosticPanel mode="instantanes" /> : null}
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'narrateur' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>ATELIER DU NARRATEUR</Text>
+              <AtelierNarrateurPanel />
             </Panneau>
           ) : null}
 
