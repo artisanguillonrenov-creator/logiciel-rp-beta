@@ -11,6 +11,10 @@ export interface ObjectBoxNativeModule {
   /** Inventaire privé natif, sans opération de modification. */
   inspectAppStorage(): Promise<string>;
   listAppStorageDirectory(path: string, offset: number): Promise<string>;
+  deleteManagedStorageFile(path: string): Promise<string>;
+  inspectDiagnosticCleanup(minimumDays: number): Promise<string>;
+  cleanDiagnosticFiles(minimumDays: number): Promise<string>;
+  exportManagedImage(path: string): Promise<string>;
 }
 
 const moduleObjectBox = requireOptionalNativeModule<ObjectBoxNativeModule>('ElyndorObjectBox');

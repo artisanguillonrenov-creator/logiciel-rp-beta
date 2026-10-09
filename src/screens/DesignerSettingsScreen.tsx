@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getSettings, saveSettings } from '../storage/storage';
@@ -67,7 +67,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
     setMessageCache('');
     try {
       await viderCacheEmbeddings();
-      setMessageCache('Ancien cache vectoriel vidé. La recherche lexicale locale reste active.');
+      setMessageCache('Cache des embeddings vidé. Les prochains vecteurs seront recalculés si nécessaire.');
     } catch (e) {
       setMessageCache(e instanceof Error ? e.message : 'Impossible de vider le cache d’embeddings.');
     }
@@ -189,15 +189,22 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
 
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>MAINTENANCE SÉMANTIQUE</Text>
-            <Text style={styles.titreBloc}>Ancien cache vectoriel</Text>
+            <Text style={styles.titreBloc}>Cache de recherche vectorielle</Text>
             <Text style={styles.texteBloc}>
-              Efface les anciens vecteurs conservés par les versions précédentes. Elyndor utilise désormais
-              la recherche lexicale locale ; aucun nouvel embedding distant n’est généré.
+              Efface les embeddings mis en cache dans AsyncStorage. Ils pourront être recalculés lors
+              des prochaines recherches avec Elyndor Cloud. Cette action ne vide pas la base ObjectBox.
             </Text>
             <Bouton
-              titre="Vider l’ancien cache vectoriel"
+              titre="Vider le cache des embeddings"
               variante="secondaire"
-              onPress={viderCache}
+              onPress={() => Alert.alert(
+                'Vider le cache des embeddings ?',
+                'Le cache local sera effacé et pourra être recalculé lors de la prochaine recherche. Les histoires ne seront pas supprimées.',
+                [
+                  { text: 'Annuler', style: 'cancel' },
+                  { text: 'Vider le cache', style: 'destructive', onPress: () => { void viderCache(); } },
+                ],
+              )}
               style={styles.boutonAction}
             />
             {messageCache ? <Text style={styles.statut}>{messageCache}</Text> : null}
