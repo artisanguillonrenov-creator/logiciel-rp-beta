@@ -47,10 +47,8 @@ internal object ElyndorStorageInspector {
         break
       }
       val item = pending.removeLast()
-      if (symlink(item)) {
-        result.incomplete = true
-        continue
-      }
+      // Les liens symboliques ne sont jamais comptés ni traversés.
+      if (symlink(item)) continue
       if (item.isFile) {
         result.files++
         result.bytes += item.length().coerceAtLeast(0)
