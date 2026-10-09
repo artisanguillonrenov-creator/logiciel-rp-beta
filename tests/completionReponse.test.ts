@@ -110,10 +110,10 @@ test('à l’ouverture, sans bloc d’état, seule la phrase coupée est complé
   assert.match(consigneCompletion('x'), new RegExp(MARQUEUR_ETAT.replace(/[<>]/g, '.')));
 });
 
-test('le narrateur reçoit une cible en mots cohérente avec le plafond et la consigne de fin', () => {
+test('le narrateur reçoit une fourchette en tokens et une consigne de fin', () => {
   assert.deepEqual(
-    (['courte', 'moyenne', 'longue'] as const).map(maxTokensPourLongueur),
-    [350, 650, 1100],
+    (['courte', 'moyenne', 'longue'] as const).map(v => maxTokensPourLongueur(v)),
+    [160, 235, 320],
   );
   assert.match(INSTRUCTION_FIN_DE_REPONSE, /phrase complète/);
 });

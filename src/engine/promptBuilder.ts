@@ -1,4 +1,5 @@
 import type { ChatMessage } from './openrouter';
+import { consigneLongueur, reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/reglagesNarrateur';
 import { BUDGET_LORE_PASSAGES } from './passagesLore';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { LORE_CORE } from '../data/loreCore';
@@ -83,15 +84,8 @@ function formaterLore(entries: LoreEntry[], titre: string, budget: number, longu
   return blocs.length ? `\n\n[${titre}]\n${blocs.join('\n\n')}` : '';
 }
 
-// Cibles en mots cohérentes avec maxTokensPourLongueur (≈ 0,7 mot par jeton
-// en français) : la réponse tient dans le plafond avec de la marge, sans
-// être coupée au milieu d'une phrase.
-function instructionLongueur(longueur: StorySettings['longueur']): string {
-  switch (longueur) {
-    case 'courte': return 'Longueur : réponses très courtes, une à deux répliques, environ 80 à 150 mots.';
-    case 'longue': return 'Longueur : réponses développées, exploration sensorielle plus riche quand la scène le justifie, environ 400 à 550 mots.';
-    default: return 'Longueur : réponses de longueur moyenne, adaptées au rythme du message du joueur, environ 200 à 300 mots.';
-  }
+function instructionLongueur(longueur: StorySettings['longueur'], plages?: PlagesLongueur): string {
+  return consigneLongueur(longueur, plages);
 }
 
 // Retours de partie réelle : vouvoiement glissé, peuples inventés
@@ -193,6 +187,8 @@ function formaterContexte(meta: StoryMeta): string {
 export interface ContexteConstruction {
   meta: StoryMeta;
   settings: StorySettings;
+  /** Fourchettes narratives définies dans l'atelier (saisies numériques, pas des curseurs). */
+  longueursCibles?: PlagesLongueur;
   resume: string;
   faits: Fact[];
   loreElyndor: LoreEntry[];
@@ -253,7 +249,7 @@ ${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_
 Les paramètres de session ci-dessous priment sur toute formulation du lore portant sur l'intensité de narration. Le lore établit des faits ; il ne relève jamais un curseur.
 
 Ton : ${libelleTon(ctx.settings.ton)}
-${instructionLongueur(ctx.settings.longueur)}
+${instructionLongueur(ctx.settings.longueur, ctx.longueursCibles)}
 ${INSTRUCTION_FIN_DE_REPONSE}
 ${INSTRUCTION_STYLE_JOUEUR}
 Rythme : ${libelleRythme(ctx.settings.rythme)}.
@@ -321,6 +317,6 @@ export function temperaturePourCreativite(creativite: StorySettings['creativite'
   switch (creativite) { case 'faible': return 0.5; case 'elevee': return 1.1; default: return 0.85; }
 }
 
-export function maxTokensPourLongueur(longueur: StorySettings['longueur']): number {
-  switch (longueur) { case 'courte': return 350; case 'longue': return 1100; default: return 650; }
+export function maxTokensPourLongueur(longueur: StorySettings['longueur'], plages?: PlagesLongueur): number {
+  return (plages ?? reglagesNarrateurDefaut().longueurs)[longueur].max;
 }
