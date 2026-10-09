@@ -4,7 +4,7 @@ import type { PromptImageStructure, ProfilCadrage } from './visualBible';
 
 // État visuel persistant V2 (refonte du système d'illustration) : la seule
 // source de vérité sur l'apparence COURANTE des personnages, le décor courant
-// et les deux dernières scènes illustrées d'une histoire. Il est stocké dans
+// toutes les scènes illustrées de l'histoire. Il est stocké dans
 // StoryState.etatVisuel (donc migré, sauvegardé et synchronisé avec
 // l'histoire) ; les fichiers image eux-mêmes restent dans sceneImagesStore et
 // pnjAvatarsStore, indexés par révision / identifiant.
@@ -14,7 +14,6 @@ import type { PromptImageStructure, ProfilCadrage } from './visualBible';
 // effectivement présent dans le texte (voir appliquerChangementsVisuels).
 
 export const VERSION_ETAT_VISUEL = 1;
-export const MAX_SCENES_ILLUSTREES = 2;
 const MAX_ELEMENTS_LISTE = 8;
 const MAX_LONGUEUR_VALEUR = 160;
 
@@ -86,7 +85,7 @@ export interface EtatVisuelHistoire {
   sequence: number;
   personnages: EtatVisuelPersonnage[];
   decor: EtatVisuelDecor | null;
-  /** Au plus MAX_SCENES_ILLUSTREES, de la plus ancienne à la plus récente. */
+  /** Historique complet, de la plus ancienne à la plus récente. */
   scenesIllustrees: SceneIllustree[];
   /** Nombre de messages déjà analysés par la direction artistique. */
   derniereAnalyseIndex: number;
@@ -358,18 +357,16 @@ export function appliquerChangementsVisuels(
 }
 
 // ---------------------------------------------------------------------------
-// Historique glissant des scènes illustrées
+// Historique complet des scènes illustrées
 // ---------------------------------------------------------------------------
 
 /**
- * Ajoute une scène à l'historique glissant : A → [A], B → [A, B],
- * C → [B, C] (A évincée). Une régénération de la même révision remplace la
- * scène en place, sans faire tourner l'historique.
+ * Conserve toutes les scènes : A → [A], B → [A, B], C → [A, B, C].
+ * Une régénération de la même révision remplace la scène en place.
  */
 export function ajouterSceneIllustree(
   scenes: readonly SceneIllustree[],
   nouvelle: SceneIllustree,
-  max = MAX_SCENES_ILLUSTREES,
 ): { scenes: SceneIllustree[]; evincees: SceneIllustree[] } {
   const index = scenes.findIndex((scene) => scene.revision === nouvelle.revision);
   if (index >= 0) {
@@ -377,9 +374,7 @@ export function ajouterSceneIllustree(
     copie[index] = nouvelle;
     return { scenes: copie, evincees: [] };
   }
-  const toutes = [...scenes, nouvelle];
-  const surplus = Math.max(0, toutes.length - max);
-  return { scenes: toutes.slice(surplus), evincees: toutes.slice(0, surplus) };
+  return { scenes: [...scenes, nouvelle], evincees: [] };
 }
 
 // ---------------------------------------------------------------------------
