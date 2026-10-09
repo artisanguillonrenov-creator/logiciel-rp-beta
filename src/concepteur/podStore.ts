@@ -14,8 +14,7 @@ export function validerIdentifiantPod(valeur: unknown): string {
 // Chargement différé pour que le validateur et les tests purs Node
 // n'aient pas besoin d'un module AsyncStorage Android chargé au niveau racine.
 async function stockage() {
-  const module = await import('@react-native-async-storage/async-storage');
-  return module.default;
+  return require('@react-native-async-storage/async-storage').default as typeof import('@react-native-async-storage/async-storage').default;
 }
 
 export async function lirePodConcepteur(): Promise<string | null> {
