@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { stockageEvolutif as AsyncStorage } from './stockageEvolutif';
 import type { AppSettings } from '../types';
 import { cacheEmbeddingsCompatible, obtenirEmbeddings } from '../engine/embeddings';
 import { planifierTransactionCache } from './embeddingsCacheMutex';
@@ -6,7 +6,7 @@ import { preparerIndexObjectBox } from './objectBoxSearch';
 import { decoderVecteur, encoderVecteur } from './vecteurCompact';
 import { ajouterEtapeDiagnostic } from '../engine/diagnosticTour';
 
-// Une clé AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
+// Une clé SQLite indépendante d'AsyncStorage par entrée (plutôt qu'un unique blob JSON regroupant
 // tout le cache) — le blob unique a fini par dépasser la taille max d'une
 // ligne SQLite qu'AsyncStorage utilise comme backend sur Android ("Row too
 // big to fit into CursorWindow", constaté en usage réel après plusieurs
@@ -79,20 +79,13 @@ async function chargerFournisseur(): Promise<string | null> {
 // Le cache grossit d'une entrée par ancien message de chaque histoire
 // (recherche de "souvenirs", voir searchHistorique.ts, ids préfixés
 // "msg-") sans jamais être purgé — sur une longue conversation, ça finit
-// par dépasser le quota de stockage du navigateur (localStorage, ~5-10 Mo
+// par dépasser les quotas du stockage historique sur le navigateur
 // par origine sur web, partagé avec les histoires elles-mêmes et le reste
 // des réglages). Le lore/les métamoteurs (autres ids), eux, restent
 // toujours en cache : ce pool est naturellement borné par la taille du
 // lorebook, pas par l'usage, et les réembeder à chaque histoire serait un
 // gâchis d'appels réseau. Seules les entrées "msg-" sont plafonnées, en
 // gardant les plus récemment ajoutées.
-const MAX_ENTREES_MESSAGES = 150;
-
-function idsAEvincer(index: string[]): string[] {
-  const clesMessages = index.filter((id) => id.startsWith('msg-'));
-  if (clesMessages.length <= MAX_ENTREES_MESSAGES) return [];
-  return clesMessages.slice(0, clesMessages.length - MAX_ENTREES_MESSAGES);
-}
 
 // Réglages concepteur (mode test) : vider le cache force un recalcul complet
 // des embeddings au prochain tour — utile après un changement de contenu
@@ -125,18 +118,12 @@ async function ecrireEntrees(
   try {
     const idsNouveaux = Object.keys(nouvelles);
     const indexMaj = [...new Set([...indexPrecedent, ...idsNouveaux])];
-    const aEvincer = idsAEvincer(indexMaj);
-    const aEvincerSet = new Set(aEvincer);
-    const indexFinal = indexMaj.filter((id) => !aEvincerSet.has(id));
-
     const paires: [string, string][] = idsNouveaux
-      .filter((id) => !aEvincerSet.has(id))
       .map((id) => [cleEntree(id), serialiserEntree(nouvelles[id])]);
 
     if (paires.length > 0) await AsyncStorage.multiSet(paires);
-    if (aEvincer.length > 0) await AsyncStorage.multiRemove(aEvincer.map(cleEntree));
     await AsyncStorage.multiSet([
-      [CLEF_INDEX, JSON.stringify(indexFinal)],
+      [CLEF_INDEX, JSON.stringify(indexMaj)],
       [CLEF_FOURNISSEUR, identiteCache],
     ]);
   } catch {
