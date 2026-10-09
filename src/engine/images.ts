@@ -13,7 +13,8 @@ import {
 } from './elyndorCloudImages';
 import {
   STYLE_PORTRAIT_ELYNDOR,
-  STYLE_PORTRAIT_SDXL,
+  MODULES_BASE,
+  construirePromptPortraitSdxl,
   construirePromptSdxl,
   modulesPourScene,
   formaterPromptImage,
@@ -189,6 +190,9 @@ async function genererPortrait(
     prompt,
     promptCourt,
     negatif: [negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '),
+    // Mêmes modules que les scènes (style Elyndor, Tarantino, peau, mains),
+    // sans dépendre des modules par défaut configurés sur le pod.
+    modules: { ...MODULES_BASE },
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
     storyId,
@@ -199,9 +203,8 @@ async function genererPortrait(
 /** Prompt anglais rédigé par le modèle narratif ; sans lui, le serveur lit le prompt français. */
 async function promptPortraitSdxl(story: StoryState, nom: string, fiche: string, settings: AppSettings, traitsRace = '') {
   try {
-    const prompt = await redigerPromptPortraitSdxl(story, nom, fiche, settings);
-    // Les traits de race passent en tête : SDXL pèse davantage les premiers mots.
-    return prompt ? [traitsRace, prompt, STYLE_PORTRAIT_SDXL].filter(Boolean).join(', ') : undefined;
+    // Déclencheurs Elyndor et Tarantino, puis traits de race : SDXL pèse davantage les premiers mots.
+    return construirePromptPortraitSdxl(await redigerPromptPortraitSdxl(story, nom, fiche, settings), traitsRace);
   } catch {
     return undefined;
   }

@@ -297,15 +297,44 @@ const INDICES_CAMERA_ANGLAIS: Record<'autre-cadrage' | 'autre-angle' | 'autre-co
 const DECLENCHEUR_TARANTINO = 'Director Quentin Tarantino style';
 const DECLENCHEUR_ELYNDOR = 'elyndor style';
 const STYLE_SDXL_ELYNDOR = 'cinematic film still, dark fantasy, photorealistic, 35mm film grain, saturated warm color grading, high contrast, dramatic chiaroscuro lighting, sharp focus, highly detailed';
-export const STYLE_PORTRAIT_SDXL = 'elyndor style, Director Quentin Tarantino style, cinematic portrait, dark fantasy, photorealistic skin texture, 35mm film grain, saturated warm color grading, high contrast, dramatic rim lighting, sharp focus, highly detailed';
+const STYLE_PORTRAIT_SDXL = 'cinematic portrait, dark fantasy, photorealistic skin texture, 35mm film grain, saturated warm color grading, high contrast, dramatic rim lighting, sharp focus, highly detailed';
+
+/**
+ * Prompt du narrateur remis au gabarit : âge toujours écrit (N years old)1.2
+ * et jamais sous 20 ans (le narrateur variait le poids de 1.1 à 1.5 ou
+ * l'écrivait sans parenthèses), virgules à la place des points.
+ */
+export function normaliserPromptSdxl(prompt: string): string {
+  const age = (n: string) => `(${Math.max(20, Number(n))} years old)1.2`;
+  return prompt
+    // « (30 years old)1.5 », « (30 years old:1.3) », « (30 years old) »
+    .replace(/\((\d{1,3}) years? old(?::\d+(?:\.\d+)?)?\)(?:\d+(?:\.\d+)?)?/gi, (_, n: string) => age(n))
+    // « 30 years old » sans parenthèses (une parenthèse ouverte plus large reste intacte)
+    .replace(/(^|[^(\w])(\d{1,3}) years? old\b(?!\))/gi, (_, avant: string, n: string) => `${avant}${age(n)}`)
+    .replace(/\.(?=\s|$)/g, ',')
+    .replace(/\s*,(?:\s*,)+/g, ',')
+    .replace(/[\s,]+$/, '')
+    .trim();
+}
 
 /** Prompt court anglais envoyé aux modèles CLIP ; undefined s'il n'existe pas. */
 export function construirePromptSdxl(structure: PromptImageStructure): string | undefined {
-  const base = structure.promptSdxl?.trim();
+  const base = structure.promptSdxl ? normaliserPromptSdxl(structure.promptSdxl) : undefined;
   if (!base) return undefined;
-  // Le style Elyndor fait référence : son déclencheur ouvre le prompt (les
-  // premiers jetons pèsent le plus pour CLIP), Tarantino vient en appoint.
-  return [DECLENCHEUR_ELYNDOR, structure.indiceCameraSdxl, base, DECLENCHEUR_TARANTINO, STYLE_SDXL_ELYNDOR].filter(Boolean).join(', ');
+  // Comme dans les essais du pod : le style Elyndor (la référence) ouvre le
+  // prompt, Tarantino suit aussitôt, dans le premier bloc de 77 jetons du CLIP.
+  return [DECLENCHEUR_ELYNDOR, DECLENCHEUR_TARANTINO, structure.indiceCameraSdxl, base, STYLE_SDXL_ELYNDOR].filter(Boolean).join(', ');
+}
+
+/**
+ * Prompt anglais d'un portrait (avatar) : les déclencheurs Elyndor et
+ * Tarantino ouvrent le prompt comme pour les scènes, puis les traits de race,
+ * le prompt rédigé par le narrateur et le style portrait.
+ */
+export function construirePromptPortraitSdxl(prompt: string | undefined, traitsRace = ''): string | undefined {
+  const base = prompt ? normaliserPromptSdxl(prompt) : undefined;
+  if (!base) return undefined;
+  return [DECLENCHEUR_ELYNDOR, DECLENCHEUR_TARANTINO, traitsRace, base, STYLE_PORTRAIT_SDXL].filter(Boolean).join(', ');
 }
 
 /** Modules LoRA du serveur d'images (Lustify) : réalisme et style Elyndor dominant, Tarantino en appoint. */
