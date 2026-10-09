@@ -72,7 +72,7 @@ export function assurerPodElyndorCloud(lecteur: typeof fetch = fetch): Promise<s
     const revisionAuDepart = revisionPod;
     chargementPod = (async () => {
       try {
-        const { lirePodConcepteur } = await import('../concepteur/podStore');
+        const { lirePodConcepteur } = require('../concepteur/podStore') as typeof import('../concepteur/podStore');
         const personnalise = await lirePodConcepteur();
         if (revisionPod !== revisionAuDepart) return podCourant;
         if (personnalise && FORME_ID_POD.test(personnalise)) {
