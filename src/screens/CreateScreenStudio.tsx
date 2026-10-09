@@ -32,6 +32,7 @@ import elyndorLoreRaw from '../data/elyndorLore.json';
 import { chargerLoreElyndor } from '../engine/loreLoader';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
+import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, getSettings, savePersona, saveStory } from '../storage/storage';
 import { validerEntreeUtilisateur, valeursAutoriseesRomance, valeursAutoriseesViolence } from '../engine/contenuAdulte';
@@ -231,6 +232,17 @@ export default function CreateScreenStudio({ navigation }: Props) {
   useEffect(() => {
     getSettings().then((settings) => setProfilContenu(settings.profilContenu)).catch(() => {});
     getPersonas().then(setPersonas).catch(() => {});
+    // Ces valeurs ne servent qu'à initialiser une NOUVELLE aventure.
+    // Chaque choix du joueur reste libre et enregistré dans StorySettings.
+    let vivant = true;
+    lireConfigurationAtelier().then(config => {
+      if (!vivant) return;
+      const d = config.profils.production.narrateur.aventureDefaut;
+      setTon(d.ton); setCreativite(d.creativite); setLongueur(d.longueur);
+      setViolence(d.violence); setRomance(d.romance); setHumour(d.humour);
+      setLiberteJoueur(d.liberteJoueur); setRythme(d.rythme);
+    }).catch(() => {});
+    return () => { vivant = false; };
   }, []);
 
   const mondeActif = MONDES.find((m) => m.id === mondeSelectionne) ?? MONDES[0];

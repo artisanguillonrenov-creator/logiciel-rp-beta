@@ -3,6 +3,7 @@ import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from
 import type { ParametresAtelier } from '../concepteur/configuration';
 import { reglagesNarrateurDefaut, samplersPourRequete } from '../concepteur/reglagesNarrateur';
 import { controlerLongueurNarration } from './controleLongueurNarration';
+import { deltaAssocieAuTexte, exigerNarrationValide, preparerNarrationPourPublication } from './controlePublicationNarration';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
@@ -40,7 +41,7 @@ import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynam
 import { rechercherSouvenirsLexical } from './rechercheLexicale';
 import { construirePassages, selectionnerPassages } from './passagesLore';
 import { preparerTour, type PreparationTour } from './ficheScene';
-import { corrigerEtiquettes, validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
+import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererReponseComplete } from './completionReponse';
@@ -87,8 +88,6 @@ import {
   fusionnerRapports,
   rapportOk,
   reparerReponse,
-  reponseFaitParlerLeJoueur,
-  retirerRepliqueDuJoueur,
   validerAgentiviteHeuristique,
   validerReponseLLM,
   type RapportValidation,
@@ -420,6 +419,7 @@ export function construireCtxBase(
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
     longueursCibles: reglagesAtelier?.narrateur.longueurs,
+    stylesNarratifs: reglagesAtelier?.narrateur.styles,
     resume: filtrer(story.memoire.resume),
     faits,
     loreElyndor: selection.loreElyndor,
@@ -606,6 +606,19 @@ async function genererTourInterne(
   const moteurEtroit = moteurAFenetreEtroite(appSettings);
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
+  const messagesNarrateur = construireMessages(ctxBase, {
+    budgetSysteme: budgetPrompt, budgetConversation,
+  });
+  const tailleSysteme = messagesNarrateur.find(m => m.role === 'system')?.content?.length ?? 0;
+  const tailleHistorique = messagesNarrateur.filter(m => m.role !== 'system')
+    .reduce((total, m) => total + (m.content?.length ?? 0), 0);
+  ajouterEtapeDiagnostic('Budget de contexte effectivement construit', 'contexte', 'ok', 0, undefined, [
+    `Prompt système : ${tailleSysteme} caractères`,
+    `Historique envoyé : ${tailleHistorique} caractères`,
+    `Messages envoyés : ${messagesNarrateur.length}`,
+    `Limites de préparation : système ${budgetPrompt}, historique ${budgetConversation} caractères`,
+    'Les caractères ne sont PAS les tokens réels du modèle.',
+  ]);
 
   commencerMesureTokens();
   // Une réponse coupée par le plafond est complétée par le modèle plutôt que
@@ -616,7 +629,7 @@ async function genererTourInterne(
     () => genererReponseComplete({
       ...configurationLLM(appSettings, modelePourAppel),
       storyId: storyCourante.meta.id,
-      messages: construireMessages(ctxBase, { budgetSysteme: budgetPrompt, budgetConversation }),
+      messages: messagesNarrateur,
       temperature,
       maxTokens,
       samplers,
@@ -702,16 +715,22 @@ async function genererTourInterne(
   let aEteCorrige = strategie !== 'aucune';
 
   if (strategie === 'patch_local') {
-    reponse = appliquerPatchLocal(reponse, rapport);
+    const patchee = appliquerPatchLocal(reponse, rapport);
+    deltaEtat = deltaAssocieAuTexte(reponse, patchee, deltaEtat);
+    reponse = patchee;
   } else if (strategie === 'repair' || strategie === 'regeneration_partielle') {
     try {
-      reponse = extraireEnveloppeEtat(await reparerReponse({
+      // La réparation ciblée ne produit PAS de nouveau STATE DELTA.
+      // Ne jamais conserver le delta appartenant au récit d'origine.
+      const patchee = extraireEnveloppeEtat(await reparerReponse({
         ...configurationLLM(appSettings, modelePourAppel),
         storyId: storyCourante.meta.id,
         reponse,
         rapport,
         partiel: strategie === 'regeneration_partielle',
       })).texte;
+      deltaEtat = deltaAssocieAuTexte(reponse, patchee, deltaEtat);
+      reponse = patchee;
     } catch {
       aEteCorrige = false;
     }
@@ -739,8 +758,17 @@ async function genererTourInterne(
     }
   }
 
-  // Vérifier le texte visible après les régénérations, jamais l'état machine.
-  // llama-server /tokenize donne la mesure exacte du modèle chargé.
+  // Un seul ordre de publication : corrections déterministes, longueur,
+  // validations de toutes les protections, puis stockage. Aucun patch
+  // silencieux ne peut intervenir après le dernier comptage.
+  const nomsPourEtiquettes = [...nomsConnus, ...ROLES_CANON.map((r) => r.nom)];
+  const avantMesure = preparerNarrationPourPublication(
+    reponse, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
+  );
+  deltaEtat = deltaAssocieAuTexte(reponse, avantMesure.texte, deltaEtat);
+  if (avantMesure.modifie) aEteCorrige = true;
+  reponse = avantMesure.texte;
+
   const plageNarration = (reglagesAtelier?.narrateur.longueurs ??
     reglagesNarrateurDefaut().longueurs)[storyCourante.settings.longueur];
   const longueurFinale = await mesurerEtapeDiagnostic(
@@ -749,6 +777,29 @@ async function genererTourInterne(
     () => controlerLongueurNarration({
       texte: reponse, plage: plageNarration, temperature,
       storyId: storyCourante.meta.id, samplers,
+      // Contrairement à un éditeur isolé, une régénération complète repart
+      // du contexte canonique et fournit son PROPRE delta machine.
+      // Toute variante écrite sans delta est traitée via le repli du noyau.
+      reformuler: async (_texteRejete, plage) => {
+        const nouvelle = extraireEnveloppeEtat(await genererReponseComplete({
+          ...configurationLLM(appSettings, modelePourAppel),
+          storyId: storyCourante.meta.id,
+          messages: construireMessages({
+            ...ctxBase,
+            noteCorrection: `Recommence le tour ENTIER depuis le dernier message du joueur. La précédente tentative ne doit pas être continuée. Écris entre ${plage.min} et ${plage.max} tokens de narration visible, cible ${Math.round((plage.min + plage.max) / 2)} ; termine naturellement. Produis ton propre bloc STATE DELTA cohérent avec ce nouveau récit.`,
+          }, { budgetSysteme: budgetPrompt, budgetConversation }),
+          temperature,
+          maxTokens: plage.max + (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT),
+          samplers,
+          diagnosticLabel: 'Narration RP — nouvelle génération contrôlée',
+        }));
+        const propre = preparerNarrationPourPublication(
+          nouvelle.texte, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
+        );
+        deltaEtat = propre.modifie ? null : nouvelle.delta;
+        aEteCorrige = true;
+        return propre.texte;
+      },
     }),
   );
   reponse = longueurFinale.texte;
@@ -756,39 +807,28 @@ async function genererTourInterne(
     longueurFinale.conforme ? 'ok' : 'repli', 0,
     longueurFinale.conforme
       ? `${longueurFinale.tokens} tokens exacts, fourchette ${plageNarration.min}–${plageNarration.max}`
-      : 'Comptage exact indisponible : réponse close, fourchette non certifiée.');
+      : 'Comptage indisponible : fourchette non certifiée, clôture vérifiée.');
 
-  // Dernier filet : une entité inventée qui a survécu à la correction est
-  // remplacée par un terme générique plutôt que d'entrer dans l'histoire.
-  const canonFinal = verifierEntitesCanoniques(reponse, canon);
-  if (!canonFinal.ok) {
-    reponse = appliquerPatchLocal(reponse, canonFinal);
-    aEteCorrige = true;
-  }
-
-  if (reponseFaitParlerLeJoueur(reponse, storyCourante.meta.personnageNom)) {
-    const nettoyee = retirerRepliqueDuJoueur(reponse, storyCourante.meta.personnageNom);
-    if (nettoyee) reponse = nettoyee;
-  }
-
-  // Étiquettes de répliques écorchées (« SÉRAPHINE DUVALLY : ») ramenées au
-  // nom connu, pour que l'avatar du personnage s'affiche.
-  reponse = corrigerEtiquettes(reponse, [...nomsConnus, ...ROLES_CANON.map((r) => r.nom)]);
-
-  ajouterEtapeDiagnostic(
-    'Vérification finale canon / agentivité',
-    'validation',
-    canonFinal.ok ? 'ok' : 'repli',
-    0,
-    canonFinal.ok ? undefined : 'Patch local final appliqué.',
+  // Vérifie le texte RÉEL affiché/enregistré après TOUTES les régénérations.
+  // Pas de nouvelle correction en aval : elle invaliderait le comptage et
+  // le delta de la version retenue.
+  const profilFinal = validerProfilContenuHeuristique(reponse, appSettings.profilContenu);
+  const rapportFinal = fusionnerRapports(
+    validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom),
+    validerGestesDuJoueur(reponse, messageJoueur, storyCourante.meta.personnageNom),
+    validerRolesCanon(reponse, rolesVille, nomsConnus),
+    verifierEntitesCanoniques(reponse, canon),
+    profilFinal,
   );
-
-  if (!validerProfilContenuHeuristique(reponse, appSettings.profilContenu).ok) {
-    annulerMesureTokens();
-    throw new ErreurProfilContenu(
-      "Cette réponse ne respecte pas les limites du profil Grand public et n'a pas pu être corrigée automatiquement. Réessaie avec une formulation différente.",
-    );
+  ajouterEtapeDiagnostic(
+    'Contrat de publication du texte définitif', 'validation',
+    rapportFinal.ok ? 'ok' : 'erreur', 0,
+    rapportFinal.ok ? undefined : rapportFinal.checks.filter((c) => !c.ok).map((c) => c.raison).join(' | '),
+  );
+  if (!profilFinal.ok) {
+    throw new ErreurProfilContenu("Réponse refusée : elle ne respecte pas le profil de contenu. Réessaie ce tour.");
   }
+  exigerNarrationValide(reponse, rapportFinal);
 
   const messageUtilisateur: Message = {
     id: genererId(),
@@ -855,6 +895,7 @@ export async function genererTour(
       debugLore: { ...resultat.debugLore, diagnosticTour },
     };
   } catch (erreur) {
+    annulerMesureTokens();
     annulerDiagnosticTour();
     throw erreur;
   }

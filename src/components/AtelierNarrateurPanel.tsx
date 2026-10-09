@@ -4,7 +4,12 @@ import { couleurs, espacement, polices } from '../theme/theme';
 import { type EtatAtelier, type ConfigurationAtelier, type ProfilAtelier, PROFILS_ATELIER, LIMITES_ATELIER } from '../concepteur/configuration';
 import { lireConfigurationAtelier, enregistrerEtatAtelier } from '../concepteur/depotConfiguration';
 import { CLES_SAMPLERS, SAMPLERS_LLAMA_CPP, type CleSampler, type PlagesLongueur, type ReglagesNarrateur } from '../concepteur/reglagesNarrateur';
-import type { Longueur } from '../types';
+import type { Longueur, TonHistoire, StorySettings } from '../types';
+import { CLES_STYLES, NOMS_STYLES, OPTIONS_DENSITE, OPTIONS_CADENCE, OPTIONS_ACCENT, OPTIONS_AVENTURE, instructionStyle } from '../concepteur/interpretationNarrative';
+import { temperaturePourCreativite } from '../engine/promptBuilder';
+import { REGLES_IMMUABLES } from '../engine/rules';
+import { IDENTITE_NARRATIVE } from '../engine/identiteNarrative';
+import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 
 type Partie = 'fondamentales' | 'styles' | 'aventures' | 'technique';
 const PARTIES: Array<{ id: Partie; nom: string }> = [
@@ -17,12 +22,48 @@ const NOMS: Record<ProfilAtelier, string> = { production: 'Production', test: 'T
 const LONGUEURS: Array<{ id: Longueur; nom: string }> = [
   { id: 'courte', nom: 'Court' }, { id: 'moyenne', nom: 'Moyen' }, { id: 'longue', nom: 'Long' },
 ];
-const STYLES = [
-  { nom: 'Cinématique', description: 'Scènes fortes et descriptions visuelles.' },
-  { nom: 'Immersif', description: 'Monde crédible, dense et sensoriel.' },
-  { nom: 'Libre', description: 'Exploration, secrets et initiatives du joueur.' },
-  { nom: 'Aventure', description: 'Découverte et rythme plus léger.' },
-];
+const AIDES_SAMPLERS: Record<CleSampler, string> = {
+  top_p: 'Part cumulée des candidats retenus. Peut être neutralisée par Mirostat.',
+  top_k: 'Nombre maximal de candidats considérés. Peut être neutralisé par Mirostat.',
+  min_p: 'Supprime les candidats sous un seuil relatif de probabilité.',
+  typical_p: 'Priorise les candidats proches de la surprise attendue.',
+  repeat_penalty: 'Réduit la répétition lexicale ; trop élevé dégrade les noms.',
+  repeat_last_n: 'Nombre de tokens récents examinés pour la répétition.',
+  frequency_penalty: 'Pénalise les tokens déjà fréquemment employés.',
+  presence_penalty: 'Pénalise les tokens déjà apparus, quelle que soit leur fréquence.',
+  dry_multiplier: 'Force de prévention des répétitions de segments.',
+  dry_base: 'Croissance de la pénalité de répétition DRY.',
+  dry_allowed_length: 'Longueur de séquence répétée tolérée par DRY.',
+  dry_penalty_last_n: 'Fenêtre analysée par DRY.',
+  xtc_probability: 'Probabilité de retirer un token trop évident.',
+  xtc_threshold: 'Seuil de probabilité de XTC.',
+  dynatemp_range: 'Amplitude de la température dynamique autour de la température de base.',
+  dynatemp_exponent: 'Courbure de la température dynamique.',
+  mirostat: 'Mode de contrôle de surprise 0 (arrêt), 1 ou 2.',
+  mirostat_tau: 'Niveau de surprise visé par Mirostat.',
+  mirostat_eta: 'Vitesse d’adaptation de Mirostat.',
+};
+
+const LIBELLES_AVENTURE: Record<keyof StorySettings, string> = {
+  ton: 'Style initial', creativite: 'Créativité', longueur: 'Longueur',
+  violence: 'Violence', romance: 'Romance', humour: 'Humour',
+  rythme: 'Rythme', liberteJoueur: 'Liberté du joueur',
+};
+function Selection({ titre, valeur, options, changer, bloque }: {
+  titre: string; valeur: string; options: readonly string[];
+  changer: (choix: string) => void; bloque: boolean;
+}) {
+  return <View style={styles.ligne}>
+    <Text style={styles.nom}>{titre} : {valeur}</Text>
+    <View style={styles.onglets}>
+      {options.map(option => <Pressable key={option} accessibilityRole="button"
+        disabled={bloque} onPress={() => changer(option)}
+        style={[styles.onglet, valeur === option && styles.actif]}>
+        <Text style={styles.nom}>{option}</Text>
+      </Pressable>)}
+    </View>
+  </View>;
+}
 type PlagesSaisie = Record<Longueur, { min: string; max: string }>;
 function saisieDepuis(plages: PlagesLongueur): PlagesSaisie {
   return { courte: { min: String(plages.courte.min), max: String(plages.courte.max) },
@@ -80,6 +121,7 @@ function Curseur({ nom, valeur, min, max, pas, onChange, bloque }: {
 export default function AtelierNarrateurPanel() {
   const [config, setConfig] = useState<ConfigurationAtelier | null>(null);
   const [partie, setPartie] = useState<Partie>('technique');
+  const [styleChoisi, setStyleChoisi] = useState<TonHistoire>('heroique_epique');
   const [chargement, setChargement] = useState(true);
   const [operation, setOperation] = useState(false);
   const [info, setInfo] = useState('');
@@ -152,13 +194,37 @@ export default function AtelierNarrateurPanel() {
     {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
     {info ? <Text style={styles.succes}>{info}</Text> : null}
     {partie === 'fondamentales' && <View style={styles.section}>
-      <Text style={styles.sousTitre}>Règles fondamentales</Text>
-      <Text style={styles.aide}>Le canon, l'identité du narrateur, l'autonomie du joueur et les 15 responsabilités M01–M15 restent protégés par le code. Aucun interrupteur ne peut les désactiver. L'éditeur de versions de ces règles fera l'objet d'un chantier séparé.</Text>
+      <Text style={styles.sousTitre}>Règles fondamentales — code protégé</Text>
+      <Text style={styles.aide}>Source d’autorité : rules.ts, identiteNarrative.ts et noyau TypeScript. Ces règles ne sont pas des paramètres utilisateurs. Les profils de styles et d’aventure sont les seules interprétations éditables, sans contourner ces protections.</Text>
+      <Text style={styles.nom}>Identité narrative (lecture seule)</Text>
+      <Text style={styles.aide}>{IDENTITE_NARRATIVE}</Text>
+      <Text style={styles.nom}>Sept règles non négociables (lecture seule)</Text>
+      <Text style={styles.aide}>{REGLES_IMMUABLES}</Text>
+      <Text style={styles.nom}>Responsabilités natives M01–M15</Text>
+      <Text style={styles.aide}>{RESPONSABILITES_NARRATIVES.map(m => m.id + ' ' + m.nom).join('\n')}</Text>
+      <Text style={styles.aide}>Priorité : règles immuables → état et canon → choix effectifs du joueur → interprétation éditable du style. Les profils Test/Benchmark ne sont pas publiés pour les joueurs. L’historique et la restauration se trouvent dans « Instantanés et historique ».</Text>
     </View>}
     {partie === 'styles' && <View style={styles.section}>
-      <Text style={styles.sousTitre}>Quatre styles existants</Text>
-      {STYLES.map(s => <View key={s.nom} style={styles.ligne}><Text style={styles.nom}>{s.nom}</Text><Text style={styles.aide}>{s.description}</Text></View>)}
-      <Text style={styles.aide}>Styles déjà choisis par le joueur. Les descriptions sont consultables ; leurs modifications ne sont pas encore proposées afin de ne pas doubler les instructions du prompt.</Text>
+      <Text style={styles.sousTitre}>Styles narratifs — interprétation effective</Text>
+      <Text style={styles.aide}>Quatre styles existants, sans ajouter de prompt parallèle. Chaque réglage remplace la formulation du champ Ton dans le prompt et s'applique au prochain tour ; il ne réécrit pas le passé. « Libre » est un style, pas le réglage de liberté du joueur.</Text>
+      <Selection titre="Style à éditer" valeur={NOMS_STYLES[styleChoisi]}
+        options={CLES_STYLES.map(k => NOMS_STYLES[k])}
+        changer={v => setStyleChoisi(CLES_STYLES.find(k => NOMS_STYLES[k] === v) ?? styleChoisi)} bloque={operation}/>
+      <Selection titre="Densité descriptive" valeur={narrateur.styles[styleChoisi].densite}
+        options={OPTIONS_DENSITE} bloque={operation}
+        changer={v => changerNarrateur({ ...narrateur, styles: { ...narrateur.styles,
+          [styleChoisi]: { ...narrateur.styles[styleChoisi], densite: v as typeof OPTIONS_DENSITE[number] } } }, 'Style : densité ' + styleChoisi)}/>
+      <Selection titre="Cadence" valeur={narrateur.styles[styleChoisi].cadence}
+        options={OPTIONS_CADENCE} bloque={operation}
+        changer={v => changerNarrateur({ ...narrateur, styles: { ...narrateur.styles,
+          [styleChoisi]: { ...narrateur.styles[styleChoisi], cadence: v as typeof OPTIONS_CADENCE[number] } } }, 'Style : cadence ' + styleChoisi)}/>
+      <Selection titre="Focalisation" valeur={narrateur.styles[styleChoisi].accent}
+        options={OPTIONS_ACCENT} bloque={operation}
+        changer={v => changerNarrateur({ ...narrateur, styles: { ...narrateur.styles,
+          [styleChoisi]: { ...narrateur.styles[styleChoisi], accent: v as typeof OPTIONS_ACCENT[number] } } }, 'Style : focalisation ' + styleChoisi)}/>
+      <Text style={styles.sousTitre}>Prévisualisation de l'instruction réellement injectée</Text>
+      <Text style={styles.aide}>{instructionStyle(styleChoisi, narrateur.styles)}</Text>
+      <Text style={styles.aide}>Comparaison A/B sans GPU : change de style ci-dessus pour comparer les formulations. Une comparaison des sorties du modèle requiert une session de test RunPod autorisée.</Text>
     </View>}
     {partie === 'aventures' && <View style={styles.section}>
       <Text style={styles.sousTitre}>Fourchettes de narration (tokens)</Text>
@@ -173,15 +239,25 @@ export default function AtelierNarrateurPanel() {
         </View>
       </View>)}
       <Pressable disabled={operation} onPress={enregistrerLongueurs} style={styles.bouton}><Text style={styles.boutonTexte}>Enregistrer les trois fourchettes</Text></Pressable>
-      <Text style={styles.aide}>Violence, romance, humour, rythme et liberté continuent à être choisis par le joueur lors de la création de son aventure.</Text>
+      <Text style={styles.sousTitre}>Valeurs initiales des nouvelles aventures</Text>
+      <Text style={styles.aide}>Ces valeurs sont proposées à l’ouverture de la création d’histoire. Le joueur peut les modifier ; ses choix sauvegardés priment ensuite et les histoires existantes ne changent pas. Les seuils du profil Grand public continuent de s’appliquer.</Text>
+      {(Object.keys(OPTIONS_AVENTURE) as Array<keyof StorySettings>).map(cle =>
+        <Selection key={cle} titre={LIBELLES_AVENTURE[cle]}
+          valeur={String(narrateur.aventureDefaut[cle])}
+          options={OPTIONS_AVENTURE[cle]}
+          bloque={operation}
+          changer={v => changerNarrateur({ ...narrateur,
+            aventureDefaut: { ...narrateur.aventureDefaut, [cle]: v },
+          }, 'Défaut aventure : ' + cle)}/>)}
+      <Text style={styles.aide}>Le registre adulte/dark et l'intensité restent fonction de la scène et du profil : aucune intensité maximale permanente. M01/M08/M11 restent dans le noyau, sans interrupteur.</Text>
     </View>}
     {partie === 'technique' && <View style={styles.section}>
       <Text style={styles.sousTitre}>Échantillonnage — llama.cpp</Text>
       <Pressable disabled={operation} onPress={() => changerNarrateur({ ...narrateur, samplersActifs: !narrateur.samplersActifs }, 'Samplers narrateur')}
         style={[styles.bouton, narrateur.samplersActifs && styles.boutonActif]}>
-        <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers personnalisés : ACTIVÉS' : 'Activer les samplers personnalisés'}</Text>
+        <Text style={styles.boutonTexte}>{narrateur.samplersActifs ? 'Samplers envoyés (compatibilité à vérifier)' : 'Autoriser l’envoi des samplers au pod'}</Text>
       </Pressable>
-      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Activés : les 19 valeurs ci-dessous sont réellement transmises à chaque génération narrative. Le binaire du pod doit prendre en charge ces paramètres.</Text>
+      <Text style={styles.aide}>Désactivés : llama.cpp conserve les valeurs de son serveur. Envoi activé : les champs individuellement sélectionnés figurent dans la requête JSON, mais leur acceptation ET leur effet sur le modèle actif ne sont pas encore vérifiés sur RunPod. Aucun curseur ci-dessous ne doit être considéré comme certifié.</Text>
       <Curseur nom="Correction de température du joueur" valeur={valeurs.temperatureDelta}
         min={LIMITES_ATELIER.temperatureDelta.min} max={LIMITES_ATELIER.temperatureDelta.max}
         pas={LIMITES_ATELIER.temperatureDelta.pas} bloque={operation}
@@ -191,13 +267,27 @@ export default function AtelierNarrateurPanel() {
         <Text style={styles.sousTitre}>{groupe}</Text>
         {CLES_SAMPLERS.filter(k => SAMPLERS_LLAMA_CPP[k].groupe === groupe).map((cle: CleSampler) => {
           const spec = SAMPLERS_LLAMA_CPP[cle];
-          return <Curseur key={cle} nom={spec.nom} valeur={narrateur.samplers[cle]}
-            min={spec.min} max={spec.max} pas={spec.pas}
-            bloque={operation || !narrateur.samplersActifs}
-            onChange={v => changerNarrateur({ ...narrateur, samplers: { ...narrateur.samplers, [cle]: v } }, 'Sampler ' + cle)} />;
+          const conflitMirostat = narrateur.samplers.mirostat > 0 &&
+            narrateur.samplersEnvoyes.mirostat && (['top_p', 'top_k', 'min_p', 'typical_p'] as CleSampler[]).includes(cle);
+          return <View key={cle} style={styles.ligne}>
+            <Text style={styles.aide}>{AIDES_SAMPLERS[cle]} · Défaut du profil : {formatNombre(spec.defaut)}. Support serveur : non vérifié.</Text>
+            <Pressable accessibilityRole="button" disabled={operation || !narrateur.samplersActifs}
+              onPress={() => changerNarrateur({ ...narrateur, samplersEnvoyes: {
+                ...narrateur.samplersEnvoyes, [cle]: !narrateur.samplersEnvoyes[cle],
+              } }, 'Transmission de ' + cle)}
+              style={[styles.onglet, narrateur.samplersEnvoyes[cle] && styles.actif]}>
+              <Text style={styles.nom}>{conflitMirostat ? 'Neutralisé par Mirostat' :
+                narrateur.samplersEnvoyes[cle] ? 'Inclure dans la requête' : 'Ne pas transmettre'}</Text>
+            </Pressable>
+            <Curseur nom={spec.nom} valeur={narrateur.samplers[cle]}
+              min={spec.min} max={spec.max} pas={spec.pas}
+              bloque={operation || !narrateur.samplersActifs || !narrateur.samplersEnvoyes[cle] || conflitMirostat}
+              onChange={v => changerNarrateur({ ...narrateur, samplers: { ...narrateur.samplers, [cle]: v } }, 'Sampler ' + cle)} />
+          </View>;
         })}
       </View>)}
-      <Text style={styles.aide}>Mirostat peut neutraliser Top-K, Top-P et Typical-P. Paramètres non exposés : Top-A, TFS, Smoothing, Repeat Slope et autres non vérifiés sur ce backend. Une validation sur le pod actif reste nécessaire.</Text>
+      <Text style={styles.aide}>Température effective selon la créativité : faible {Math.max(0, Math.min(2, temperaturePourCreativite('faible') + valeurs.temperatureDelta)).toFixed(2)} · moyenne {Math.max(0, Math.min(2, temperaturePourCreativite('moyenne') + valeurs.temperatureDelta)).toFixed(2)} · élevée {Math.max(0, Math.min(2, temperaturePourCreativite('elevee') + valeurs.temperatureDelta)).toFixed(2)}. Chaque valeur est bornée entre 0 et 2.</Text>
+      <Text style={styles.aide}>Mirostat peut neutraliser Top-K, Top-P et Typical-P ; certaines combinaisons avec température dynamique restent à tester. Paramètres non exposés : Top-A, TFS, Smoothing, Repeat Slope. Les vérifications en simulation ne prouvent pas la compatibilité du binaire RunPod.</Text>
     </View>}
   </View>;
 }

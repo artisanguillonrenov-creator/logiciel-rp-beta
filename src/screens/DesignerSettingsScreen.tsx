@@ -17,6 +17,7 @@ import AtelierVisuelPanel from '../components/AtelierVisuelPanel';
 import AtelierMaintenancePanel from '../components/AtelierMaintenancePanel';
 import AtelierCommercialPanel from '../components/AtelierCommercialPanel';
 import AtelierNarrateurPanel from '../components/AtelierNarrateurPanel';
+import AtelierContexteMemoirePanel from '../components/AtelierContexteMemoirePanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
@@ -35,7 +36,7 @@ const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string;
   { id: 'narration', titre: 'Narration', detail: 'Température et marge de réponse', pret: true },
   { id: 'narrateur', titre: 'Narrateur IA', detail: '20 curseurs llama.cpp et fourchettes Court / Moyen / Long', pret: true },
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
-  { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
+  { id: 'recherche', titre: 'Contexte et mémoire', detail: 'Budgets, mémoire, tokens, recherche et diagnostics réels', pret: true },
   { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
   { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images et portraits actifs', pret: true },
   { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
@@ -198,12 +199,19 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
           ) : null}
 
           {modeConcepteur && estModule && (section === 'profils' || section === 'modeles' ||
-            section === 'narration' || section === 'recherche' || section === 'instantanes') ? (
+            section === 'narration' || section === 'instantanes') ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>CONFIGURATION VERSIONNÉE</Text>
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
               <AtelierConfigurationPanel section={section} />
               {section === 'instantanes' ? <AtelierDiagnosticPanel mode="instantanes" /> : null}
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'recherche' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>ANALYSE DU CONTEXTE ET DE LA MÉMOIRE</Text>
+              <AtelierContexteMemoirePanel />
             </Panneau>
           ) : null}
 
