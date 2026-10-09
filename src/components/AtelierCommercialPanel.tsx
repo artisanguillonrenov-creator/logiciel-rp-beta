@@ -40,7 +40,7 @@ export default function AtelierCommercialPanel(){
     (brouillons[c.cle].trim()!=='' && Number.isFinite(Number(brouillons[c.cle].replace(',','.')))));
   const calcul=(()=>{try{return pret?calculerScenarioCommercial(form):null;}catch{return null;}})();
   async function sauver(){
-    setOcuppe(true);setErreur('');setMessage('');
+    setOccupe(true);setErreur('');setMessage('');
     try{
       if(!pret)throw Error('Termine les champs numériques avant de sauvegarder.');
       const v=validerScenarioCommercial(form);
@@ -48,7 +48,7 @@ export default function AtelierCommercialPanel(){
       setForm(resultat);setOriginal(resultat);setBrouillons({});
       setMessage('Prévisions sauvegardées sur cette tablette.');
     }catch(e){setErreur(erreurTexte(e));}
-    finally{setOcuppe(false);}
+    finally{setOccupe(false);}
   }
   return <View>
     <Text style={styles.titre}>Prévision commerciale</Text>
