@@ -2,7 +2,8 @@
  * Top-A, TFS, smoothing, repeat-slope, eta/epsilon cutoff non garantis sur
  * le llama.cpp actuel : ne pas offrir de curseurs muets.
  */
-import type { Longueur } from '../types';
+import type { Longueur, StorySettings } from '../types';
+import { defautsAventure, stylesNarratifsDefaut, validerDefautsAventure, validerStylesNarratifs, type StylesNarratifs } from './interpretationNarrative';
 
 export const SAMPLERS_LLAMA_CPP = {
   top_p: { nom: 'Top-P', groupe: 'Distribution', min: 0, max: 1, pas: 0.01, defaut: 0.95 },
@@ -34,12 +35,14 @@ export interface ReglagesNarrateur {
   samplersActifs: boolean;
   samplers: ValeursSamplers;
   longueurs: PlagesLongueur;
+  styles: StylesNarratifs;
+  aventureDefaut: StorySettings;
 }
 
 export function reglagesNarrateurDefaut(): ReglagesNarrateur {
   const samplers = {} as ValeursSamplers;
   for (const cle of CLES_SAMPLERS) samplers[cle] = SAMPLERS_LLAMA_CPP[cle].defaut;
-  return { samplersActifs: false, samplers, longueurs: {
+  return { samplersActifs: false, samplers, styles: stylesNarratifsDefaut(), aventureDefaut: defautsAventure(), longueurs: {
     courte: { min: 140, max: 160 },
     moyenne: { min: 215, max: 235 },
     longue: { min: 280, max: 320 },
@@ -74,7 +77,10 @@ export function validerReglagesNarrateur(raw: unknown): ReglagesNarrateur {
     }
     longueurs[cle] = { min: plage.min as number, max: plage.max as number };
   }
-  return { samplersActifs: raw.samplersActifs, samplers, longueurs };
+  // Anciennes configurations : migrations non destructives, valeurs sûres par défaut.
+  const styles = raw.styles === undefined ? stylesNarratifsDefaut() : validerStylesNarratifs(raw.styles);
+  const aventureDefaut = raw.aventureDefaut === undefined ? defautsAventure() : validerDefautsAventure(raw.aventureDefaut);
+  return { samplersActifs: raw.samplersActifs, samplers, longueurs, styles, aventureDefaut };
 }
 /** Retourne exclusivement des clés de l'API chat llama.cpp : aucune clé non supportée n'est inventée. */
 export function samplersPourRequete(config: ReglagesNarrateur | undefined): Record<string, number> {
