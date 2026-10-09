@@ -2,6 +2,8 @@ import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import type { ParametresAtelier } from '../concepteur/configuration';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
+import { lireLoreAtelier } from '../concepteur/lorebookStore';
+import { appliquerLorePublie } from '../concepteur/lorebookModele';
 import {
   chargerLoreElyndor,
   extraireAncresCanoniques,
@@ -97,7 +99,15 @@ async function parametresDeLaSession(settings: AppSettings): Promise<ParametresA
   const config = await lireConfigurationAtelier().catch(() => null);
   return config?.profils[config.profilActif];
 }
-const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
+const LORE_ELYNDOR_BASE = chargerLoreElyndor(elyndorRaw as any);
+let LORE_ELYNDOR = LORE_ELYNDOR_BASE;
+
+/** Charge les fiches réellement publiées avant CHAQUE sélection narrative. */
+async function assurerLorePublie() {
+  const etat = await lireLoreAtelier();
+  LORE_ELYNDOR = appliquerLorePublie(LORE_ELYNDOR_BASE, etat);
+  return LORE_ELYNDOR;
+}
 
 /**
  * Fenêtre étroite : modèle sur l'appareil ou serveur du réseau local. Le pod
@@ -199,13 +209,14 @@ export async function calculerSelectionLore(
   reglagesAtelier?: ParametresAtelier,
 ): Promise<SelectionLore> {
   const debutRecherche = Date.now();
+  const loreCourant = await assurerLorePublie();
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
   const plugins = await getPlugins();
 
   const poolElyndorBrut = [
-    ...LORE_ELYNDOR,
+    ...loreCourant,
     ...convertirLoreEmergentPourSelection(story.loreEmergent),
     ...convertirPluginsPourSelection(plugins),
   ];

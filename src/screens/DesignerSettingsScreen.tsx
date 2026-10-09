@@ -12,12 +12,13 @@ import StorageExplorer from '../components/StorageExplorer';
 import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
 import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
+import LorebookPanel from '../components/LorebookPanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
 import { retryFailedAutomationJobs } from '../automation/kernel';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur' | 'ModuleConcepteur'>;
 
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
@@ -30,7 +31,7 @@ const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string;
   { id: 'narration', titre: 'Narration', detail: 'Température et marge de réponse', pret: true },
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
-  { id: 'lorebook', titre: 'Lorebook', detail: 'Édition et vérifications à développer', pret: false },
+  { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
   { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images à développer', pret: false },
   { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
   { id: 'diagnostics', titre: 'Diagnostics', detail: 'Cache, traces et erreurs', pret: true },
@@ -53,9 +54,10 @@ function EtatLigne({ label, ok, detail }: { label: string; ok: boolean; detail?:
   );
 }
 
-export default function DesignerSettingsScreen({ navigation }: Props) {
+export default function DesignerSettingsScreen({ navigation, route }: Props) {
+  const estModule = route.name === 'ModuleConcepteur';
+  const section: ModuleAtelier = estModule ? (route.params as RootStackParamList['ModuleConcepteur']).section : 'tableau';
   const [modeConcepteur, setModeConcepteur] = useState(false);
-  const [section, setSection] = useState<ModuleAtelier>('tableau');
   const [chargement, setChargement] = useState(true);
   const [erreurChargement, setErreurChargement] = useState('');
   const [messageCache, setMessageCache] = useState('');
@@ -137,14 +139,14 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
         <View style={styles.largeur}>
           <View style={styles.entete}>
             <Text style={styles.surtitre}>ATELIER INTERNE</Text>
-            <Text style={styles.titre}>Réglages concepteur</Text>
+            <Text style={styles.titre}>{estModule ? MODULES.find(m => m.id === section)?.titre : 'Réglages concepteur'}</Text>
             <Text style={styles.aide}>
-              Outils de test et de diagnostic destinés à la construction d’Elyndor. Ces options n’appartiennent
-              pas au parcours normal du joueur.
+              {estModule ? 'Module indépendant : retour au centre de contrôle avec la flèche Android.' :
+                'Outils de test et de diagnostic destinés à la construction d’Elyndor. Ces options n’appartiennent pas au parcours normal du joueur.'}
             </Text>
           </View>
 
-          <Panneau style={[styles.bloc, modeConcepteur && styles.blocActif]}>
+          {!estModule ? <Panneau style={[styles.bloc, modeConcepteur && styles.blocActif]}>
             <View style={styles.enteteBloc}>
               <View style={styles.enteteBlocTexte}>
                 <Text style={styles.label}>MODE CONCEPTEUR</Text>
@@ -166,17 +168,17 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
               style={styles.boutonAction}
             />
             {messageMode ? <Text style={styles.statut}>{messageMode}</Text> : null}
-          </Panneau>
+          </Panneau> : null}
 
 
-          {modeConcepteur ? (
+          {modeConcepteur && !estModule ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>CENTRE DE CONTRÔLE</Text>
               <Text style={styles.titreBloc}>Modules de l'atelier</Text>
               <Text style={styles.texteBloc}>Choisis un module. Les outils effectifs et les modules prévus sont distincts.</Text>
               <View style={styles.menuModules}>
                 {MODULES.map((module) => (
-                  <Pressable key={module.id} onPress={() => setSection(module.id)}
+                  <Pressable key={module.id} onPress={() => navigation.navigate('ModuleConcepteur', { section: module.id })}
                     accessibilityRole="button" accessibilityLabel={'Ouvrir ' + module.titre}
                     style={[styles.moduleCarte, section === module.id && styles.moduleActif]}>
                     <Text style={styles.moduleTitre}>{module.titre}</Text>
@@ -190,7 +192,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && (section === 'profils' || section === 'modeles' ||
+          {modeConcepteur && estModule && (section === 'profils' || section === 'modeles' ||
             section === 'narration' || section === 'recherche' || section === 'instantanes') ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>CONFIGURATION VERSIONNÉE</Text>
@@ -200,7 +202,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && section === 'runpod' ? (
+          {modeConcepteur && estModule && section === 'runpod' ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>CONFIGURATION RUNPOD</Text>
               <Text style={styles.titreBloc}>Pod Elyndor Cloud</Text>
@@ -208,7 +210,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && section === 'metamoteurs' ? (
+          {modeConcepteur && estModule && section === 'metamoteurs' ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>NOYAU NARRATIF V2.1</Text>
               <Text style={styles.titreBloc}>15 responsabilités codées</Text>
@@ -228,7 +230,14 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && MODULES.some((m) => m.id === section && !m.pret) ? (
+          {modeConcepteur && estModule && section === 'lorebook' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>BIBLIOTHÈQUE CANONIQUE</Text>
+              <LorebookPanel />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && MODULES.some((m) => m.id === section && !m.pret) ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>FONCTION EN PRÉPARATION</Text>
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
@@ -240,7 +249,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && section === 'tableau' ? (
+          {modeConcepteur && estModule && section === 'tableau' ? (
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>AUTOMATISMES</Text>
             <Text style={styles.texteBloc}>Version application : {VERSION_APP} · commit du bundle JS : {COMMIT_BUNDLE.slice(0, 12)}</Text>
@@ -280,7 +289,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
           </Panneau>
           ) : null}
 
-          {modeConcepteur && section === 'stockage' ? (
+          {modeConcepteur && estModule && section === 'stockage' ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>DIAGNOSTIC STOCKAGE</Text>
               <Text style={styles.titreBloc}>Fichiers et espace disque</Text>
@@ -288,7 +297,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
             </Panneau>
           ) : null}
 
-          {modeConcepteur && section === 'diagnostics' ? (
+          {modeConcepteur && estModule && section === 'diagnostics' ? (
           <Panneau style={styles.bloc}>
             <Text style={styles.label}>MAINTENANCE SÉMANTIQUE</Text>
             <Text style={styles.titreBloc}>Cache de recherche vectorielle</Text>
@@ -323,7 +332,7 @@ export default function DesignerSettingsScreen({ navigation }: Props) {
           </Panneau>
 
           <Bouton
-            titre="Retour aux réglages"
+            titre={estModule ? 'Retour aux modules' : 'Retour aux réglages'}
             variante="secondaire"
             onPress={() => navigation.goBack()}
             style={styles.retour}
