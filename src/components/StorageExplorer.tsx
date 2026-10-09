@@ -1,5 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { File, Paths } from 'expo-file-system';
+import { getStoriesIndex } from '../storage/storage';
+import { analyserCheminImageGeree, rattachementImageLocal, type RattachementImage } from '../storage/imagePreviewPaths';
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from './Bouton';
 import {
@@ -33,7 +36,16 @@ function LigneMesure({ nom, valeur }: { nom: string; valeur: string }) {
   );
 }
 
-/** Explorateur en lecture seule des fichiers privés de l'application. */
+/** Explorateur du stockage privé, avec aperçu et suppression contrôlée. */
+interface ApercuImage {
+  entree: EntreeStockage;
+  uri: string;
+  chargee: boolean;
+  erreur: string;
+  rattachement: RattachementImage | null;
+  rattachementErreur: boolean;
+}
+
 export default function StorageExplorer() {
   const [bilan, setBilan] = useState<BilanStockage | null>(null);
   const [liste, setListe] = useState<ListeStockage | null>(null);
@@ -44,6 +56,7 @@ export default function StorageExplorer() {
   const [erreur, setErreur] = useState('');
   const [messageAction, setMessageAction] = useState('');
   const [operationEnCours, setOperationEnCours] = useState(false);
+  const [apercu, setApercu] = useState<ApercuImage | null>(null);
   const demandeCourante = useRef(0);
 
   async function actualiser() {
@@ -51,6 +64,7 @@ export default function StorageExplorer() {
     setChargement(true);
     setErreur('');
     setSelection(null);
+    setApercu(null);
     try {
       const rapport = await analyserStockage();
       const contenu = await listerDossierStockage(chemin);
@@ -71,6 +85,7 @@ export default function StorageExplorer() {
     setChargement(true);
     setErreur('');
     setSelection(null);
+    setApercu(null);
     try {
       const contenu = await listerDossierStockage(nouveauChemin);
       if (demande !== demandeCourante.current) return;
@@ -107,12 +122,56 @@ export default function StorageExplorer() {
     }
   }
 
+
+  async function ouvrirApercuImage(entree: EntreeStockage) {
+    setSelection(entree);
+    setErreur('');
+    const cible = analyserCheminImageGeree(entree.path);
+    if (!cible) {
+      setErreur("Ce fichier n'est pas une image Elyndor prévisualisable.");
+      return;
+    }
+    try {
+      // Même emplacement que les générateurs d'images du récit : pas de copie
+      // ni conversion base64 nécessaire pour afficher le fichier en local.
+      const image = new File(Paths.document, cible.dossier, cible.nom);
+      if (!image.exists) throw new Error("Cette image n'existe plus sur la tablette.");
+      setApercu({
+        entree, uri: image.uri, chargee: false, erreur: '',
+        rattachement: null, rattachementErreur: false,
+      });
+      try {
+        const index = await getStoriesIndex();
+        setApercu((ancien) => ancien?.entree.path === entree.path
+          ? { ...ancien, rattachement: rattachementImageLocal(cible.nom, index.map((h) => h.id)) }
+          : ancien);
+      } catch {
+        setApercu((ancien) => ancien?.entree.path === entree.path
+          ? { ...ancien, rattachementErreur: true } : ancien);
+      }
+    } catch (cause) {
+      setErreur(cause instanceof Error ? cause.message : "Impossible d'ouvrir cette image.");
+    }
+  }
+
+  function choisirEntree(entree: EntreeStockage) {
+    if (entree.isDirectory) {
+      void ouvrirDossier(entree.path);
+    } else if (analyserCheminImageGeree(entree.path)) {
+      void ouvrirApercuImage(entree);
+    } else {
+      setSelection(entree);
+      setApercu(null);
+    }
+  }
+
   async function effectuerSuppression(cible: EntreeStockage) {
     setOperationEnCours(true);
     setErreur('');
     setMessageAction('');
     try {
       const resultat = await supprimerFichierStockage(cible.path);
+      setApercu(null);
       setMessageAction("Fichier supprimé : " + formatTailleStockage(resultat.freedBytes) + " libérés.");
       await actualiser();
       setMessageAction("Fichier supprimé : " + formatTailleStockage(resultat.freedBytes) + " libérés.");
@@ -194,7 +253,7 @@ export default function StorageExplorer() {
     }
   }
 
-  const selectionEstImage = !!selection && /^interne\/files\/(scene-images|pnj-avatars)\/[^/]+\.png$/i.test(selection.path);
+  const selectionEstImage = !!selection && !!analyserCheminImageGeree(selection.path);
   const selectionEstDiagnostic = !!selection && /^interne\/files\/diagnostics\/[^/]+\.jsonl$/i.test(selection.path);
   const precedent = chemin.includes('/') ? chemin.slice(0, chemin.lastIndexOf('/')) : '';
   const espaceOccupe = bilan ? Math.max(0, bilan.totalBytes - bilan.availableBytes) : 0;
@@ -204,8 +263,8 @@ export default function StorageExplorer() {
     <View>
       <Text style={styles.introduction}>
         Gestion du stockage privé d’Elyndor : consulter l’espace utilisé, enregistrer les images
-        dans la galerie, supprimer les diagnostics et les images choisies. Les conversations et bases
-        de données restent protégées.
+        dans la galerie, supprimer les diagnostics et les images choisies. Touche une image PNG pour
+        l'afficher en grand format avant de la supprimer. Les conversations et bases restent protégées.
       </Text>
       <Bouton
         titre={bilan ? 'Actualiser le diagnostic' : 'Analyser le stockage'}
@@ -278,6 +337,7 @@ export default function StorageExplorer() {
           <View style={styles.section}>
             <Text style={styles.sousTitre}>Explorateur de fichiers</Text>
             <Text style={styles.chemin}>/{chemin || 'racines'}</Text>
+            <Text style={styles.precision}>Pour une image PNG : touche son nom pour voir la photo en grand et son lien éventuel avec une histoire.</Text>
             <View style={styles.actions}>
               <Bouton
                 titre="Dossier parent"
@@ -303,9 +363,9 @@ export default function StorageExplorer() {
                 {liste.entries.map((entree) => (
                   <Pressable
                     key={entree.path}
-                    onPress={() => entree.isDirectory ? void ouvrirDossier(entree.path) : setSelection(entree)}
+                    onPress={() => choisirEntree(entree)}
                     accessibilityRole="button"
-                    accessibilityLabel={(entree.isDirectory ? 'Ouvrir le dossier ' : 'Voir les détails du fichier ') + entree.name}
+                    accessibilityLabel={(entree.isDirectory ? 'Ouvrir le dossier ' : analyserCheminImageGeree(entree.path) ? "Prévisualiser l'image " : 'Voir les détails du fichier ') + entree.name}
                     style={styles.ligneDossier}
                   >
                     <View style={styles.description}>
@@ -350,7 +410,7 @@ export default function StorageExplorer() {
                     style={styles.bouton}
                   />
                 ) : null}
-                {(selectionEstImage || selectionEstDiagnostic) ? (
+                {(selectionEstDiagnostic) ? (
                   <Bouton
                     titre="Supprimer ce fichier"
                     variante="secondaire"
@@ -358,15 +418,14 @@ export default function StorageExplorer() {
                     desactive={operationEnCours || chargement}
                     style={styles.bouton}
                   />
+                ) : selectionEstImage ? (
+                  <Text style={styles.precision}>
+                    Pour supprimer une image, touche son nom et vérifie son aperçu en grand format.
+                    Une image encore utilisée dans une histoire pourrait ne plus s'afficher après suppression.
+                  </Text>
                 ) : (
                   <Text style={styles.precision}>Fichier protégé : consultation des métadonnées uniquement.</Text>
                 )}
-                {selectionEstImage ? (
-                  <Text style={styles.precision}>
-                    L'export crée une copie dans Images/Elyndor. La suppression efface uniquement
-                    le fichier local, et une image encore utilisée dans le récit pourrait disparaître.
-                  </Text>
-                ) : null}
               </View>
             ) : null}
           </View>
@@ -378,6 +437,57 @@ export default function StorageExplorer() {
           ) : null}
         </>
       ) : null}
+
+      <Modal visible={!!apercu} animationType="fade" onRequestClose={() => setApercu(null)}>
+        <View style={styles.fenetreApercu}>
+          <Text style={styles.titreApercu}>Aperçu de l'image Elyndor</Text>
+          <Text style={styles.nomApercu} numberOfLines={2}>{apercu?.entree.name ?? ''}</Text>
+          <Text style={styles.texteApercu}>{apercu ? formatTailleStockage(apercu.entree.sizeBytes) : ''}</Text>
+          <View style={styles.zoneImage}>
+            {apercu && !apercu.erreur ? (
+              <Image
+                source={{ uri: apercu.uri }}
+                style={styles.imagePleine}
+                resizeMode="contain"
+                accessibilityLabel={'Prévisualisation de ' + apercu.entree.name}
+                onLoad={() => setApercu((ancien) => ancien?.entree.path === apercu.entree.path
+                  ? { ...ancien, chargee: true } : ancien)}
+                onError={() => setApercu((ancien) => ancien?.entree.path === apercu.entree.path
+                  ? { ...ancien, chargee: false, erreur: "L'image est illisible ou endommagée." } : ancien)}
+              />
+            ) : null}
+            {apercu && !apercu.chargee && !apercu.erreur ? (
+              <ActivityIndicator color={couleurs.accent} style={styles.attenteImage} />
+            ) : null}
+            {apercu?.erreur ? <Text style={styles.erreur}>{apercu.erreur}</Text> : null}
+          </View>
+          {apercu && (
+            <>
+              <Text style={styles.texteApercu}>
+                {apercu.rattachement === 'histoire_presente'
+                  ? "Nom associé à une histoire locale encore présente. Cela ne prouve pas que l'image y est encore utilisée."
+                  : apercu.rattachement === 'histoire_introuvable'
+                    ? "Aucune histoire locale correspondante trouvée : potentiellement orpheline. Vérifie avant toute suppression."
+                    : apercu.rattachementErreur
+                      ? "Lien aux histoires non vérifiable pour le moment."
+                      : "Recherche du lien avec les histoires locales…"}
+              </Text>
+              <View style={styles.actionsApercu}>
+                <Bouton titre="Fermer l'aperçu" variante="secondaire"
+                  onPress={() => setApercu(null)} style={styles.bouton} />
+                <Bouton titre="Enregistrer dans ma galerie" variante="secondaire"
+                  onPress={() => void exporterImage(apercu.entree)}
+                  desactive={!apercu.chargee || operationEnCours} style={styles.bouton}/>
+                <Bouton titre="Supprimer cette image" variante="secondaire"
+                  onPress={() => demanderSuppression(apercu.entree)}
+                  desactive={!apercu.chargee || operationEnCours} style={styles.bouton}/>
+              </View>
+            </>
+          )}
+          {operationEnCours ? <ActivityIndicator color={couleurs.accent}/> : null}
+          {messageAction ? <Text style={styles.confirmation}>{messageAction}</Text> : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -416,4 +526,14 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: espacement.sm, flexWrap: 'wrap' },
   boutonNavigation: { flexGrow: 1, marginTop: espacement.xs },
   details: { marginTop: espacement.md, padding: espacement.md, borderWidth: 1, borderColor: couleurs.bordureDoree },
+  fenetreApercu: { flex: 1, backgroundColor: couleurs.fondProfond, paddingHorizontal: espacement.md,
+    paddingTop: espacement.xl, paddingBottom: espacement.lg },
+  titreApercu: { color: couleurs.doreClair, fontFamily: polices.titre, fontSize: 25 },
+  nomApercu: { color: couleurs.texte, fontFamily: polices.corpsMedium, fontSize: 15 },
+  texteApercu: { color: couleurs.texteAtténué, fontFamily: polices.corps, fontSize: 13,
+    marginTop: espacement.sm, lineHeight: 18 },
+  zoneImage: { flex: 1, minHeight: 100, alignItems: 'center', justifyContent: 'center', marginVertical: espacement.sm },
+  imagePleine: { width: '100%', height: '100%' },
+  attenteImage: { position: 'absolute' },
+  actionsApercu: { marginTop: espacement.sm, gap: espacement.xs },
 });
