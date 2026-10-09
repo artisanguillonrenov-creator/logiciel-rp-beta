@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { finDeNarrationComplete, controlerLongueurNarration } from '../src/engine/controleLongueurNarration';
+import { finDeNarrationComplete, controlerLongueurNarration, compterTokensNarration } from '../src/engine/controleLongueurNarration';
 import {
   deltaAssocieAuTexte, exigerNarrationValide, preparerNarrationPourPublication,
 } from '../src/engine/controlePublicationNarration';
@@ -63,4 +63,33 @@ test('une régénération produit le seul texte admissible après le nouvel essa
   assert.equal(controle.corrige, true);
   assert.equal(controle.texte, lectures.at(-1));
   assert.equal(controle.verification, 'exacte');
+});
+
+test('tokenizer exact : URL /tokenize racine, Unicode conservé et réponse mesurée', async () => {
+  let vu = '';
+  const fetchMock = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    assert.match(String(url), /\/tokenize$/);
+    const json = JSON.parse(String(init?.body));
+    vu = json.content;
+    assert.equal(json.add_special, false);
+    assert.equal(json.parse_special, false);
+    return { ok: true, json: async () => ({ tokens: [19, 20, 21, 22] }) } as Response;
+  }) as typeof fetch;
+  const t = await compterTokensNarration('Élysée, Sylvana et 🐉.', fetchMock, async () => undefined);
+  assert.equal(vu, 'Élysée, Sylvana et 🐉.');
+  assert.equal(t, 4);
+});
+
+test('tokenizer : 404, faux résultat, erreur réseau et ids de tokens invalides restent non vérifiés', async () => {
+  for (const valeur of [
+    { ok: false },
+    { ok: true, json: async () => ({ tokens: '4' }) },
+    { ok: true, json: async () => ({ tokens: [-1] }) },
+    { ok: true, json: async () => ({ tokens: [] }) },
+  ]) {
+    const fetchMock = (async () => valeur as Response) as typeof fetch;
+    assert.equal(await compterTokensNarration('Élyndor', fetchMock, async () => undefined), null);
+  }
+  const erreur = (async () => { throw new Error('Connexion perdue'); }) as typeof fetch;
+  assert.equal(await compterTokensNarration('Test.', erreur, async () => undefined), null);
 });
