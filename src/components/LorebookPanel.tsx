@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import loreBrut from '../data/elyndorLore.json';
+import { LORE_CORE } from '../data/loreCore';
 import { chargerLoreElyndor } from '../engine/loreLoader';
 import { construirePassages, selectionnerPassages } from '../engine/passagesLore';
 import { infererScopeLore, type ScopeLore } from '../engine/loreScoring';
@@ -51,6 +52,12 @@ export default function LorebookPanel() {
   const [simulation, setSimulation] = useState('');
   const [resultats, setResultats] = useState<string[] | null>(null);
   const [emergents, setEmergents] = useState<LoreProposition[] | null>(null);
+  const [voirCore, setVoirCore] = useState(false);
+  const [bruts, setBruts] = useState({ primaire: '', secondaire: '', negatif: '', dossiers: '' });
+  function preparerChamps(v: FicheEditable) {
+    setBruts({ primaire: v.primaryKeys.join(', '), secondaire: v.secondaryKeys.join(', '),
+      negatif: v.negativeKeys.join(', '), dossiers: v.dossiers.join(', ') });
+  }
 
   useEffect(() => {
     let present = true;
@@ -67,13 +74,12 @@ export default function LorebookPanel() {
     if (!id || !etat) return null;
     return etat.brouillons[id] ?? courante ?? null;
   }, [id, etat, courante]);
-  const modifie = !!edition && !!baseEdition && JSON.stringify(edition) !==
-    JSON.stringify({
-      titre: baseEdition.titre, contenu: baseEdition.contenu, category: baseEdition.category,
-      priority: baseEdition.priority, constant: baseEdition.constant, scope: baseEdition.scope,
-      primaryKeys: baseEdition.primaryKeys, secondaryKeys: baseEdition.secondaryKeys,
-      negativeKeys: baseEdition.negativeKeys, dossiers: baseEdition.dossiers, actif: baseEdition.actif,
-    });
+  const modifie = !!edition && (!baseEdition || JSON.stringify(edition) !== JSON.stringify({
+    titre: baseEdition.titre, contenu: baseEdition.contenu, category: baseEdition.category,
+    priority: baseEdition.priority, constant: baseEdition.constant, scope: baseEdition.scope,
+    primaryKeys: baseEdition.primaryKeys, secondaryKeys: baseEdition.secondaryKeys,
+    negativeKeys: baseEdition.negativeKeys, dossiers: baseEdition.dossiers, actif: baseEdition.actif,
+  }));
   const categories = useMemo(() => ['Toutes', ...new Set(fiches.map(f => f.category))].sort(), [fiches]);
   const dossiers = useMemo(() => {
     const cheminements = new Set<string>();
@@ -100,6 +106,7 @@ export default function LorebookPanel() {
       setId(idSuivant); setOnglet('contenu'); setProposition(null); setResultats(null); setErreur(''); setMessage('');
       if (!idSuivant || !etat) { setEdition(null); return; }
       const valeur = etat.brouillons[idSuivant] ?? fiches.find(f => f.id === idSuivant);
+      if (valeur) preparerChamps(valeur);
       setEdition(valeur ? {
         titre: valeur.titre, contenu: valeur.contenu, category: valeur.category,
         priority: valeur.priority, constant: valeur.constant, scope: valeur.scope,
@@ -118,13 +125,15 @@ export default function LorebookPanel() {
     const ouvrir = () => {
       const nouveauId = 'atelier-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
       setId(nouveauId); setOnglet('contenu'); setProposition(null); setResultats(null);
-      setEdition({
+      const nouvelle: FicheEditable = {
         titre: source?.titre ?? 'Nouvelle fiche', contenu: source?.contenu ?? 'Description à développer.',
         category: source?.category ?? 'MONDE', priority: source?.priority ?? 50,
         constant: source?.constant ?? false, scope: source?.scope ?? 'GLOBAL',
         primaryKeys: source?.primaryKeys ?? [], secondaryKeys: source?.secondaryKeys ?? [],
         negativeKeys: source?.negativeKeys ?? [], dossiers: source?.dossiers ?? [], actif: source?.actif ?? true,
-      });
+      };
+      preparerChamps(nouvelle);
+      setEdition(nouvelle);
     };
     if (modifie) Alert.alert('Édition en cours', 'Abandonner les modifications ?',
       [{ text: 'Annuler', style: 'cancel' }, { text: 'Continuer', onPress: ouvrir }]);
@@ -134,10 +143,10 @@ export default function LorebookPanel() {
     setEdition(ancien => ancien ? { ...ancien, [nom]: valeur } : ancien);
     setProposition(null);
   };
-  async function transaction(action: (avant: EtatLore) => EtatLore, succes: string) {
+  async function transaction(action: (avant: EtatLore) => EtatLore, succes: string): Promise<boolean> {
     setOccupe(true); setErreur(''); setMessage('');
-    try { setEtat(await modifierLoreAtelier(action)); setMessage(succes); }
-    catch (e) { setErreur(erreurTexte(e)); }
+    try { setEtat(await modifierLoreAtelier(action)); setMessage(succes); return true; }
+    catch (e) { setErreur(erreurTexte(e)); return false; }
     finally { setOccupe(false); }
   }
   async function sauvegarder() {
@@ -149,9 +158,9 @@ export default function LorebookPanel() {
     const proteger = courante?.protegee ?? false;
     const nouveau = !courante;
     const faire = async () => {
-      await transaction(v => enregistrerFicheLore(v, BASE, id, valide),
+      const ok = await transaction(v => enregistrerFicheLore(v, BASE, id, valide),
         proteger || nouveau ? 'Brouillon enregistré, publication à confirmer.' : 'Fiche publiée. Le narrateur l’utilisera au prochain tour.');
-      setEdition(valide);
+      if (ok) setEdition(valide);
     };
     if (doublons.length) Alert.alert('Doublon potentiel',
       'Même titre que : ' + doublons.slice(0, 3).join(', ') + '. Vérifie avant de continuer.',
@@ -171,8 +180,9 @@ export default function LorebookPanel() {
     Alert.alert('Supprimer la fiche ajoutée ?', 'Suppression réversible par une restauration de révision tant que cette révision reste dans l’historique.',
       [{ text: 'Annuler', style: 'cancel' }, { text: 'Supprimer', style: 'destructive', onPress: () => {
         void (async () => {
-          await transaction(v => supprimerAjoutLore(v, id), 'Fiche ajoutée supprimée.');
-          setId(null); setEdition(null);
+          if (await transaction(v => supprimerAjoutLore(v, id), 'Fiche ajoutée supprimée.')) {
+            setId(null); setEdition(null);
+          }
         })();
       } }]);
   }
@@ -296,7 +306,8 @@ export default function LorebookPanel() {
           {proposition.fiche ? <Text selectable style={styles.texte}>{proposition.fiche.contenu}</Text> : null}
           <Text style={styles.aide}>Sources consultées (extraits, vérification non exhaustive) : {proposition.sources.join(' · ')}</Text>
           {proposition.fiche ? <Bouton titre="Accepter dans le formulaire" onPress={() => {
-            setEdition(proposition.fiche); setProposition(null);
+            if (proposition.fiche) { setEdition(proposition.fiche); preparerChamps(proposition.fiche); }
+            setProposition(null);
             setMessage('Proposition placée dans le formulaire. Enregistre pour continuer.');
           }} style={styles.bouton}/> : null}
           <Bouton titre="Régénérer" variante="secondaire" onPress={() => void lancerIA(modeIA)}
@@ -311,21 +322,21 @@ export default function LorebookPanel() {
           <Switch value={edition.constant} onValueChange={v => renseigner('constant', v)}/></View>
         <Text style={styles.aide}>Le mode permanent augmente la pertinence des passages, sans garantir l’injection intégrale de la fiche.</Text>
         <Text style={styles.label}>Mots-clés principaux (séparés par virgule)</Text>
-        <TextInput multiline style={styles.champ} value={edition.primaryKeys.join(', ')}
-          onChangeText={v => renseigner('primaryKeys', separer(v))}/>
+        <TextInput multiline style={styles.champ} value={bruts.primaire}
+          onChangeText={v => { setBruts(x => ({...x, primaire:v})); renseigner('primaryKeys', separer(v)); }}/>
         <Text style={styles.label}>Mots-clés secondaires</Text>
-        <TextInput multiline style={styles.champ} value={edition.secondaryKeys.join(', ')}
-          onChangeText={v => renseigner('secondaryKeys', separer(v))}/>
+        <TextInput multiline style={styles.champ} value={bruts.secondaire}
+          onChangeText={v => { setBruts(x => ({...x, secondaire:v})); renseigner('secondaryKeys', separer(v)); }}/>
         <Text style={styles.label}>Mots-clés d’exclusion</Text>
-        <TextInput multiline style={styles.champ} value={edition.negativeKeys.join(', ')}
-          onChangeText={v => renseigner('negativeKeys', separer(v))}/>
+        <TextInput multiline style={styles.champ} value={bruts.negatif}
+          onChangeText={v => { setBruts(x => ({...x, negatif:v})); renseigner('negativeKeys', separer(v)); }}/>
       </View> : null}
       {onglet === 'avance' ? <View>
         <Text style={styles.label}>Catégorie technique</Text>
         <TextInput style={styles.champ} value={edition.category} onChangeText={v => renseigner('category', v)}/>
         <Text style={styles.label}>Dossiers (séparés par virgule, sous-dossiers avec /)</Text>
-        <TextInput multiline style={styles.champ} value={edition.dossiers.join(', ')}
-          onChangeText={v => renseigner('dossiers', separer(v))} placeholder="Monde/Europe/France/Paris"/>
+        <TextInput multiline style={styles.champ} value={bruts.dossiers}
+          onChangeText={v => { setBruts(x => ({...x, dossiers:v})); renseigner('dossiers', separer(v)); }} placeholder="Monde/Europe/France/Paris"/>
         <Text style={styles.label}>Priorité (0 = priorité plus haute, 100 = plus basse)</Text>
         <TextInput style={styles.champ} keyboardType="numeric" value={String(edition.priority)}
           onChangeText={v => renseigner('priority', Number(v))}/>
@@ -358,11 +369,20 @@ export default function LorebookPanel() {
             } },
           ])} style={styles.bouton}/>
       </> : null}
+      <Bouton titre="Dupliquer cette fiche dans un brouillon" variante="secondaire"
+        onPress={() => creerFiche({ ...edition, titre: edition.titre + ' (copie)' })} style={styles.bouton}/>
       {id.startsWith('atelier-') && <Bouton titre="Supprimer cette fiche ajoutée" variante="secondaire"
         onPress={confirmerSuppression} style={styles.bouton}/>}
       {originales && <Text style={styles.aide}>Fiche d’origine conservée dans l’application. ID : {id}.</Text>}
     </View> : <View>
       <Text style={styles.titre}>Bibliothèque d'Elyndor</Text>
+      <Bouton titre={voirCore ? 'Masquer le Lore Core protégé' : 'Consulter le Lore Core protégé'}
+        variante="secondaire" onPress={() => setVoirCore(!voirCore)} style={styles.bouton}/>
+      {voirCore && <View style={styles.proposition}>
+        <Text style={styles.label}>LORE CORE — LECTURE SEULE</Text>
+        <Text selectable style={styles.texte}>{LORE_CORE}</Text>
+        <Text style={styles.aide}>Ce texte appartient au noyau du logiciel et ne peut pas être modifié ici.</Text>
+      </View>}
       <Text style={styles.aide}>{BASE.length} fiches canoniques d’origine · {Object.keys(etat.ajouts).length} ajout(s) publié(s) · {Object.keys(etat.brouillons).length} brouillon(s) · révision {etat.numero}.</Text>
       <Bouton titre="+ Créer une fiche" onPress={() => creerFiche()} style={styles.bouton}/>
       <TextInput style={styles.champ} value={recherche} onChangeText={setRecherche}
