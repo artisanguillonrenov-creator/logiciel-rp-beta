@@ -1,6 +1,7 @@
 import type { ChatMessage } from './openrouter';
 import { consigneLongueur, reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/reglagesNarrateur';
 import { BUDGET_LORE_PASSAGES } from './passagesLore';
+import { instructionStyle, type StylesNarratifs } from '../concepteur/interpretationNarrative';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
 import { LORE_CORE } from '../data/loreCore';
 import { REGLES_IMMUABLES } from './rules';
@@ -169,14 +170,6 @@ function libelleRythme(niveau: StorySettings['rythme']): string {
   }
 }
 
-function libelleTon(ton: StorySettings['ton']): string {
-  switch (ton) {
-    case 'heroique_epique': return 'Héroïque et épique — aventures grandioses, enjeux qui dépassent le personnage, souffle inspirant.';
-    case 'mysterieux_intrigant': return 'Mystérieux et intrigant — secrets, complots, révélations dosées, tension permanente.';
-    case 'leger_aventureux': return "Léger et aventureux — ton détendu, exploration et découverte plutôt que noirceur.";
-    default: return 'Sombre et réaliste — ambiance immersive, dure et crédible.';
-  }
-}
 
 function formaterContexte(meta: StoryMeta): string {
   const { lieu, ambiance, dateChronique, objectifs } = meta.contexte;
@@ -189,6 +182,7 @@ export interface ContexteConstruction {
   settings: StorySettings;
   /** Fourchettes narratives définies dans l'atelier (saisies numériques, pas des curseurs). */
   longueursCibles?: PlagesLongueur;
+  stylesNarratifs?: StylesNarratifs;
   resume: string;
   faits: Fact[];
   loreElyndor: LoreEntry[];
@@ -248,7 +242,7 @@ ${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_
 
 Les paramètres de session ci-dessous priment sur toute formulation du lore portant sur l'intensité de narration. Le lore établit des faits ; il ne relève jamais un curseur.
 
-Ton : ${libelleTon(ctx.settings.ton)}
+Ton : ${instructionStyle(ctx.settings.ton, ctx.stylesNarratifs)}
 ${instructionLongueur(ctx.settings.longueur, ctx.longueursCibles)}
 ${INSTRUCTION_FIN_DE_REPONSE}
 ${INSTRUCTION_STYLE_JOUEUR}
