@@ -80,3 +80,11 @@ test('tokenizer inaccessible : ne jamais prétendre un comptage exact', async ()
   assert.equal(r.verification, 'indisponible');
   assert.equal(r.texte, 'Un récit complet.');
 });
+
+test('même sans tokenizer, une réponse coupée reste bloquée', async () => {
+  await assert.rejects(controlerLongueurNarration({
+    texte: 'La porte commence à', plage: { min: 140, max: 160 }, temperature: 0.7,
+    compter: async () => null,
+    reformuler: async () => 'La porte commence à',
+  }), /incomplète/);
+});
