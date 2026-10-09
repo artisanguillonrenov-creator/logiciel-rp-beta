@@ -4,10 +4,12 @@ import {
   CLES_STYLES, NOMS_STYLES, comparerStyles, defautsAventure,
   instructionStyle, stylesNarratifsDefaut, validerDefautsAventure, validerStylesNarratifs,
 } from '../src/concepteur/interpretationNarrative';
-import { reglagesNarrateurDefaut, validerReglagesNarrateur } from '../src/concepteur/reglagesNarrateur';
+import { reglagesNarrateurDefaut, samplersPourRequete, validerReglagesNarrateur } from '../src/concepteur/reglagesNarrateur';
 import { creerConfigurationAtelier, modifierEtatAtelier, validerConfigurationAtelier } from '../src/concepteur/configuration';
 import { construireSystemPrompt } from '../src/engine/promptBuilder';
 import { controlerLongueurNarration } from '../src/engine/controleLongueurNarration';
+import { analyserSeriesContexte, percentile } from '../src/concepteur/statistiquesContexte';
+import type { StoryState } from '../src/types';
 
 test('les 4 styles existants produisent réellement 4 instructions distinctes', () => {
   const styles = stylesNarratifsDefaut();
@@ -86,4 +88,51 @@ test('120 tours mock : les trois plages restent strictement distinctes sans allo
     assert.equal(retour.conforme, true);
     assert.equal(retour.corrige, false);
   }
+});
+
+test('samplers individuels : clés neutralisées volontairement et Mirostat sans conflit', () => {
+  const defaults = reglagesNarrateurDefaut();
+  assert.deepEqual(samplersPourRequete(defaults), {});
+  const actifs = { ...defaults, samplersActifs: true };
+  assert.equal(Object.keys(samplersPourRequete(actifs)).length, 19);
+  const selec = { ...actifs, samplersEnvoyes: { ...actifs.samplersEnvoyes, xtc_probability: false } };
+  assert.equal('xtc_probability' in samplersPourRequete(selec), false);
+  const mirostat = { ...selec, samplers: { ...selec.samplers, mirostat: 2 } };
+  const valeurs = samplersPourRequete(mirostat);
+  assert.equal(valeurs.mirostat, 2);
+  for (const exclue of ['top_p','top_k','min_p','typical_p']) assert.equal(exclue in valeurs, false);
+  const historique = JSON.parse(JSON.stringify(defaults));
+  delete historique.samplersEnvoyes;
+  assert.equal(validerReglagesNarrateur(historique).samplersEnvoyes.top_p, true);
+  assert.throws(() => validerReglagesNarrateur({
+    ...defaults, samplersEnvoyes: { ...defaults.samplersEnvoyes, top_p: 'non' },
+  }), /sampler invalide/);
+});
+
+test('statistiques P50/P95 issues des diagnostics, sans inventer de tokens manquants', () => {
+  assert.equal(percentile([], 0.95), null);
+  assert.equal(percentile([100, 200, 300, 400], 0.5), 200);
+  assert.equal(percentile([100, 200, 300, 400], 0.95), 400);
+  const diag = (dureeTotaleMs: number, exact: boolean) => ({
+    id: String(dureeTotaleMs), startedAt: 10,
+    dureeTotaleMs, embeddings: [],
+    etapes: [{ nom: 'Contrôle final des longueurs', categorie: 'validation',
+      statut: exact ? 'ok' : 'repli', raison: exact ? '150 tokens exacts' : 'non mesuré' }],
+    appelsIA: [{ composant: 'Narration RP', modele: 'test', maxTokens: 200,
+      dureeMs: dureeTotaleMs, inputTokens: 10, cachedInputTokens: 0,
+      outputTokens: 150, reasoningTokens: 0, totalTokens: 160,
+      usageComplet: true, statut: 'ok' }],
+  });
+  const story = { messages: [
+    { role: 'assistant', diagnosticTour: diag(100, true) },
+    { role: 'assistant', diagnosticTour: diag(200, false) },
+    { role: 'assistant', diagnosticTour: diag(300, true) },
+  ] } as unknown as StoryState;
+  const r = analyserSeriesContexte(story);
+  assert.equal(r.echantillon, 3);
+  assert.equal(r.p50Ms, 200);
+  assert.equal(r.p95Ms, 300);
+  assert.equal(r.toursAvecComptageExact, 2);
+  assert.equal(r.toursNonVerifies, 1);
+  assert.equal(r.appelsIA, 3);
 });
