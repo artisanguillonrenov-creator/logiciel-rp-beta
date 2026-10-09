@@ -34,6 +34,8 @@ export type PlagesLongueur = Record<Longueur, PlageLongueur>;
 export interface ReglagesNarrateur {
   samplersActifs: boolean;
   samplers: ValeursSamplers;
+  /** Sélection par clé, indépendante de sa validation sur le serveur réel. */
+  samplersEnvoyes: Record<CleSampler, boolean>;
   longueurs: PlagesLongueur;
   styles: StylesNarratifs;
   aventureDefaut: StorySettings;
@@ -42,7 +44,7 @@ export interface ReglagesNarrateur {
 export function reglagesNarrateurDefaut(): ReglagesNarrateur {
   const samplers = {} as ValeursSamplers;
   for (const cle of CLES_SAMPLERS) samplers[cle] = SAMPLERS_LLAMA_CPP[cle].defaut;
-  return { samplersActifs: false, samplers, styles: stylesNarratifsDefaut(), aventureDefaut: defautsAventure(), longueurs: {
+  return { samplersActifs: false, samplers, samplersEnvoyes: Object.fromEntries(CLES_SAMPLERS.map(k => [k, true])) as Record<CleSampler, boolean>, styles: stylesNarratifsDefaut(), aventureDefaut: defautsAventure(), longueurs: {
     courte: { min: 140, max: 160 },
     moyenne: { min: 215, max: 235 },
     longue: { min: 280, max: 320 },
@@ -67,6 +69,14 @@ export function validerReglagesNarrateur(raw: unknown): ReglagesNarrateur {
     }
     samplers[cle] = valeur;
   }
+  const samplersEnvoyes = {} as Record<CleSampler, boolean>;
+  for (const cle of CLES_SAMPLERS) {
+    const selection = objet(raw.samplersEnvoyes) ? raw.samplersEnvoyes[cle] : undefined;
+    if (selection !== undefined && typeof selection !== 'boolean') {
+      throw new Error('Activation sampler invalide : ' + cle);
+    }
+    samplersEnvoyes[cle] = selection === undefined ? true : selection;
+  }
   const longueurs = {} as PlagesLongueur;
   for (const cle of ['courte', 'moyenne', 'longue'] as Longueur[]) {
     const plage = raw.longueurs[cle];
@@ -80,13 +90,20 @@ export function validerReglagesNarrateur(raw: unknown): ReglagesNarrateur {
   // Anciennes configurations : migrations non destructives, valeurs sûres par défaut.
   const styles = raw.styles === undefined ? stylesNarratifsDefaut() : validerStylesNarratifs(raw.styles);
   const aventureDefaut = raw.aventureDefaut === undefined ? defautsAventure() : validerDefautsAventure(raw.aventureDefaut);
-  return { samplersActifs: raw.samplersActifs, samplers, longueurs, styles, aventureDefaut };
+  return { samplersActifs: raw.samplersActifs, samplers, samplersEnvoyes, longueurs, styles, aventureDefaut };
 }
 /** Retourne exclusivement des clés de l'API chat llama.cpp : aucune clé non supportée n'est inventée. */
 export function samplersPourRequete(config: ReglagesNarrateur | undefined): Record<string, number> {
   if (!config?.samplersActifs) return {};
   const valeurs = validerReglagesNarrateur(config).samplers;
-  return Object.fromEntries(CLES_SAMPLERS.map(cle => [cle, valeurs[cle]]));
+  const liste = CLES_SAMPLERS.filter(cle => config.samplersEnvoyes?.[cle] !== false);
+  // Mirostat optimise son propre tirage : ne pas fournir aussi les coupes
+  // de distribution qui seraient neutralisées ou incompatibles.
+  const mirostat = liste.includes('mirostat') ? valeurs.mirostat : 0;
+  const incompatibles = new Set<CleSampler>(
+    mirostat > 0 ? ['top_k', 'top_p', 'min_p', 'typical_p'] : [],
+  );
+  return Object.fromEntries(liste.filter(cle => !incompatibles.has(cle)).map(cle => [cle, valeurs[cle]]));
 }
 export function consigneLongueur(longueur: Longueur, config?: PlagesLongueur): string {
   const plage = config?.[longueur] ?? reglagesNarrateurDefaut().longueurs[longueur];
