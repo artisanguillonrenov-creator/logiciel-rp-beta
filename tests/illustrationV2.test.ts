@@ -18,7 +18,9 @@ import {
   SECTIONS_PROMPT_IMAGE,
   appliquerModeRegeneration,
   consoliderAvecEtatVisuel,
+  construirePromptPortraitSdxl,
   construirePromptSdxl,
+  normaliserPromptSdxl,
   modulesPourScene,
   MODULES_BASE,
   formaterPromptImage,
@@ -358,14 +360,14 @@ test('la requête porte le prompt court anglais et une régénération ne touche
     promptSdxl: 'low angle medium shot, 1 man, black leather coat, sword',
   };
   const court = construirePromptSdxl(structure) ?? '';
-  assert.match(court, /^elyndor style, low angle medium shot, 1 man/);
+  assert.match(court, /^elyndor style, Director Quentin Tarantino style, low angle medium shot, 1 man/);
   assert.match(court, /cinematic film still/);
   assert.equal(construirePromptSdxl({ ...structure, promptSdxl: undefined }), undefined);
 
   const angle = appliquerModeRegeneration(structure, 'autre-angle', 1);
   assert.equal(angle.promptSdxl, structure.promptSdxl);
   assert.ok(angle.indiceCameraSdxl);
-  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`elyndor style, ${angle.indiceCameraSdxl}, low angle medium shot`));
+  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`elyndor style, Director Quentin Tarantino style, ${angle.indiceCameraSdxl}, low angle medium shot`));
 
   const corps = construireCorpsRequeteImage({ prompt: 'p', promptCourt: court, references: [], format: '16:9' }, 'lustify-sdxl-v4');
   assert.equal(corps.prompt_sdxl, court);
@@ -419,4 +421,28 @@ test('les modules du serveur d’images suivent le type de scène', () => {
   assert.match(construirePromptSdxl(combat) ?? '', /Director Quentin Tarantino style/);
   const corps = construireCorpsRequeteImage({ prompt: 'p', modules, references: [], format: '16:9' }, 'lustify-sdxl-v4');
   assert.deepEqual(corps.modules, modules);
+});
+
+test('le prompt d’un avatar s’ouvre sur le déclencheur Elyndor, puis les traits de race', () => {
+  const prompt = construirePromptPortraitSdxl('(52 years old)1.2 human male blacksmith, stern gaze', 'dwarf, short and stocky, braided beard') ?? '';
+  assert.ok(prompt.startsWith('elyndor style, Director Quentin Tarantino style, dwarf, short and stocky, braided beard, (52 years old)1.2 human male blacksmith'));
+  assert.match(prompt, /stern gaze, cinematic portrait/);
+  assert.equal(prompt.match(/elyndor style/g)?.length, 1);
+  assert.ok((construirePromptPortraitSdxl('(30 years old)1.2 human female') ?? '').startsWith('elyndor style, Director Quentin Tarantino style, (30 years old)1.2'));
+  assert.equal(construirePromptPortraitSdxl('  '), undefined);
+  assert.equal(construirePromptPortraitSdxl(undefined, 'dwarf'), undefined);
+});
+
+test('le prompt du narrateur est remis au gabarit : âge (N years old)1.2, jamais sous 20 ans, virgules', () => {
+  assert.equal(normaliserPromptSdxl('2 people, (50 years old)1.1 human male, (30 years old)1.5 dark elf female'),
+    '2 people, (50 years old)1.2 human male, (30 years old)1.2 dark elf female');
+  assert.equal(normaliserPromptSdxl('dark elf woman, 30 years old, ebony skin'), 'dark elf woman, (30 years old)1.2, ebony skin');
+  assert.equal(normaliserPromptSdxl('(45 years old:1.3) orc'), '(45 years old)1.2 orc');
+  assert.equal(normaliserPromptSdxl('(17 years old)1.2 human female'), '(20 years old)1.2 human female');
+  assert.equal(normaliserPromptSdxl('medium shot. (30 years old)1.2 elf, (ebony skin)1.3 in a forge.'), 'medium shot, (30 years old)1.2 elf, (ebony skin)1.3 in a forge');
+  // Une parenthèse plus large n'est pas cassée.
+  assert.equal(normaliserPromptSdxl('(35 years old dark elf)1.3, leather armor'), '(35 years old dark elf)1.3, leather armor');
+  assert.ok((construirePromptSdxl({ ...structureDeRepli({ profil: 'dialogue', personnages: [], texteScene: '', lieu: '' }), promptSdxl: '(30 years old)1.4 elf' }) ?? '')
+    .startsWith('elyndor style, Director Quentin Tarantino style, (30 years old)1.2 elf'));
+  assert.ok((construirePromptPortraitSdxl('40 years old human male') ?? '').startsWith('elyndor style, Director Quentin Tarantino style, (40 years old)1.2 human male'));
 });

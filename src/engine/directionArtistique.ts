@@ -48,6 +48,35 @@ export interface DirectionArtistique {
   parModele: boolean;
 }
 
+// Gabarit des prompts d'image, calqué sur les essais du pod qui donnaient les
+// images les plus nettes : groupes de mots clés courts (25 à 45 mots), âge
+// renforcé en tête de chaque personnage, puis tenue, action, lieu, lumière et
+// plan. Les mots de style (elyndor style, Tarantino, grain…) sont ajoutés par
+// l'application (visualBible.ts) : le narrateur ne les écrit pas.
+const REGLES_PROMPT_SDXL = `Règles :
+  - Une seule ligne, uniquement des virgules : jamais de point, jamais de phrase.
+  - L'âge ouvre chaque personnage, OBLIGATOIRE, écrit (N years old)1.2 : l'âge APPARENT, celui qu'on lui donnerait en le voyant, repris de sa fiche quand elle le donne, jamais moins de 20. Jamais l'âge réel d'une race qui vit longtemps : une elfe de 300 ans qui paraît 35 ans s'écrit (35 years old)1.2. À partir de 40 ans apparents, ajoute une marque visible de l'âge (crow's feet, grey hair, wrinkles).
+  - Race, sexe, carnation, cheveux et tenue viennent de la fiche ou du lore, traduits fidèlement. Un élément absent de la fiche (carnation, yeux, bijou…) est omis, jamais inventé.
+  - Une carnation très sombre ou non humaine (ébène, grise, verte, bleue…) est toujours renforcée : (ebony skin)1.3.
+  - La nudité est nommée explicitement avec ce qui est visible ; une blessure, du sang ou une arme visible tient en 2 ou 3 mots.
+  - Des mots concrets et visuels : jamais de termes vagues (beautiful, epic, amazing), jamais de nom propre (le modèle ne connaît pas les personnages), jamais d'émotion abstraite ni de narration.
+  - N'écris aucun mot de style (elyndor style, Tarantino, photorealistic, film grain, highly detailed, masterpiece) : l'application les ajoute elle-même.
+  - Pour renforcer un autre détail essentiel qui se perd, la syntaxe est (mot clé)1.3, jamais (mot:1.3) ; au plus 2 renforts en plus de l'âge et de la carnation.
+  - Au-delà de la longueur demandée, le modèle d'image ignore la fin du prompt : coupe les détails secondaires plutôt qu'un personnage.`;
+
+const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Suis exactement ce gabarit :
+  (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin and [couleur + coiffure] hair, [tenue : matière + couleur], [action ou posture] in [lieu + 1 ou 2 adjectifs concrets], [lumière], [type de plan]
+  Exemple : (35 years old)1.2 dark elf female ranger with (ebony skin)1.3 and white braided hair, leather armor, standing in a smoky medieval tavern, warm candlelight, cinematic wide shot
+  Plusieurs personnages : commence par leur nombre, puis un groupe de 10 à 15 mots par personnage (âge, race, sexe, rôle, carnation, cheveux, tenue, action), de GAUCHE à DROITE dans le cadre et dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite). Le lieu, la lumière et le plan viennent UNE SEULE FOIS, à la fin, jamais répétés pour chaque personnage. Chaque personnage visible figure dans le prompt avec son âge, même un adversaire au second plan ; au-delà de 3, décris les 3 principaux et résume les autres en quelques mots (« 3 guards in background »).
+  Sans personnage visible (paysage, décor seul) : commence directement par le lieu, sans âge ni personnage inventé.
+  Exemple à deux : 1 woman, 1 man, (28 years old)1.2 human female mercenary with olive skin and short black hair, studded leather armor, drawing sword, (60 years old)1.2 dwarf male priest with braided white beard, grey wool robe, raising holy symbol, in a ruined stone chapel, torchlight, medium shot
+  ${REGLES_PROMPT_SDXL}`;
+
+const GABARIT_PROMPT_PORTRAIT_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 40 mots au total. Suis exactement ce gabarit :
+  (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin, [couleur] eyes and [couleur + coiffure] hair, [traits du visage : cicatrice, barbe, tatouage, maquillage], [expression], [tenue visible aux épaules : matière + couleur], [bijou ou accessoire], dark plain background, close-up portrait
+  Exemple : (52 years old)1.2 human male blacksmith with tanned weathered skin, grey eyes and short grey hair, thick stubble beard, crow's feet, stern gaze, soot-stained leather apron over linen shirt, dark plain background, close-up portrait
+  ${REGLES_PROMPT_SDXL}`;
+
 const INSTRUCTION_DIRECTION = `Tu es le directeur artistique d'Elyndor. Tu prépares l'illustration de l'instant présent de la scène (la fin du dernier message du narrateur) pour un modèle image qui ne connaît rien de l'histoire.
 
 Règles :
@@ -58,14 +87,7 @@ Règles :
 - "changementsVisuels" : uniquement les changements DURABLES survenus dans les messages récents (tenue, armure, armes visibles, accessoires, coiffure, blessures, cicatrices, sang, poussière, boue, propreté, transformations, objets portés ; pour le décor : lieu, type de lieu, architecture, disposition, heure, météo, lumière, sources lumineuses, dégâts, incendies, portes ouvertes/fermées, objets importants, mobilier, traces). Chaque changement cite dans "evenement" la phrase exacte du récit qui l'établit. Sans citation, n'ajoute pas le changement.
 - Choisis le profil de cadrage adapté : dialogue, combat, tension, decouverte, groupe, interieur ou paysage.
 - Pas de dialogue, pas de pensées, pas de suite de l'histoire. N'invente rien qui ne soit pas établi.
-- "promptSdxl" : la MÊME image pour le modèle image (Lustify SDXL, encodeur CLIP), EN ANGLAIS et en MOTS CLÉS séparés par des virgules, jamais en phrases, 40 à 70 mots, du plus important au moins important (CLIP lit ~75 jetons et pèse surtout les premiers), dans cet ordre :
-  1. cadrage et angle (ex. "low angle medium shot") ;
-  2. nombre de personnages visibles (ex. "1 woman, 1 man"), puis chacun décrit de GAUCHE à DROITE dans le cadre, dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite) ;
-  3. pour chacun : race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20) suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, expression ; tenue précise (matières, couleurs, état) ou nudité nommée explicitement avec ce qui est visible ; blessures, sang ; armes et accessoires ;
-  4. l'action et l'interaction physique, en mots clés (ex. "slashing with katana", "kissing", "holding hands") ;
-  5. le décor : lieu, matériaux, objets ;
-  6. la lumière : sources, couleur.
-  Pour renforcer un détail essentiel qui se perd, la syntaxe est (mot clé)1.3 — jamais (mot:1.3). Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing), pas d'articles ni de mots de liaison. Aucun nom propre : le modèle ne connaît pas les personnages.
+- "promptSdxl" : la MÊME image pour le modèle image, ${GABARIT_PROMPT_SCENE_SDXL}
 
 Champs autorisés pour "champ" :
 - personnage : tenue, armure, coiffure, proprete, armesVisibles, accessoires, blessures, cicatrices, salissures, transformations, objetsPortes
@@ -81,7 +103,7 @@ Réponds UNIQUEMENT avec ce JSON strict :
 "camera":{"typePlan":"","angle":"","position":"","profondeur":"","composition":""},
 "lumiere":{"source":"","direction":"","intensite":"","heure":"","meteo":""},
 "ambiance":{"tension":"","emotion":"","rendu":""},
-"promptSdxl":"low angle medium shot, 1 man, adult human man, 45 years old, scarred face, dented plate armor, ...",
+"promptSdxl":"(N years old)1.2 … selon le gabarit ci-dessus",
 "changementsVisuels":[{"cible":"personnage|decor","nom":"","champ":"","operation":"definir|ajouter|retirer","valeur":"","evenement":"citation exacte"}]}`;
 
 function texteSur(valeur: unknown, max = 400): string {
@@ -352,15 +374,41 @@ export function analyserReponseDirection(sortie: string, story: StoryState): Dir
 // Consigne permanente : le modèle image ne voit jamais la conversation. Tout
 // ce qu'il reçoit est rédigé par le modèle narratif, en anglais, sous la
 // forme d'étiquettes courtes adaptées au CLIP de SDXL (77 jetons).
-const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Lustify SDXL, encodeur CLIP) qui ne connaît rien de l'histoire et ne lit bien que l'anglais.
-Réponds UNIQUEMENT par le prompt : une seule ligne, en anglais, en MOTS CLÉS séparés par des virgules, jamais en phrases, 40 à 70 mots, du plus important au moins important (CLIP pèse surtout les premiers mots).
-Aucun nom propre. Décris uniquement ce qui se voit, dans l'ordre : cadrage et angle ; nombre de sujets ; pour chacun race, sexe, âge apparent adulte en chiffre, OBLIGATOIRE pour chaque personnage, écrit « N years old » (celui qu'il paraît selon sa fiche, jamais moins de 20) suivi des marques visibles de cet âge (« 45 years old, mature, crow's feet » ; « 60 years old, wrinkles, grey hair »), carnation exacte, morphologie, cheveux, yeux, expression, tenue précise (matières, couleurs, état) ou nudité nommée explicitement, blessures, armes, accessoires ; action et interaction physique ; décor ; lumière.
-Pour renforcer un détail essentiel, la syntaxe est (mot clé)1.3 — jamais (mot:1.3). Des mots concrets et visuels, jamais de termes vagues (beautiful, epic, amazing), pas d'articles ni de mots de liaison. N'invente rien qui ne soit pas dans la description fournie.`;
+export const CONSIGNE_PROMPT_SDXL = `Tu rédiges des prompts pour un modèle d'image (Lustify SDXL, encodeur CLIP) qui ne connaît rien de l'histoire et ne lit bien que l'anglais.
+Réponds UNIQUEMENT par le prompt, sur une seule ligne, ${GABARIT_PROMPT_SCENE_SDXL}
+N'invente rien qui ne soit pas dans la description fournie.`;
 
-const MOTS_MIN_PROMPT_SDXL = 25;
+export const CONSIGNE_PROMPT_PORTRAIT_SDXL = `Tu rédiges le prompt d'un portrait (avatar) pour un modèle d'image (Lustify SDXL, encodeur CLIP) qui ne connaît rien de l'histoire et ne lit bien que l'anglais.
+Réponds UNIQUEMENT par le prompt, sur une seule ligne, ${GABARIT_PROMPT_PORTRAIT_SDXL}
+N'invente rien qui ne soit pas dans la fiche fournie.`;
+
+// Seuils de relance : en dessous, le prompt est jugé bâclé ; au-dessus (le
+// narrateur répétait lieu, lumière et plan pour chaque personnage, jusqu'à
+// 90 mots), le modèle d'image en ignore la fin. Dans les deux cas, il est
+// redemandé avec la consigne courte.
+const MOTS_MIN_PROMPT_SDXL = 20;
+const MOTS_MAX_PROMPT_SDXL = 55;
+
+function nombreMots(prompt: string): number {
+  return prompt.split(/\s+/).filter(Boolean).length;
+}
 
 export function promptSdxlTropCourt(prompt: string | undefined): boolean {
-  return !prompt || prompt.split(/\s+/).filter(Boolean).length < MOTS_MIN_PROMPT_SDXL;
+  return !prompt || nombreMots(prompt) < MOTS_MIN_PROMPT_SDXL;
+}
+
+export function promptSdxlTropLong(prompt: string | undefined): boolean {
+  return !!prompt && nombreMots(prompt) > MOTS_MAX_PROMPT_SDXL;
+}
+
+// Au-delà de 3 personnages, la consigne fait résumer les autres (« 3 guards
+// in background ») : seuls les 3 premiers doivent avoir leur âge.
+const MAX_PERSONNAGES_DECRITS = 3;
+
+/** Vrai s'il manque un personnage visible : un âge « years old » par personnage décrit. */
+export function personnagesManquantsPromptSdxl(prompt: string | undefined, nombreVisibles: number): boolean {
+  const ages = (prompt ?? '').match(/\byears? old\b/gi)?.length ?? 0;
+  return ages < Math.min(nombreVisibles, MAX_PERSONNAGES_DECRITS);
 }
 
 export function nettoyerPromptSdxl(sortie: string): string | undefined {
@@ -379,6 +427,7 @@ export async function redigerPromptSdxl(
   cadrage: string,
   signal?: AbortSignal,
   storyId?: string,
+  consigne = CONSIGNE_PROMPT_SDXL,
 ): Promise<string | undefined> {
   const sortie = await appellerModele({
     ...configurationLLM(settings),
@@ -387,7 +436,7 @@ export async function redigerPromptSdxl(
     maxTokens: 420,
     signal,
     messages: [
-      { role: 'system', content: CONSIGNE_PROMPT_SDXL },
+      { role: 'system', content: consigne },
       { role: 'user', content: `Cadrage imposé : ${cadrage}\n\nDescription :\n${texteProfil(description, settings)}` },
     ],
   });
@@ -422,6 +471,7 @@ export async function redigerPromptPortraitSdxl(
     'portrait en buste, cadrage serré visage et épaules, fond sombre uni',
     undefined,
     story.meta.id,
+    CONSIGNE_PROMPT_PORTRAIT_SDXL,
   );
 }
 
@@ -499,15 +549,21 @@ export async function demanderDirectionArtistique(
       direction.structure.personnages = direction.structure.personnages.map((p) =>
         p.nom === story.meta.personnageNom && !p.apparence ? { ...p, apparence: fiche } : p,
       );
-      if (promptSdxlTropCourt(direction.structure.promptSdxl)) {
+      const promptSdxl = direction.structure.promptSdxl;
+      const visibles = direction.structure.personnages.map((p) => p.nom);
+      if (promptSdxlTropCourt(promptSdxl) || promptSdxlTropLong(promptSdxl) || personnagesManquantsPromptSdxl(promptSdxl, visibles.length)) {
         // Consigne permanente : le prompt image est toujours rédigé par le
-        // modèle narratif ; s'il l'a omis ou bâclé (quelques mots au lieu de
-        // 40 à 70 mots clés), on le lui redemande à partir de sa propre
-        // direction artistique, qui contient tous les détails.
+        // modèle narratif ; s'il l'a omis, bâclé (quelques mots au lieu de
+        // 25 à 45 mots clés), trop allongé ou s'il a oublié un personnage
+        // visible (un âge par personnage), on le lui redemande à partir de sa
+        // propre direction artistique, qui contient tous les détails.
         direction.structure.promptSdxl = await redigerPromptSdxl(
           settings,
           formaterPromptImage(direction.structure).split('[STYLE VISUEL]')[0],
-          `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
+          [
+            `${direction.structure.camera.typePlan}, ${direction.structure.camera.angle}`,
+            visibles.length ? `${visibles.length} personnage(s) visible(s), tous à décrire, de gauche à droite : ${visibles.join(', ')}` : 'aucun personnage visible',
+          ].join(' ; '),
           signal,
           story.meta.id,
         ).catch(() => undefined) ?? direction.structure.promptSdxl;
