@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installation d'Elyndor Cloud sur un pod RTX 5090 (32 Go) : Cydonia 24B
-# Q5_K_M + modules LoRA RP (Elyndor) et agent (Cortana) pour la narration,
+# Q4_K_M + modules LoRA RP (Elyndor) et agent (Cortana) pour la narration,
 # Lustify SDXL + modules pour les images, bge-m3 pour les embeddings.
 # Idempotent : chaque étape est sautée si son résultat existe déjà.
 # Les modules LoRA du narrateur sont déposés dans $ELYNDOR_ROOT/models/text/
@@ -31,12 +31,7 @@ if [ ! -x "$RACINE/llama.cpp/build/bin/llama-server" ]; then
     || etat "ÉCHEC compilation (logs/cmake.log)"
 fi
 
-etat "Cydonia 24B Q5_K_M"
-[ -f "$RACINE/models/text/Cydonia-24B-v4.3-Q5_K_M.gguf" ] || {
-  "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q5_K_M.gguf --local-dir "$RACINE/models/text" > /dev/null &&
-  mv "$RACINE/models/text/Cydonia-24B-v4zg-Q5_K_M.gguf" "$RACINE/models/text/Cydonia-24B-v4.3-Q5_K_M.gguf"; }
-
-# Q4_K_M : ~2,5 Go de moins que Q5, pour laisser Lustify entier sur le GPU.
+# Q4_K_M (et non Q5) : ~2,5 Go de moins, pour laisser Lustify entier sur le GPU.
 etat "Cydonia 24B Q4_K_M"
 [ -f "$RACINE/models/text/Cydonia-24B-v4.3-Q4_K_M.gguf" ] || {
   "$HF" download TheDrummer/Cydonia-24B-v4.3-GGUF Cydonia-24B-v4zg-Q4_K_M.gguf --local-dir "$RACINE/models/text" > /dev/null &&
