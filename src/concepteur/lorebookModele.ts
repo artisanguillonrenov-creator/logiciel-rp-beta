@@ -122,8 +122,14 @@ export function modifierEtatLore(actuel: EtatLore, changement: Pick<EtatLore, 'c
       JSON.stringify([resultat.changements, resultat.ajouts, resultat.brouillons])) return actuel;
   const precedent: RevisionLore = { numero: actuel.numero, date: actuel.date, motif: motif.slice(0, 120),
     changements: copie(actuel.changements), ajouts: copie(actuel.ajouts), brouillons: copie(actuel.brouillons) };
-  return { ...resultat, numero: actuel.numero + 1, date: Date.now(),
-    historique: [...actuel.historique, precedent].slice(-8) };
+  const historique = [...actuel.historique, precedent].slice(-8);
+  // AsyncStorage Android a un plafond ; réduire l’historique plutôt que saturer le stockage
+  // et perdre la possibilité de sauvegarder les histoires. Ne jamais tronquer les fiches actives.
+  while (historique.length && JSON.stringify({ ...resultat, historique }).length > 1_500_000) historique.shift();
+  if (JSON.stringify({ ...resultat, historique }).length > 1_500_000) {
+    throw new Error('Lorebook trop volumineux sur cet appareil. Exporte le JSON avant de poursuivre.');
+  }
+  return { ...resultat, numero: actuel.numero + 1, date: Date.now(), historique };
 }
 export function restaurerRevisionLore(actuel: EtatLore, numero: number): EtatLore {
   const revision = actuel.historique.find(r => r.numero === numero);
@@ -146,6 +152,8 @@ export function ficheOrigine(e: ElyndorEntryChargee): FicheEditable {
 export function ficheProtegee(f: FicheEditable, id: string): boolean {
   const cat = normaliserLore(f.category);
   return id.startsWith('elyndor-') && (f.constant ||
+    // Le socle historique du monde contient aussi des fiches non constantes.
+    (Number(id.slice(8)) >= 0 && Number(id.slice(8)) <= 13) ||
     ['royaume', 'recurrent', 'profil', 'profil racial', 'physique'].some(s => cat.includes(s)) ||
     /^(presentation d elyndor|parametres d elyndor)/.test(normaliserLore(f.titre)));
 }
