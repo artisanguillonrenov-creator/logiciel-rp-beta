@@ -8,7 +8,7 @@ import Bouton from './Bouton';
 import { VERSION_APP } from '../version';
 import {
   analyserInstantaneAtelier, creerInstantaneAtelier, LIMITES_ATELIER, PROFILS_ATELIER,
-  type ConfigurationAtelier, type EtatAtelier, type ParametresAtelier, type ProfilAtelier,
+  type ConfigurationAtelier, type EtatAtelier, type ParametresAtelier, type ProfilAtelier, type CleParametreSimple,
 } from '../concepteur/configuration';
 import {
   enregistrerEtatAtelier, importerConfigurationAtelier, lireConfigurationAtelier,
@@ -18,7 +18,7 @@ import {
 export type SectionConfiguration = 'profils' | 'modeles' | 'narration' | 'recherche' | 'instantanes';
 
 const NOMS: Record<ProfilAtelier, string> = { production: 'Production', test: 'Test', benchmark: 'Benchmark' };
-const CHAMPS: Record<keyof ParametresAtelier, { nom: string; aide: string }> = {
+const CHAMPS: Record<CleParametreSimple, { nom: string; aide: string }> = {
   budgetLorePassages: { nom: 'Budget du lore', aide: 'Caractères des passages remontés par la recherche.' },
   maxSouvenirs: { nom: 'Nombre de souvenirs', aide: 'Nombre maximal de messages anciens pertinents retenus.' },
   temperatureDelta: { nom: 'Correction de température', aide: "Ajustement de la température choisie pour l'histoire." },
@@ -26,7 +26,7 @@ const CHAMPS: Record<keyof ParametresAtelier, { nom: string; aide: string }> = {
 };
 const COMMIT_BUNDLE = process.env.EXPO_PUBLIC_GIT_SHA || 'non renseigné';
 const erreurTexte = (e: unknown) => e instanceof Error ? e.message : 'Opération impossible.';
-const valeurTexte = (v: number, cle: keyof ParametresAtelier) =>
+const valeurTexte = (v: number, cle: CleParametreSimple) =>
   cle === 'temperatureDelta' ? (v > 0 ? '+' : '') + v.toFixed(2) : String(v);
 
 export default function AtelierConfigurationPanel({ section }: { section: SectionConfiguration }) {
@@ -56,7 +56,7 @@ export default function AtelierConfigurationPanel({ section }: { section: Sectio
   function changerProfil(profil: ProfilAtelier) {
     if (config && !operation) void sauvegarder({ profilActif: profil, profils: config.profils }, 'Profil ' + profil);
   }
-  function changerValeur(cle: keyof ParametresAtelier, sens: -1 | 1) {
+  function changerValeur(cle: CleParametreSimple, sens: -1 | 1) {
     if (!config || operation) return;
     const p = config.profilActif, limites = LIMITES_ATELIER[cle];
     const valeur = config.profils[p][cle];
@@ -130,7 +130,7 @@ export default function AtelierConfigurationPanel({ section }: { section: Sectio
 
   const profil = config?.profilActif;
   const valeurs = profil ? config?.profils[profil] : null;
-  const champs: Array<keyof ParametresAtelier> = section === 'recherche'
+  const champs: CleParametreSimple[] = section === 'recherche'
     ? ['budgetLorePassages', 'maxSouvenirs'] : ['temperatureDelta', 'margeTokensEtat'];
 
   return <View>
