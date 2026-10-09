@@ -2,17 +2,14 @@ import { Directory, File, Paths } from 'expo-file-system';
 import type { EntreeJournal } from '../engine/journalDiagnostic';
 
 // Journal de diagnostic d'une histoire : un fichier JSON Lines par histoire
-// dans le dossier documents de l'app, hors AsyncStorage (plafond de 6 Mo).
-// Écritures groupées (toutes les 2 s au plus) et plafond par histoire : au-delà,
-// les entrées les plus anciennes sont abandonnées.
+// dans les documents de l'app, hors RKStorage / AsyncStorage.
+// Aucun effacement automatique lié à une taille limite.
 
 const DOSSIER = 'diagnostics';
-const TAILLE_MAX = 8_000_000;
 const DELAI_ECRITURE_MS = 2000;
 
 interface Tampon {
   lignes: string[];
-  taille: number;
   charge: boolean;
 }
 
@@ -30,7 +27,7 @@ function fichier(storyId: string): File {
 async function tampon(storyId: string): Promise<Tampon> {
   let t = tampons.get(storyId);
   if (!t) {
-    t = { lignes: [], taille: 0, charge: false };
+    t = { lignes: [], charge: false };
     tampons.set(storyId, t);
   }
   if (!t.charge) {
@@ -39,16 +36,9 @@ async function tampon(storyId: string): Promise<Tampon> {
     if (f.exists) {
       const existantes = (await f.text()).split('\n').filter(Boolean);
       t.lignes = [...existantes, ...t.lignes];
-      t.taille = t.lignes.reduce((s, l) => s + l.length + 1, 0);
     }
   }
   return t;
-}
-
-function elaguer(t: Tampon): void {
-  while (t.taille > TAILLE_MAX && t.lignes.length > 1) {
-    t.taille -= (t.lignes.shift()?.length ?? 0) + 1;
-  }
 }
 
 async function ecrire(storyId: string): Promise<void> {
@@ -70,8 +60,6 @@ export function ajouterAuJournal(storyId: string, entree: EntreeJournal): void {
   }
   const ligne = JSON.stringify(entree);
   t.lignes.push(ligne);
-  t.taille += ligne.length + 1;
-  elaguer(t);
   if (!minuteurs.has(storyId)) {
     minuteurs.set(storyId, setTimeout(() => { void ecrire(storyId).catch(() => {}); }, DELAI_ECRITURE_MS));
   }
@@ -80,7 +68,6 @@ export function ajouterAuJournal(storyId: string, entree: EntreeJournal): void {
 export async function lireJournal(storyId: string): Promise<EntreeJournal[]> {
   try {
     const t = await tampon(storyId);
-    elaguer(t);
     return t.lignes.flatMap((l) => {
       try {
         return [JSON.parse(l) as EntreeJournal];
