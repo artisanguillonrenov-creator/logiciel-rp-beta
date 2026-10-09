@@ -13,6 +13,9 @@ import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
 import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
 import LorebookPanel from '../components/LorebookPanel';
+import AtelierVisuelPanel from '../components/AtelierVisuelPanel';
+import AtelierMaintenancePanel from '../components/AtelierMaintenancePanel';
+import AtelierCommercialPanel from '../components/AtelierCommercialPanel';
 import { RESPONSABILITES_NARRATIVES } from '../engine/narrativeBehaviorKernel';
 import { VERSION_APP } from '../version';
 import { useAutomationDiagnostics } from '../automation/useAutomationDiagnostics';
@@ -32,11 +35,11 @@ const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string;
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Recherche et mémoire', detail: 'Budget lore et nombre de souvenirs', pret: true },
   { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
-  { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images à développer', pret: false },
+  { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images et portraits actifs', pret: true },
   { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
   { id: 'diagnostics', titre: 'Diagnostics', detail: 'Cache, traces et erreurs', pret: true },
-  { id: 'maintenance', titre: 'Maintenance', detail: 'Versions et mises à jour avancées', pret: false },
-  { id: 'commercial', titre: 'Administration commerciale', detail: 'Gestion des abonnements, plus tard', pret: false },
+  { id: 'maintenance', titre: 'Maintenance', detail: 'Versions, cache, audit et routines', pret: true },
+  { id: 'commercial', titre: 'Administration commerciale', detail: 'Simulation locale · paiements non connectés', pret: true },
   { id: 'profils', titre: 'Profils de configuration', detail: 'Production, Test, Benchmark', pret: true },
   { id: 'instantanes', titre: 'Instantanés et historique', detail: 'Exporter, importer, restaurer', pret: true },
 ];
@@ -234,6 +237,27 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>BIBLIOTHÈQUE CANONIQUE</Text>
               <LorebookPanel />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'visuel' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>PRÉRÉGLAGES VISUELS</Text>
+              <AtelierVisuelPanel />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'maintenance' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>OUTILS DE MAINTENANCE</Text>
+              <AtelierMaintenancePanel />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'commercial' ? (
+            <Panneau style={styles.bloc}>
+              <Text style={styles.label}>PRÉVISION COMMERCIALE — HORS LIGNE</Text>
+              <AtelierCommercialPanel />
             </Panneau>
           ) : null}
 
