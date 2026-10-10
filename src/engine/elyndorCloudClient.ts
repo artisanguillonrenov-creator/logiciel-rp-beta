@@ -86,7 +86,7 @@ export function configurationLLM(settings: AppSettings, _modeleOverride?: string
   const route = resoudreRouteTexte(settings);
   return {
     apiKey: route.apiKey, model: route.model,
-    moteurInference: route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur',
+    moteurInference: (route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
     baseUrl: route.url.replace(/\/chat\/completions$/, ''),
   };
 }
