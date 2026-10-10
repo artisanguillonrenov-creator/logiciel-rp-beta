@@ -53,6 +53,7 @@ export default function FournisseursPanel(){
       const v:AppSettings={
         ...cfg,
         moteurInference:mode==='openrouter'?'openrouter':'serveur',
+        fournisseurNarration:mode,
         serveurLocalUrl:mode==='runpod'?ELYNDOR_CLOUD_REGLAGE_URL:cfg.serveurLocalUrl,
         serveurLocalModele:mode==='runpod'?'cydonia-24b-elyndor':cfg.serveurLocalModele,
         fournisseurImages:selection,
