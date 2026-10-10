@@ -18,12 +18,15 @@ export function reglagesFournisseursActifs(): AppSettings {
 }
 
 export interface RouteTexte {
-  fournisseur: 'openrouter' | 'openai' | 'runpod' | 'serveur';
+  fournisseur: 'openrouter' | 'openai' | 'runpod' | 'serveur' | 'chatgpt';
   url: string;
   model: string;
   apiKey: string;
 }
 export function resoudreRouteTexte(settings: AppSettings): RouteTexte {
+  if (settings.moteurInference === 'chatgpt' || settings.fournisseurNarration === 'chatgpt') {
+    return { fournisseur: 'chatgpt', url: 'https://elyndor-chatgpt-plus-gateway.onrender.com/chat', model: settings.chatgptModel || '', apiKey: '' };
+  }
   if (settings.moteurInference === 'openai' || settings.fournisseurNarration === 'openai') {
     return {
       fournisseur: 'openai',
