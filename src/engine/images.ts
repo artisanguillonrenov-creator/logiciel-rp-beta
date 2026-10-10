@@ -167,8 +167,7 @@ export async function genererImageScene(
   const selection = selectionnerReferencesGenerateur(references);
   const referencesScene = selection.filter(ref =>
     (ref.role === 'scene' && visuel.referencesScenePrecedente) ||
-    (ref.role === 'personnage' && visuel.referencesPersonnagesScene) ||
-    (ref.role === 'race' && visuel.referencesPersonnagesScene));
+    (ref.role === 'personnage' && visuel.referencesPersonnagesScene));
   return generer({
     prompt: enrichirPromptLong(formaterPromptImage(dirigee, referencesScene.length ? references : []), visuel.positifScene),
     promptCourt: enrichirPromptCourt(construirePromptSdxl(dirigee), visuel.positifScene),
@@ -215,11 +214,9 @@ async function genererPortrait(
   negatifSupplementaire = '',
   storyId?: string,
 ): Promise<string> {
-  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
-    throw new ErreurImagesIndisponibles();
-  }
+  const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
-  return generateurCourant({
+  return generer({
     prompt: enrichirPromptLong(prompt, visuel.positifPortrait),
     promptCourt: enrichirPromptCourt(promptCourt, visuel.positifPortrait),
     negatif: enrichirNegatifVisuel(
