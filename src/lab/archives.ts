@@ -31,6 +31,7 @@ export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSour
 export async function importerArchiveLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{atelier:AtelierLocal;nombre:number;complet:boolean}> {
   const selection = await File.pickFileAsync({mimeTypes:['application/zip','application/octet-stream','application/x-zip-compressed']});
   if (selection.canceled || !selection.result) throw new Error('Sélection annulée.');
+  if (selection.result.size > 32 * 1024 * 1024) throw new Error('Archive trop lourde pour cette tablette : intervention GPT ou Claude nécessaire.');
   const entree = await JSZip.loadAsync(await selection.result.arrayBuffer());
   const chemins = Object.keys(entree.files).filter((nom)=>!entree.files[nom].dir);
   if (chemins.length>2500) throw new Error('Archive trop volumineuse en nombre de fichiers.');
