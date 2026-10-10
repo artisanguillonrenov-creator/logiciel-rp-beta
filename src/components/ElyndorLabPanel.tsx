@@ -123,6 +123,11 @@ export default function ElyndorLabPanel() {
     });
     return ()=>listener.remove();
   },[depot]);
+  useEffect(()=>()=>{
+    // Quitter l'écran concepteur peut démonter le panneau avant les 1200 ms.
+    // La copie JSON demeure la source de récupération, et cette écriture est sérialisée.
+    if(journal.current.estSale())void viderBrouillon().catch(()=>undefined);
+  },[depot]);
   async function changerVue(suivante:Vue){
     try{
       if(journal.current.estSale())await viderBrouillon();
