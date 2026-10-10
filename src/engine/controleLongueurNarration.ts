@@ -1,6 +1,5 @@
 import { assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
 import { reglagesFournisseursActifs, resoudreRouteTexte } from './fournisseursRuntime';
-import { genererReponseComplete } from './completionReponse';
 import type { PlageLongueur } from '../concepteur/reglagesNarrateur';
 
 /**
@@ -102,60 +101,29 @@ interface OptionsControle {
 }
 
 /**
- * Maximum deux reformulations. Pas de coupe aveugle à un nombre de caractères.
- * Quand le tokenizer est disponible, une réponse hors plage ne passe jamais
- * silencieusement : échec explicite plutôt que réponse non conforme.
+ * La fourchette de longueur est un objectif narratif, pas un motif de refus.
+ * Ne jamais reformuler, tronquer ou régénérer une réponse uniquement
+ * pour respecter un nombre de tokens. Les contrôles de cohérence, de contenu,
+ * d'agentivité du joueur et la validation de publication restent inchangés.
  */
 export async function controlerLongueurNarration({
-  texte, plage, temperature, storyId, samplers, compter = compterTokensNarration,
-  reformuler,
+  texte, plage, compter = compterTokensNarration,
 }: OptionsControle): Promise<ResultatControleLongueur> {
+  const propre = texte.trim();
   const verification = compter === compterTokensNarration &&
     resoudreRouteTexte(reglagesFournisseursActifs()).fournisseur !== 'runpod'
     ? 'estimee' as const : 'exacte' as const;
-  let candidate = texte.trim();
-  let tokens = await compter(candidate);
-  const produire = reformuler ?? (async (a: string, cible: PlageLongueur) => {
-    const texteGenere = await genererReponseComplete({
-      apiKey: '', model: '',
-      storyId, samplers,
-      temperature: Math.min(temperature, 0.7),
-      maxTokens: cible.max,
-      diagnosticLabel: 'Régulation du narrateur — longueur',
-      messages: [
-        { role: 'system', content: 'Tu es un éditeur de texte de jeu de rôle. Réécris la narration sans changer les faits, les noms, les paroles essentielles, les décisions du joueur ni les conséquences. N\'ajoute rien à l\'histoire. Termine naturellement chaque phrase et chaque réplique. Retourne uniquement la narration, sans commentaires ni bloc d\'état.' },
-        { role: 'user', content: `Réécris le texte suivant entre ${cible.min} et ${cible.max} tokens de texte visible, en visant ${Math.round((cible.min + cible.max) / 2)} tokens. Préserve les événements, le point d'arrêt et les répliques. Texte :\n\n${a}` },
-      ],
-    }, undefined, false);
-    return texteGenere.trim();
-  });
-
-  for (let essai = 0; essai <= 2; essai++) {
-    if (finDeNarrationComplete(candidate) && tokens !== null && plageRespectee(tokens, plage)) {
-      return { texte: candidate, tokens, conforme: true, corrige: essai > 0, verification };
-    }
-    // Ne pas relancer Cydonia si seul un fragment terminal est coupé et
-    // que la dernière phrase entière tient déjà dans le budget MIN–MAX.
-    if (tokens !== null && plageRespectee(tokens, plage) &&
-        !finDeNarrationComplete(candidate)) {
-      const finRecuperee = await recupererFinCompleteDansPlage(candidate, plage, compter);
-      if (finRecuperee) {
-        return { ...finRecuperee, conforme: true, corrige: true, verification };
-      }
-    }
-    if (essai === 2) break;
-    // Une longueur invérifiable n'est jamais publiée en mode strict.
-    if (tokens === null) throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
-    const suivant = (await produire(candidate, plage)).trim();
-    if (!suivant) break;
-    candidate = suivant;
-    tokens = await compter(candidate);
+  let tokens: number | null = null;
+  try {
+    tokens = await compter(propre);
+  } catch {
+    // L'indisponibilité du compteur ne doit jamais empêcher de jouer.
   }
-  if (tokens !== null && !plageRespectee(tokens, plage)) {
-    throw new Error(`Réponse hors fourchette (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
-  }
-  if (tokens !== null && !finDeNarrationComplete(candidate)) {
-    throw new Error(`Réponse dans la fourchette mais phrase incomplète (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
-  }
-  throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
+  return {
+    texte: propre,
+    tokens,
+    conforme: tokens !== null && plageRespectee(tokens, plage),
+    corrige: false,
+    verification: tokens === null ? 'indisponible' : verification,
+  };
 }
