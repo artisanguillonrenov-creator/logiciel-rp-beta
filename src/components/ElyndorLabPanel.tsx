@@ -11,6 +11,7 @@ import {
 } from '../lab/workspaceCore';
 import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
 import { exporterSourcesLab, importerArchiveLab } from '../lab/archives';
+import { comparerArbres, comparerTexte, type ResumeImport } from '../lab/diff';
 
 type Vue = 'fichiers' | 'editeur' | 'tests' | 'maj' | 'versions' | 'secours' | 'archives';
 const ONGLETS: Array<{id:Vue;nom:string}> = [
@@ -27,6 +28,7 @@ export default function ElyndorLabPanel() {
   const [dossier,setDossier] = useState('');
   const [selection,setSelection] = useState('');
   const [code,setCode] = useState('');
+  const [affichageEditeur,setAffichageEditeur] = useState<'code'|'diff'>('code');
   const [editionModifiee,setEditionModifiee] = useState(false);
   const [recherche,setRecherche] = useState('');
   const [nomVersion,setNomVersion] = useState('Expérience');
@@ -36,7 +38,7 @@ export default function ElyndorLabPanel() {
   const [message,setMessage] = useState('');
   const [erreur,setErreur] = useState('');
   const [occupe,setOccupe] = useState(false);
-  const [importPret,setImportPret] = useState<{atelier:AtelierLocal;nombre:number;complet:boolean}|null>(null);
+  const [importPret,setImportPret] = useState<{atelier:AtelierLocal;nombre:number;complet:boolean;details:ResumeImport}|null>(null);
 
   useEffect(()=>{
     let actif=true;
@@ -48,6 +50,7 @@ export default function ElyndorLabPanel() {
   const sources=depot?.sources??{};
   const fichiers = useMemo(()=>atelier && depot ? fichiersActuels(depot.sources,atelier):{},[atelier,depot]);
   const noms = useMemo(()=>Object.keys(fichiers).sort(),[fichiers]);
+  const differenceEditeur = useMemo(()=>comparerTexte(selection?sources[selection]??'':'',code),[selection,sources,code]);
   const dossierContenu = useMemo(()=>{
     const sousDossiers = new Set<string>();
     const presents:string[]=[];
@@ -86,7 +89,7 @@ export default function ElyndorLabPanel() {
   async function ouvrirFichier(chemin:string){
     try {
       if(editionModifiee)await sauvegarderBrouillon();
-      setSelection(chemin);setCode(fichiers[chemin] ?? '');
+      setSelection(chemin);setCode(fichiers[chemin] ?? '');setAffichageEditeur('code');
       setEditionModifiee(false);setControles(null);setVue('editeur');setErreur('');setMessage('');
     }catch(e){signaler(e);}
   }
@@ -99,7 +102,7 @@ export default function ElyndorLabPanel() {
       if(editionModifiee) await sauvegarderBrouillon();
       const suivant=modifierFichier(atelier,sources,chemin,'');
       await appliquer(suivant,'Fichier local créé : '+chemin);
-      setSelection(chemin);setCode('');setEditionModifiee(false);setControles(null);setVue('editeur');
+      setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
     }catch(e){signaler(e);}
   }
   function demanderSuppression(){
@@ -161,7 +164,8 @@ export default function ElyndorLabPanel() {
       if(editionModifiee)await sauvegarderBrouillon();
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await importerArchiveLab(atelier,depot);
-      setImportPret(resultat);
+      const details=comparerArbres(fichiersActuels(sources,atelier),fichiersActuels(sources,resultat.atelier));
+      setImportPret({...resultat,details});
       messageOk(resultat.nombre+' fichiers analysés. Aucun changement appliqué : confirme l’importation ci-dessous.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
@@ -238,9 +242,27 @@ export default function ElyndorLabPanel() {
         <View style={styles.bandeau}>
           <Text style={styles.label}>{code.split('\n').length} lignes · {code.length} caractères</Text>
         </View>
-        <TextInput style={styles.editeur} value={code} onChangeText={(t)=>{setCode(t);setEditionModifiee(true);setControles(null);}}
+        <View style={styles.actions}>
+          <Pressable style={[styles.pastille,affichageEditeur==='code'&&styles.pastilleActive]} onPress={()=>setAffichageEditeur('code')}>
+            <Text style={styles.textePastille}>Code</Text>
+          </Pressable>
+          <Pressable style={[styles.pastille,affichageEditeur==='diff'&&styles.pastilleActive]} onPress={()=>setAffichageEditeur('diff')}>
+            <Text style={styles.textePastille}>Différences</Text>
+          </Pressable>
+        </View>
+        {affichageEditeur==='code' ? <TextInput style={styles.editeur} value={code} onChangeText={(t)=>{setCode(t);setEditionModifiee(true);setControles(null);}}
           multiline autoCorrect={false} autoCapitalize="none" textAlignVertical="top" scrollEnabled
-          placeholder="Colle ton code ici…" placeholderTextColor={couleurs.texteFaible}/>
+          placeholder="Colle ton code ici…" placeholderTextColor={couleurs.texteFaible}/> :
+          <View style={styles.bandeau}>
+            <Text style={styles.label}>Différences par rapport au fichier source d'origine</Text>
+            {differenceEditeur.length===0?<Text style={styles.aide}>Aucune différence détectée.</Text>:differenceEditeur.map((diff,i)=><View key={String(i)} style={styles.controle}>
+              <Text style={styles.danger}>− Original à partir de L{diff.ligneAncien}</Text>
+              <Text selectable style={styles.codePrevisualisation}>{diff.ancien.slice(0,5000)||'(aucune ligne)'}</Text>
+              <Text style={styles.succes}>+ Modifié à partir de L{diff.ligneNouveau}</Text>
+              <Text selectable style={styles.codePrevisualisation}>{diff.nouveau.slice(0,5000)||'(aucune ligne)'}</Text>
+              {diff.ancien.length>5000||diff.nouveau.length>5000?<Text style={styles.aide}>Aperçu limité à 5 000 caractères par bloc. Le fichier enregistré reste complet.</Text>:null}
+            </View>)}
+          </View>}
         <View style={styles.actions}>
           <Bouton titre="Coller" variante="secondaire" onPress={()=>{void Clipboard.getStringAsync().then((texte)=>{setCode(texte);setEditionModifiee(true);}).catch(signaler);}} style={styles.petita}/>
           <Bouton titre="Copier" variante="secondaire" onPress={()=>{void Clipboard.setStringAsync(code);}} style={styles.petita}/>
@@ -315,6 +337,8 @@ export default function ElyndorLabPanel() {
       {importPret ? <View style={styles.bandeau}>
         <Text style={styles.label}>Import en attente de confirmation</Text>
         <Text style={styles.aide}>{importPret.nombre} fichiers · {importPret.complet?'Archive de sources complète':'Correctif partiel'}.</Text>
+        <Text style={styles.label}>Ajouts : {importPret.details.ajoutes.length} · Modifications : {importPret.details.modifies.length} · Suppressions : {importPret.details.supprimes.length}</Text>
+        {[...importPret.details.ajoutes.slice(0,3).map(p=>' + '+p),...importPret.details.modifies.slice(0,3).map(p=>' ~ '+p),...importPret.details.supprimes.slice(0,3).map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)
         <Text style={styles.aide}>Un instantané des sources actuelles sera créé avant l'import.</Text>
         <Bouton titre="Confirmer l'import dans la copie locale" onPress={()=>{void confirmerImport();}} desactive={occupe}/>
         <Bouton titre="Annuler l'import" variante="secondaire" onPress={()=>setImportPret(null)}/>
@@ -348,5 +372,6 @@ const styles=StyleSheet.create({
   ligneActive:{borderColor:couleurs.dore,borderWidth:1},
   fichier:{color:couleurs.texte,fontFamily:polices.texteSemiGras,fontSize:14},
   fichierDossier:{color:couleurs.doreClair,fontFamily:polices.texteSemiGras,fontSize:14},
-  controle:{backgroundColor:couleurs.fondCarte,borderRadius:rayon.sm,padding:espacement.md,gap:4}
+  controle:{backgroundColor:couleurs.fondCarte,borderRadius:rayon.sm,padding:espacement.md,gap:4},
+  codePrevisualisation:{fontFamily:'monospace',fontSize:12,color:couleurs.texte,backgroundColor:'#070E1B',padding:8,borderRadius:rayon.sm}
 });
