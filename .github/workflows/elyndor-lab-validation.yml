@@ -9,6 +9,7 @@ on:
       - src/lab/**
       - src/components/ElyndorLabPanel.tsx
       - tests/elyndorLabSafety.test.ts
+      - tests/elyndorLabZipIntegration.test.ts
       - tests/elyndorLab.test.ts
       - package.json
       - package-lock.json
