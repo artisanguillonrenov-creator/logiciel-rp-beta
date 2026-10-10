@@ -102,7 +102,6 @@ export default function AtelierVisuelPanel() {
         if(/^[a-z0-9_-]{1,40}$/i.test(nom)){modifierModule(mode,nom,0.5);setNomModule('');}
       }}/>
     </View>;
-  };
   return <View>
     <Text style={styles.titre}>Direction artistique et génération</Text>
     <Text style={styles.aide}>Ces paramètres ajustent le style et la composition des prochaines images. Aucun changement de modèle ni d'image déjà enregistrée. Les cadrages ci-dessous concernent uniquement les scènes 16:9, pas les portraits des personnages.</Text>
