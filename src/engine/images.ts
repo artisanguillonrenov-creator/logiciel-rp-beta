@@ -1,7 +1,7 @@
 import { Image } from 'react-native';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import { reglerDirectionIllustration, negatifCadrageIllustration } from './directionIllustration';
-import { appliquerPresetVisuel, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
+import { appliquerModulesVisuels, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
 import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
@@ -133,6 +133,21 @@ export async function collecterReferencesScene(
 // est exclu par le prompt négatif, en plus du filtrage du texte en amont.
 const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
 
+/** Garde en tête les déclencheurs LoRA du prompt anglais, puis place les
+ * consignes concepteur avant le reste (priorité dans le CLIP). */
+function enrichirPromptCourt(prompt: string | undefined, ajout: string): string | undefined {
+  const extra = ajout.trim();
+  if (!extra || !prompt) return prompt;
+  const parties = prompt.split(', ');
+  if (parties[0] === 'elyndor style' && parties.length >= 2) {
+    return [...parties.slice(0, 2), extra, ...parties.slice(2)].join(', ');
+  }
+  return [extra, prompt].join(', ');
+}
+function enrichirPromptLong(prompt: string, ajout: string): string {
+  return ajout.trim() ? prompt + '\n\n[INSTRUCTIONS VISUELLES CONCEPTEUR]\n' + ajout.trim() : prompt;
+}
+
 function negatifPourProfil(profil: ProfilContenu | undefined): string {
   return profil === 'adulte' ? negatifAplati() : `${negatifAplati()}, ${NEGATIF_GRAND_PUBLIC}`;
 }
@@ -150,19 +165,24 @@ export async function genererImageScene(
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
   const dirigee = reglerDirectionIllustration(structure, visuel);
   const selection = selectionnerReferencesGenerateur(references);
-  const referencesScene = visuel.referencesPersonnagesScene
-    ? selection
-    : selection.filter(ref => ref.role === 'scene');
+  const referencesScene = selection.filter(ref =>
+    (ref.role === 'scene' && visuel.referencesScenePrecedente) ||
+    (ref.role === 'personnage' && visuel.referencesPersonnagesScene) ||
+    (ref.role === 'race' && visuel.referencesPersonnagesScene));
   return generateurCourant({
-    prompt: formaterPromptImage(dirigee, references),
-    promptCourt: construirePromptSdxl(dirigee),
+    prompt: enrichirPromptLong(formaterPromptImage(dirigee, referencesScene.length ? references : []), visuel.positifScene),
+    promptCourt: enrichirPromptCourt(construirePromptSdxl(dirigee), visuel.positifScene),
     negatif: enrichirNegatifVisuel(
-      [negatifPourProfil(profil), negatifCadrageIllustration(visuel)].filter(Boolean).join(', '),
+      [negatifPourProfil(profil), negatifCadrageIllustration(visuel), visuel.negatifScene].filter(Boolean).join(', '),
       visuel,
     ),
-    modules: appliquerPresetVisuel(modulesPourScene(dirigee), visuel),
+    modules: appliquerModulesVisuels(modulesPourScene(dirigee), visuel, 'scene'),
     references: referencesScene,
     format: '16:9',
+    size: visuel.tailleScene,
+    ...(visuel.pasScene !== null ? { steps: visuel.pasScene } : {}),
+    ...(visuel.guidanceScene !== null ? { guidance: visuel.guidanceScene } : {}),
+    ...(visuel.graineScene !== null ? { seed: visuel.graineScene } : {}),
     storyId,
   });
 }
@@ -200,14 +220,18 @@ async function genererPortrait(
   }
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
   return generateurCourant({
-    prompt,
-    promptCourt,
-    negatif: enrichirNegatifVisuel([negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '), visuel),
-    // Mêmes modules que les scènes (style Elyndor, Tarantino, peau, mains),
-    // sans dépendre des modules par défaut configurés sur le pod.
-    modules: appliquerPresetVisuel(MODULES_BASE, visuel),
+    prompt: enrichirPromptLong(prompt, visuel.positifPortrait),
+    promptCourt: enrichirPromptCourt(promptCourt, visuel.positifPortrait),
+    negatif: enrichirNegatifVisuel(
+      [negatifPourProfil(profil), negatifSupplementaire, visuel.negatifPortrait].filter(Boolean).join(', '), visuel),
+    modules: appliquerModulesVisuels(MODULES_BASE, visuel, 'portrait'),
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
+    size: visuel.taillePortrait,
+    ...(visuel.pasPortrait !== null ? { steps: visuel.pasPortrait } : {}),
+    ...(visuel.guidancePortrait !== null ? { guidance: visuel.guidancePortrait } : {}),
+    ...(visuel.grainePortrait !== null ? { seed: visuel.grainePortrait } : {}),
+    ...(visuel.poidsReferenceRacePortrait !== null ? { poidsRace: visuel.poidsReferenceRacePortrait } : {}),
     storyId,
   });
 }
