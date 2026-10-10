@@ -9,6 +9,7 @@ import Bouton from '../components/Bouton';
 import FondAtmospherique from '../components/FondAtmospherique';
 import Panneau from '../components/Panneau';
 import StorageExplorer from '../components/StorageExplorer';
+import ElyndorLabPanel from '../components/ElyndorLabPanel';
 import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
 import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
@@ -28,8 +29,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur' | '
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
   'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
-  'commercial' | 'profils' | 'instantanes' | 'narrateur';
+  'commercial' | 'profils' | 'instantanes' | 'narrateur' | 'elyndorlab';
 const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
+  { id: 'elyndorlab', titre: 'Elyndor Lab — Code source', detail: 'Explorateur GitHub-like, éditeur local, versions et ZIP', pret: true },
   { id: 'tableau', titre: 'Tableau de bord', detail: "État du noyau, services et version", pret: true },
   { id: 'modeles', titre: 'Modèles IA', detail: 'Correction de température, fournisseur', pret: true },
   { id: 'runpod', titre: 'RunPod et Cloud', detail: 'Pod, connexion et migration sans GitHub', pret: true },
@@ -205,6 +207,12 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
               <Text style={styles.titreBloc}>{MODULES.find((m) => m.id === section)?.titre}</Text>
               <AtelierConfigurationPanel section={section} />
               {section === 'instantanes' ? <AtelierDiagnosticPanel mode="instantanes" /> : null}
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'elyndorlab' ? (
+            <Panneau style={styles.bloc}>
+              <ElyndorLabPanel />
             </Panneau>
           ) : null}
 
