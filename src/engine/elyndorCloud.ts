@@ -21,7 +21,7 @@ import type { AppSettings } from '../types';
  * après une migration, il suffit de modifier ce fichier, sans nouvelle
  * version de l'app. La valeur intégrée sert de repli.
  */
-export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'u0nb7hefflw2rg';
+export const ELYNDOR_CLOUD_POD_PAR_DEFAUT = 'wdnoskwvqju6r6';
 export const URL_CONFIG_POD_ELYNDOR_CLOUD = 'https://artisanguillonrenov-creator.github.io/logiciel-rp-beta/elyndor-cloud.json';
 const DELAI_CONFIG_POD_MS = 4000;
 
@@ -135,7 +135,7 @@ export function urlServeurImagesElyndorCloud(): string {
 /** Valeur des réglages : marqueur stable, l'adresse réelle dépend du pod courant. */
 export const ELYNDOR_CLOUD_REGLAGE_URL = 'elyndor-cloud';
 /** Alias exposé par llama-server (--alias). */
-export const ELYNDOR_CLOUD_MODELE = 'cydonia-24b-v4.3';
+export const ELYNDOR_CLOUD_MODELE = 'cydonia-24b-elyndor';
 /**
  * Embeddings de la recherche sémantique (ObjectBox) : bge-m3, servi par le
  * même pod que les images (port 7860). null = recherche lexicale seule.
