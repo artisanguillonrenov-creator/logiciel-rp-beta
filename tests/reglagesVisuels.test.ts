@@ -38,3 +38,17 @@ test('visuel : refus des choix inconnus et maintien des réglages existants', ()
   assert.throws(() => validerReglagesVisuels({...REGLAGES_VISUELS_INITIAUX, referencesPersonnagesScene: 'oui'}));
   assert.deepEqual(validerReglagesVisuels({...REGLAGES_VISUELS_INITIAUX}), REGLAGES_VISUELS_INITIAUX);
 });
+
+test('anciens réglages visuels conservés, nouveaux contrôles de scène initialisés',()=>{
+  const ancien={schema:1,preset:'nerveux',intensite:1.2,negatifAdditionnel:'artefacts'};
+  const v=validerReglagesVisuels(ancien);
+  assert.equal(v.preset,'nerveux');
+  assert.equal(v.intensite,1.2);
+  assert.equal(v.negatifAdditionnel,'artefacts');
+  assert.equal(v.cadrageIllustration,'large');
+  assert.equal(v.prioriteIllustration,'decor');
+  assert.equal(v.eviterPortraitScene,true);
+  assert.equal(v.referencesPersonnagesScene,false);
+  assert.throws(()=>validerReglagesVisuels({...v,cadrageIllustration:'portrait'}));
+  assert.throws(()=>validerReglagesVisuels({...v,referencesPersonnagesScene:'oui'}));
+});
