@@ -45,6 +45,7 @@ import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { appellerModele } from './elyndorCloudClient';
+import { genererNarrationAvecCloture } from './clotureNarration';
 import { genererDeltaEtatSepare } from './deltaEtatSepare';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
@@ -596,6 +597,8 @@ async function genererTourInterne(
   const temperature = Math.max(0, Math.min(2, temperatureBase + (reglagesAtelier?.temperatureDelta ?? 0)));
   // Aucun token supplémentaire : le plafond de sortie est exactement la
   // limite supérieure choisie par le concepteur pour le texte visible.
+  const plageNarration = (reglagesAtelier?.narrateur.longueurs ??
+    reglagesNarrateurDefaut().longueurs)[storyCourante.settings.longueur];
   const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur, reglagesAtelier?.narrateur.longueurs);
   const samplers = samplersPourRequete(reglagesAtelier?.narrateur);
   if (reglagesAtelier) ajouterEtapeDiagnostic('Configuration concepteur effective', 'préparation', 'ok', 0, undefined,
@@ -625,7 +628,7 @@ async function genererTourInterne(
   const premiere = extraireEnveloppeEtat(await mesurerEtapeDiagnostic(
     'Génération narrative principale',
     'génération',
-    () => appellerModele({
+    () => genererNarrationAvecCloture({
       ...configurationLLM(appSettings, modelePourAppel),
       storyId: storyCourante.meta.id,
       messages: messagesNarrateur,
@@ -633,7 +636,7 @@ async function genererTourInterne(
       maxTokens,
       samplers,
       diagnosticLabel: 'Narration RP',
-    }),
+    }, plageNarration),
   ));
   let reponse = premiere.texte;
   let deltaEtat = premiere.delta;
@@ -741,7 +744,7 @@ async function genererTourInterne(
     try {
       // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
       // celui de la nouvelle apparaître dans le récit.
-      const regeneree = extraireEnveloppeEtat(await appellerModele({
+      const regeneree = extraireEnveloppeEtat(await genererNarrationAvecCloture({
         ...configurationLLM(appSettings, modelePourAppel),
         storyId: storyCourante.meta.id,
         messages: construireMessages({ ...ctxNarration, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
@@ -749,7 +752,7 @@ async function genererTourInterne(
         maxTokens,
         samplers,
         diagnosticLabel: 'Narration RP — régénération complète',
-      }));
+      }, plageNarration));
       reponse = regeneree.texte;
       deltaEtat = regeneree.delta;
     } catch {
@@ -768,8 +771,6 @@ async function genererTourInterne(
   if (avantMesure.modifie) aEteCorrige = true;
   reponse = avantMesure.texte;
 
-  const plageNarration = (reglagesAtelier?.narrateur.longueurs ??
-    reglagesNarrateurDefaut().longueurs)[storyCourante.settings.longueur];
   const longueurFinale = await mesurerEtapeDiagnostic(
     'Longueur et clôture de la narration',
     'validation',
@@ -791,7 +792,7 @@ async function genererTourInterne(
           maxTokens: plage.max,
           samplers,
           diagnosticLabel: 'Narration RP — nouvelle génération contrôlée',
-        }));
+        }, plage));
         const propre = preparerNarrationPourPublication(
           nouvelle.texte, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
         );
