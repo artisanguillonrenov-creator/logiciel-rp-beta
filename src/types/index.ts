@@ -412,6 +412,16 @@ export type MoteurInference = FournisseurLLM;
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
+  /** Marqueur de sélection explicite : distingue une ancienne migration Cloud d'un choix RunPod récent. */
+  fournisseurNarration?: 'openrouter' | 'runpod' | 'serveur';
+  /** Services indépendants, sélectionnés dans les réglages utilisateur. */
+  fournisseurImages?: 'desactive' | 'runpod' | 'openrouter';
+  modeleImages?: string;
+  /** Aucun appel de génération image facturable sans opt-in explicite. */
+  autoriserImagesPayantes?: boolean;
+  /** Aucun service embeddings distants ne doit démarrer si non choisi. */
+  fournisseurEmbeddings?: 'desactive' | 'runpod';
+
   infermaticApiKey?: string;
   infermaticModel?: string;
   // undefined (ou 'openrouter') = comportement historique. Voir MoteurInference.

@@ -9,7 +9,8 @@ import { publierReglages } from '../automation/settingsStore';
 import { publierSauvegardeNarrative, publierSauvegardeStory } from '../automation/storyEvents';
 import { enqueueStoryCleanup, nettoyerDonneesDeriveesHistoire } from '../automation/lifecycleRoutines';
 import { removeAutomationJobsForStory } from '../automation/kernel';
-import { reglagesSontElyndorCloud, verrouillerSurElyndorCloud } from '../engine/elyndorCloud';
+import { normaliserReglagesFournisseurs } from '../engine/elyndorCloud';
+import { activerReglagesFournisseurs } from '../engine/fournisseursRuntime';
 
 export { ErreurStockage } from './storyRepository';
 
@@ -19,7 +20,7 @@ const KEYS = {
   catalogueTraduction: (langue: string) => `@rp_beta/i18n/${langue}`,
 };
 
-const DEFAULT_SETTINGS: AppSettings = verrouillerSurElyndorCloud({
+const DEFAULT_SETTINGS: AppSettings = normaliserReglagesFournisseurs({
   openRouterApiKey: '',
   model: '',
   profilContenu: 'grand_public',
@@ -29,24 +30,18 @@ const reglages = creerDepotReglages(AsyncStorage, stockageCles, DEFAULT_SETTINGS
 
 export async function getSettings(): Promise<AppSettings> {
   const settingsLus = await reglages.lire();
-  const settings = verrouillerSurElyndorCloud(settingsLus);
-
-  // Migration silencieuse des installations existantes : dès la première
-  // lecture après mise à jour, les anciennes clés et anciennes cibles sont
-  // retirées du coffre et la connexion unique Elyndor Cloud devient canonique.
-  if (!reglagesSontElyndorCloud(settingsLus)
-    || settingsLus.embeddingsApiKey
-    || settingsLus.genererImagesActive
-    || settingsLus.conserverClesWeb) {
+  const settings = normaliserReglagesFournisseurs(settingsLus);
+  if (JSON.stringify(settings) !== JSON.stringify(settingsLus)) {
     await reglages.enregistrer(settings);
   }
-
+  activerReglagesFournisseurs(settings);
   return publierReglages(settings);
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  const normalises = verrouillerSurElyndorCloud(settings);
+  const normalises = normaliserReglagesFournisseurs(settings);
   await reglages.enregistrer(normalises);
+  activerReglagesFournisseurs(normalises);
   publierReglages(normalises);
 }
 

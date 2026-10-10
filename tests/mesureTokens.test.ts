@@ -8,7 +8,7 @@ import {
   enregistrerUsageAppel,
   terminerMesureTokens,
 } from '../src/engine/mesureTokens';
-import { appellerModele } from '../src/engine/elyndorCloudClient';
+import { appellerModele, configurationLLM } from '../src/engine/elyndorCloudClient';
 
 const originalFetch = globalThis.fetch;
 test.afterEach(() => { globalThis.fetch = originalFetch; annulerMesureTokens(); });
@@ -33,7 +33,8 @@ test('un appel sans usage rend la mesure partielle ; aucune mesure hors tour', (
   assert.equal(terminerMesureTokens(), undefined);
 });
 
-test('les appels Elyndor Cloud alimentent la mesure du tour', async () => {
+test('les appels narratifs alimentent la mesure du tour, quel que soit le fournisseur', async () => {
+  configurationLLM({moteurInference:'openrouter',model:'openrouter/free',openRouterApiKey:'test'});
   globalThis.fetch = async () => Response.json({
     choices: [{ message: { content: 'ok' } }],
     usage: { prompt_tokens: 10, completion_tokens: 5 },

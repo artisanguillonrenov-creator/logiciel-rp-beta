@@ -54,6 +54,11 @@ export interface RequeteImage {
   format: FormatImage;
   /** Histoire concernée (journal de diagnostic) ; jamais envoyée au serveur. */
   storyId?: string;
+  steps?: number;
+  guidance?: number;
+  seed?: number;
+  poidsRace?: number;
+  size?: string;
 }
 
 export type GenerateurImage = (requete: RequeteImage, signal?: AbortSignal) => Promise<string>;
@@ -79,8 +84,12 @@ export function construireCorpsRequeteImage(requete: RequeteImage, modele: strin
     ...(requete.negatif ? { negative_prompt: requete.negatif } : {}),
     ...(requete.modules ? { modules: requete.modules } : {}),
     n: 1,
-    size: `${width}x${height}`,
+    size: requete.size ?? `${width}x${height}`,
     aspect_ratio: requete.format,
+    ...(requete.steps !== undefined ? { steps: requete.steps } : {}),
+    ...(requete.guidance !== undefined ? { guidance: requete.guidance } : {}),
+    ...(requete.seed !== undefined ? { seed: requete.seed } : {}),
+    ...(requete.poidsRace !== undefined ? { poids_race: requete.poidsRace } : {}),
     response_format: 'b64_json',
     ...(references.length ? { reference_images: references.map((ref) => ({ role: ref.role, image: ref.image })) } : {}),
   };

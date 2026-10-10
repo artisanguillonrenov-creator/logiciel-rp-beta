@@ -39,13 +39,14 @@ const anciensReglages: any = {
   infermaticApiKey: 'ancienne-cle-infermatic',
   infermaticModel: 'ancien-infermatic',
   embeddingsApiKey: 'ancienne-cle-embeddings',
-  moteurInference: 'infermatic',
-  serveurLocalUrl: 'http://192.168.1.5:1234/v1',
-  serveurLocalModele: 'modele-local',
+  moteurInference: 'serveur',
+  serveurLocalUrl: 'elyndor-cloud',
+  serveurLocalModele: 'cydonia-24b-elyndor',
+  fournisseurEmbeddings: 'runpod',
   serveurLocalApiKey: 'ancienne-cle-serveur',
 };
 
-test('la configuration impose toujours Elyndor Cloud', () => {
+test('une configuration RunPod explicite préserve Cydonia', () => {
   const config = configurationLLM(anciensReglages, 'override-historique');
   assert.equal(config.model, ELYNDOR_CLOUD_MODELE);
   assert.equal(config.baseUrl, ELYNDOR_CLOUD_URL);
@@ -53,7 +54,7 @@ test('la configuration impose toujours Elyndor Cloud', () => {
   assert.equal(config.moteurInference, 'serveur');
 });
 
-test('un appel ignore les anciens fournisseurs et vise uniquement Elyndor Cloud', async () => {
+test('une configuration RunPod ne laisse pas les options d’appel détourner le routage', async () => {
   let requete: { url: string; init?: RequestInit } | undefined;
   globalThis.fetch = async (input, init) => {
     requete = { url: String(input), init };
@@ -85,7 +86,7 @@ test('un appel ignore les anciens fournisseurs et vise uniquement Elyndor Cloud'
   assert.equal(String(requete?.init?.body).includes('serveur-local-interdit'), false);
 });
 
-test('les embeddings ne passent que par Elyndor Cloud, jamais par un ancien fournisseur', () => {
+test('les embeddings explicitement activés utilisent uniquement bge-m3 RunPod', () => {
   assert.equal(embeddingsDisponibles(anciensReglages), true);
   assert.equal(identiteEmbeddingsConfiguree(anciensReglages), 'elyndor-cloud:bge-m3');
   // Un cache OpenRouter/Infermatic d'un autre modèle n'est jamais mélangé aux vecteurs bge-m3.
@@ -94,7 +95,7 @@ test('les embeddings ne passent que par Elyndor Cloud, jamais par un ancien four
   assert.equal(cacheEmbeddingsCompatible(null, anciensReglages), true);
 });
 
-test('les embeddings sont demandés au pod Elyndor Cloud, par lots, et remis dans l’ordre', async () => {
+test('les embeddings RunPod sont demandés par lots et remis dans l’ordre', async () => {
   const appels: { url: string; body: any }[] = [];
   const fetchOriginal = globalThis.fetch;
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
@@ -199,4 +200,31 @@ test('samplers narratifs explicitement activés sont réellement placés dans la
   assert.equal(body.repeat_last_n, 512);
   assert.equal(body.temperature, 0.9);
   assert.equal(body.model, ELYNDOR_CLOUD_MODELE);
+});
+
+test('OpenRouter gratuit reçoit la bonne clé, aucun sampler propriétaire ni appel RunPod', async () => {
+  let url='';let body:any;let headers:any;
+  configurationLLM({openRouterApiKey:'cle-test',model:'openrouter/free',
+    moteurInference:'openrouter',fournisseurEmbeddings:'desactive'});
+  globalThis.fetch=async (input,init) => {
+    url=String(input);headers=init?.headers;
+    body=JSON.parse(String(init?.body));
+    return Response.json({choices:[{message:{content:'Une réponse.'},finish_reason:'stop'}]});
+  };
+  const sortie=await appellerModele({apiKey:'',model:'',messages:[{role:'user',content:'Bonjour'}],
+    samplers:{top_k:99,dry_multiplier:1.2}});
+  assert.equal(sortie,'Une réponse.');
+  assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(headers.Authorization,'Bearer cle-test');
+  assert.equal(body.model,'openrouter/free');
+  assert.equal(body.top_k,undefined);
+  assert.equal(body.dry_multiplier,undefined);
+});
+
+test('sans clé OpenRouter un appel est bloqué avant toute connexion', async () => {
+  configurationLLM({openRouterApiKey:'',model:'openrouter/free',moteurInference:'openrouter'});
+  let appels=0;
+  globalThis.fetch=async()=>{appels++;return Response.json({});};
+  await assert.rejects(appellerModele({apiKey:'',model:'',messages:[{role:'user',content:'x'}]}),/clé OpenRouter/i);
+  assert.equal(appels,0);
 });

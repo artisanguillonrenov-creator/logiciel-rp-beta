@@ -4,7 +4,8 @@ import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './re
 import { enregistrerUsageAppel } from './mesureTokens';
 import { enregistrerAppelIADiagnostic } from './diagnosticTour';
 import { journaliser } from './journalDiagnostic';
-import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
+import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud } from './elyndorCloud';
+import { activerReglagesFournisseurs, reglagesFournisseursActifs, resoudreRouteTexte, type RouteTexte } from './fournisseursRuntime';
 
 /**
  * Client réseau unique d'Elyndor.
@@ -86,12 +87,13 @@ export { ErreurElyndorCloud as ErreurOpenRouter };
  * refactor inutile dans le noyau narratif. Les paramètres et overrides de
  * l'histoire sont volontairement ignorés : le modèle Cloud est canonique.
  */
-export function configurationLLM(_settings: AppSettings, _modeleOverride?: string) {
+export function configurationLLM(settings: AppSettings, _modeleOverride?: string) {
+  activerReglagesFournisseurs(settings);
+  const route = resoudreRouteTexte(settings);
   return {
-    apiKey: '',
-    model: ELYNDOR_CLOUD_MODELE,
-    moteurInference: 'serveur' as const,
-    baseUrl: urlNarrationElyndorCloud(),
+    apiKey: route.apiKey, model: route.model,
+    moteurInference: (route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as 'openrouter' | 'serveur',
+    baseUrl: route.url.replace(/\/chat\/completions$/, ''),
   };
 }
 
@@ -141,7 +143,7 @@ async function detailErreur(response: Response): Promise<string> {
   }
 }
 
-async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal): Promise<Response> {
+async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?: RouteTexte): Promise<Response> {
   const controleur = new AbortController();
   const relayerAnnulation = () => controleur.abort(signalExterne?.reason);
   if (signalExterne?.aborted) relayerAnnulation();
@@ -153,8 +155,12 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal): Promi
   );
 
   try {
-    await assurerPodElyndorCloud();
-    return await fetch(`${urlNarrationElyndorCloud()}/chat/completions`, {
+    const destination = route ?? resoudreRouteTexte(reglagesFournisseursActifs());
+    if (destination.fournisseur === 'openrouter' && !destination.apiKey) {
+      throw new ErreurElyndorCloud('Renseigne ta clé OpenRouter dans Réglages → Fournisseurs IA.');
+    }
+    if (destination.fournisseur === 'runpod') await assurerPodElyndorCloud();
+    return await fetch(destination.url, {
       ...init,
       signal: controleur.signal,
     });
@@ -167,8 +173,9 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal): Promi
         "Elyndor Cloud n'a pas répondu avant la limite. Le pod peut être en démarrage ; réessaie dans quelques instants.",
       );
     }
+    if (cause instanceof ErreurElyndorCloud) throw cause;
     throw new ErreurElyndorCloud(
-      'Impossible de joindre Elyndor Cloud. Vérifie la connexion réseau puis réessaie.',
+      'Impossible de joindre le fournisseur IA sélectionné. Vérifie la connexion et la clé.',
     );
   } finally {
     clearTimeout(timer);
@@ -244,23 +251,28 @@ async function appelerChatDetaille(
   storyId?: string,
   samplers?: Record<string, number>,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
-  const profil = resoudreProfilRaisonnement('serveur', ELYNDOR_CLOUD_MODELE);
+  const route = resoudreRouteTexte(reglagesFournisseursActifs());
+  const profil = resoudreProfilRaisonnement(
+    route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur', route.model);
   const debutAppel = Date.now();
 
   let response: Response;
   try {
     response = await fetchCloud({
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(route.apiKey ? { Authorization: `Bearer ${route.apiKey}` } : {}),
+    },
     body: JSON.stringify({
-      model: ELYNDOR_CLOUD_MODELE,
+      model: route.model,
       messages,
       temperature,
       max_tokens: maxTokens,
       // llama.cpp accepte les paramètres d'échantillonnage directement dans le JSON.
       // Ne transmettre que les clés prévalidées par reglagesNarrateur.ts.
-      ...(samplers || {}),
-      reasoning_effort: 'low',
+      ...(route.fournisseur === 'runpod' ? (samplers || {}) : {}),
+      ...(route.fournisseur === 'runpod' ? { reasoning_effort: 'low' } : {}),
       // Streaming : le proxy Runpod (Cloudflare) coupe toute réponse qui n'a
       // rien envoyé en 100 s (erreur 524). En flux, les jetons arrivent au fil
       // de l'eau et une longue narration n'est plus interrompue. Les appels à
@@ -268,7 +280,7 @@ async function appelerChatDetaille(
       stream: !tools,
       ...(tools ? { tools, tool_choice: 'auto' } : { stream_options: { include_usage: true } }),
     }),
-  }, signal);
+  }, signal, route);
   } catch (erreur) {
     journaliser('appel-ia', {
       composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
@@ -277,7 +289,7 @@ async function appelerChatDetaille(
     }, storyId);
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
-      modele: ELYNDOR_CLOUD_MODELE,
+      modele: route.model,
       maxTokens,
       dureeMs: Date.now() - debutAppel,
       usage: null,
@@ -418,5 +430,15 @@ export async function appellerModeleAvecOutils({
 
 /** Le catalogue n'est plus exposé : Elyndor Cloud impose son modèle. */
 export async function listerModeles(): Promise<ModeleOpenRouter[]> {
-  return [{ id: ELYNDOR_CLOUD_MODELE, nom: ELYNDOR_CLOUD_MODELE }];
+  const actifs = reglagesFournisseursActifs();
+  if (actifs.moteurInference !== 'openrouter') {
+    const route = resoudreRouteTexte(actifs);
+    return [{ id: route.model, nom: route.model }];
+  }
+  const resultat = await fetch('https://openrouter.ai/api/v1/models');
+  if (!resultat.ok) throw new ErreurElyndorCloud('Catalogue OpenRouter indisponible.', resultat.status);
+  const donnees = await resultat.json();
+  const modeles = (donnees?.data ?? []) as Array<{id?:string,name?:string}>;
+  return modeles.filter(m=>typeof m.id==='string' && m.id.endsWith(':free'))
+    .map(m=>({id:m.id!,nom:m.name || m.id!}));
 }

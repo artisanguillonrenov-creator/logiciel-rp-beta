@@ -346,12 +346,14 @@ test('une sauvegarde de l’écran ne peut pas écraser un état visuel plus ré
   assert.equal(etatVisuelLePlusRecent({ ...etatVisuelVide(), sequence: 5 }, { ...etatVisuelVide(), sequence: 3 })?.sequence, 5);
 });
 
-test('images et avatars suivent uniquement la publication du modèle image Elyndor Cloud', () => {
-  const caps = calculerCapacites({ openRouterApiKey: '', model: 'x', profilContenu: 'grand_public' });
-  assert.equal(caps.images, imagesElyndorCloudDisponibles());
-  assert.equal(caps.avatars, caps.images);
-  if (!caps.images) assert.match(caps.raisons.images ?? '', /Elyndor Cloud/);
-  else assert.equal(caps.raisons.images, undefined);
+test('les images et avatars suivent uniquement le fournisseur explicitement sélectionné', () => {
+  const base = { openRouterApiKey: '', model: 'x', profilContenu: 'grand_public' as const };
+  const desactives = calculerCapacites({...base,fournisseurImages:'desactive'});
+  assert.equal(desactives.images,false);
+  assert.equal(desactives.avatars,false);
+  const runpod=calculerCapacites({...base,fournisseurImages:'runpod'});
+  assert.equal(runpod.images,imagesElyndorCloudDisponibles());
+  assert.equal(runpod.avatars,runpod.images);
 });
 
 test('la requête porte le prompt court anglais et une régénération ne touche qu’à la caméra', () => {

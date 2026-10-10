@@ -1,6 +1,9 @@
 import { Image } from 'react-native';
+import { getSettings } from '../storage/storage';
+import { genererImageSelonReglages } from './fournisseursImages';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
-import { appliquerPresetVisuel, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
+import { reglerDirectionIllustration, negatifCadrageIllustration } from './directionIllustration';
+import { appliquerModulesVisuels, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
 import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
@@ -45,11 +48,11 @@ import {
 export { ErreurImagesIndisponibles };
 export { ID_ASSET_JOUEUR as ID_AVATAR_JOUEUR };
 
-let generateurCourant: GenerateurImage = genererImageElyndorCloud;
+let generateurCourant: GenerateurImage | null = null;
 
 /** Point d'extension : un autre backend image peut remplacer Elyndor Cloud. */
 export function definirGenerateurImage(generateur: GenerateurImage | null): void {
-  generateurCourant = generateur ?? genererImageElyndorCloud;
+  generateurCourant = generateur;
 }
 
 async function assetVersDataUrl(source: ReturnType<typeof obtenirPortrait>): Promise<string | null> {
@@ -132,6 +135,21 @@ export async function collecterReferencesScene(
 // est exclu par le prompt négatif, en plus du filtrage du texte en amont.
 const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
 
+/** Garde en tête les déclencheurs LoRA du prompt anglais, puis place les
+ * consignes concepteur avant le reste (priorité dans le CLIP). */
+function enrichirPromptCourt(prompt: string | undefined, ajout: string): string | undefined {
+  const extra = ajout.trim();
+  if (!extra || !prompt) return prompt;
+  const parties = prompt.split(', ');
+  if (parties[0] === 'elyndor style' && parties.length >= 2) {
+    return [...parties.slice(0, 2), extra, ...parties.slice(2)].join(', ');
+  }
+  return [extra, prompt].join(', ');
+}
+function enrichirPromptLong(prompt: string, ajout: string): string {
+  return ajout.trim() ? prompt + '\n\n[INSTRUCTIONS VISUELLES CONCEPTEUR]\n' + ajout.trim() : prompt;
+}
+
 function negatifPourProfil(profil: ProfilContenu | undefined): string {
   return profil === 'adulte' ? negatifAplati() : `${negatifAplati()}, ${NEGATIF_GRAND_PUBLIC}`;
 }
@@ -143,17 +161,27 @@ export async function genererImageScene(
   profil?: ProfilContenu,
   storyId?: string,
 ): Promise<string> {
-  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
-    throw new ErreurImagesIndisponibles();
-  }
+  const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
-  return generateurCourant({
-    prompt: formaterPromptImage(structure, references),
-    promptCourt: construirePromptSdxl(structure),
-    negatif: enrichirNegatifVisuel(negatifPourProfil(profil), visuel),
-    modules: appliquerPresetVisuel(modulesPourScene(structure), visuel),
-    references: selectionnerReferencesGenerateur(references),
+  const dirigee = reglerDirectionIllustration(structure, visuel);
+  const selection = selectionnerReferencesGenerateur(references);
+  const referencesScene = selection.filter(ref =>
+    (ref.role === 'scene' && visuel.referencesScenePrecedente) ||
+    (ref.role === 'personnage' && visuel.referencesPersonnagesScene));
+  return generer({
+    prompt: enrichirPromptLong(formaterPromptImage(dirigee, referencesScene.length ? references : []), visuel.positifScene),
+    promptCourt: enrichirPromptCourt(construirePromptSdxl(dirigee), visuel.positifScene),
+    negatif: enrichirNegatifVisuel(
+      [negatifPourProfil(profil), negatifCadrageIllustration(visuel), visuel.negatifScene].filter(Boolean).join(', '),
+      visuel,
+    ),
+    modules: appliquerModulesVisuels(modulesPourScene(dirigee), visuel, 'scene'),
+    references: referencesScene,
     format: '16:9',
+    size: visuel.tailleScene,
+    ...(visuel.pasScene !== null ? { steps: visuel.pasScene } : {}),
+    ...(visuel.guidanceScene !== null ? { guidance: visuel.guidanceScene } : {}),
+    ...(visuel.graineScene !== null ? { seed: visuel.graineScene } : {}),
     storyId,
   });
 }
@@ -186,19 +214,21 @@ async function genererPortrait(
   negatifSupplementaire = '',
   storyId?: string,
 ): Promise<string> {
-  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
-    throw new ErreurImagesIndisponibles();
-  }
+  const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
-  return generateurCourant({
-    prompt,
-    promptCourt,
-    negatif: enrichirNegatifVisuel([negatifPourProfil(profil), negatifSupplementaire].filter(Boolean).join(', '), visuel),
-    // Mêmes modules que les scènes (style Elyndor, Tarantino, peau, mains),
-    // sans dépendre des modules par défaut configurés sur le pod.
-    modules: appliquerPresetVisuel(MODULES_BASE, visuel),
+  return generer({
+    prompt: enrichirPromptLong(prompt, visuel.positifPortrait),
+    promptCourt: enrichirPromptCourt(promptCourt, visuel.positifPortrait),
+    negatif: enrichirNegatifVisuel(
+      [negatifPourProfil(profil), negatifSupplementaire, visuel.negatifPortrait].filter(Boolean).join(', '), visuel),
+    modules: appliquerModulesVisuels(MODULES_BASE, visuel, 'portrait'),
     references: references.filter((r): r is ReferenceImage => !!r?.image),
     format: '3:4',
+    size: visuel.taillePortrait,
+    ...(visuel.pasPortrait !== null ? { steps: visuel.pasPortrait } : {}),
+    ...(visuel.guidancePortrait !== null ? { guidance: visuel.guidancePortrait } : {}),
+    ...(visuel.grainePortrait !== null ? { seed: visuel.grainePortrait } : {}),
+    ...(visuel.poidsReferenceRacePortrait !== null ? { poidsRace: visuel.poidsReferenceRacePortrait } : {}),
     storyId,
   });
 }
