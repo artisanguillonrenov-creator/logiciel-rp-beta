@@ -6,7 +6,7 @@ export type RootStackParamList = {
   Reglages: undefined;
   Plugins: undefined;
   ReglagesConcepteur: undefined;
-  ModuleConcepteur: { section: 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' | 'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' | 'commercial' | 'profils' | 'instantanes' | 'narrateur' };
+  ModuleConcepteur: { section: 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' | 'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' | 'commercial' | 'profils' | 'instantanes' | 'narrateur' | 'elyndorlab' };
   ChargerConversation: undefined;
   Compte: undefined;
 };
