@@ -19,7 +19,8 @@ export interface ResultatImportLab {
 const capaciteFichier = (value:unknown):{uncompressedSize:number;compressedSize:number} | null => {
   if(!value || typeof value!=='object')return null;
   const data=value as {uncompressedSize?:unknown;compressedSize?:unknown};
-  if(!Number.isSafeInteger(data.uncompressedSize) || !Number.isSafeInteger(data.compressedSize))return null;
+  if(typeof data.uncompressedSize!=='number' || typeof data.compressedSize!=='number' ||
+    !Number.isSafeInteger(data.uncompressedSize) || !Number.isSafeInteger(data.compressedSize))return null;
   return {uncompressedSize:data.uncompressedSize as number,compressedSize:data.compressedSize as number};
 };
 
