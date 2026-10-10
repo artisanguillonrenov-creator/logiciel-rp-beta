@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
 import Bouton from './Bouton';
@@ -10,7 +10,9 @@ import {
   supprimerFichier, changementNatif,
 } from '../lab/workspaceCore';
 import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
-import { exporterSourcesLab, importerArchiveLab } from '../lab/archives';
+import { exporterSourcesLab, importerArchiveLab, sauvegarderSourcesDansDossierAndroid, type ResultatImportLab } from '../lab/archives';
+import { JournalBrouillon } from '../lab/journalBrouillon';
+import { synchroniserArbrePhysique } from '../lab/arbrePhysique';
 import { comparerArbres, comparerTexte, type ResumeImport } from '../lab/diff';
 
 type Vue = 'fichiers' | 'editeur' | 'tests' | 'maj' | 'versions' | 'secours' | 'archives';
@@ -36,13 +38,19 @@ export default function ElyndorLabPanel() {
   const [versionSelectionnee,setVersionSelectionnee] = useState('');
   const [controles,setControles] = useState<ControleLab[]|null>(null);
   const [message,setMessage] = useState('');
+  const [etatPhysique,setEtatPhysique] = useState('Copie physique non encore vérifiée.');
   const [erreur,setErreur] = useState('');
   const [occupe,setOccupe] = useState(false);
-  const [importPret,setImportPret] = useState<{atelier:AtelierLocal;nombre:number;complet:boolean;details:ResumeImport}|null>(null);
+  const [importPret,setImportPret] = useState<(ResultatImportLab & {details:ResumeImport;empreinteAvant:string})|null>(null);
+  const etatRef=useRef<AtelierLocal|null>(null);
+  const journal=useRef(new JournalBrouillon());
+  const fileSauvegarde=useRef<Promise<AtelierLocal|null>>(Promise.resolve(null));
 
   useEffect(()=>{
     let actif=true;
-    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
+    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){etatRef.current=a;setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');
+          void synchroniserArbrePhysique(base,a).then(r=>{if(actif)setEtatPhysique(r.total+' fichiers physiques synchronisés.');}).catch(e=>{if(actif)setEtatPhysique('Copie physique à réparer : '+erreurMessage(e));});
+        }})
       .catch((e)=>{if(actif)setErreur(erreurMessage(e));});
     return ()=>{actif=false;};
   },[]);
@@ -68,28 +76,75 @@ export default function ElyndorLabPanel() {
   function signaler(e:unknown){setErreur(erreurMessage(e));setMessage('');}
   async function appliquer(maj:AtelierLocal,texte:string){
     setOccupe(true);
-    try { await enregistrerAtelierLocal(maj);setAtelier(maj);messageOk(texte); }
-    catch(e){signaler(e);throw e;}
+    try{
+      await fileSauvegarde.current.catch(()=>null);
+      await enregistrerAtelierLocal(maj);
+      etatRef.current=maj;setAtelier(maj);messageOk(texte);
+      if(depot)void synchroniserArbrePhysique(depot,maj).then(r=>setEtatPhysique(r.total+' fichiers physiques synchronisés.')).catch(e=>setEtatPhysique('Copie physique à réparer : '+erreurMessage(e)));
+    }catch(e){signaler(e);throw e;}
     finally{setOccupe(false);}
   }
-  async function sauvegarderBrouillon() {
-    if(!atelier || !selection || !editionModifiee) return atelier;
-    const suivant=modifierFichier(atelier,sources,selection,code);
-    await appliquer(suivant,'Brouillon enregistré dans la copie locale.');
-    setEditionModifiee(false);
-    return suivant;
+  // Chaque opération capture le brouillon APRES la sauvegarde précédente.
+  async function sauvegarderBrouillon():Promise<AtelierLocal|null>{
+    const operation=fileSauvegarde.current.catch(()=>null).then(async()=>{
+      const capture=journal.current.instantane();
+      const courant=etatRef.current;
+      if(!capture || !courant)return courant;
+      const suivant=modifierFichier(courant,sources,capture.chemin,capture.texte);
+      await enregistrerAtelierLocal(suivant);
+      etatRef.current=suivant;setAtelier(suivant);
+      if(depot)void synchroniserArbrePhysique(depot,suivant).then(r=>setEtatPhysique(r.total+' fichiers physiques synchronisés.')).catch(e=>setEtatPhysique('Copie physique à réparer : '+erreurMessage(e)));
+      if(journal.current.acquitter(capture)){
+        setEditionModifiee(false);messageOk('Brouillon enregistré dans la copie locale.');
+      }
+      return suivant;
+    });
+    fileSauvegarde.current=operation;
+    return operation;
   }
-  // Autosauvegarde d'un vrai brouillon même si la nouvelle version n'est pas activée.
+  async function viderBrouillon():Promise<AtelierLocal|null>{
+    for(let tentative=0;journal.current.estSale() && tentative<20;tentative++){
+      await sauvegarderBrouillon();
+    }
+    if(journal.current.estSale())throw new Error('Les dernières frappes ne sont pas encore enregistrées.');
+    await fileSauvegarde.current;
+    return etatRef.current;
+  }
   useEffect(()=>{
-    if(!atelier || !selection || !editionModifiee || occupe)return;
-    const t=setTimeout(()=>{void sauvegarderBrouillon().catch(()=>undefined);},1200);
-    return ()=>clearTimeout(t);
+    if(!editionModifiee || occupe)return;
+    const timer=setTimeout(()=>{void sauvegarderBrouillon().catch(signaler);},1200);
+    return ()=>clearTimeout(timer);
   },[atelier,selection,editionModifiee,code,occupe]);
+  useEffect(()=>{
+    const listener=AppState.addEventListener('change',etat=>{
+      if(etat!=='active' && journal.current.estSale()){
+        void viderBrouillon().catch(signaler);
+      }
+    });
+    return ()=>listener.remove();
+  },[depot]);
+  useEffect(()=>()=>{
+    // Quitter l'écran concepteur peut démonter le panneau avant les 1200 ms.
+    // La copie JSON demeure la source de récupération, et cette écriture est sérialisée.
+    if(journal.current.estSale())void viderBrouillon().catch(()=>undefined);
+  },[depot]);
+  async function changerVue(suivante:Vue){
+    try{
+      if(journal.current.estSale())await viderBrouillon();
+      setVue(suivante);setErreur('');setMessage('');
+    }catch(e){signaler(e);}
+  }
+  function saisirCode(texte:string){
+    journal.current.saisir(texte);
+    setCode(texte);setEditionModifiee(true);setControles(null);setImportPret(null);
+  }
 
   async function ouvrirFichier(chemin:string){
     try {
-      if(editionModifiee)await sauvegarderBrouillon();
-      setSelection(chemin);setCode(fichiers[chemin] ?? '');setAffichageEditeur('code');
+      await viderBrouillon();
+      const texte=fichiersActuels(sources,etatRef.current??atelier!)[chemin]??'';
+      journal.current.ouvrir(chemin,texte);
+      setSelection(chemin);setCode(texte);setAffichageEditeur('code');
       setEditionModifiee(false);setControles(null);setVue('editeur');setErreur('');setMessage('');
     }catch(e){signaler(e);}
   }
@@ -99,10 +154,10 @@ export default function ElyndorLabPanel() {
     if(!cheminValide(chemin)){setErreur('Nom ou emplacement de fichier non autorisé.');return;}
     if(Object.prototype.hasOwnProperty.call(fichiers,chemin)){setErreur('Ce fichier existe déjà.');return;}
     try{
-      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
+      const courant=await viderBrouillon() ?? atelier;
       const suivant=modifierFichier(courant,sources,chemin,'');
       await appliquer(suivant,'Fichier local créé : '+chemin);
-      setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
+      journal.current.ouvrir(chemin,'');setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
     }catch(e){signaler(e);}
   }
   function demanderSuppression(){
@@ -110,10 +165,13 @@ export default function ElyndorLabPanel() {
     Alert.alert('Supprimer ce fichier de la copie locale ?',selection,[
       {text:'Annuler',style:'cancel'},
       {text:'Supprimer',style:'destructive',onPress:()=>{
-        const suivant=supprimerFichier(atelier,sources,selection);
-        void appliquer(suivant,'Fichier supprimé de la copie locale.').then(()=>{
-          setSelection('');setCode('');setEditionModifiee(false);setVue('fichiers');
-        }).catch(()=>undefined);
+        void (async()=>{
+          const courant=await viderBrouillon()??atelier;
+          const suivant=supprimerFichier(courant,sources,selection);
+          await appliquer(suivant,'Fichier supprimé de la copie locale.');
+          journal.current.reinitialiser();setSelection('');setCode('');
+          setEditionModifiee(false);setVue('fichiers');
+        })().catch(signaler);
       }},
     ]);
   }
@@ -125,7 +183,7 @@ export default function ElyndorLabPanel() {
   async function creerInstantane(){
     if(!atelier)return;
     try{
-      const avant=await sauvegarderBrouillon() ?? atelier;
+      const avant=await viderBrouillon() ?? atelier;
       const nouveau=enregistrerVersion(avant,nomVersion);
       await appliquer(nouveau,'Instantané du code local enregistré.');
       setVersionSelectionnee(nouveau.versionActive??'');
@@ -133,16 +191,19 @@ export default function ElyndorLabPanel() {
   }
   function demanderRestauration(){
     if(!atelier || !versionSelectionnee)return;
-    Alert.alert('Restaurer cette copie source ?', 'La version actuelle sera sauvegardée avant restauration. Cette opération ne change pas le code exécuté dans l’APK.',[
+    Alert.alert('Restaurer cette copie source ?', 'La version actuelle sera sauvegardée avant restauration. Le code installé ne change pas.',[
       {text:'Annuler',style:'cancel'},
       {text:'Restaurer',onPress:()=>{
-        try{
-          const suivant=restaurerVersion(atelier,versionSelectionnee);
-          void appliquer(suivant,'Sources restaurées. Le code de l’application installée n’a pas changé.').then(()=>{
-            if(selection){setCode(fichiersActuels(sources,suivant)[selection]??'');setEditionModifiee(false);}
-            setVersionSelectionnee(suivant.versionActive??'');
-          }).catch(()=>undefined);
-        }catch(e){signaler(e);}
+        void (async()=>{
+          const courant=await viderBrouillon()??atelier;
+          const suivant=restaurerVersion(courant,versionSelectionnee);
+          await appliquer(suivant,'Sources restaurées. Le code installé n’a pas changé.');
+          if(selection){
+            const texte=fichiersActuels(sources,suivant)[selection]??'';
+            journal.current.ouvrir(selection,texte);setCode(texte);setEditionModifiee(false);
+          }
+          setVersionSelectionnee(suivant.versionActive??'');
+        })().catch(signaler);
       }}
     ]);
   }
@@ -150,42 +211,59 @@ export default function ElyndorLabPanel() {
     if(!atelier)return;
     setOccupe(true);setErreur('');setMessage('Création et vérification de l’archive en cours…');
     try{
-      const a=editionModifiee ? modifierFichier(atelier,sources,selection,code) : atelier;
-      if(editionModifiee){await enregistrerAtelierLocal(a);setAtelier(a);setEditionModifiee(false);}
+      const a=await viderBrouillon()??atelier;
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await exporterSourcesLab(a,depot);
       messageOk(resultat.total+' fichiers sources texte ajoutés à l’archive ZIP.');
+    }catch(e){signaler(e);}finally{setOccupe(false);}
+  }
+  async function sauvegarderDansDossierExterne(){
+    if(!atelier || !depot)return;
+    setOccupe(true);setErreur('');
+    try{
+      const courant=await viderBrouillon()??atelier;
+      const sauvegarde=await sauvegarderSourcesDansDossierAndroid(courant,depot);
+      messageOk(sauvegarde.total+' sources texte sauvegardées dans le dossier Android choisi. Conserve cette archive hors de l’app.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
   async function choisirZip(){
     if(!atelier)return;
     setOccupe(true);setErreur('');setImportPret(null);
     try{
-      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
+      const courant=await viderBrouillon()??atelier;
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await importerArchiveLab(courant,depot);
       const details=comparerArbres(fichiersActuels(sources,courant),fichiersActuels(sources,resultat.atelier));
-      setImportPret({...resultat,details});
+      setImportPret({...resultat,details,empreinteAvant:JSON.stringify(courant.changements)});
       messageOk(resultat.nombre+' fichiers analysés. Aucun changement appliqué : confirme l’importation ci-dessous.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
   async function confirmerImport(){
     if(!atelier || !importPret)return;
     try{
-      const avecSecours=enregistrerVersion(atelier,'Sauvegarde avant import ZIP');
+      const courant=await viderBrouillon()??atelier;
+      if(importPret.referenceAvant!==courant.reference || importPret.empreinteAvant!==JSON.stringify(courant.changements))throw new Error('Le travail local a changé depuis la prévisualisation ZIP. Relance l’analyse pour éviter une perte de données.');
+      const avecSecours=enregistrerVersion(courant,'Sauvegarde avant import ZIP');
+      const versions=[...avecSecours.versions];
+      for(const version of importPret.versionsImportees){
+        const existante=versions.find(v=>v.id===version.id);
+        if(existante){
+          if(JSON.stringify(existante)!==JSON.stringify(version))throw new Error('Conflit de version importée : '+version.id);
+        }else versions.push(version);
+      }
       const suivant:AtelierLocal={
-        ...importPret.atelier,versions:avecSecours.versions,
-        versionActive:null,chantier:'Import ZIP — à vérifier',
+        ...importPret.atelier,versions,versionActive:null,chantier:'Import ZIP — à vérifier',
       };
-      await appliquer(suivant,'Archive importée dans la copie locale. Version précédente conservée.');
-      setSelection('');setCode('');setEditionModifiee(false);setImportPret(null);setVue('fichiers');
+      await appliquer(suivant,'Archive importée sans suppression implicite. Copie précédente conservée.');
+      journal.current.reinitialiser();setSelection('');setCode('');
+      setEditionModifiee(false);setImportPret(null);setVue('fichiers');
     }catch(e){signaler(e);}
   }
 
   if(!atelier || !depot) return <View style={styles.section}>
     <ActivityIndicator color={couleurs.dore}/>
     <Text style={styles.aide}>{erreur || 'Ouverture de la copie locale…'}</Text>
-    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,b])=>{setAtelier(a);setDepot(b);}).catch(signaler);}}/>:null}
+    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,b])=>{etatRef.current=a;setAtelier(a);setDepot(b);}).catch(signaler);}}/>:null}
   </View>;
   return <View style={styles.section}>
     <Text style={styles.surtitre}>ELYNDOR LAB · COPIE LOCALE</Text>
@@ -197,13 +275,14 @@ export default function ElyndorLabPanel() {
     <View style={styles.bandeau}>
       <Text style={styles.label}>Référence source : {depot.reference.slice(0,12)}</Text>
       <Text style={styles.aide}>{noms.length} fichiers texte · {depot.binaires.length} actifs binaires référencés</Text>
+       <Text style={styles.aide}>{etatPhysique} Le registre des modifications reste conservé séparément.</Text>
       {noms.length===0 ? <Text style={styles.danger}>
         Instantané absent de cette compilation. Importe une archive de sources pour commencer.
       </Text>:null}
     </View>
     <View style={styles.onglets}>
       {ONGLETS.map((onglet)=><Pressable key={onglet.id} accessibilityRole="button"
-        onPress={()=>{setVue(onglet.id);setErreur('');setMessage('');}}
+        onPress={()=>{void changerVue(onglet.id);}}
         style={[styles.pastille,vue===onglet.id&&styles.pastilleActive]}>
         <Text style={[styles.textePastille,vue===onglet.id&&styles.textePastilleActive]}>{onglet.nom}</Text>
       </Pressable>)}
@@ -250,7 +329,7 @@ export default function ElyndorLabPanel() {
             <Text style={styles.textePastille}>Différences</Text>
           </Pressable>
         </View>
-        {affichageEditeur==='code' ? <TextInput style={styles.editeur} value={code} onChangeText={(t)=>{setCode(t);setEditionModifiee(true);setControles(null);}}
+        {affichageEditeur==='code' ? <TextInput style={styles.editeur} value={code} onChangeText={saisirCode}
           multiline autoCorrect={false} autoCapitalize="none" textAlignVertical="top" scrollEnabled
           placeholder="Colle ton code ici…" placeholderTextColor={couleurs.texteFaible}/> :
           <View style={styles.bandeau}>
@@ -264,17 +343,17 @@ export default function ElyndorLabPanel() {
             </View>)}
           </View>}
         <View style={styles.actions}>
-          <Bouton titre="Coller" variante="secondaire" onPress={()=>{void Clipboard.getStringAsync().then((texte)=>{setCode(texte);setEditionModifiee(true);}).catch(signaler);}} style={styles.petita}/>
+          <Bouton titre="Coller" variante="secondaire" onPress={()=>{void Clipboard.getStringAsync().then(saisirCode).catch(signaler);}} style={styles.petita}/>
           <Bouton titre="Copier" variante="secondaire" onPress={()=>{void Clipboard.setStringAsync(code);}} style={styles.petita}/>
         </View>
         <Bouton titre={editionModifiee?'Enregistrer le brouillon':'Brouillon enregistré'} variante="secondaire"
-          desactive={!editionModifiee||occupe} onPress={()=>{void sauvegarderBrouillon().catch(signaler);}}/>
+          desactive={!editionModifiee||occupe} onPress={()=>{void viderBrouillon().catch(signaler);}}/>
         <Bouton titre="Vérifier ce fichier" onPress={tester} desactive={occupe}/>
         <Bouton titre="Supprimer ce fichier de la copie" variante="danger" onPress={demanderSuppression} desactive={occupe}/>
         <Text style={styles.aide}>Éditeur tactile et presse-papiers. Ce terminal n'exécute pas de commandes système arbitraires.</Text>
       </> : <>
         <Text style={styles.aide}>Sélectionne un fichier dans l'explorateur.</Text>
-        <Bouton titre="Choisir un fichier" onPress={()=>setVue('fichiers')}/>
+        <Bouton titre="Choisir un fichier" onPress={()=>{void changerVue('fichiers');}}/>
       </>}
     </View> : null}
 
@@ -290,7 +369,7 @@ export default function ElyndorLabPanel() {
       </View>)}
       {selection&&changementNatif(selection)?<Text style={styles.danger}>Fichier de configuration ou code natif : reconstruction Android requise.</Text>:null}
       <Text style={styles.aide}>Un pré-contrôle réussi n'est pas un test vert de compilation. Tant que la chaîne locale Expo/Metro n'est pas démontrée, aucune activation de nouveau code n'est autorisée.</Text>
-      <Bouton titre="Voir les possibilités de mise à jour" variante="secondaire" onPress={()=>setVue('maj')}/>
+      <Bouton titre="Voir les possibilités de mise à jour" variante="secondaire" onPress={()=>{void changerVue('maj');}}/>
     </View> : null}
 
     {vue==='maj' ? <View style={styles.corps}>
@@ -299,8 +378,8 @@ export default function ElyndorLabPanel() {
       <Text style={styles.aide}>Tu peux modifier, sauvegarder, comparer et exporter les fichiers. Une compilation Expo/Metro puis un chargeur sûr seraient nécessaires pour exécuter le TypeScript modifié dans l'application Android.</Text>
       {selection&&changementNatif(selection)?<Text style={styles.aide}>Cette modification exige aussi un nouvel APK : {selection}</Text>:null}
       <Bouton titre="Mettre à jour (non disponible)" desactive onPress={()=>undefined}/>
-      <Bouton titre="Enregistrer une version des sources" variante="secondaire" onPress={()=>setVue('versions')}/>
-      <Bouton titre="Exporter vers GPT / Claude" variante="secondaire" onPress={()=>setVue('archives')}/>
+      <Bouton titre="Enregistrer une version des sources" variante="secondaire" onPress={()=>{void changerVue('versions');}}/>
+      <Bouton titre="Exporter vers GPT / Claude" variante="secondaire" onPress={()=>{void changerVue('archives');}}/>
     </View> : null}
 
     {vue==='versions' ? <View style={styles.corps}>
@@ -327,23 +406,25 @@ export default function ElyndorLabPanel() {
       </Pressable>)}
       <Bouton titre="Retour à la version précédente" variante="secondaire" desactive={!versionSelectionnee||occupe} onPress={demanderRestauration}/>
       <Text style={styles.danger}>Ce secours protège la copie source. Il ne constitue pas encore un écran de récupération automatique après un crash du code natif ou du bundle React Native.</Text>
+       <Bouton titre="Sauvegarder les sources dans un dossier externe" variante="secondaire" onPress={()=>{void sauvegarderDansDossierExterne();}} desactive={occupe}/>
     </View> : null}
 
     {vue==='archives' ? <View style={styles.corps}>
       <Text style={styles.titreSection}>Import / export du code source</Text>
       <Text style={styles.aide}>Le ZIP exporte les sources texte éditables et les modifications du laboratoire, même non activées. Les actifs binaires sont seulement répertoriés : ils ne sont pas inclus dans cette première version.</Text>
       <Bouton titre="Exporter les sources texte (ZIP)" onPress={()=>{void partagerZip();}} desactive={occupe}/>
+       <Bouton titre="Sauvegarder dans un dossier Android (hors application)" variante="secondaire" onPress={()=>{void sauvegarderDansDossierExterne();}} desactive={occupe}/>
       <Bouton titre="Importer une archive ZIP" variante="secondaire" onPress={()=>{void choisirZip();}} desactive={occupe}/>
       {importPret ? <View style={styles.bandeau}>
         <Text style={styles.label}>Import en attente de confirmation</Text>
-        <Text style={styles.aide}>{importPret.nombre} fichiers · {importPret.complet?'Archive de sources complète':'Correctif partiel'}.</Text>
+        <Text style={styles.aide}>{importPret.nombre} fichiers · Correctif non destructif (patch).</Text>
         <Text style={styles.label}>Ajouts : {importPret.details.ajoutes.length} · Modifications : {importPret.details.modifies.length} · Suppressions : {importPret.details.supprimes.length}</Text>
-        {[...importPret.details.ajoutes.slice(0,3).map(p=>' + '+p),...importPret.details.modifies.slice(0,3).map(p=>' ~ '+p),...importPret.details.supprimes.slice(0,3).map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)}
+        {[...importPret.details.ajoutes.map(p=>' + '+p),...importPret.details.modifies.map(p=>' ~ '+p),...importPret.details.supprimes.map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)}
         <Text style={styles.aide}>Un instantané des sources actuelles sera créé avant l'import.</Text>
         <Bouton titre="Confirmer l'import dans la copie locale" onPress={()=>{void confirmerImport();}} desactive={occupe}/>
         <Bouton titre="Annuler l'import" variante="secondaire" onPress={()=>setImportPret(null)}/>
       </View>:null}
-      <Text style={styles.aide}>Aucune clé API, histoire ni base de données personnelle n'est exportée. Pour transmettre tous les actifs médias du dépôt, une archive complète externe reste nécessaire.</Text>
+      <Text style={styles.aide}>Un contrôle heuristique de secrets est effectué avant export, sans garantie absolue. Vérifie l'archive avant de la partager. Les données de parties ne sont pas intégrées. Les médias nécessitent encore un export distinct.</Text>
     </View> : null}
   </View>;
 }
