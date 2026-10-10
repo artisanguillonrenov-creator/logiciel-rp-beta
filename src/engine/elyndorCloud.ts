@@ -198,13 +198,14 @@ export function reglagesSontElyndorCloud(settings: AppSettings): boolean {
  * pour éviter tout redémarrage facturable du pod après mise à jour.
  */
 export function normaliserReglagesFournisseurs(valeur: AppSettings): AppSettings {
-  const ancienCloud = valeur.moteurInference === 'serveur'
+  const ancienCloud = !valeur.fournisseurNarration && valeur.moteurInference === 'serveur'
     && (valeur.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL || !valeur.serveurLocalUrl)
     && (!valeur.serveurLocalModele || valeur.serveurLocalModele === ELYNDOR_CLOUD_MODELE);
   const mode = ancienCloud ? 'openrouter' : (valeur.moteurInference || 'openrouter');
   return {
     ...valeur,
     moteurInference: mode,
+    fournisseurNarration: valeur.fournisseurNarration || (ancienCloud ? 'openrouter' : mode === 'openrouter' ? 'openrouter' : 'serveur'),
     model: ancienCloud || !valeur.model ? 'openrouter/free' : valeur.model,
     openRouterApiKey: valeur.openRouterApiKey || '',
     fournisseurImages: valeur.fournisseurImages || 'desactive',
