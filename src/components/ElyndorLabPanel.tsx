@@ -338,7 +338,7 @@ export default function ElyndorLabPanel() {
         <Text style={styles.label}>Import en attente de confirmation</Text>
         <Text style={styles.aide}>{importPret.nombre} fichiers · {importPret.complet?'Archive de sources complète':'Correctif partiel'}.</Text>
         <Text style={styles.label}>Ajouts : {importPret.details.ajoutes.length} · Modifications : {importPret.details.modifies.length} · Suppressions : {importPret.details.supprimes.length}</Text>
-        {[...importPret.details.ajoutes.slice(0,3).map(p=>' + '+p),...importPret.details.modifies.slice(0,3).map(p=>' ~ '+p),...importPret.details.supprimes.slice(0,3).map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)
+        {[...importPret.details.ajoutes.slice(0,3).map(p=>' + '+p),...importPret.details.modifies.slice(0,3).map(p=>' ~ '+p),...importPret.details.supprimes.slice(0,3).map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)}
         <Text style={styles.aide}>Un instantané des sources actuelles sera créé avant l'import.</Text>
         <Bouton titre="Confirmer l'import dans la copie locale" onPress={()=>{void confirmerImport();}} desactive={occupe}/>
         <Bouton titre="Annuler l'import" variante="secondaire" onPress={()=>setImportPret(null)}/>
