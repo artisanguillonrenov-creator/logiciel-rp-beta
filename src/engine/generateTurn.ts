@@ -44,7 +44,6 @@ import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
-import { appellerModele } from './elyndorCloudClient';
 import { genererNarrationAvecCloture } from './clotureNarration';
 import { genererDeltaEtatSepare } from './deltaEtatSepare';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
