@@ -131,7 +131,7 @@ export default function AtelierContexteMemoirePanel() {
     <Text style={styles.aide}>Source unique des réglages de recherche. Budget lore en caractères et nombre de souvenirs maximum ; ni pourcentage d'utilisation de contexte inventé, ni compteur de tokens fictif.</Text>
     <AtelierConfigurationPanel section="recherche"/>
     <Text style={styles.aide}>Pour partager un diagnostic technique anonymisé, utilise « Instantanés et historique ». Les textes privés des histoires ne sont jamais inclus automatiquement. Comparaison A/B sur le vrai modèle et mesure de latence P50/P95 demandent des tests de génération distincts.</Text>
-    {params ? <Text style={styles.aide}>Réglages Production : {params.budgetLorePassages} caractères lore · {params.maxSouvenirs} souvenirs · marge état {params.margeTokensEtat} tokens (plafond de sortie, pas mémoire d'entrée).</Text> : null}
+    {params ? <Text style={styles.aide}>Réglages Production : {params.budgetLorePassages} caractères lore · {params.maxSouvenirs} souvenirs · état technique séparé, sans marge de narration.</Text> : null}
   </View>;
 }
 
