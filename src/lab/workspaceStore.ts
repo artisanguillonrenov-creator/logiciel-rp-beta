@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { SOURCES_EMBARQUEES, SOURCE_REFERENCE } from './sourceSnapshot.generated';
+import { SOURCE_REFERENCE } from './sourceSnapshot.generated';
 import { nouvelAtelier, verifierAtelier, type AtelierLocal } from './workspaceCore';
 const dossier = (FileSystem.documentDirectory ?? '') + 'elyndor-lab/';
 const principal = dossier + 'workspace.json';
@@ -22,6 +22,8 @@ export async function lireAtelierLocal(): Promise<AtelierLocal> {
   if (backup) return backup;
   const brouillon = await decoder(temporaire);
   if (brouillon) return brouillon;
+  const fichiers = await Promise.all([principal,secours,temporaire].map(p=>FileSystem.getInfoAsync(p)));
+  if (fichiers.some(f=>f.exists)) throw new Error('Registre de travail endommagé : aucune réinitialisation automatique pour préserver les données.');
   return nouvelAtelier(SOURCE_REFERENCE);
 }
 async function persister(atelier: AtelierLocal): Promise<void> {
@@ -47,4 +49,3 @@ export function enregistrerAtelierLocal(atelier: AtelierLocal): Promise<void> {
   fileEcriture = operation.catch(()=>undefined);
   return operation;
 }
-export function estSourcePreparee(): boolean { return Object.keys(SOURCES_EMBARQUEES).length>0; }
