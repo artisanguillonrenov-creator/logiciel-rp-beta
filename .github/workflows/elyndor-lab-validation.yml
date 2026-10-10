@@ -1,0 +1,54 @@
+name: Elyndor Lab - validation isolee
+
+on:
+  push:
+    branches:
+      - chatgpt/elyndor-lab-consolidation-20261010
+    paths:
+      - .github/workflows/elyndor-lab-validation.yml
+      - src/lab/**
+      - src/components/ElyndorLabPanel.tsx
+      - tests/elyndorLabSafety.test.ts
+      - tests/elyndorLab.test.ts
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Installer dependances sans modifier le depot
+        run: npm ci
+      - name: Tests automatises
+        id: tests
+        continue-on-error: true
+        run: npm test
+      - name: Controle TypeScript
+        id: typescript
+        continue-on-error: true
+        run: npx tsc --noEmit
+      - name: Export web de verification (non deploye)
+        id: web
+        continue-on-error: true
+        run: npx expo export -p web
+      - name: Bilan (echoue si une verification echoue)
+        if: always()
+        env:
+          TESTS: ${{ steps.tests.outcome }}
+          TYPESCRIPT: ${{ steps.typescript.outcome }}
+          WEB: ${{ steps.web.outcome }}
+        run: |
+          echo "Tests: $TESTS"
+          echo "TypeScript: $TYPESCRIPT"
+          echo "Export web: $WEB"
+          test "$TESTS" = success && test "$TYPESCRIPT" = success && test "$WEB" = success
