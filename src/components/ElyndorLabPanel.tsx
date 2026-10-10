@@ -3,13 +3,13 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View 
 import * as Clipboard from 'expo-clipboard';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
 import Bouton from './Bouton';
-import { SOURCES_EMBARQUEES, FICHIERS_BINAIRES_NON_EMBARQUES, SOURCE_REFERENCE } from '../lab/sourceSnapshot.generated';
+import { lireDepotSourcesLab, type DepotSourcesLab } from '../lab/depotSources';
 import {
   type AtelierLocal, type ControleLab, cheminValide, confirmerVersionStable, enregistrerVersion,
   fichiersActuels, modifierFichier, nouvelAtelier, precontrolerFichier, restaurerVersion,
   supprimerFichier, changementNatif,
 } from '../lab/workspaceCore';
-import { enregistrerAtelierLocal, estSourcePreparee, lireAtelierLocal } from '../lab/workspaceStore';
+import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
 import { exporterSourcesLab, importerArchiveLab } from '../lab/archives';
 
 type Vue = 'fichiers' | 'editeur' | 'tests' | 'maj' | 'versions' | 'secours' | 'archives';
@@ -22,6 +22,7 @@ const erreurMessage = (cause:unknown) => cause instanceof Error ? cause.message 
 
 export default function ElyndorLabPanel() {
   const [atelier,setAtelier] = useState<AtelierLocal|null>(null);
+  const [depot,setDepot] = useState<DepotSourcesLab|null>(null);
   const [vue,setVue] = useState<Vue>('fichiers');
   const [dossier,setDossier] = useState('');
   const [selection,setSelection] = useState('');
@@ -39,12 +40,13 @@ export default function ElyndorLabPanel() {
 
   useEffect(()=>{
     let actif=true;
-    lireAtelierLocal().then((a)=>{if(actif){setAtelier(a);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
+    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
       .catch((e)=>{if(actif)setErreur(erreurMessage(e));});
     return ()=>{actif=false;};
   },[]);
 
-  const fichiers = useMemo(()=>atelier ? fichiersActuels(SOURCES_EMBARQUEES,atelier):{},[atelier]);
+  const sources=depot?.sources??{};
+  const fichiers = useMemo(()=>atelier && depot ? fichiersActuels(depot.sources,atelier):{},[atelier,depot]);
   const noms = useMemo(()=>Object.keys(fichiers).sort(),[fichiers]);
   const dossierContenu = useMemo(()=>{
     const sousDossiers = new Set<string>();
@@ -69,7 +71,7 @@ export default function ElyndorLabPanel() {
   }
   async function sauvegarderBrouillon() {
     if(!atelier || !selection || !editionModifiee) return atelier;
-    const suivant=modifierFichier(atelier,SOURCES_EMBARQUEES,selection,code);
+    const suivant=modifierFichier(atelier,sources,selection,code);
     await appliquer(suivant,'Brouillon enregistré dans la copie locale.');
     setEditionModifiee(false);
     return suivant;
@@ -95,7 +97,7 @@ export default function ElyndorLabPanel() {
     if(Object.prototype.hasOwnProperty.call(fichiers,chemin)){setErreur('Ce fichier existe déjà.');return;}
     try{
       if(editionModifiee) await sauvegarderBrouillon();
-      const suivant=modifierFichier(atelier,SOURCES_EMBARQUEES,chemin,'');
+      const suivant=modifierFichier(atelier,sources,chemin,'');
       await appliquer(suivant,'Fichier local créé : '+chemin);
       setSelection(chemin);setCode('');setEditionModifiee(false);setControles(null);setVue('editeur');
     }catch(e){signaler(e);}
@@ -105,7 +107,7 @@ export default function ElyndorLabPanel() {
     Alert.alert('Supprimer ce fichier de la copie locale ?',selection,[
       {text:'Annuler',style:'cancel'},
       {text:'Supprimer',style:'destructive',onPress:()=>{
-        const suivant=supprimerFichier(atelier,SOURCES_EMBARQUEES,selection);
+        const suivant=supprimerFichier(atelier,sources,selection);
         void appliquer(suivant,'Fichier supprimé de la copie locale.').then(()=>{
           setSelection('');setCode('');setEditionModifiee(false);setVue('fichiers');
         }).catch(()=>undefined);
@@ -134,7 +136,7 @@ export default function ElyndorLabPanel() {
         try{
           const suivant=restaurerVersion(atelier,versionSelectionnee);
           void appliquer(suivant,'Sources restaurées. Le code de l’application installée n’a pas changé.').then(()=>{
-            if(selection){setCode(fichiersActuels(SOURCES_EMBARQUEES,suivant)[selection]??'');setEditionModifiee(false);}
+            if(selection){setCode(fichiersActuels(sources,suivant)[selection]??'');setEditionModifiee(false);}
             setVersionSelectionnee(suivant.versionActive??'');
           }).catch(()=>undefined);
         }catch(e){signaler(e);}
@@ -145,9 +147,10 @@ export default function ElyndorLabPanel() {
     if(!atelier)return;
     setOccupe(true);setErreur('');setMessage('Création et vérification de l’archive en cours…');
     try{
-      const a=editionModifiee ? modifierFichier(atelier,SOURCES_EMBARQUEES,selection,code) : atelier;
+      const a=editionModifiee ? modifierFichier(atelier,sources,selection,code) : atelier;
       if(editionModifiee){await enregistrerAtelierLocal(a);setAtelier(a);setEditionModifiee(false);}
-      const resultat=await exporterSourcesLab(a);
+      if(!depot)throw new Error('Sources locales non disponibles.');
+      const resultat=await exporterSourcesLab(a,depot);
       messageOk(resultat.total+' fichiers sources texte ajoutés à l’archive ZIP.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
@@ -156,7 +159,8 @@ export default function ElyndorLabPanel() {
     setOccupe(true);setErreur('');setImportPret(null);
     try{
       if(editionModifiee)await sauvegarderBrouillon();
-      const resultat=await importerArchiveLab(atelier);
+      if(!depot)throw new Error('Sources locales non disponibles.');
+      const resultat=await importerArchiveLab(atelier,depot);
       setImportPret(resultat);
       messageOk(resultat.nombre+' fichiers analysés. Aucun changement appliqué : confirme l’importation ci-dessous.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
@@ -174,10 +178,10 @@ export default function ElyndorLabPanel() {
     }catch(e){signaler(e);}
   }
 
-  if(!atelier) return <View style={styles.section}>
+  if(!atelier || !depot) return <View style={styles.section}>
     <ActivityIndicator color={couleurs.dore}/>
     <Text style={styles.aide}>{erreur || 'Ouverture de la copie locale…'}</Text>
-    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void lireAtelierLocal().then(setAtelier).catch(signaler);}}/>:null}
+    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,b])=>{setAtelier(a);setDepot(b);}).catch(signaler);}}/>:null}
   </View>;
   return <View style={styles.section}>
     <Text style={styles.surtitre}>ELYNDOR LAB · COPIE LOCALE</Text>
@@ -187,9 +191,9 @@ export default function ElyndorLabPanel() {
       elles ne touchent ni GitHub, ni le code déjà installé, ni les histoires.
     </Text>
     <View style={styles.bandeau}>
-      <Text style={styles.label}>Référence source : {SOURCE_REFERENCE.slice(0,12)}</Text>
-      <Text style={styles.aide}>{noms.length} fichiers texte · {FICHIERS_BINAIRES_NON_EMBARQUES.length} actifs binaires référencés</Text>
-      {!estSourcePreparee() ? <Text style={styles.danger}>
+      <Text style={styles.label}>Référence source : {depot.reference.slice(0,12)}</Text>
+      <Text style={styles.aide}>{noms.length} fichiers texte · {depot.binaires.length} actifs binaires référencés</Text>
+      {noms.length===0 ? <Text style={styles.danger}>
         Instantané absent de cette compilation. Importe une archive de sources pour commencer.
       </Text>:null}
     </View>
