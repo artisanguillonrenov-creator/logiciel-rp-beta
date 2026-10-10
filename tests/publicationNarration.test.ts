@@ -99,7 +99,7 @@ test('tokenizer : 404, faux résultat, erreur réseau et ids de tokens invalides
 test('une fin tronquée reste inchangée sans tentative de réécriture', async () => {
   const phrase = Array(219).fill('mot').join(' ') + ' terminé.';
   const coupe = phrase + ' ' + Array(14).fill('interrompu').join(' ');
-  const compter = async (texte: string) => texte.trim().split(/\\s+/).length;
+  const compter = async (texte: string) => texte.trim().split(/\s+/).length;
   let appelsIA = 0;
   const resultat = await controlerLongueurNarration({
     texte: coupe,
