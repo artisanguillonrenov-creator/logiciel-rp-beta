@@ -12,6 +12,7 @@ import {
 import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
 import { exporterSourcesLab, importerArchiveLab, type ResultatImportLab } from '../lab/archives';
 import { JournalBrouillon } from '../lab/journalBrouillon';
+import { synchroniserArbrePhysique } from '../lab/arbrePhysique';
 import { comparerArbres, comparerTexte, type ResumeImport } from '../lab/diff';
 
 type Vue = 'fichiers' | 'editeur' | 'tests' | 'maj' | 'versions' | 'secours' | 'archives';
@@ -37,6 +38,7 @@ export default function ElyndorLabPanel() {
   const [versionSelectionnee,setVersionSelectionnee] = useState('');
   const [controles,setControles] = useState<ControleLab[]|null>(null);
   const [message,setMessage] = useState('');
+  const [etatPhysique,setEtatPhysique] = useState('Copie physique non encore vérifiée.');
   const [erreur,setErreur] = useState('');
   const [occupe,setOccupe] = useState(false);
   const [importPret,setImportPret] = useState<(ResultatImportLab & {details:ResumeImport;empreinteAvant:string})|null>(null);
@@ -46,7 +48,9 @@ export default function ElyndorLabPanel() {
 
   useEffect(()=>{
     let actif=true;
-    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){etatRef.current=a;setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
+    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){etatRef.current=a;setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');
+          void synchroniserArbrePhysique(base,a).then(r=>{if(actif)setEtatPhysique(r.total+' fichiers physiques synchronisés.');}).catch(e=>{if(actif)setEtatPhysique('Copie physique à réparer : '+erreurMessage(e));});
+        }})
       .catch((e)=>{if(actif)setErreur(erreurMessage(e));});
     return ()=>{actif=false;};
   },[]);
@@ -76,6 +80,7 @@ export default function ElyndorLabPanel() {
       await fileSauvegarde.current.catch(()=>null);
       await enregistrerAtelierLocal(maj);
       etatRef.current=maj;setAtelier(maj);messageOk(texte);
+      if(depot)void synchroniserArbrePhysique(depot,maj).then(r=>setEtatPhysique(r.total+' fichiers physiques synchronisés.')).catch(e=>setEtatPhysique('Copie physique à réparer : '+erreurMessage(e)));
     }catch(e){signaler(e);throw e;}
     finally{setOccupe(false);}
   }
@@ -88,6 +93,7 @@ export default function ElyndorLabPanel() {
       const suivant=modifierFichier(courant,sources,capture.chemin,capture.texte);
       await enregistrerAtelierLocal(suivant);
       etatRef.current=suivant;setAtelier(suivant);
+      if(depot)void synchroniserArbrePhysique(depot,suivant).then(r=>setEtatPhysique(r.total+' fichiers physiques synchronisés.')).catch(e=>setEtatPhysique('Copie physique à réparer : '+erreurMessage(e)));
       if(journal.current.acquitter(capture)){
         setEditionModifiee(false);messageOk('Brouillon enregistré dans la copie locale.');
       }
@@ -255,6 +261,7 @@ export default function ElyndorLabPanel() {
     <View style={styles.bandeau}>
       <Text style={styles.label}>Référence source : {depot.reference.slice(0,12)}</Text>
       <Text style={styles.aide}>{noms.length} fichiers texte · {depot.binaires.length} actifs binaires référencés</Text>
+       <Text style={styles.aide}>{etatPhysique} Le registre des modifications reste conservé séparément.</Text>
       {noms.length===0 ? <Text style={styles.danger}>
         Instantané absent de cette compilation. Importe une archive de sources pour commencer.
       </Text>:null}
