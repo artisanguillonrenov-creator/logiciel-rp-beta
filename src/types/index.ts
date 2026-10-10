@@ -412,6 +412,8 @@ export type MoteurInference = FournisseurLLM;
 export interface AppSettings {
   openRouterApiKey: string;
   model: string;
+  /** Marqueur de sélection explicite : distingue une ancienne migration Cloud d'un choix RunPod récent. */
+  fournisseurNarration?: 'openrouter' | 'runpod' | 'serveur';
   /** Services indépendants, sélectionnés dans les réglages utilisateur. */
   fournisseurImages?: 'desactive' | 'runpod' | 'openrouter';
   modeleImages?: string;
