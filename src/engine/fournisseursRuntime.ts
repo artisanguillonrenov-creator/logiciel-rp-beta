@@ -18,12 +18,20 @@ export function reglagesFournisseursActifs(): AppSettings {
 }
 
 export interface RouteTexte {
-  fournisseur: 'openrouter' | 'runpod' | 'serveur';
+  fournisseur: 'openrouter' | 'openai' | 'runpod' | 'serveur';
   url: string;
   model: string;
   apiKey: string;
 }
 export function resoudreRouteTexte(settings: AppSettings): RouteTexte {
+  if (settings.moteurInference === 'openai' || settings.fournisseurNarration === 'openai') {
+    return {
+      fournisseur: 'openai',
+      url: 'https://api.openai.com/v1/chat/completions',
+      model: settings.openAiModel || 'gpt-4.1-mini',
+      apiKey: settings.openAiApiKey || '',
+    };
+  }
   if (settings.moteurInference === 'openrouter' || !settings.moteurInference) {
     return {
       fournisseur: 'openrouter',
