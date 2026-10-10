@@ -1,5 +1,6 @@
 import { Image } from 'react-native';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
+import { reglerDirectionIllustration, negatifCadrageIllustration } from './directionIllustration';
 import { appliquerPresetVisuel, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
 import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
@@ -147,12 +148,20 @@ export async function genererImageScene(
     throw new ErreurImagesIndisponibles();
   }
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
+  const dirigee = reglerDirectionIllustration(structure, visuel);
+  const selection = selectionnerReferencesGenerateur(references);
+  const referencesScene = visuel.referencesPersonnagesScene
+    ? selection
+    : selection.filter(ref => ref.role === 'scene');
   return generateurCourant({
-    prompt: formaterPromptImage(structure, references),
-    promptCourt: construirePromptSdxl(structure),
-    negatif: enrichirNegatifVisuel(negatifPourProfil(profil), visuel),
-    modules: appliquerPresetVisuel(modulesPourScene(structure), visuel),
-    references: selectionnerReferencesGenerateur(references),
+    prompt: formaterPromptImage(dirigee, references),
+    promptCourt: construirePromptSdxl(dirigee),
+    negatif: enrichirNegatifVisuel(
+      [negatifPourProfil(profil), negatifCadrageIllustration(visuel)].filter(Boolean).join(', '),
+      visuel,
+    ),
+    modules: appliquerPresetVisuel(modulesPourScene(dirigee), visuel),
+    references: referencesScene,
     format: '16:9',
     storyId,
   });
