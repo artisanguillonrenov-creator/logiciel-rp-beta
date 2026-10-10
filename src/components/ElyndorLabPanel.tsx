@@ -10,7 +10,7 @@ import {
   supprimerFichier, changementNatif,
 } from '../lab/workspaceCore';
 import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
-import { exporterSourcesLab, importerArchiveLab, type ResultatImportLab } from '../lab/archives';
+import { exporterSourcesLab, importerArchiveLab, sauvegarderSourcesDansDossierAndroid, type ResultatImportLab } from '../lab/archives';
 import { JournalBrouillon } from '../lab/journalBrouillon';
 import { synchroniserArbrePhysique } from '../lab/arbrePhysique';
 import { comparerArbres, comparerTexte, type ResumeImport } from '../lab/diff';
@@ -217,6 +217,15 @@ export default function ElyndorLabPanel() {
       messageOk(resultat.total+' fichiers sources texte ajoutés à l’archive ZIP.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
+  async function sauvegarderDansDossierExterne(){
+    if(!atelier || !depot)return;
+    setOccupe(true);setErreur('');
+    try{
+      const courant=await viderBrouillon()??atelier;
+      const sauvegarde=await sauvegarderSourcesDansDossierAndroid(courant,depot);
+      messageOk(sauvegarde.total+' sources texte sauvegardées dans le dossier Android choisi. Conserve cette archive hors de l’app.');
+    }catch(e){signaler(e);}finally{setOccupe(false);}
+  }
   async function choisirZip(){
     if(!atelier)return;
     setOccupe(true);setErreur('');setImportPret(null);
@@ -397,12 +406,14 @@ export default function ElyndorLabPanel() {
       </Pressable>)}
       <Bouton titre="Retour à la version précédente" variante="secondaire" desactive={!versionSelectionnee||occupe} onPress={demanderRestauration}/>
       <Text style={styles.danger}>Ce secours protège la copie source. Il ne constitue pas encore un écran de récupération automatique après un crash du code natif ou du bundle React Native.</Text>
+       <Bouton titre="Sauvegarder les sources dans un dossier externe" variante="secondaire" onPress={()=>{void sauvegarderDansDossierExterne();}} desactive={occupe}/>
     </View> : null}
 
     {vue==='archives' ? <View style={styles.corps}>
       <Text style={styles.titreSection}>Import / export du code source</Text>
       <Text style={styles.aide}>Le ZIP exporte les sources texte éditables et les modifications du laboratoire, même non activées. Les actifs binaires sont seulement répertoriés : ils ne sont pas inclus dans cette première version.</Text>
       <Bouton titre="Exporter les sources texte (ZIP)" onPress={()=>{void partagerZip();}} desactive={occupe}/>
+       <Bouton titre="Sauvegarder dans un dossier Android (hors application)" variante="secondaire" onPress={()=>{void sauvegarderDansDossierExterne();}} desactive={occupe}/>
       <Bouton titre="Importer une archive ZIP" variante="secondaire" onPress={()=>{void choisirZip();}} desactive={occupe}/>
       {importPret ? <View style={styles.bandeau}>
         <Text style={styles.label}>Import en attente de confirmation</Text>
