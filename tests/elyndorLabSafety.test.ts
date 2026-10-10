@@ -54,9 +54,11 @@ test('manifeste verifie reference et inventaire',()=>{
 
 import { comparerTexte } from '../src/lab/diff';
 test('comparaison multi-blocs distinguant deux editions eloignees',()=>{
-  const blocs=comparerTexte('debut\\nancien\\nmilieu\\nancienne fin\\nfin'.replace(/\\\\n/g,'\\n'),
-    'debut\\nnouveau\\nmilieu\\nnouvelle fin\\nfin'.replace(/\\\\n/g,'\\n'));
+  const avant=['debut','ancien','milieu','ancienne fin','fin'].join('\n');
+  const apres=['debut','nouveau','milieu','nouvelle fin','fin'].join('\n');
+  const blocs=comparerTexte(avant,apres);
   assert.equal(blocs.length,2);
   assert.equal(blocs[0].ancien,'ancien');
   assert.equal(blocs[1].nouveau,'nouvelle fin');
+
 });
