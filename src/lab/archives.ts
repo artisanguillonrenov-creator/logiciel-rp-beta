@@ -112,12 +112,19 @@ export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSources
     if(octetsUtf8(texteManifeste)>2*1024*1024)throw new Error('Manifeste démesuré.');
     let lu:unknown;
     try{lu=JSON.parse(texteManifeste);}catch{throw new Error('Manifeste JSON illisible.');}
-    const valide=examinerManifeste(lu,importes,depot.reference);
-    // Un manifeste est informatif pour l'histoire, jamais un permis de supprimer.
-    const candidate:AtelierLocal={schema:1,reference:valide.reference,changements:valide.changements,
-      versions:valide.versions,chantier:valide.chantier,versionActive:null};
-    if(!verifierAtelier(candidate))throw new Error('Historique ou modifications du manifeste invalides.');
-    versionsImportees=valide.versions;
+    // Les anciens ZIP schema 1 peuvent être relus comme patchs.
+    // On ignore leur métadonnée "archive complète", qui n'autorise JAMAIS une suppression.
+    if(lu && typeof lu==='object' && (lu as {schema?:unknown}).schema===1){
+      const ancien=lu as {format?:unknown;reference?:unknown};
+      if(ancien.format!=='elyndor-lab-sources-texte' || ancien.reference!==depot.reference)
+        throw new Error('Ancienne archive non compatible avec cette référence de code.');
+    }else{
+      const valide=examinerManifeste(lu,importes,depot.reference);
+      const candidate:AtelierLocal={schema:1,reference:valide.reference,changements:valide.changements,
+        versions:valide.versions,chantier:valide.chantier,versionActive:null};
+      if(!verifierAtelier(candidate))throw new Error('Historique ou modifications du manifeste invalides.');
+      versionsImportees=valide.versions;
+    }
   }
   // Toujours PATCH : aucune suppression de source absente, même avec package.json.
   let prochain={...atelier,changements:{...atelier.changements}};
