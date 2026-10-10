@@ -1,21 +1,21 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
-import { FICHIERS_BINAIRES_NON_EMBARQUES, SOURCES_EMBARQUEES, SOURCE_REFERENCE } from './sourceSnapshot.generated';
+import type { DepotSourcesLab } from './depotSources';
 import { cheminValide, fichiersActuels, modifierFichier, supprimerFichier, type AtelierLocal } from './workspaceCore';
 const EXTENSIONS_TEXTES = /\.(ts|tsx|js|jsx|cjs|mjs|json|md|txt|yml|yaml|sh|py|kt|java|xml|properties|gradle|jinja)$/i;
 
-export async function exporterSourcesLab(atelier: AtelierLocal): Promise<{ uri:string; total:number }> {
+export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{ uri:string; total:number }> {
   const zip = new JSZip();
-  const fichiers = fichiersActuels(SOURCES_EMBARQUEES, atelier);
+  const fichiers = fichiersActuels(depot.sources, atelier);
   for (const [chemin, texte] of Object.entries(fichiers)) {
     if (cheminValide(chemin)) zip.file('sources/' + chemin, texte);
   }
   zip.file('ELYNDOR-LAB-MANIFEST.json', JSON.stringify({
     format:'elyndor-lab-sources-texte', schema:1, date:new Date().toISOString(),
-    reference:SOURCE_REFERENCE, chantier:atelier.chantier,
+    reference:depot.reference, chantier:atelier.chantier,
     sources: Object.keys(fichiers).filter(cheminValide).length,
-    actifsNonInclus:FICHIERS_BINAIRES_NON_EMBARQUES,
+    actifsNonInclus:depot.binaires,
     precision:'Archive complète des sources texte éditables locales. Images et autres actifs binaires non inclus ; ils demeurent dans le dépôt de référence.',
     changements:atelier.changements, versions:atelier.versions,
     avertissement:'Aucun historique de parties, aucune clé API ni donnée privée ne sont exportés.',
@@ -28,7 +28,7 @@ export async function exporterSourcesLab(atelier: AtelierLocal): Promise<{ uri:s
   await Sharing.shareAsync(destination.uri,{mimeType:'application/zip',dialogTitle:'Exporter la copie locale Elyndor Lab'});
   return {uri:destination.uri,total:Object.keys(fichiers).length};
 }
-export async function importerArchiveLab(atelier: AtelierLocal): Promise<{atelier:AtelierLocal;nombre:number;complet:boolean}> {
+export async function importerArchiveLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{atelier:AtelierLocal;nombre:number;complet:boolean}> {
   const selection = await File.pickFileAsync({mimeTypes:['application/zip','application/octet-stream','application/x-zip-compressed']});
   if (selection.canceled || !selection.result) throw new Error('Sélection annulée.');
   const entree = await JSZip.loadAsync(await selection.result.arrayBuffer());
@@ -55,12 +55,12 @@ export async function importerArchiveLab(atelier: AtelierLocal): Promise<{atelie
   if (!nomFichiers.length) throw new Error('Aucun fichier source compatible dans cette archive.');
   const complet = estLab || Object.prototype.hasOwnProperty.call(importes,'package.json');
   if (complet) {
-    for (const chemin of Object.keys(SOURCES_EMBARQUEES)) {
+    for (const chemin of Object.keys(depot.sources)) {
       if (cheminValide(chemin) && !Object.prototype.hasOwnProperty.call(importes,chemin)) {
-        prochain=supprimerFichier(prochain,SOURCES_EMBARQUEES,chemin);
+        prochain=supprimerFichier(prochain,depot.sources,chemin);
       }
     }
   }
-  for (const [chemin, texte] of Object.entries(importes)) prochain=modifierFichier(prochain,SOURCES_EMBARQUEES,chemin,texte);
+  for (const [chemin, texte] of Object.entries(importes)) prochain=modifierFichier(prochain,depot.sources,chemin,texte);
   return {atelier:prochain,nombre:nomFichiers.length,complet};
 }
