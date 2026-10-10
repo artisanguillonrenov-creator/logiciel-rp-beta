@@ -51,3 +51,12 @@ test('manifeste verifie reference et inventaire',()=>{
   assert.throws(()=>examinerManifeste({...val,fichiers:{'package.json':{octets:3,empreinte:'faux'}}},fichiers,'sha'));
   assert.throws(()=>examinerManifeste({...val,fichiers:{}},fichiers,'sha'));
 });
+
+import { comparerTexte } from '../src/lab/diff';
+test('comparaison multi-blocs distinguant deux editions eloignees',()=>{
+  const blocs=comparerTexte('debut\\nancien\\nmilieu\\nancienne fin\\nfin'.replace(/\\\\n/g,'\\n'),
+    'debut\\nnouveau\\nmilieu\\nnouvelle fin\\nfin'.replace(/\\\\n/g,'\\n'));
+  assert.equal(blocs.length,2);
+  assert.equal(blocs[0].ancien,'ancien');
+  assert.equal(blocs[1].nouveau,'nouvelle fin');
+});
