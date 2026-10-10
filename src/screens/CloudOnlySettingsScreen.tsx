@@ -15,7 +15,7 @@ import type { AppSettings, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
 import { verifierMiseAJour } from '../engine/updater';
 import { VERSION_APP } from '../version';
-import { ELYNDOR_CLOUD_MODELE } from '../engine/elyndorCloud';
+import FournisseursPanel from '../components/FournisseursPanel';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
@@ -152,24 +152,11 @@ export default function CloudOnlySettingsScreen({ navigation }: Props) {
         <View style={styles.entete}>
           <Text style={styles.surtitre}>{t('PARAMÈTRES D’ELYNDOR')}</Text>
           <Text style={styles.titre}>{t('Réglages')}</Text>
-          <Text style={styles.sousTitre}>{t('L’expérience reste configurable. La connexion IA, elle, est désormais entièrement gérée par Elyndor Cloud.')}</Text>
+          <Text style={styles.sousTitre}>{t('Configure tes fournisseurs IA, leur modèle et tes limites de coût directement sur cette tablette.')}</Text>
         </View>
 
         <Panneau style={styles.sectionCloud}>
-          <Text style={styles.sectionSurtitre}>{t('IA & CONNEXION')}</Text>
-          <Text style={styles.sectionTitre}>Elyndor Cloud</Text>
-          <Text style={styles.cloudEtat}>● {t('Connexion automatique')}</Text>
-          <Text style={styles.sectionDescription}>
-            {t('Aucune clé API, aucun modèle local et aucune adresse de serveur à configurer. Le narrateur utilise exclusivement Elyndor Cloud.')}
-          </Text>
-          <View style={styles.ligneInfo}>
-            <Text style={styles.ligneLabel}>{t('Narrateur')}</Text>
-            <Text style={styles.ligneValeur}>Elyndor Cloud</Text>
-          </View>
-          <View style={styles.ligneInfo}>
-            <Text style={styles.ligneLabel}>{t('Modèle')}</Text>
-            <Text style={styles.ligneValeur} numberOfLines={2}>{ELYNDOR_CLOUD_MODELE}</Text>
-          </View>
+          <FournisseursPanel />
         </Panneau>
 
         <View style={styles.grille}>
