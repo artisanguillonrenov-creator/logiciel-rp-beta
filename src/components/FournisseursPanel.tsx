@@ -1,5 +1,6 @@
 import React,{useEffect,useState} from 'react';
-import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
+import {ActivityIndicator,Linking,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';
+import { demarrerConnexionChatGPT, statutChatGPT, deconnecterChatGPT, modelesChatGPT } from '../engine/chatgptSubscription';
 import {getSettings,saveSettings} from '../storage/storage';
 import type {AppSettings} from '../types';
 import { ELYNDOR_CLOUD_REGLAGE_URL } from '../engine/elyndorCloud';
@@ -9,15 +10,16 @@ import {listerModelesImagesOpenAI, MODELES_IMAGES_OPENAI_SUGGERES} from '../engi
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
-type ModeTexte='openrouter'|'openai'|'runpod'|'serveur';
+type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt';
 type ModeImages='desactive'|'runpod'|'openrouter'|'openai';
 const LABELS:Record<ModeTexte,string>={
-  openrouter:'OpenRouter',openai:'OpenAI / GPT',runpod:'RunPod Elyndor',serveur:'Autre API compatible',
+  openrouter:'OpenRouter',openai:'OpenAI / GPT (clé API)',runpod:'RunPod Elyndor',serveur:'Autre API compatible',chatgpt:'ChatGPT — abonnement (sans clé API)',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
+  if(v.moteurInference==='chatgpt'||v.fournisseurNarration==='chatgpt')return 'chatgpt';
   if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
   if(v.moteurInference==='openrouter')return 'openrouter';
   if(v.serveurLocalUrl===ELYNDOR_CLOUD_REGLAGE_URL)return 'runpod';
@@ -26,6 +28,10 @@ function modeDuTexte(v:AppSettings):ModeTexte{
 export default function FournisseursPanel(){
   const [cfg,setCfg]=useState<AppSettings|null>(null);
   const [mode,setMode]=useState<ModeTexte>('openrouter');
+  const [chatgptStatut,setChatgptStatut]=useState('Non connecté');
+  const [chatgptCode,setChatgptCode]=useState('');
+  const [chatgptUrl,setChatgptUrl]=useState('');
+  const [modelesAbonnement,setModelesAbonnement]=useState<Array<{id:string;nom:string}>>([]);
   const [selection,setSelection]=useState<ModeImages>('desactive');
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
@@ -40,6 +46,28 @@ export default function FournisseursPanel(){
     }).catch(e=>setMsg('Lecture des fournisseurs impossible : '+String(e)));
   },[]);
   const set=(patch:Partial<AppSettings>)=>setCfg(v=>v?{...v,...patch}:v);
+  const verifierChatGPT=async()=>{
+    try { const status=await statutChatGPT();setChatgptStatut(status.connected?'Connecté'+(status.planType?' ('+status.planType+')':''):status.error||'Non connecté — validation éventuelle en cours'); }
+    catch(e){setChatgptStatut('Connexion impossible : '+String(e));}
+  };
+  const connecterChatGPT=async()=>{
+    setBusy(true);setMsg('');
+    try {
+      const start=await demarrerConnexionChatGPT();
+      setChatgptCode(start.userCode);setChatgptUrl(start.verificationUrl);
+      setChatgptStatut('En attente de validation dans le navigateur');
+      setMsg('Ouvre la page de validation, saisis le code et reviens vérifier la connexion.');
+      await Linking.openURL(start.verificationUrl);
+    }catch(e){setMsg('ChatGPT : '+String(e));}
+    finally{setBusy(false);}
+  };
+  const chargerModelesAbonnement=async()=>{
+    setBusy(true);
+    try {const liste=await modelesChatGPT();setModelesAbonnement(liste);setMsg(liste.length+' modèles accessibles via ton compte.');}
+    catch(e){setMsg('Catalogue ChatGPT : '+String(e));}
+    finally{setBusy(false);}
+  };
+  useEffect(()=>{void verifierChatGPT();},[]);
   const chargerCatalogue=async(type:'texte'|'image')=>{
     setBusy(true);setMsg('');
     try{
@@ -76,14 +104,17 @@ export default function FournisseursPanel(){
     try{
       const v:AppSettings={
         ...cfg,
-        moteurInference:mode==='openai'?'openai':mode==='openrouter'?'openrouter':'serveur',
+        moteurInference:mode==='chatgpt'?'chatgpt':mode==='openai'?'openai':mode==='openrouter'?'openrouter':'serveur',
         fournisseurNarration:mode,
         serveurLocalUrl:mode==='runpod'?ELYNDOR_CLOUD_REGLAGE_URL:cfg.serveurLocalUrl,
         serveurLocalModele:mode==='runpod'?'cydonia-24b-elyndor':cfg.serveurLocalModele,
         fournisseurImages:selection,
         fournisseurEmbeddings:cfg.fournisseurEmbeddings==='runpod'?'runpod':'desactive',
       };
-      if(mode==='openai' && !v.openAiApiKey?.trim()){
+      if(mode==='chatgpt' && !(await statutChatGPT()).connected){
+        throw new Error('Valide la connexion à ton abonnement ChatGPT avant de le sélectionner.');
+      }
+      if(mode==='openai' && !v.openAiApiKey?.trim()){ 
         throw new Error('Entre une clé API OpenAI pour activer GPT.');
       }
       if(mode==='openai' && !v.openAiModel?.trim()){
@@ -119,6 +150,17 @@ export default function FournisseursPanel(){
       accessibilityRole="radio" accessibilityState={{checked:mode===x}} onPress={()=>setMode(x)}>
       <Text style={st.name}>{mode===x?'● ':'○ '}{LABELS[x]}</Text>
     </Pressable>)}
+    {mode==='chatgpt'?<>
+      <Text style={st.text}>Connexion à ton abonnement via Codex et la passerelle Elyndor Render. Aucune clé API à saisir.</Text>
+      <Text style={st.label}>Statut : {chatgptStatut}</Text>
+      <Bouton titre="Se connecter avec ChatGPT" variante="secondaire" desactive={busy} onPress={()=>void connecterChatGPT()}/>
+      {chatgptCode?<Text style={st.text}>Code d’appareil : {chatgptCode}</Text>:null}
+      {chatgptUrl?<Pressable onPress={()=>void Linking.openURL(chatgptUrl)}><Text style={st.text}>Ouvrir la page de validation ChatGPT</Text></Pressable>:null}
+      <Bouton titre="Vérifier la connexion" variante="secondaire" onPress={()=>void verifierChatGPT()}/>
+      <Bouton titre="Choisir le modèle ChatGPT" variante="secondaire" desactive={busy} onPress={()=>void chargerModelesAbonnement()}/>
+      {modelesAbonnement.map(m=><Pressable key={m.id} style={[st.option,cfg.chatgptModel===m.id&&st.selected]} onPress={()=>set({chatgptModel:m.id})}><Text style={st.text}>{cfg.chatgptModel===m.id?'● ':'○ '}{m.nom||m.id}</Text></Pressable>)}
+      <Bouton titre="Déconnecter ChatGPT" variante="secondaire" onPress={()=>{void deconnecterChatGPT().then(()=>{setChatgptStatut('Non connecté');setChatgptCode('');setChatgptUrl('');}).catch(e=>setMsg(String(e)));}}/>
+    </>:null}
     {mode==='openrouter'?<>
       <Text style={st.label}>Clé API OpenRouter</Text>
       <TextInput style={st.input} value={cfg.openRouterApiKey||''}

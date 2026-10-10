@@ -1,4 +1,5 @@
 import type { AppSettings, MoteurInference } from '../types';
+import { reponseChatGPT } from './chatgptSubscription';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 import { enregistrerUsageAppel } from './mesureTokens';
@@ -86,7 +87,7 @@ export function configurationLLM(settings: AppSettings, _modeleOverride?: string
   const route = resoudreRouteTexte(settings);
   return {
     apiKey: route.apiKey, model: route.model,
-    moteurInference: (route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
+    moteurInference: (route.fournisseur === 'chatgpt' ? 'chatgpt' : route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
     baseUrl: route.url.replace(/\/chat\/completions$/, ''),
   };
 }
@@ -249,6 +250,10 @@ async function appelerChatDetaille(
   samplers?: Record<string, number>,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
   const route = resoudreRouteTexte(reglagesFournisseursActifs());
+  if (route.fournisseur === 'chatgpt') {
+    const texte = await reponseChatGPT(tools?.length ? ajouterInstructionsOutilsJson(messages, tools as ToolDefinition[]) : messages, route.model, signal);
+    return { message: { role: 'assistant', content: texte }, finishReason: 'stop' };
+  }
   const profil = resoudreProfilRaisonnement(
     route.fournisseur === 'openrouter' ? 'openrouter' : route.fournisseur === 'openai' ? 'openai' : 'serveur', route.model);
   const debutAppel = Date.now();
