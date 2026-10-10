@@ -22,7 +22,6 @@ const CHAMPS: Record<CleParametreSimple, { nom: string; aide: string }> = {
   budgetLorePassages: { nom: 'Budget du lore', aide: 'Caractères des passages remontés par la recherche.' },
   maxSouvenirs: { nom: 'Nombre de souvenirs', aide: 'Nombre maximal de messages anciens pertinents retenus.' },
   temperatureDelta: { nom: 'Correction de température', aide: "Ajustement de la température choisie pour l'histoire." },
-  margeTokensEtat: { nom: "Marge de tokens d'état", aide: "Tokens supplémentaires pour l'état narratif." },
 };
 const COMMIT_BUNDLE = process.env.EXPO_PUBLIC_GIT_SHA || 'non renseigné';
 const erreurTexte = (e: unknown) => e instanceof Error ? e.message : 'Opération impossible.';
@@ -131,7 +130,7 @@ export default function AtelierConfigurationPanel({ section }: { section: Sectio
   const profil = config?.profilActif;
   const valeurs = profil ? config?.profils[profil] : null;
   const champs: CleParametreSimple[] = section === 'recherche'
-    ? ['budgetLorePassages', 'maxSouvenirs'] : ['temperatureDelta', 'margeTokensEtat'];
+    ? ['budgetLorePassages', 'maxSouvenirs'] : ['temperatureDelta'];
 
   return <View>
     {chargement ? <ActivityIndicator color={couleurs.accent} /> : null}
@@ -152,7 +151,7 @@ export default function AtelierConfigurationPanel({ section }: { section: Sectio
       {(section === 'modeles' || section === 'narration' || section === 'recherche') &&
         <View>
           <Text style={styles.titre}>{section === 'recherche' ? 'Mémoire et recherche' : 'Réglages du narrateur'}</Text>
-          <Text style={styles.aide}>Ces valeurs influencent effectivement le prochain tour en mode concepteur. Les parties existantes ne sont pas modifiées.</Text>
+          <Text style={styles.aide}>Ces valeurs influencent effectivement le prochain tour en mode concepteur. Les parties existantes ne sont pas modifiées. Le budget d'état interne est indépendant des fourchettes narratives strictes.</Text>
           {champs.map((cle) => {
             const limites = LIMITES_ATELIER[cle];
             return <View style={styles.ligne} key={cle}>

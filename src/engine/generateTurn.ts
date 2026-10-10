@@ -44,7 +44,8 @@ import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
-import { genererReponseComplete } from './completionReponse';
+import { appellerModele } from './elyndorCloudClient';
+import { genererDeltaEtatSepare } from './deltaEtatSepare';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
   ajouterEtapeDiagnostic,
@@ -92,8 +93,6 @@ import {
   validerReponseLLM,
   type RapportValidation,
 } from './validator';
-
-const MARGE_TOKENS_ETAT = 350;
 
 async function parametresDeLaSession(settings: AppSettings): Promise<ParametresAtelier | undefined> {
   // Les valeurs de production restent actives aussi côté joueur : pas seulement
@@ -595,18 +594,18 @@ async function genererTourInterne(
   ) || configurationLLM(appSettings).model;
   const temperatureBase = storyCourante.meta.temperatureOverride ?? temperaturePourCreativite(storyCourante.settings.creativite);
   const temperature = Math.max(0, Math.min(2, temperatureBase + (reglagesAtelier?.temperatureDelta ?? 0)));
-  // Marge pour le bloc d'état V12 ajouté après la narration : sans elle,
-  // il rognait la scène ou arrivait coupé.
-  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur, reglagesAtelier?.narrateur.longueurs) +
-    (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT);
+  // Aucun token supplémentaire : le plafond de sortie est exactement la
+  // limite supérieure choisie par le concepteur pour le texte visible.
+  const maxTokens = maxTokensPourLongueur(storyCourante.settings.longueur, reglagesAtelier?.narrateur.longueurs);
   const samplers = samplersPourRequete(reglagesAtelier?.narrateur);
   if (reglagesAtelier) ajouterEtapeDiagnostic('Configuration concepteur effective', 'préparation', 'ok', 0, undefined,
     [`Budget lore : ${reglagesAtelier.budgetLorePassages} caractères`, `Souvenirs : ${reglagesAtelier.maxSouvenirs}`,
-     `Température effective : ${temperature}`, `Marge tokens état : ${reglagesAtelier.margeTokensEtat}`]);
+     `Température effective : ${temperature}`, `Plafond narratif strict : ${maxTokens} tokens`]);
   const moteurEtroit = moteurAFenetreEtroite(appSettings);
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
-  const messagesNarrateur = construireMessages(ctxBase, {
+  const ctxNarration = { ...ctxBase, directiveEtat: undefined };
+  const messagesNarrateur = construireMessages(ctxNarration, {
     budgetSysteme: budgetPrompt, budgetConversation,
   });
   const tailleSysteme = messagesNarrateur.find(m => m.role === 'system')?.content?.length ?? 0;
@@ -621,12 +620,12 @@ async function genererTourInterne(
   ]);
 
   commencerMesureTokens();
-  // Une réponse coupée par le plafond est complétée par le modèle plutôt que
-  // laissée en suspens (voir completionReponse.ts).
+  // Le récit seul est généré ici. Le STATE DELTA n'est demandé qu'après
+  // validation stricte du texte final, via un autre appel indépendant.
   const premiere = extraireEnveloppeEtat(await mesurerEtapeDiagnostic(
     'Génération narrative principale',
     'génération',
-    () => genererReponseComplete({
+    () => appellerModele({
       ...configurationLLM(appSettings, modelePourAppel),
       storyId: storyCourante.meta.id,
       messages: messagesNarrateur,
@@ -742,10 +741,10 @@ async function genererTourInterne(
     try {
       // La V13 gardait ici le bloc d'état de la réponse rejetée et laissait
       // celui de la nouvelle apparaître dans le récit.
-      const regeneree = extraireEnveloppeEtat(await genererReponseComplete({
+      const regeneree = extraireEnveloppeEtat(await appellerModele({
         ...configurationLLM(appSettings, modelePourAppel),
         storyId: storyCourante.meta.id,
-        messages: construireMessages({ ...ctxBase, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
+        messages: construireMessages({ ...ctxNarration, noteCorrection }, { budgetSysteme: budgetPrompt, budgetConversation }),
         temperature,
         maxTokens,
         samplers,
@@ -781,15 +780,15 @@ async function genererTourInterne(
       // du contexte canonique et fournit son PROPRE delta machine.
       // Toute variante écrite sans delta est traitée via le repli du noyau.
       reformuler: async (_texteRejete, plage) => {
-        const nouvelle = extraireEnveloppeEtat(await genererReponseComplete({
+        const nouvelle = extraireEnveloppeEtat(await appellerModele({
           ...configurationLLM(appSettings, modelePourAppel),
           storyId: storyCourante.meta.id,
           messages: construireMessages({
-            ...ctxBase,
-            noteCorrection: `Recommence le tour ENTIER depuis le dernier message du joueur. La précédente tentative ne doit pas être continuée. Écris entre ${plage.min} et ${plage.max} tokens de narration visible, cible ${Math.round((plage.min + plage.max) / 2)} ; termine naturellement. Produis ton propre bloc STATE DELTA cohérent avec ce nouveau récit.`,
+            ...ctxNarration,
+            noteCorrection: `Recommence le tour ENTIER depuis le dernier message du joueur. La précédente tentative ne doit pas être continuée. Écris entre ${plage.min} et ${plage.max} tokens de narration visible, cible ${Math.round((plage.min + plage.max) / 2)} ; termine naturellement. Ne produis aucun bloc technique.`,
           }, { budgetSysteme: budgetPrompt, budgetConversation }),
           temperature,
-          maxTokens: plage.max + (reglagesAtelier?.margeTokensEtat ?? MARGE_TOKENS_ETAT),
+          maxTokens: plage.max,
           samplers,
           diagnosticLabel: 'Narration RP — nouvelle génération contrôlée',
         }));
@@ -829,6 +828,17 @@ async function genererTourInterne(
     throw new ErreurProfilContenu("Réponse refusée : elle ne respecte pas le profil de contenu. Réessaie ce tour.");
   }
   exigerNarrationValide(reponse, rapportFinal);
+
+  // Le récit a passé ses contrôles et ne sera plus modifié. L'état machine
+  // est extrait par un second appel, jamais dans le quota des tokens visibles.
+  deltaEtat = await mesurerEtapeDiagnostic('Extraire l’état technique séparé', 'état', () =>
+    genererDeltaEtatSepare({
+      narrationValidee: reponse,
+      messageJoueur,
+      contexteCanonique: [ctxBase.etatMonde, ctxBase.engagementsEtRelations, ctxBase.ficheScene]
+        .filter(Boolean).join('\n\n'),
+      storyId: storyCourante.meta.id,
+    }));
 
   const messageUtilisateur: Message = {
     id: genererId(),

@@ -10,7 +10,7 @@ test('atelier : les profils démarrent séparément avec les réglages historiqu
   assert.equal(s.profilActif, 'production');
   assert.equal(s.profils.production.budgetLorePassages, 2500);
   assert.equal(s.profils.test.maxSouvenirs, 3);
-  assert.equal(s.profils.benchmark.margeTokensEtat, 350);
+  assert.equal('margeTokensEtat' in s.profils.benchmark, false);
   assert.equal(s.historique.length, 0);
 });
 
@@ -66,4 +66,19 @@ test('atelier : historique borné à 20 révisions', () => {
     }, 'Tour ' + i, 100 + i);
   }
   assert.ok(conf.historique.length <= 20);
+});
+
+
+test('ancienne marge importée puis supprimée sans toucher aux autres réglages', () => {
+  const s = creerConfigurationAtelier();
+  const ancienne = JSON.parse(JSON.stringify(s));
+  for (const profil of ['production', 'test', 'benchmark']) {
+    ancienne.profils[profil].margeTokensEtat = 250;
+  }
+  const chargee = validerConfigurationAtelier(ancienne);
+  assert.equal('margeTokensEtat' in chargee.profils.production, false);
+  assert.equal(chargee.profils.production.narrateur.longueurs.moyenne.min, 215);
+  assert.equal(chargee.profils.production.narrateur.longueurs.moyenne.max, 235);
+  const snapshot = creerInstantaneAtelier(chargee, '1.30.0', 'test');
+  assert.equal(JSON.stringify(snapshot).includes('margeTokensEtat'), false);
 });

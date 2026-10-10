@@ -1,6 +1,5 @@
 import { assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
 import { genererReponseComplete } from './completionReponse';
-import { retirerPhraseInachevee } from './completionReponse';
 import type { PlageLongueur } from '../concepteur/reglagesNarrateur';
 
 /**
@@ -82,7 +81,7 @@ export async function controlerLongueurNarration({
       apiKey: '', model: '',
       storyId, samplers,
       temperature: Math.min(temperature, 0.7),
-      maxTokens: cible.max + 110,
+      maxTokens: cible.max,
       diagnosticLabel: 'Régulation du narrateur — longueur',
       messages: [
         { role: 'system', content: 'Tu es un éditeur de texte de jeu de rôle. Réécris la narration sans changer les faits, les noms, les paroles essentielles, les décisions du joueur ni les conséquences. N\'ajoute rien à l\'histoire. Termine naturellement chaque phrase et chaque réplique. Retourne uniquement la narration, sans commentaires ni bloc d\'état.' },
@@ -97,10 +96,8 @@ export async function controlerLongueurNarration({
       return { texte: candidate, tokens, conforme: true, corrige: essai > 0, verification: 'exacte' };
     }
     if (essai === 2) break;
-    // Même sans tokenizer, priorité à l'absence de phrase tronquée.
-    if (tokens === null && finDeNarrationComplete(candidate)) {
-      return { texte: candidate, tokens: null, conforme: false, corrige: essai > 0, verification: 'indisponible' };
-    }
+    // Une longueur invérifiable n'est jamais publiée en mode strict.
+    if (tokens === null) throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
     const suivant = (await produire(candidate, plage)).trim();
     if (!suivant) break;
     candidate = suivant;
@@ -109,10 +106,5 @@ export async function controlerLongueurNarration({
   if (tokens !== null && (!plageRespectee(tokens, plage) || !finDeNarrationComplete(candidate))) {
     throw new Error(`Réponse hors fourchette ou incomplète (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
   }
-  // Tokenizer non disponible : mieux vaut une fin complète qu'un tronquage.
-  const sortie = finDeNarrationComplete(candidate) ? candidate : retirerPhraseInachevee(candidate);
-  if (!finDeNarrationComplete(sortie)) {
-    throw new Error('La réponse reste incomplète et ne peut pas être publiée. Régénère ce tour.');
-  }
-  return { texte: sortie, tokens: null, conforme: false, corrige: true, verification: 'indisponible' };
+  throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
 }
