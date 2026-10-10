@@ -1,4 +1,6 @@
 import { Image } from 'react-native';
+import { getSettings } from '../storage/storage';
+import { genererImageSelonReglages } from './fournisseursImages';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import { reglerDirectionIllustration, negatifCadrageIllustration } from './directionIllustration';
 import { appliquerModulesVisuels, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
@@ -46,11 +48,11 @@ import {
 export { ErreurImagesIndisponibles };
 export { ID_ASSET_JOUEUR as ID_AVATAR_JOUEUR };
 
-let generateurCourant: GenerateurImage = genererImageElyndorCloud;
+let generateurCourant: GenerateurImage | null = null;
 
 /** Point d'extension : un autre backend image peut remplacer Elyndor Cloud. */
 export function definirGenerateurImage(generateur: GenerateurImage | null): void {
-  generateurCourant = generateur ?? genererImageElyndorCloud;
+  generateurCourant = generateur;
 }
 
 async function assetVersDataUrl(source: ReturnType<typeof obtenirPortrait>): Promise<string | null> {
@@ -159,9 +161,7 @@ export async function genererImageScene(
   profil?: ProfilContenu,
   storyId?: string,
 ): Promise<string> {
-  if (!imagesElyndorCloudDisponibles() && generateurCourant === genererImageElyndorCloud) {
-    throw new ErreurImagesIndisponibles();
-  }
+  const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
   const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
   const dirigee = reglerDirectionIllustration(structure, visuel);
   const selection = selectionnerReferencesGenerateur(references);
@@ -169,7 +169,7 @@ export async function genererImageScene(
     (ref.role === 'scene' && visuel.referencesScenePrecedente) ||
     (ref.role === 'personnage' && visuel.referencesPersonnagesScene) ||
     (ref.role === 'race' && visuel.referencesPersonnagesScene));
-  return generateurCourant({
+  return generer({
     prompt: enrichirPromptLong(formaterPromptImage(dirigee, referencesScene.length ? references : []), visuel.positifScene),
     promptCourt: enrichirPromptCourt(construirePromptSdxl(dirigee), visuel.positifScene),
     negatif: enrichirNegatifVisuel(
