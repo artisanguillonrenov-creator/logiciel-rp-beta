@@ -24,6 +24,29 @@ const capaciteFichier = (value:unknown):{uncompressedSize:number;compressedSize:
   return {uncompressedSize:data.uncompressedSize as number,compressedSize:data.compressedSize as number};
 };
 
+// Extraire par flux : arrêt immédiat si la taille réellement décompressée
+// dépasse la limite, même si l'en-tête ZIP annonçait une taille mensongère.
+function extraireTexteBorne(entree:JSZip.JSZipObject,limite:number):Promise<string>{
+  return new Promise<string>((resolve,reject)=>{
+    const morceaux:string[]=[];
+    let octets=0,termine=false;
+    const flux=entree.internalStream('string');
+    const echouer=(cause:unknown)=>{
+      if(termine)return;
+      termine=true;flux.pause();reject(cause instanceof Error?cause:new Error(String(cause)));
+    };
+    flux.on('data',(chunk:string)=>{
+      if(termine)return;
+      octets+=octetsUtf8(chunk);
+      if(octets>limite){echouer(new Error('Décompression ZIP excessive : import annulé.'));return;}
+      morceaux.push(chunk);
+    });
+    flux.on('error',echouer);
+    flux.on('end',()=>{if(!termine){termine=true;resolve(morceaux.join(''));}});
+    flux.resume();
+  });
+}
+
 export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{ uri:string; total:number }> {
   if(atelier.reference!==depot.reference)throw new Error('Référence locale divergente : export interrompu avant réconciliation.');
   const zip = new JSZip();
@@ -101,7 +124,7 @@ export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSources
       if(estLab)throw new Error('Archive de laboratoire contenant un chemin interdit : '+chemin);
       continue;
     }
-    const texte=await entree.files[archivePath].async('string');
+    const texte=await extraireTexteBorne(entree.files[archivePath],2*1024*1024);
     verifierTexteArchive(chemin,texte);
     totalReel+=octetsUtf8(texte);
     if(totalReel>MAX_ARCHIVE_DECOMPRESSEE)throw new Error('Taille décompressée excessive ; aucun changement écrit.');
@@ -110,7 +133,7 @@ export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSources
   if(Object.keys(importes).length===0)throw new Error('Aucun fichier texte compatible dans cette archive.');
   let versionsImportees:VersionLab[]=[];
   if(estLab){
-    const texteManifeste=await entree.files[MANIFESTE_LAB].async('string');
+    const texteManifeste=await extraireTexteBorne(entree.files[MANIFESTE_LAB],2*1024*1024);
     if(octetsUtf8(texteManifeste)>2*1024*1024)throw new Error('Manifeste démesuré.');
     let lu:unknown;
     try{lu=JSON.parse(texteManifeste);}catch{throw new Error('Manifeste JSON illisible.');}
