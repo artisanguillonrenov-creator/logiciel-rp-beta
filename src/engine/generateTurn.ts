@@ -759,9 +759,8 @@ async function genererTourInterne(
     }
   }
 
-  // Un seul ordre de publication : corrections déterministes, longueur,
-  // validations de toutes les protections, puis stockage. Aucun patch
-  // silencieux ne peut intervenir après le dernier comptage.
+  // Corrections déterministes, mesure facultative de longueur, validations
+  // de cohérence, puis stockage. La longueur ne bloque jamais la publication.
   const nomsPourEtiquettes = [...nomsConnus, ...ROLES_CANON.map((r) => r.nom)];
   const avantMesure = preparerNarrationPourPublication(
     reponse, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
@@ -776,37 +775,12 @@ async function genererTourInterne(
     () => controlerLongueurNarration({
       texte: reponse, plage: plageNarration, temperature,
       storyId: storyCourante.meta.id, samplers,
-      // Contrairement à un éditeur isolé, une régénération complète repart
-      // du contexte canonique et fournit son PROPRE delta machine.
-      // Toute variante écrite sans delta est traitée via le repli du noyau.
-      reformuler: async (_texteRejete, plage) => {
-        const nouvelle = extraireEnveloppeEtat(await genererNarrationAvecCloture({
-          ...configurationLLM(appSettings, modelePourAppel),
-          storyId: storyCourante.meta.id,
-          messages: construireMessages({
-            ...ctxNarration,
-            noteCorrection: `Recommence le tour ENTIER depuis le dernier message du joueur. La précédente tentative ne doit pas être continuée. Écris entre ${plage.min} et ${plage.max} tokens de narration visible, cible ${Math.round((plage.min + plage.max) / 2)} ; termine naturellement. Ne produis aucun bloc technique.`,
-          }, { budgetSysteme: budgetPrompt, budgetConversation }),
-          temperature,
-          maxTokens: plage.max,
-          samplers,
-          diagnosticLabel: 'Narration RP — nouvelle génération contrôlée',
-        }, plage));
-        const propre = preparerNarrationPourPublication(
-          nouvelle.texte, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
-        );
-        deltaEtat = propre.modifie ? null : nouvelle.delta;
-        aEteCorrige = true;
-        return propre.texte;
-      },
     }),
   );
   reponse = longueurFinale.texte;
-  ajouterEtapeDiagnostic('Contrôle final des longueurs', 'validation',
-    longueurFinale.conforme ? 'ok' : 'repli', 0,
-    longueurFinale.conforme
-      ? `${longueurFinale.tokens} tokens exacts, fourchette ${plageNarration.min}–${plageNarration.max}`
-      : 'Comptage indisponible : fourchette non certifiée, clôture vérifiée.');
+  ajouterEtapeDiagnostic('Longueur de narration (informative)', 'validation',
+    'ok', 0,
+    `Longueur : ${longueurFinale.tokens ?? 'non mesurée'} tokens (${longueurFinale.verification}). Objectif : ${plageNarration.min}–${plageNarration.max}. Aucun rejet pour dépassement.`);
 
   // Vérifie le texte RÉEL affiché/enregistré après TOUTES les régénérations.
   // Pas de nouvelle correction en aval : elle invaliderait le comptage et
