@@ -38,18 +38,31 @@ export function collisionDesChemins(chemins:string[]):void {
     exacts.add(chemin); insensibles.add(cle);
   }
 }
-export function octetsUtf8(s:string):number {
-  // TextEncoder est inclus dans Hermes moderne, mais ceci reste portable en tests Node.
-  return new TextEncoder().encode(s).length;
-}
-// Hash déterministe (contrôle d'intégrité, PAS signature d'authenticité).
-export function empreinteTexte(source:string):string {
-  const bytes = new TextEncoder().encode(source);
-  let h1=0x811c9dc5, h2=0x811c9dc5 ^ 0x9e3779b9;
-  for(const b of bytes){
-    h1=Math.imul(h1 ^ b, 0x01000193) >>> 0;
-    h2=Math.imul(h2 ^ b, 0x01000193) >>> 0;
+// Encodage UTF-8 purement JavaScript : ne dépend pas de TextEncoder sur Hermes.
+function parcourirUtf8(source:string, recevoir:(octet:number)=>void):void {
+  for(let i=0;i<source.length;i++){
+    let cp=source.charCodeAt(i);
+    if(cp>=0xd800 && cp<=0xdbff && i+1<source.length){
+      const second=source.charCodeAt(i+1);
+      if(second>=0xdc00 && second<=0xdfff){cp=0x10000+((cp-0xd800)<<10)+(second-0xdc00);i++;}
+      else cp=0xfffd;
+    }else if(cp>=0xd800 && cp<=0xdfff)cp=0xfffd;
+    if(cp<=0x7f)recevoir(cp);
+    else if(cp<=0x7ff){recevoir(0xc0|(cp>>6));recevoir(0x80|(cp&63));}
+    else if(cp<=0xffff){recevoir(0xe0|(cp>>12));recevoir(0x80|((cp>>6)&63));recevoir(0x80|(cp&63));}
+    else{recevoir(0xf0|(cp>>18));recevoir(0x80|((cp>>12)&63));recevoir(0x80|((cp>>6)&63));recevoir(0x80|(cp&63));}
   }
+}
+export function octetsUtf8(s:string):number{
+  let n=0;parcourirUtf8(s,()=>{n++});return n;
+}
+// Empreinte de contrôle rapide (non cryptographique, pas une signature).
+export function empreinteTexte(source:string):string{
+  let h1=0x811c9dc5, h2=0x811c9dc5 ^ 0x9e3779b9;
+  parcourirUtf8(source,b=>{
+    h1=Math.imul(h1 ^ b,0x01000193)>>>0;
+    h2=Math.imul(h2 ^ b,0x01000193)>>>0;
+  });
   return h1.toString(16).padStart(8,'0')+h2.toString(16).padStart(8,'0');
 }
 export function contientSecretProbable(texte:string):boolean { return EST_SECRET.test(texte); }
