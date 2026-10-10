@@ -1,24 +1,25 @@
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './elyndorCloudClient';
 
 const URL = 'https://elyndor-chatgpt-plus-gateway.onrender.com';
 const KEY = 'elyndor_chatgpt_plus_session';
 const LEGACY = 'elyndor_chatgpt_plus_session';
+// Chargement tardif : permet de tester la narration Node sans environnement Expo natif.
+async function coffre() { return import('expo-secure-store'); }
 
 async function lireSession(): Promise<string> {
   if (typeof document !== 'undefined') {
     try { return globalThis.localStorage?.getItem(KEY) || globalThis.sessionStorage?.getItem(LEGACY) || ''; }
     catch { return ''; }
   }
-  return (await SecureStore.getItemAsync(KEY)) || (await AsyncStorage.getItem(KEY)) || '';
+  return (await (await coffre()).getItemAsync(KEY)) || (await AsyncStorage.getItem(KEY)) || '';
 }
 async function ecrireSession(value: string): Promise<void> {
   if (typeof document !== 'undefined') {
     globalThis.localStorage?.setItem(KEY, value);
     return;
   }
-  await SecureStore.setItemAsync(KEY, value);
+  await (await coffre()).setItemAsync(KEY, value);
   await AsyncStorage.removeItem(KEY).catch(() => {});
 }
 async function effacerSession(): Promise<void> {
@@ -26,7 +27,7 @@ async function effacerSession(): Promise<void> {
     try { globalThis.localStorage?.removeItem(KEY); globalThis.sessionStorage?.removeItem(LEGACY); } catch {}
     return;
   }
-  await SecureStore.deleteItemAsync(KEY);
+  await (await coffre()).deleteItemAsync(KEY);
   await AsyncStorage.removeItem(KEY).catch(() => {});
 }
 async function requete(chemin: string, options: RequestInit = {}, authentifie = true): Promise<any> {
