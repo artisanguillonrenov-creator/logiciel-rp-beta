@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './elyndorCloudClient';
@@ -8,14 +7,14 @@ const KEY = 'elyndor_chatgpt_plus_session';
 const LEGACY = 'elyndor_chatgpt_plus_session';
 
 async function lireSession(): Promise<string> {
-  if (Platform.OS === 'web') {
+  if (typeof document !== 'undefined') {
     try { return globalThis.localStorage?.getItem(KEY) || globalThis.sessionStorage?.getItem(LEGACY) || ''; }
     catch { return ''; }
   }
   return (await SecureStore.getItemAsync(KEY)) || (await AsyncStorage.getItem(KEY)) || '';
 }
 async function ecrireSession(value: string): Promise<void> {
-  if (Platform.OS === 'web') {
+  if (typeof document !== 'undefined') {
     globalThis.localStorage?.setItem(KEY, value);
     return;
   }
@@ -23,7 +22,7 @@ async function ecrireSession(value: string): Promise<void> {
   await AsyncStorage.removeItem(KEY).catch(() => {});
 }
 async function effacerSession(): Promise<void> {
-  if (Platform.OS === 'web') {
+  if (typeof document !== 'undefined') {
     try { globalThis.localStorage?.removeItem(KEY); globalThis.sessionStorage?.removeItem(LEGACY); } catch {}
     return;
   }
