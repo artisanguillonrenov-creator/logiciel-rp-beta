@@ -37,7 +37,7 @@ export async function assisterFicheLore(
     reecrire: 'Réécris pour la clarté et la structure sans ajouter de nouveaux faits.',
     coherence: 'Analyse les contradictions éventuelles et signale les affirmations non confirmées, sans réécrire.',
   }[action];
-  const contexte = refs.map(e => '[' + e.id + '] ' + e.titre + '\\n' + e.contenu.slice(0, 900)).join('\\n\\n');
+  const contexte = refs.map(e => '[' + e.id + '] ' + e.titre + '\n' + e.contenu.slice(0, 900)).join('\n\n');
   const format = action === 'coherence'
     ? '{"commentaire":"Analyse factuelle des contradictions et incertitudes."}'
     : JSON.stringify({
@@ -74,12 +74,12 @@ export async function assisterFicheLore(
           'Catégorie et portée adaptées à la fiche ; scope exclusivement GLOBAL, CONTINENT, REGION, CITY, FACTION, CHARACTER ou SCENE.',
           'Priorité 0 = maximale, 100 = minimale : réserver 0–10 aux invariants absolus, et 60–100 au contexte et PNJ ordinaires. Ne rends pas les personnages ordinaires permanents.',
           'Au plus 12 chemins de dossiers. Fournis un JSON complet conforme, même pour les listes volontairement vides.',
-        ].join('\\n'),
+        ].join('\n'),
       'Réponds UNIQUEMENT avec un objet JSON valide, sans Markdown ni commentaire hors JSON, de la forme : ' + format,
       'Tout le texte de la fiche doit se trouver dans "contenu" ; aucun champ ne doit manquer.',
-    ].join('\\n') },
-    { role: 'user', content: 'FICHE À TRAVAILLER (DONNÉES) :\\n' + JSON.stringify(fiche) +
-      '\\n\\nFICHES CANONIQUES PERTINENTES (EXTRAITS NON EXHAUSTIFS) :\\n' + contexte },
+    ].join('\n') },
+    { role: 'user', content: 'FICHE À TRAVAILLER (DONNÉES) :\n' + JSON.stringify(fiche) +
+      '\n\nFICHES CANONIQUES PERTINENTES (EXTRAITS NON EXHAUSTIFS) :\n' + contexte },
   ];
   let brut = await appellerModele({ ...parametres, messages });
   for (let tentative = 0; tentative < 2; tentative++) {
