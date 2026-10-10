@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View 
 import { MODULES_BASE } from '../engine/visualBible';
 import {
   appliquerPresetVisuel, REGLAGES_VISUELS_INITIAUX, validerReglagesVisuels,
-  type ReglagesVisuels, type PresetVisuel,
+  type ReglagesVisuels, type PresetVisuel, type CadrageIllustration, type PrioriteIllustration,
 } from '../concepteur/reglagesVisuels';
 import { enregistrerReglagesVisuels, lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import { couleurs, espacement, polices } from '../theme/theme';
@@ -13,6 +13,17 @@ const PRESETS: Array<{ id: PresetVisuel; titre: string; detail: string }> = [
   { id: 'elyndor', titre: 'Elyndor original', detail: 'Style actuellement utilisé, sans modification.' },
   { id: 'equilibre', titre: 'Équilibré', detail: 'Accent cinématographique moins intense.' },
   { id: 'nerveux', titre: 'Nerveux', detail: 'Style cinématographique plus appuyé.' },
+];
+const CADRAGES: Array<{ id: CadrageIllustration; titre: string; detail: string }> = [
+  { id: 'automatique', titre: 'Automatique selon le récit', detail: 'Conserve le cadrage choisi par le directeur artistique.' },
+  { id: 'moyen', titre: 'Plan moyen', detail: 'Personnages et interactions avec un décor identifiable.' },
+  { id: 'large', titre: 'Plan large — recommandé', detail: 'Scène entière et personnages intégrés à leur environnement.' },
+  { id: 'ensemble', titre: 'Très grand plan d’ensemble', detail: 'Décor monumental, personnages plus petits dans l’image.' },
+];
+const PRIORITES: Array<{ id: PrioriteIllustration; titre: string; detail: string }> = [
+  { id: 'equilibree', titre: 'Équilibrée', detail: 'Même importance aux personnages et au décor.' },
+  { id: 'decor', titre: 'Décor et mise en scène', detail: 'Architecture, espace, lumière et profondeur en priorité.' },
+  { id: 'action', titre: 'Action et interactions', detail: 'Gestes, affrontements et actions du récit avec leur environnement.' },
 ];
 const erreurTexte = (e: unknown) => e instanceof Error ? e.message : 'Enregistrement impossible.';
 export default function AtelierVisuelPanel() {
@@ -38,13 +49,13 @@ export default function AtelierVisuelPanel() {
       const valide=validerReglagesVisuels(valeur);
       const config=await enregistrerReglagesVisuels(valide);
       setEdite(config);setInitial(config);
-      setMessage('Réglages actifs pour les prochaines images et portraits générés sur cet appareil.');
+      setMessage('Réglages actifs pour les prochaines images générées sur cet appareil. Les scènes et les portraits conservent leurs paramètres distincts.');
     } catch(e) {setErreur(erreurTexte(e));}
     finally {setOperation(false);}
   }
   return <View>
     <Text style={styles.titre}>Direction artistique et génération</Text>
-    <Text style={styles.aide}>Ces paramètres modifient les poids des modules envoyés au générateur d’images déjà connecté. Ils ne changent ni son modèle, ni les scènes déjà enregistrées.</Text>
+    <Text style={styles.aide}>Ces paramètres ajustent le style et la composition des prochaines images. Aucun changement de modèle ni d'image déjà enregistrée. Les cadrages ci-dessous concernent uniquement les scènes 16:9, pas les portraits des personnages.</Text>
     {charge ? <ActivityIndicator color={couleurs.accent}/> : <>
       <Text style={styles.label}>Préréglage cinématographique</Text>
       {PRESETS.map(x=><Pressable key={x.id} disabled={operation} accessibilityRole="radio"
@@ -62,6 +73,39 @@ export default function AtelierVisuelPanel() {
         <Bouton titre="+" variante="secondaire" desactive={operation||edite.intensite>=1.3}
           onPress={()=>setEdite(v=>({...v,intensite:Math.min(1.3,Number((v.intensite+0.1).toFixed(2)))}))}/>
       </View>
+      <Text style={styles.label}>Cadrage des illustrations de scène</Text>
+      <Text style={styles.aide}>Choisis la distance de caméra pour les scènes 16:9. Le réglage « Automatique » laisse la main au directeur artistique.</Text>
+      {CADRAGES.map(x=><Pressable key={x.id} disabled={operation} accessibilityRole="radio"
+        accessibilityState={{checked: edite.cadrageIllustration===x.id}}
+        onPress={()=>setEdite(v=>({...v,cadrageIllustration:x.id}))}
+        style={[styles.choix,edite.cadrageIllustration===x.id&&styles.actif]}>
+        <Text style={styles.nom}>{x.titre}</Text>
+        <Text style={styles.aide}>{x.detail}</Text>
+      </Pressable>)}
+      <Text style={styles.label}>Priorité de composition</Text>
+      {PRIORITES.map(x=><Pressable key={x.id} disabled={operation} accessibilityRole="radio"
+        accessibilityState={{checked: edite.prioriteIllustration===x.id}}
+        onPress={()=>setEdite(v=>({...v,prioriteIllustration:x.id}))}
+        style={[styles.choix,edite.prioriteIllustration===x.id&&styles.actif]}>
+        <Text style={styles.nom}>{x.titre}</Text>
+        <Text style={styles.aide}>{x.detail}</Text>
+      </Pressable>)}
+      <Text style={styles.label}>Éviter les portraits dans les scènes</Text>
+      <Pressable disabled={operation} accessibilityRole="switch"
+        accessibilityState={{checked: edite.eviterPortraitScene}}
+        onPress={()=>setEdite(v=>({...v,eviterPortraitScene:!v.eviterPortraitScene}))}
+        style={[styles.choix,edite.eviterPortraitScene&&styles.actif]}>
+        <Text style={styles.nom}>{edite.eviterPortraitScene?'Activé — scènes en priorité':'Désactivé — gros plans autorisés'}</Text>
+        <Text style={styles.aide}>Évite les cadrages tête/buste et les fonds de studio pour les illustrations. Ne change pas les avatars.</Text>
+      </Pressable>
+      <Text style={styles.label}>Références de portraits pour les scènes</Text>
+      <Pressable disabled={operation} accessibilityRole="switch"
+        accessibilityState={{checked: edite.referencesPersonnagesScene}}
+        onPress={()=>setEdite(v=>({...v,referencesPersonnagesScene:!v.referencesPersonnagesScene}))}
+        style={[styles.choix,edite.referencesPersonnagesScene&&styles.actif]}>
+        <Text style={styles.nom}>{edite.referencesPersonnagesScene?'Activées':'Désactivées — recommandé pour les plans larges'}</Text>
+        <Text style={styles.aide}>Si activées, les portraits peuvent aider à conserver les visages, mais risquent de favoriser des plans serrés selon le modèle. Les scènes précédentes restent utilisables comme références de décor.</Text>
+      </Pressable>
       <Text style={styles.label}>Exclusions visuelles supplémentaires</Text>
       <TextInput value={edite.negatifAdditionnel} onChangeText={v=>setEdite(x=>({...x,negatifAdditionnel:v}))}
         style={styles.champ} multiline maxLength={350} textAlignVertical="top"
