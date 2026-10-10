@@ -143,10 +143,10 @@ export default function ElyndorLabPanel() {
     if(!cheminValide(chemin)){setErreur('Nom ou emplacement de fichier non autorisé.');return;}
     if(Object.prototype.hasOwnProperty.call(fichiers,chemin)){setErreur('Ce fichier existe déjà.');return;}
     try{
-      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
+      const courant=await viderBrouillon() ?? atelier;
       const suivant=modifierFichier(courant,sources,chemin,'');
       await appliquer(suivant,'Fichier local créé : '+chemin);
-      setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
+      journal.current.ouvrir(chemin,'');setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
     }catch(e){signaler(e);}
   }
   function demanderSuppression(){
@@ -154,10 +154,13 @@ export default function ElyndorLabPanel() {
     Alert.alert('Supprimer ce fichier de la copie locale ?',selection,[
       {text:'Annuler',style:'cancel'},
       {text:'Supprimer',style:'destructive',onPress:()=>{
-        const suivant=supprimerFichier(atelier,sources,selection);
-        void appliquer(suivant,'Fichier supprimé de la copie locale.').then(()=>{
-          setSelection('');setCode('');setEditionModifiee(false);setVue('fichiers');
-        }).catch(()=>undefined);
+        void (async()=>{
+          const courant=await viderBrouillon()??atelier;
+          const suivant=supprimerFichier(courant,sources,selection);
+          await appliquer(suivant,'Fichier supprimé de la copie locale.');
+          journal.current.reinitialiser();setSelection('');setCode('');
+          setEditionModifiee(false);setVue('fichiers');
+        })().catch(signaler);
       }},
     ]);
   }
@@ -169,7 +172,7 @@ export default function ElyndorLabPanel() {
   async function creerInstantane(){
     if(!atelier)return;
     try{
-      const avant=await sauvegarderBrouillon() ?? atelier;
+      const avant=await viderBrouillon() ?? atelier;
       const nouveau=enregistrerVersion(avant,nomVersion);
       await appliquer(nouveau,'Instantané du code local enregistré.');
       setVersionSelectionnee(nouveau.versionActive??'');
@@ -177,16 +180,19 @@ export default function ElyndorLabPanel() {
   }
   function demanderRestauration(){
     if(!atelier || !versionSelectionnee)return;
-    Alert.alert('Restaurer cette copie source ?', 'La version actuelle sera sauvegardée avant restauration. Cette opération ne change pas le code exécuté dans l’APK.',[
+    Alert.alert('Restaurer cette copie source ?', 'La version actuelle sera sauvegardée avant restauration. Le code installé ne change pas.',[
       {text:'Annuler',style:'cancel'},
       {text:'Restaurer',onPress:()=>{
-        try{
-          const suivant=restaurerVersion(atelier,versionSelectionnee);
-          void appliquer(suivant,'Sources restaurées. Le code de l’application installée n’a pas changé.').then(()=>{
-            if(selection){setCode(fichiersActuels(sources,suivant)[selection]??'');setEditionModifiee(false);}
-            setVersionSelectionnee(suivant.versionActive??'');
-          }).catch(()=>undefined);
-        }catch(e){signaler(e);}
+        void (async()=>{
+          const courant=await viderBrouillon()??atelier;
+          const suivant=restaurerVersion(courant,versionSelectionnee);
+          await appliquer(suivant,'Sources restaurées. Le code installé n’a pas changé.');
+          if(selection){
+            const texte=fichiersActuels(sources,suivant)[selection]??'';
+            journal.current.ouvrir(selection,texte);setCode(texte);setEditionModifiee(false);
+          }
+          setVersionSelectionnee(suivant.versionActive??'');
+        })().catch(signaler);
       }}
     ]);
   }
@@ -194,8 +200,7 @@ export default function ElyndorLabPanel() {
     if(!atelier)return;
     setOccupe(true);setErreur('');setMessage('Création et vérification de l’archive en cours…');
     try{
-      const a=editionModifiee ? modifierFichier(atelier,sources,selection,code) : atelier;
-      if(editionModifiee){await enregistrerAtelierLocal(a);setAtelier(a);setEditionModifiee(false);}
+      const a=await viderBrouillon()??atelier;
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await exporterSourcesLab(a,depot);
       messageOk(resultat.total+' fichiers sources texte ajoutés à l’archive ZIP.');
@@ -205,7 +210,7 @@ export default function ElyndorLabPanel() {
     if(!atelier)return;
     setOccupe(true);setErreur('');setImportPret(null);
     try{
-      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
+      const courant=await viderBrouillon()??atelier;
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await importerArchiveLab(courant,depot);
       const details=comparerArbres(fichiersActuels(sources,courant),fichiersActuels(sources,resultat.atelier));
@@ -216,13 +221,22 @@ export default function ElyndorLabPanel() {
   async function confirmerImport(){
     if(!atelier || !importPret)return;
     try{
-      const avecSecours=enregistrerVersion(atelier,'Sauvegarde avant import ZIP');
+      const courant=await viderBrouillon()??atelier;
+      if(importPret.referenceAvant!==courant.reference)throw new Error('La référence locale a changé depuis la prévisualisation ZIP.');
+      const avecSecours=enregistrerVersion(courant,'Sauvegarde avant import ZIP');
+      const versions=[...avecSecours.versions];
+      for(const version of importPret.versionsImportees){
+        const existante=versions.find(v=>v.id===version.id);
+        if(existante){
+          if(JSON.stringify(existante)!==JSON.stringify(version))throw new Error('Conflit de version importée : '+version.id);
+        }else versions.push(version);
+      }
       const suivant:AtelierLocal={
-        ...importPret.atelier,versions:avecSecours.versions,
-        versionActive:null,chantier:'Import ZIP — à vérifier',
+        ...importPret.atelier,versions,versionActive:null,chantier:'Import ZIP — à vérifier',
       };
-      await appliquer(suivant,'Archive importée dans la copie locale. Version précédente conservée.');
-      setSelection('');setCode('');setEditionModifiee(false);setImportPret(null);setVue('fichiers');
+      await appliquer(suivant,'Archive importée sans suppression implicite. Copie précédente conservée.');
+      journal.current.reinitialiser();setSelection('');setCode('');
+      setEditionModifiee(false);setImportPret(null);setVue('fichiers');
     }catch(e){signaler(e);}
   }
 
@@ -380,9 +394,9 @@ export default function ElyndorLabPanel() {
       <Bouton titre="Importer une archive ZIP" variante="secondaire" onPress={()=>{void choisirZip();}} desactive={occupe}/>
       {importPret ? <View style={styles.bandeau}>
         <Text style={styles.label}>Import en attente de confirmation</Text>
-        <Text style={styles.aide}>{importPret.nombre} fichiers · {importPret.complet?'Archive de sources complète':'Correctif partiel'}.</Text>
+        <Text style={styles.aide}>{importPret.nombre} fichiers · Correctif non destructif (patch).</Text>
         <Text style={styles.label}>Ajouts : {importPret.details.ajoutes.length} · Modifications : {importPret.details.modifies.length} · Suppressions : {importPret.details.supprimes.length}</Text>
-        {[...importPret.details.ajoutes.slice(0,3).map(p=>' + '+p),...importPret.details.modifies.slice(0,3).map(p=>' ~ '+p),...importPret.details.supprimes.slice(0,3).map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)}
+        {[...importPret.details.ajoutes.map(p=>' + '+p),...importPret.details.modifies.map(p=>' ~ '+p),...importPret.details.supprimes.map(p=>' − '+p)].map((p,i)=><Text key={String(i)} style={styles.aide}>{p}</Text>)}
         <Text style={styles.aide}>Un instantané des sources actuelles sera créé avant l'import.</Text>
         <Bouton titre="Confirmer l'import dans la copie locale" onPress={()=>{void confirmerImport();}} desactive={occupe}/>
         <Bouton titre="Annuler l'import" variante="secondaire" onPress={()=>setImportPret(null)}/>
