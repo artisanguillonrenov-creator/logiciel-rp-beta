@@ -781,7 +781,7 @@ async function genererTourInterne(
       // du contexte canonique et fournit son PROPRE delta machine.
       // Toute variante écrite sans delta est traitée via le repli du noyau.
       reformuler: async (_texteRejete, plage) => {
-        const nouvelle = extraireEnveloppeEtat(await appellerModele({
+        const nouvelle = extraireEnveloppeEtat(await genererNarrationAvecCloture({
           ...configurationLLM(appSettings, modelePourAppel),
           storyId: storyCourante.meta.id,
           messages: construireMessages({
