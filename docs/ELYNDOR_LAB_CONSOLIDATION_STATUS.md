@@ -14,11 +14,11 @@ La branche de production n'est pas modifiée par ce chantier.
 - Validation du snapshot d'import avant application, pour refuser une prévisualisation devenue obsolète. Affichage de tous les chemins concernés par l'import, plus seulement trois exemples.
 - Copie en **véritables fichiers texte individuels** dans le stockage privé Android, avec index incrémental et tentative de reprise après interruption. Durant cette étape de migration, la copie physique est un **miroir**, pas encore la source de vérité : le registre JSON V1.1 reste conservé. Aucun fichier de jeu ni historique RP n'est modifié.
 - Comparateur texte multi-blocs (LCS borné en mémoire ; repli sommaire pour grands textes).
-- Tests supplémentaires écrits pour concurrence des révisions, chemins, manifestes, patchs et différences multi-blocs.
+- Tests supplémentaires écrits et **exécutés en CI** pour concurrence des révisions, chemins, manifestes, patchs, différences multi-blocs et décompression/recompression ZIP via JSZip.
 
 ## Ce qui NE DOIT PAS être annoncé comme terminé
 
-- Aucun npm test, tsc, export web ou test Android physique n'a encore été exécuté sur ces changements. Les nouveaux tests sont **écrits mais non exécutés**. Il peut donc subsister des erreurs de compilation et des problèmes d'intégration.
+- **Validation GitHub Actions réussie le 10/10/2026** : npm ci, npm test (**303 tests réussis, 0 échec**), npx tsc --noEmit et npx expo export -p web, y compris les tests de round-trip ZIP avec package.json. Rapport : https://github.com/artisanguillonrenov-creator/logiciel-rp-beta/actions/runs/38061925955 . **Cela ne constitue toujours pas un test Android physique**, et des erreurs de comportement sur tablette restent possibles.
 - Les binaires / portraits / images ne sont PAS inclus dans le ZIP : l'archive reste exclusivement une archive des sources texte, non un clone intégral du dépôt.
 - Le système de fichiers physiques est un miroir reconstructible. La bascule complète sur un modèle fichier-par-fichier autoritaire avec migration prouvée n'est pas achevée.
 - Une action **manuelle Android SAF** permet désormais de choisir un dossier hors de l'application pour sauvegarder le ZIP texte ; contrôle de présence du fichier après écriture. Cette fonction n'est pas encore testée sur appareil. Il n'y a PAS de sauvegarde automatique périodique, de vérification cryptographique externe ni de restauration native de l'application après désinstallation. La réimportation demeure liée à la référence de code.
