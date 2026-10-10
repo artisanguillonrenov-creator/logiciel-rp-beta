@@ -1,6 +1,6 @@
 // Règles pures et testables des archives Elyndor Lab.
 // Aucun ZIP externe n'est autorisé à supprimer implicitement des fichiers.
-import { cheminValide, MAX_CONTENU_FICHIER, type AtelierLocal } from './workspaceCore';
+import { cheminValide, modifierFichier, MAX_CONTENU_FICHIER, type AtelierLocal } from './workspaceCore';
 
 export const MAX_ARCHIVE_COMPRESSEE = 32 * 1024 * 1024;
 export const MAX_ARCHIVE_DECOMPRESSEE = 64 * 1024 * 1024;
@@ -92,4 +92,14 @@ export function examinerManifeste(valeur:unknown, importes:Record<string,string>
 export function verifierTexteArchive(chemin:string, texte:string):void {
   if(!nomSourceAutorise(chemin))throw new Error('Chemin archive incompatible : '+chemin);
   if(octetsUtf8(texte)>MAX_CONTENU_FICHIER)throw new Error('Source trop lourde : '+chemin);
+}
+
+/** Appliquer uniquement les chemins présents dans l'archive. Les absents restent intacts. */
+export function appliquerPatchSources(atelier:AtelierLocal,base:Record<string,string>,importes:Record<string,string>):AtelierLocal{
+  let suivant={...atelier,changements:{...atelier.changements}};
+  for(const [chemin,texte] of Object.entries(importes)){
+    verifierTexteArchive(chemin,texte);
+    suivant=modifierFichier(suivant,base,chemin,texte);
+  }
+  return suivant;
 }
