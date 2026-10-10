@@ -4,10 +4,10 @@ import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import type { DepotSourcesLab } from './depotSources';
-import { cheminValide, fichiersActuels, modifierFichier, verifierAtelier, type AtelierLocal, type VersionLab } from './workspaceCore';
+import { cheminValide, fichiersActuels, verifierAtelier, type AtelierLocal, type VersionLab } from './workspaceCore';
 import {
   MANIFESTE_LAB, MAX_ARCHIVE_COMPRESSEE, MAX_ARCHIVE_DECOMPRESSEE, MAX_ENTREES_ARCHIVE,
-  contientSecretProbable, collisionDesChemins, empreinteTexte, examinerManifeste,
+  appliquerPatchSources, contientSecretProbable, collisionDesChemins, empreinteTexte, examinerManifeste,
   nomSourceAutorise, octetsUtf8, verifierOriginalZip, verifierTexteArchive, type ManifesteArchiveV2,
 } from './archivePolicy';
 
@@ -176,10 +176,7 @@ export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSources
     }
   }
   // Toujours PATCH : aucune suppression de source absente, même avec package.json.
-  let prochain={...atelier,changements:{...atelier.changements}};
-  for(const [chemin,texte] of Object.entries(importes)){
-    prochain=modifierFichier(prochain,depot.sources,chemin,texte);
-  }
+  const prochain=appliquerPatchSources(atelier,depot.sources,importes);
   return {atelier:prochain,nombre:Object.keys(importes).length,complet:false,
     versionsImportees,referenceAvant:atelier.reference};
 }
