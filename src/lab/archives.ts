@@ -32,7 +32,8 @@ function extraireTexteBorne(entree:JSZip.JSZipObject,limite:number):Promise<stri
   return new Promise<string>((resolve,reject)=>{
     const morceaux:string[]=[];
     let octets=0,termine=false;
-    const flux=entree.internalStream('string');
+    // Methode runtime JSZip 3.10 disponible mais omise du type JSZipObject.
+    const flux=(entree as JSZip.JSZipObject & {internalStream:(type:'string')=>JSZip.JSZipStreamHelper<string>}).internalStream('string');
     const echouer=(cause:unknown)=>{
       if(termine)return;
       termine=true;flux.pause();reject(cause instanceof Error?cause:new Error(String(cause)));
