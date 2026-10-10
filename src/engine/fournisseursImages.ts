@@ -1,5 +1,6 @@
 import type { AppSettings } from '../types';
 import type { GenerateurImage, RequeteImage } from './elyndorCloudImages';
+import { genererImageOpenAI } from './openAiImages';
 import {
  genererImageElyndorCloud, extraireImageReponse, ErreurImagesIndisponibles,
 } from './elyndorCloudImages';
@@ -53,6 +54,10 @@ export function requeteOpenRouterImage(
 }
 export function genererImageSelonReglages(settings:AppSettings):GenerateurImage {
   if(settings.fournisseurImages==='runpod')return genererImageElyndorCloud;
+  if(settings.fournisseurImages==='openai'){
+    if(settings.autoriserImagesPayantes!==true)throw new ErreurImagesIndisponibles('Images OpenAI bloquées : autorise explicitement la génération payante.');
+    return genererImageOpenAI(settings.openAiApiKey||'',settings.modeleImagesOpenAI||'gpt-image-1-mini');
+  }
   if(settings.fournisseurImages!=='openrouter')throw new ErreurImagesIndisponibles('Images désactivées : aucun GPU démarré.');
   const cle=settings.openRouterApiKey||'';
   const modele=settings.modeleImages||'';
