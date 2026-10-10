@@ -344,7 +344,7 @@ export default function ElyndorLabPanel() {
         <Text style={styles.aide}>Éditeur tactile et presse-papiers. Ce terminal n'exécute pas de commandes système arbitraires.</Text>
       </> : <>
         <Text style={styles.aide}>Sélectionne un fichier dans l'explorateur.</Text>
-        <Bouton titre="Choisir un fichier" onPress={()=>setVue('fichiers')}/>
+        <Bouton titre="Choisir un fichier" onPress={()=>{void changerVue('fichiers');}}/>
       </>}
     </View> : null}
 
@@ -360,7 +360,7 @@ export default function ElyndorLabPanel() {
       </View>)}
       {selection&&changementNatif(selection)?<Text style={styles.danger}>Fichier de configuration ou code natif : reconstruction Android requise.</Text>:null}
       <Text style={styles.aide}>Un pré-contrôle réussi n'est pas un test vert de compilation. Tant que la chaîne locale Expo/Metro n'est pas démontrée, aucune activation de nouveau code n'est autorisée.</Text>
-      <Bouton titre="Voir les possibilités de mise à jour" variante="secondaire" onPress={()=>setVue('maj')}/>
+      <Bouton titre="Voir les possibilités de mise à jour" variante="secondaire" onPress={()=>{void changerVue('maj');}}/>
     </View> : null}
 
     {vue==='maj' ? <View style={styles.corps}>
@@ -369,8 +369,8 @@ export default function ElyndorLabPanel() {
       <Text style={styles.aide}>Tu peux modifier, sauvegarder, comparer et exporter les fichiers. Une compilation Expo/Metro puis un chargeur sûr seraient nécessaires pour exécuter le TypeScript modifié dans l'application Android.</Text>
       {selection&&changementNatif(selection)?<Text style={styles.aide}>Cette modification exige aussi un nouvel APK : {selection}</Text>:null}
       <Bouton titre="Mettre à jour (non disponible)" desactive onPress={()=>undefined}/>
-      <Bouton titre="Enregistrer une version des sources" variante="secondaire" onPress={()=>setVue('versions')}/>
-      <Bouton titre="Exporter vers GPT / Claude" variante="secondaire" onPress={()=>setVue('archives')}/>
+      <Bouton titre="Enregistrer une version des sources" variante="secondaire" onPress={()=>{void changerVue('versions');}}/>
+      <Bouton titre="Exporter vers GPT / Claude" variante="secondaire" onPress={()=>{void changerVue('archives');}}/>
     </View> : null}
 
     {vue==='versions' ? <View style={styles.corps}>
@@ -413,7 +413,7 @@ export default function ElyndorLabPanel() {
         <Bouton titre="Confirmer l'import dans la copie locale" onPress={()=>{void confirmerImport();}} desactive={occupe}/>
         <Bouton titre="Annuler l'import" variante="secondaire" onPress={()=>setImportPret(null)}/>
       </View>:null}
-      <Text style={styles.aide}>Aucune clé API, histoire ni base de données personnelle n'est exportée. Pour transmettre tous les actifs médias du dépôt, une archive complète externe reste nécessaire.</Text>
+      <Text style={styles.aide}>Un contrôle heuristique de secrets est effectué avant export, sans garantie absolue. Vérifie l'archive avant de la partager. Les données de parties ne sont pas intégrées. Les médias nécessitent encore un export distinct.</Text>
     </View> : null}
   </View>;
 }
