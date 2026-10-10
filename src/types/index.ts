@@ -406,7 +406,7 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // 'serveur' (repris de la V13 « Modèle local ») : un runtime compatible
 // OpenAI (LM Studio, Ollama…) lancé sur un PC du réseau local — disponible
 // sur toutes les plateformes, voir src/engine/serveurLocal.ts.
-export type FournisseurLLM = 'openrouter' | 'openai' | 'infermatic' | 'local' | 'serveur';
+export type FournisseurLLM = 'openrouter' | 'openai' | 'infermatic' | 'local' | 'serveur' | 'chatgpt';
 export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
@@ -417,7 +417,9 @@ export interface AppSettings {
   openAiModel?: string;
   model: string;
   /** Marqueur de sélection explicite : distingue une ancienne migration Cloud d'un choix RunPod récent. */
-  fournisseurNarration?: 'openrouter' | 'openai' | 'runpod' | 'serveur';
+  fournisseurNarration?: 'openrouter' | 'openai' | 'runpod' | 'serveur' | 'chatgpt';
+  /** Modèle Codex accessible par abonnement (vide = défaut du compte). */
+  chatgptModel?: string;
   /** Services indépendants, sélectionnés dans les réglages utilisateur. */
   fournisseurImages?: 'desactive' | 'runpod' | 'openrouter' | 'openai';
   modeleImages?: string;
