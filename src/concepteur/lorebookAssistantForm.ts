@@ -48,7 +48,8 @@ export function preparerFicheLoreProposee(original: FicheEditable, brute: unknow
     titre,
     contenu: resultat.contenu,
     category: resultat.category ?? original.category,
-    priority: Number.isInteger(resultat.priority) ? resultat.priority : original.priority,
+    priority: typeof resultat.priority === 'number' && Number.isInteger(resultat.priority)
+      ? resultat.priority : original.priority,
     constant: typeof resultat.constant === 'boolean' ? resultat.constant : original.constant,
     actif: typeof resultat.actif === 'boolean' ? resultat.actif : original.actif,
     scope: resultat.scope ?? original.scope,
