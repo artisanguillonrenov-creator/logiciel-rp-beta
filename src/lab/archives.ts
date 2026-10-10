@@ -1,4 +1,6 @@
 import { File, Paths } from 'expo-file-system';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import JSZip from 'jszip';
 import type { DepotSourcesLab } from './depotSources';
@@ -47,7 +49,7 @@ function extraireTexteBorne(entree:JSZip.JSZipObject,limite:number):Promise<stri
   });
 }
 
-export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{ uri:string; total:number }> {
+async function preparerZipSourcesLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{ fichier:File; total:number }> {
   if(atelier.reference!==depot.reference)throw new Error('Référence locale divergente : export interrompu avant réconciliation.');
   const zip = new JSZip();
   const fichiers = fichiersActuels(depot.sources, atelier);
@@ -72,9 +74,30 @@ export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSour
   const nom='Elyndor-Lab-'+new Date().toISOString().replace(/[:.]/g,'-')+'.zip';
   const destination=new File(Paths.cache,nom);
   destination.write(contenu);
-  if(!await Sharing.isAvailableAsync())throw new Error('Partage Android indisponible. Archive temporaire : '+destination.uri);
-  await Sharing.shareAsync(destination.uri,{mimeType:'application/zip',dialogTitle:'Exporter les sources texte Elyndor Lab'});
-  return {uri:destination.uri,total:Object.keys(inventaire).length};
+  return {fichier:destination,total:Object.keys(inventaire).length};
+}
+
+export async function exporterSourcesLab(atelier: AtelierLocal, depot: DepotSourcesLab): Promise<{uri:string;total:number}> {
+  const resultat=await preparerZipSourcesLab(atelier,depot);
+  if(!await Sharing.isAvailableAsync())throw new Error('Partage Android indisponible. Archive temporaire : '+resultat.fichier.uri);
+  await Sharing.shareAsync(resultat.fichier.uri,{mimeType:'application/zip',dialogTitle:'Exporter les sources texte Elyndor Lab'});
+  return {uri:resultat.fichier.uri,total:resultat.total};
+}
+
+/** Copie durable hors de l'espace privé de l'application via le sélecteur Android.
+    Le dossier choisi doit être conservé par l'utilisateur. */
+export async function sauvegarderSourcesDansDossierAndroid(atelier:AtelierLocal,depot:DepotSourcesLab):Promise<{uri:string;total:number}>{
+  if(Platform.OS!=='android')throw new Error('La sauvegarde par dossier Android n’est pas disponible sur cette plateforme.');
+  const acces=await LegacyFileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+  if(!acces.granted)throw new Error('Aucun dossier externe sélectionné : sauvegarde annulée.');
+  const archive=await preparerZipSourcesLab(atelier,depot);
+  const nom='Elyndor-Lab-'+new Date().toISOString().replace(/[:.]/g,'-');
+  const uri=await LegacyFileSystem.StorageAccessFramework.createFileAsync(acces.directoryUri,nom,'application/zip');
+  const base64=await archive.fichier.base64();
+  await LegacyFileSystem.writeAsStringAsync(uri,base64,{encoding:LegacyFileSystem.EncodingType.Base64});
+  const info=await LegacyFileSystem.getInfoAsync(uri);
+  if(!info.exists)throw new Error('Impossible de vérifier la présence de la sauvegarde externe.');
+  return {uri,total:archive.total};
 }
 
 export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSourcesLab):Promise<ResultatImportLab>{
