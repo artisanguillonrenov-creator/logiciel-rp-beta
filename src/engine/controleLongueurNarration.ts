@@ -46,6 +46,34 @@ export async function compterTokensNarration(
   } catch { return null; }
 }
 
+/**
+ * Si le budget est déjà respecté mais la dernière phrase est tronquée,
+ * garde le plus long préfixe qui se termine proprement et reste dans la
+ * fourchette. N'invente aucune fin et ne consomme aucun appel de génération.
+ * Le comptage du préfixe utilise toujours le tokenizer réel du pod.
+ */
+export async function recupererFinCompleteDansPlage(
+  texte: string,
+  plage: PlageLongueur,
+  compter: (texte: string) => Promise<number | null>,
+): Promise<{ texte: string; tokens: number } | null> {
+  if (!texte.trim() || finDeNarrationComplete(texte)) return null;
+  const fins = [...texte.matchAll(/[.!?…»”](?=\s|[»”"'*)\]]|$)/g)];
+  let essais = 0;
+  for (let i = fins.length - 1; i >= 0 && essais < 12; i--) {
+    const candidat = texte.slice(0, (fins[i].index ?? 0) + 1).trimEnd();
+    if (!candidat || candidat.length === texte.trim().length ||
+        !finDeNarrationComplete(candidat)) continue;
+    essais++;
+    const tokens = await compter(candidat);
+    if (tokens !== null && plageRespectee(tokens, plage)) {
+      return { texte: candidat, tokens };
+    }
+    if (tokens !== null && tokens < plage.min) break;
+  }
+  return null;
+}
+
 export interface ResultatControleLongueur {
   texte: string;
   tokens: number | null;
@@ -95,6 +123,15 @@ export async function controlerLongueurNarration({
     if (finDeNarrationComplete(candidate) && tokens !== null && plageRespectee(tokens, plage)) {
       return { texte: candidate, tokens, conforme: true, corrige: essai > 0, verification: 'exacte' };
     }
+    // Ne pas relancer Cydonia si seul un fragment terminal est coupé et
+    // que la dernière phrase entière tient déjà dans le budget MIN–MAX.
+    if (tokens !== null && plageRespectee(tokens, plage) &&
+        !finDeNarrationComplete(candidate)) {
+      const finRecuperee = await recupererFinCompleteDansPlage(candidate, plage, compter);
+      if (finRecuperee) {
+        return { ...finRecuperee, conforme: true, corrige: true, verification: 'exacte' };
+      }
+    }
     if (essai === 2) break;
     // Une longueur invérifiable n'est jamais publiée en mode strict.
     if (tokens === null) throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
@@ -103,8 +140,11 @@ export async function controlerLongueurNarration({
     candidate = suivant;
     tokens = await compter(candidate);
   }
-  if (tokens !== null && (!plageRespectee(tokens, plage) || !finDeNarrationComplete(candidate))) {
-    throw new Error(`Réponse hors fourchette ou incomplète (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
+  if (tokens !== null && !plageRespectee(tokens, plage)) {
+    throw new Error(`Réponse hors fourchette (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
+  }
+  if (tokens !== null && !finDeNarrationComplete(candidate)) {
+    throw new Error(`Réponse dans la fourchette mais phrase incomplète (${tokens} tokens, attendu ${plage.min}–${plage.max}). Régénère ce tour.`);
   }
   throw new Error('Comptage exact des tokens indisponible : aucune narration non vérifiée ne sera publiée.');
 }

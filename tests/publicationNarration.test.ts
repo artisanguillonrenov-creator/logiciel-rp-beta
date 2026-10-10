@@ -93,3 +93,38 @@ test('tokenizer : 404, faux résultat, erreur réseau et ids de tokens invalides
   const erreur = (async () => { throw new Error('Connexion perdue'); }) as typeof fetch;
   assert.equal(await compterTokensNarration('Test.', erreur, async () => undefined), null);
 });
+
+test('234 tokens mais phrase tronquée : garder la dernière phrase complète sans génération GPU', async () => {
+  const phrase = Array(219).fill('mot').join(' ') + ' terminé.';
+  const coupe = phrase + ' ' + Array(14).fill('interrompu').join(' ');
+  const compter = async (texte: string) => texte.trim().split(/\s+/).length;
+  let appelsIA = 0;
+  assert.equal(await compter(coupe), 234);
+  const resultat = await controlerLongueurNarration({
+    texte: coupe,
+    plage: { min: 215, max: 235 },
+    temperature: 0.85,
+    compter,
+    reformuler: async () => { appelsIA++; throw Error('Pas de génération nécessaire'); },
+  });
+  assert.equal(resultat.conforme, true);
+  assert.equal(resultat.corrige, true);
+  assert.equal(resultat.tokens, 220);
+  assert.equal(resultat.texte, phrase);
+  assert.equal(appelsIA, 0);
+});
+
+test('une fin tronquée ne doit pas être coupée si cela descend sous 215 tokens', async () => {
+  const phrase = Array(209).fill('mot').join(' ') + ' terminé.';
+  const coupe = phrase + ' ' + Array(24).fill('interrompu').join(' ');
+  const compter = async (texte: string) => texte.trim().split(/\s+/).length;
+  let appelsIA = 0;
+  await assert.rejects(controlerLongueurNarration({
+    texte: coupe,
+    plage: { min: 215, max: 235 },
+    temperature: 0.85,
+    compter,
+    reformuler: async () => { appelsIA++; return coupe; },
+  }), /incomplète/);
+  assert.equal(appelsIA, 2);
+});
