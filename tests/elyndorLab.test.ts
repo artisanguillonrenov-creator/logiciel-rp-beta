@@ -36,3 +36,14 @@ test('les contrôles locaux ne prétendent pas compiler les sources',()=>{
   assert.equal(changementNatif('modules/elyndor-objectbox/foo.kt'),true);
   assert.equal(changementNatif('src/engine/images.ts'),false);
 });
+
+import { comparerArbres, comparerTexte } from '../src/lab/diff';
+
+test('comparateur de fichiers et de contenu',()=>{
+  const d=comparerTexte('a\nancien\nz','a\nnouveau\nz');
+  assert.equal(d.length,1);
+  assert.equal(d[0].ancien,'ancien');
+  assert.equal(d[0].nouveau,'nouveau');
+  const r=comparerArbres({a:'1',b:'2'},{a:'3',c:'4'});
+  assert.deepEqual(r,{ajoutes:['c'],supprimes:['b'],modifies:['a']});
+});
