@@ -58,7 +58,7 @@ export async function recupererFinCompleteDansPlage(
   compter: (texte: string) => Promise<number | null>,
 ): Promise<{ texte: string; tokens: number } | null> {
   if (!texte.trim() || finDeNarrationComplete(texte)) return null;
-  const fins = [...texte.matchAll(/[.!?…»”](?=\\s|[»”"'*)\\]]|$)/g)];
+  const fins = [...texte.matchAll(/[.!?…»”](?=\s|[»”"'*)\]]|$)/g)];
   let essais = 0;
   for (let i = fins.length - 1; i >= 0 && essais < 12; i--) {
     const candidat = texte.slice(0, (fins[i].index ?? 0) + 1).trimEnd();
