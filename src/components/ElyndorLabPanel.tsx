@@ -99,8 +99,8 @@ export default function ElyndorLabPanel() {
     if(!cheminValide(chemin)){setErreur('Nom ou emplacement de fichier non autorisé.');return;}
     if(Object.prototype.hasOwnProperty.call(fichiers,chemin)){setErreur('Ce fichier existe déjà.');return;}
     try{
-      if(editionModifiee) await sauvegarderBrouillon();
-      const suivant=modifierFichier(atelier,sources,chemin,'');
+      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
+      const suivant=modifierFichier(courant,sources,chemin,'');
       await appliquer(suivant,'Fichier local créé : '+chemin);
       setSelection(chemin);setCode('');setAffichageEditeur('code');setEditionModifiee(false);setControles(null);setVue('editeur');
     }catch(e){signaler(e);}
@@ -161,10 +161,10 @@ export default function ElyndorLabPanel() {
     if(!atelier)return;
     setOccupe(true);setErreur('');setImportPret(null);
     try{
-      if(editionModifiee)await sauvegarderBrouillon();
+      const courant=editionModifiee ? (await sauvegarderBrouillon() ?? atelier) : atelier;
       if(!depot)throw new Error('Sources locales non disponibles.');
-      const resultat=await importerArchiveLab(atelier,depot);
-      const details=comparerArbres(fichiersActuels(sources,atelier),fichiersActuels(sources,resultat.atelier));
+      const resultat=await importerArchiveLab(courant,depot);
+      const details=comparerArbres(fichiersActuels(sources,courant),fichiersActuels(sources,resultat.atelier));
       setImportPret({...resultat,details});
       messageOk(resultat.nombre+' fichiers analysés. Aucun changement appliqué : confirme l’importation ci-dessous.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
