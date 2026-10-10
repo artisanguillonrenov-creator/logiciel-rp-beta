@@ -1,4 +1,5 @@
 import { assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
+import { reglagesFournisseursActifs, resoudreRouteTexte } from './fournisseursRuntime';
 import { genererReponseComplete } from './completionReponse';
 import type { PlageLongueur } from '../concepteur/reglagesNarrateur';
 
@@ -24,6 +25,13 @@ export async function compterTokensNarration(
   requete: typeof fetch = fetch,
   preparerPod: () => Promise<unknown> = assurerPodElyndorCloud,
 ): Promise<number | null> {
+  // Les fournisseurs distants ne disposent pas du tokenizer llama.cpp.
+  // Estimation locale explicite : ne jamais réveiller RunPod en mode OpenRouter.
+  const route = resoudreRouteTexte(reglagesFournisseursActifs());
+  if (route.fournisseur !== 'runpod' && requete === fetch && preparerPod === assurerPodElyndorCloud) {
+    const caract = Array.from(texte).length;
+    return Math.max(1, Math.round(caract / 3.7));
+  }
   try {
     await preparerPod();
     const controleur = new AbortController();
@@ -80,7 +88,7 @@ export interface ResultatControleLongueur {
   conforme: boolean;
   corrige: boolean;
   /** Un contrôle absent n'est jamais présenté comme une conformité certifiée. */
-  verification: 'exacte' | 'indisponible';
+  verification: 'exacte' | 'estimee' | 'indisponible';
 }
 
 interface OptionsControle {
@@ -102,6 +110,9 @@ export async function controlerLongueurNarration({
   texte, plage, temperature, storyId, samplers, compter = compterTokensNarration,
   reformuler,
 }: OptionsControle): Promise<ResultatControleLongueur> {
+  const verification = compter === compterTokensNarration &&
+    resoudreRouteTexte(reglagesFournisseursActifs()).fournisseur !== 'runpod'
+    ? 'estimee' as const : 'exacte' as const;
   let candidate = texte.trim();
   let tokens = await compter(candidate);
   const produire = reformuler ?? (async (a: string, cible: PlageLongueur) => {
@@ -121,7 +132,7 @@ export async function controlerLongueurNarration({
 
   for (let essai = 0; essai <= 2; essai++) {
     if (finDeNarrationComplete(candidate) && tokens !== null && plageRespectee(tokens, plage)) {
-      return { texte: candidate, tokens, conforme: true, corrige: essai > 0, verification: 'exacte' };
+      return { texte: candidate, tokens, conforme: true, corrige: essai > 0, verification };
     }
     // Ne pas relancer Cydonia si seul un fragment terminal est coupé et
     // que la dernière phrase entière tient déjà dans le budget MIN–MAX.
@@ -129,7 +140,7 @@ export async function controlerLongueurNarration({
         !finDeNarrationComplete(candidate)) {
       const finRecuperee = await recupererFinCompleteDansPlage(candidate, plage, compter);
       if (finRecuperee) {
-        return { ...finRecuperee, conforme: true, corrige: true, verification: 'exacte' };
+        return { ...finRecuperee, conforme: true, corrige: true, verification };
       }
     }
     if (essai === 2) break;
