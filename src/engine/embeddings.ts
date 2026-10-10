@@ -69,10 +69,13 @@ export function extraireVecteurs(data: unknown, attendus: number): number[][] {
 
 export async function obtenirEmbeddings(
   textes: string[],
-  _appSettings: AppSettings,
+  appSettings: AppSettings,
   diagnosticLabel = 'Embeddings',
 ): Promise<ResultatEmbeddings> {
   const debut = Date.now();
+  if (appSettings.fournisseurEmbeddings !== 'runpod') {
+    throw new ErreurEmbeddings('Embeddings désactivés : recherche lexicale locale, aucun démarrage GPU.');
+  }
   const lots = Math.ceil(textes.length / TAILLE_LOT);
   const modele = ELYNDOR_CLOUD_MODELE_EMBEDDINGS;
   if (!modele || !IDENTITE_CACHE) {
@@ -101,16 +104,16 @@ export async function obtenirEmbeddings(
 }
 
 /** Disponible dès que le modèle d'embeddings Elyndor Cloud est déclaré, quels que soient les anciens réglages. */
-export function embeddingsDisponibles(_appSettings: AppSettings): boolean {
-  return IDENTITE_CACHE !== null;
+export function embeddingsDisponibles(appSettings: AppSettings): boolean {
+  return appSettings.fournisseurEmbeddings === 'runpod' && IDENTITE_CACHE !== null;
 }
 
-export function identiteEmbeddingsConfiguree(_appSettings: AppSettings): string | null {
-  return IDENTITE_CACHE;
+export function identiteEmbeddingsConfiguree(appSettings: AppSettings): string | null {
+  return embeddingsDisponibles(appSettings) ? IDENTITE_CACHE : null;
 }
 
-export function identitesEmbeddingsCompatibles(_appSettings: AppSettings): string[] {
-  return IDENTITE_CACHE ? [IDENTITE_CACHE] : [];
+export function identitesEmbeddingsCompatibles(appSettings: AppSettings): string[] {
+  return embeddingsDisponibles(appSettings) && IDENTITE_CACHE ? [IDENTITE_CACHE] : [];
 }
 
 /**
@@ -119,9 +122,9 @@ export function identitesEmbeddingsCompatibles(_appSettings: AppSettings): strin
  */
 export function cacheEmbeddingsCompatible(
   identiteCache: string | null,
-  _appSettings: AppSettings,
+  appSettings: AppSettings,
 ): boolean {
-  return identiteCache === null || identiteCache === IDENTITE_CACHE;
+  return identiteCache === null || (embeddingsDisponibles(appSettings) && identiteCache === IDENTITE_CACHE);
 }
 
 type VecteurIndexeObjectBox = number[] & {
