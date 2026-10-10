@@ -205,9 +205,10 @@ export function normaliserReglagesFournisseurs(valeur: AppSettings): AppSettings
   return {
     ...valeur,
     moteurInference: mode,
-    fournisseurNarration: valeur.fournisseurNarration || (ancienCloud ? 'openrouter' : mode === 'openrouter' ? 'openrouter' : 'serveur'),
+    fournisseurNarration: valeur.fournisseurNarration || (ancienCloud ? 'openrouter' : mode === 'openai' ? 'openai' : mode === 'openrouter' ? 'openrouter' : 'serveur'),
     model: ancienCloud || !valeur.model ? 'openrouter/free' : valeur.model,
     openRouterApiKey: valeur.openRouterApiKey || '',
+    openAiModel: valeur.openAiModel || 'gpt-4.1-mini',
     fournisseurImages: valeur.fournisseurImages || 'desactive',
     modeleImages: valeur.modeleImages || '',
     autoriserImagesPayantes: valeur.autoriserImagesPayantes === true,

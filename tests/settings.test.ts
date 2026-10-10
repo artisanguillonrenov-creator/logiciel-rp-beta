@@ -102,3 +102,16 @@ test('la clé du serveur local est rangée dans le coffre, jamais dans les régl
   assert.equal(relu.serveurLocalModele, 'qwen3.5-9b');
   assert.equal(relu.moteurInference, 'serveur');
 });
+
+test('OpenAI : le modèle reste en préférences, la clé reste dans le coffre sécurisé', async () => {
+  const e = environnement();
+  const settings = { ...defauts, moteurInference: 'openai' as const, fournisseurNarration: 'openai' as const,
+    openAiModel: 'gpt-4.1-mini', openAiApiKey: 'sk-test-privee' };
+  await e.depot.enregistrer(settings);
+  assert.equal(e.raw()!.includes('sk-test-privee'), false);
+  assert.equal(e.raw()!.includes('gpt-4.1-mini'), true);
+  assert.equal((await e.depot.lire()).openAiApiKey, 'sk-test-privee');
+  assert.equal((await e.depot.lire()).openAiModel, 'gpt-4.1-mini');
+  await e.depot.enregistrer({ ...settings, openAiApiKey: '' });
+  assert.equal((await e.depot.lire()).openAiApiKey, '');
+});

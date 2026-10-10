@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   analyserCorpsReponse,
   appellerModele,
+  listerModelesGPT,
+  modeleGPTConversationnel,
   configurationLLM,
 } from '../src/engine/elyndorCloudClient';
 import {
@@ -227,4 +229,68 @@ test('sans clé OpenRouter un appel est bloqué avant toute connexion', async ()
   globalThis.fetch=async()=>{appels++;return Response.json({});};
   await assert.rejects(appellerModele({apiKey:'',model:'',messages:[{role:'user',content:'x'}]}),/clé OpenRouter/i);
   assert.equal(appels,0);
+});
+
+test('GPT : connexion OpenAI directe et sélection indépendante du modèle OpenRouter', async () => {
+  let url = ''; let auth = ''; let body: any;
+  configurationLLM({openRouterApiKey: 'autre-cle', model: 'openrouter/free', moteurInference: 'openai',
+    fournisseurNarration: 'openai', openAiApiKey: 'sk-openai-test', openAiModel: 'gpt-4.1-mini'});
+  globalThis.fetch = async (input, init) => {
+    url = String(input);
+    auth = (init?.headers as Record<string, string>).Authorization;
+    body = JSON.parse(String(init?.body));
+    return Response.json({choices: [{message: {content: 'Bonjour, voyageur.'}, finish_reason: 'stop'}]});
+  };
+  const texte = await appellerModele({apiKey: 'ignore', model: 'ignore',
+    messages: [{role: 'user', content: 'Bonjour'}], temperature: 0.6, maxTokens: 200,
+    samplers: {top_k: 82}});
+  assert.equal(texte, 'Bonjour, voyageur.');
+  assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+  assert.equal(auth, 'Bearer sk-openai-test');
+  assert.equal(body.model, 'gpt-4.1-mini');
+  assert.equal(body.max_completion_tokens, 200);
+  assert.equal(body.max_tokens, undefined);
+  assert.equal(body.temperature, 0.6);
+  assert.equal(body.top_k, undefined);
+});
+
+test('GPT-5 : ne pas envoyer les anciens paramètres non compatibles', async () => {
+  let body: any;
+  configurationLLM({openRouterApiKey: '', model: '', moteurInference: 'openai',
+    fournisseurNarration: 'openai', openAiApiKey: 'sk-test', openAiModel: 'gpt-5.1'});
+  globalThis.fetch = async (_, init) => {
+    body = JSON.parse(String(init?.body));
+    return Response.json({choices: [{message: {content: 'Narration.'}, finish_reason: 'stop'}]});
+  };
+  await appellerModele({apiKey: '', model: '', messages: [{role: 'user', content: 'Bonjour'}], maxTokens: 400});
+  assert.equal(body.model, 'gpt-5.1');
+  assert.equal(body.temperature, undefined);
+  assert.equal(body.max_tokens, undefined);
+  assert.equal(body.max_completion_tokens, 400);
+  assert.equal(body.reasoning_effort, 'none');
+});
+
+test('GPT : accès au catalogue avec la clé et exclusion des modèles non conversationnels', async () => {
+  let url = ''; let auth = '';
+  globalThis.fetch = async (input, init) => {
+    url = String(input); auth = (init?.headers as Record<string, string>).Authorization;
+    return Response.json({data: [
+      {id: 'gpt-4.1-mini'}, {id: 'gpt-5.1'}, {id: 'gpt-image-1'},
+      {id: 'gpt-realtime'}, {id: 'text-embedding-3-small'}, {id: 'gpt-5.1-codex'},
+    ]});
+  };
+  const liste = await listerModelesGPT('sk-cle');
+  assert.equal(url, 'https://api.openai.com/v1/models');
+  assert.equal(auth, 'Bearer sk-cle');
+  assert.deepEqual(liste.map(m => m.id).sort(), ['gpt-4.1-mini', 'gpt-5.1']);
+  assert.equal(modeleGPTConversationnel('gpt-audio'), false);
+});
+
+test('GPT : aucune requête API sans clé', async () => {
+  let appels = 0;
+  configurationLLM({openRouterApiKey: '', model: '', moteurInference: 'openai',
+    fournisseurNarration: 'openai', openAiApiKey: '', openAiModel: 'gpt-4.1-mini'});
+  globalThis.fetch = async () => {appels++; return Response.json({});};
+  await assert.rejects(appellerModele({apiKey: '', model: '', messages: [{role: 'user', content: 'x'}]}), /clé API OpenAI/);
+  assert.equal(appels, 0);
 });

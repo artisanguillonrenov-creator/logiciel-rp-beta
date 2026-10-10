@@ -3,20 +3,21 @@ import {ActivityIndicator,Pressable,StyleSheet,Text,TextInput,View} from 'react-
 import {getSettings,saveSettings} from '../storage/storage';
 import type {AppSettings} from '../types';
 import { ELYNDOR_CLOUD_REGLAGE_URL } from '../engine/elyndorCloud';
-import {listerModeles} from '../engine/elyndorCloudClient';
+import {listerModeles,listerModelesGPT,MODELES_GPT_SUGGERES} from '../engine/elyndorCloudClient';
 import {listerModelesImagesOpenRouter} from '../engine/fournisseursImages';
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
-type ModeTexte='openrouter'|'runpod'|'serveur';
+type ModeTexte='openrouter'|'openai'|'runpod'|'serveur';
 type ModeImages='desactive'|'runpod'|'openrouter';
 const LABELS:Record<ModeTexte,string>={
-  openrouter:'OpenRouter',runpod:'RunPod Elyndor',serveur:'Autre API compatible',
+  openrouter:'OpenRouter',openai:'OpenAI / GPT',runpod:'RunPod Elyndor',serveur:'Autre API compatible',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
+  if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
   if(v.moteurInference==='openrouter')return 'openrouter';
   if(v.serveurLocalUrl===ELYNDOR_CLOUD_REGLAGE_URL)return 'runpod';
   return 'serveur';
@@ -29,6 +30,7 @@ export default function FournisseursPanel(){
   const [msg,setMsg]=useState('');
   const [voirCle,setVoirCle]=useState(false);
   const [catalogue,setCatalogue]=useState<Array<{id:string;nom:string}>>([]);
+  const [modelesGPT,setModelesGPT]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImage,setCatalogueImage]=useState<Array<{id:string;nom:string}>>([]);
   useEffect(()=>{
     getSettings().then(s=>{
@@ -46,19 +48,35 @@ export default function FournisseursPanel(){
     }catch(e){setMsg('Catalogue indisponible : '+(e instanceof Error?e.message:String(e)));}
     finally{setBusy(false);}
   };
+  const chargerGPT=async()=>{
+    if(!cfg?.openAiApiKey?.trim()){setMsg('Entre ta clé API OpenAI pour afficher les modèles disponibles.');return;}
+    setBusy(true);setMsg('');
+    try{
+      const modeles=await listerModelesGPT(cfg.openAiApiKey);
+      setModelesGPT(modeles);
+      setMsg(modeles.length+' modèles GPT détectés sur l’API OpenAI. La disponibilité réelle dépend de ton compte.');
+    }catch(e){setMsg('Connexion OpenAI : '+(e instanceof Error?e.message:String(e)));}
+    finally{setBusy(false);}
+  };
   const enregistrer=async()=>{
     if(!cfg)return;
     setBusy(true);setMsg('');
     try{
       const v:AppSettings={
         ...cfg,
-        moteurInference:mode==='openrouter'?'openrouter':'serveur',
+        moteurInference:mode==='openai'?'openai':mode==='openrouter'?'openrouter':'serveur',
         fournisseurNarration:mode,
         serveurLocalUrl:mode==='runpod'?ELYNDOR_CLOUD_REGLAGE_URL:cfg.serveurLocalUrl,
         serveurLocalModele:mode==='runpod'?'cydonia-24b-elyndor':cfg.serveurLocalModele,
         fournisseurImages:selection,
         fournisseurEmbeddings:cfg.fournisseurEmbeddings==='runpod'?'runpod':'desactive',
       };
+      if(mode==='openai' && !v.openAiApiKey?.trim()){
+        throw new Error('Entre une clé API OpenAI pour activer GPT.');
+      }
+      if(mode==='openai' && !v.openAiModel?.trim()){
+        throw new Error('Choisis un modèle GPT.');
+      }
       if(mode==='openrouter' && !v.openRouterApiKey?.trim()){
         throw new Error('Entre ta clé API OpenRouter pour utiliser ses modèles.');
       }
@@ -100,6 +118,35 @@ export default function FournisseursPanel(){
       {catalogue.slice(0,25).map(item=><Pressable key={item.id} style={st.option} onPress={()=>set({model:item.id})}>
         <Text style={st.text}>{cfg.model===item.id?'✓ ':''}{item.nom}</Text>
       </Pressable>)}
+    </>:null}
+    {mode==='openai'?<>
+      <Text style={st.text}>GPT utilise directement l’API OpenAI. L’abonnement ChatGPT ne donne pas de crédits API : chaque requête peut être facturée.</Text>
+      <Text style={st.label}>Clé API OpenAI</Text>
+      <TextInput style={st.input} value={cfg.openAiApiKey||''}
+        secureTextEntry={!voirCle} autoCapitalize="none" autoCorrect={false}
+        placeholder="sk-…" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({openAiApiKey:t.trim()})}/>
+      <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+        <Text style={st.text}>{voirCle?'Masquer la clé':'Afficher la clé'}</Text>
+      </Pressable>
+      <Text style={st.label}>Modèle GPT choisi</Text>
+      <TextInput style={st.input} value={cfg.openAiModel||'gpt-4.1-mini'}
+        autoCapitalize="none" autoCorrect={false}
+        onChangeText={t=>set({openAiModel:t.trim()})}/>
+      <Text style={st.text}>Sélection rapide (modèles à vérifier selon ton accès API) :</Text>
+      {MODELES_GPT_SUGGERES.map(id=><Pressable key={id} style={[st.option,cfg.openAiModel===id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:cfg.openAiModel===id}}
+        onPress={()=>set({openAiModel:id})}>
+        <Text style={st.text}>{cfg.openAiModel===id?'● ':'○ '}{id}</Text>
+      </Pressable>)}
+      <Bouton titre="Rechercher mes modèles GPT" variante="secondaire" desactive={busy}
+        onPress={()=>void chargerGPT()}/>
+      {modelesGPT.slice(0,60).map(item=><Pressable key={item.id} style={[st.option,cfg.openAiModel===item.id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:cfg.openAiModel===item.id}}
+        onPress={()=>set({openAiModel:item.id})}>
+        <Text style={st.text}>{cfg.openAiModel===item.id?'● ':'○ '}{item.nom}</Text>
+      </Pressable>)}
+      <Text style={st.text}>Ta clé est conservée dans le coffre sécurisé Android. Les images et les embeddings gardent leurs fournisseurs indépendants.</Text>
     </>:null}
     {mode==='serveur'?<>
       <Text style={st.label}>Adresse API compatible /v1</Text>

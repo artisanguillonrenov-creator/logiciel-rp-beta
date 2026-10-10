@@ -7,13 +7,7 @@ import { journaliser } from './journalDiagnostic';
 import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud } from './elyndorCloud';
 import { activerReglagesFournisseurs, reglagesFournisseursActifs, resoudreRouteTexte, type RouteTexte } from './fournisseursRuntime';
 
-/**
- * Client réseau unique d'Elyndor.
- *
- * Aucun fournisseur utilisateur n'est résolu ici : ni OpenRouter, ni
- * Infermatic, ni modèle embarqué, ni serveur LAN. Tous les appels narratifs
- * utilisent exclusivement l'endpoint OpenAI-compatible d'Elyndor Cloud.
- */
+/** Client réseau OpenAI-compatible : OpenAI direct, OpenRouter, RunPod et serveur tiers. */
 
 const DELAI_GENERATION_MS = 600_000;
 const TENTATIVES_REPONSE_VIDE = 3;
@@ -92,7 +86,7 @@ export function configurationLLM(settings: AppSettings, _modeleOverride?: string
   const route = resoudreRouteTexte(settings);
   return {
     apiKey: route.apiKey, model: route.model,
-    moteurInference: (route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as 'openrouter' | 'serveur',
+    moteurInference: (route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
     baseUrl: route.url.replace(/\/chat\/completions$/, ''),
   };
 }
@@ -158,6 +152,9 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?
     const destination = route ?? resoudreRouteTexte(reglagesFournisseursActifs());
     if (destination.fournisseur === 'openrouter' && !destination.apiKey) {
       throw new ErreurElyndorCloud('Renseigne ta clé OpenRouter dans Réglages → Fournisseurs IA.');
+    }
+    if (destination.fournisseur === 'openai' && !destination.apiKey) {
+      throw new ErreurElyndorCloud('Renseigne ta clé API OpenAI dans Réglages → Fournisseurs IA.');
     }
     if (destination.fournisseur === 'runpod') await assurerPodElyndorCloud();
     return await fetch(destination.url, {
@@ -253,7 +250,7 @@ async function appelerChatDetaille(
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
   const route = resoudreRouteTexte(reglagesFournisseursActifs());
   const profil = resoudreProfilRaisonnement(
-    route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur', route.model);
+    route.fournisseur === 'openrouter' ? 'openrouter' : route.fournisseur === 'openai' ? 'openai' : 'serveur', route.model);
   const debutAppel = Date.now();
 
   let response: Response;
@@ -267,8 +264,14 @@ async function appelerChatDetaille(
     body: JSON.stringify({
       model: route.model,
       messages,
-      temperature,
-      max_tokens: maxTokens,
+      // Les modèles GPT de raisonnement n'acceptent pas la température
+      // personnalisée et exigent max_completion_tokens (et non max_tokens).
+      ...(route.fournisseur === 'openai'
+        ? { max_completion_tokens: maxTokens,
+            ...(!/^gpt-(?:[5-9]|[1-9][0-9])/i.test(route.model) ? { temperature } : {}),
+            ...(/^gpt-5(?:\.|-|$)/i.test(route.model) ? { reasoning_effort: /^gpt-5(?:\.[1-9]|-[1-9])/i.test(route.model) ? 'none' : 'low' } : {}),
+          }
+        : { temperature, max_tokens: maxTokens }),
       // llama.cpp accepte les paramètres d'échantillonnage directement dans le JSON.
       // Ne transmettre que les clés prévalidées par reglagesNarrateur.ts.
       ...(route.fournisseur === 'runpod' ? (samplers || {}) : {}),
@@ -308,7 +311,7 @@ async function appelerChatDetaille(
     }, storyId);
     enregistrerAppelIADiagnostic({
       composant: diagnosticLabel ?? 'Elyndor Cloud',
-      modele: ELYNDOR_CLOUD_MODELE,
+      modele: route.model,
       maxTokens,
       dureeMs: Date.now() - debutAppel,
       usage: null,
@@ -325,7 +328,7 @@ async function appelerChatDetaille(
   enregistrerUsageAppel(data?.usage);
   enregistrerAppelIADiagnostic({
     composant: diagnosticLabel ?? 'Elyndor Cloud',
-    modele: ELYNDOR_CLOUD_MODELE,
+    modele: route.model,
     maxTokens,
     dureeMs: Date.now() - debutAppel,
     usage: data?.usage,
@@ -428,7 +431,7 @@ export async function appellerModeleAvecOutils({
   }
 }
 
-/** Le catalogue n'est plus exposé : Elyndor Cloud impose son modèle. */
+/** Catalogue OpenRouter gratuit conservé pour son mode propre. */
 export async function listerModeles(): Promise<ModeleOpenRouter[]> {
   const actifs = reglagesFournisseursActifs();
   if (actifs.moteurInference !== 'openrouter') {
@@ -441,4 +444,33 @@ export async function listerModeles(): Promise<ModeleOpenRouter[]> {
   const modeles = (donnees?.data ?? []) as Array<{id?:string,name?:string}>;
   return modeles.filter(m=>typeof m.id==='string' && m.id.endsWith(':free'))
     .map(m=>({id:m.id!,nom:m.name || m.id!}));
+}
+
+/** Suggestions directement sélectionnables, même hors connexion au catalogue OpenAI. */
+export const MODELES_GPT_SUGGERES = [
+  'gpt-4.1-mini', 'gpt-4.1', 'gpt-4o-mini', 'gpt-4o',
+  'gpt-5-mini', 'gpt-5.1',
+] as const;
+
+/** Seuls les identifiants de modèles GPT conversationnels sont présentés. */
+export function modeleGPTConversationnel(id: string): boolean {
+  return /^gpt-[0-9]/i.test(id) &&
+    !/(?:audio|realtime|transcri|tts|image|search|codex|deep-research|pro(?:-|$)|preview|instruct|chatgpt)/i.test(id);
+}
+
+/** Lit les modèles réellement exposés au compte OpenAI sans lancer de génération facturée. */
+export async function listerModelesGPT(cleApi: string): Promise<ModeleOpenRouter[]> {
+  if (!cleApi.trim()) throw new ErreurElyndorCloud('Renseigne d’abord ta clé API OpenAI.');
+  const response = await fetch('https://api.openai.com/v1/models', {
+    headers: { Authorization: `Bearer ${cleApi.trim()}` },
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new ErreurElyndorCloud('Clé API OpenAI refusée (401).');
+    throw new ErreurElyndorCloud(`Catalogue GPT indisponible (HTTP ${response.status}).`, response.status);
+  }
+  const donnees = await response.json() as { data?: Array<{ id?: string }> };
+  return (donnees.data ?? [])
+    .filter((m): m is { id: string } => typeof m.id === 'string' && modeleGPTConversationnel(m.id))
+    .map((m) => ({ id: m.id, nom: m.id }))
+    .sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
 }
