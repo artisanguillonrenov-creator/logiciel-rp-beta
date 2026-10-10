@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
 import Bouton from './Bouton';
@@ -10,7 +10,8 @@ import {
   supprimerFichier, changementNatif,
 } from '../lab/workspaceCore';
 import { enregistrerAtelierLocal, lireAtelierLocal } from '../lab/workspaceStore';
-import { exporterSourcesLab, importerArchiveLab } from '../lab/archives';
+import { exporterSourcesLab, importerArchiveLab, type ResultatImportLab } from '../lab/archives';
+import { JournalBrouillon } from '../lab/journalBrouillon';
 import { comparerArbres, comparerTexte, type ResumeImport } from '../lab/diff';
 
 type Vue = 'fichiers' | 'editeur' | 'tests' | 'maj' | 'versions' | 'secours' | 'archives';
@@ -38,11 +39,14 @@ export default function ElyndorLabPanel() {
   const [message,setMessage] = useState('');
   const [erreur,setErreur] = useState('');
   const [occupe,setOccupe] = useState(false);
-  const [importPret,setImportPret] = useState<{atelier:AtelierLocal;nombre:number;complet:boolean;details:ResumeImport}|null>(null);
+  const [importPret,setImportPret] = useState<(ResultatImportLab & {details:ResumeImport})|null>(null);
+  const etatRef=useRef<AtelierLocal|null>(null);
+  const journal=useRef(new JournalBrouillon());
+  const fileSauvegarde=useRef<Promise<AtelierLocal|null>>(Promise.resolve(null));
 
   useEffect(()=>{
     let actif=true;
-    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
+    Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,base])=>{if(actif){etatRef.current=a;setAtelier(a);setDepot(base);setVersionSelectionnee(a.versions[a.versions.length-1]?.id ?? '');}})
       .catch((e)=>{if(actif)setErreur(erreurMessage(e));});
     return ()=>{actif=false;};
   },[]);
@@ -68,28 +72,68 @@ export default function ElyndorLabPanel() {
   function signaler(e:unknown){setErreur(erreurMessage(e));setMessage('');}
   async function appliquer(maj:AtelierLocal,texte:string){
     setOccupe(true);
-    try { await enregistrerAtelierLocal(maj);setAtelier(maj);messageOk(texte); }
-    catch(e){signaler(e);throw e;}
+    try{
+      await fileSauvegarde.current.catch(()=>null);
+      await enregistrerAtelierLocal(maj);
+      etatRef.current=maj;setAtelier(maj);messageOk(texte);
+    }catch(e){signaler(e);throw e;}
     finally{setOccupe(false);}
   }
-  async function sauvegarderBrouillon() {
-    if(!atelier || !selection || !editionModifiee) return atelier;
-    const suivant=modifierFichier(atelier,sources,selection,code);
-    await appliquer(suivant,'Brouillon enregistré dans la copie locale.');
-    setEditionModifiee(false);
-    return suivant;
+  // Chaque opération capture le brouillon APRES la sauvegarde précédente.
+  async function sauvegarderBrouillon():Promise<AtelierLocal|null>{
+    const operation=fileSauvegarde.current.catch(()=>null).then(async()=>{
+      const capture=journal.current.instantane();
+      const courant=etatRef.current;
+      if(!capture || !courant)return courant;
+      const suivant=modifierFichier(courant,sources,capture.chemin,capture.texte);
+      await enregistrerAtelierLocal(suivant);
+      etatRef.current=suivant;setAtelier(suivant);
+      if(journal.current.acquitter(capture)){
+        setEditionModifiee(false);messageOk('Brouillon enregistré dans la copie locale.');
+      }
+      return suivant;
+    });
+    fileSauvegarde.current=operation;
+    return operation;
   }
-  // Autosauvegarde d'un vrai brouillon même si la nouvelle version n'est pas activée.
+  async function viderBrouillon():Promise<AtelierLocal|null>{
+    for(let tentative=0;journal.current.estSale() && tentative<20;tentative++){
+      await sauvegarderBrouillon();
+    }
+    if(journal.current.estSale())throw new Error('Les dernières frappes ne sont pas encore enregistrées.');
+    await fileSauvegarde.current;
+    return etatRef.current;
+  }
   useEffect(()=>{
-    if(!atelier || !selection || !editionModifiee || occupe)return;
-    const t=setTimeout(()=>{void sauvegarderBrouillon().catch(()=>undefined);},1200);
-    return ()=>clearTimeout(t);
+    if(!editionModifiee || occupe)return;
+    const timer=setTimeout(()=>{void sauvegarderBrouillon().catch(signaler);},1200);
+    return ()=>clearTimeout(timer);
   },[atelier,selection,editionModifiee,code,occupe]);
+  useEffect(()=>{
+    const listener=AppState.addEventListener('change',etat=>{
+      if(etat!=='active' && journal.current.estSale()){
+        void viderBrouillon().catch(signaler);
+      }
+    });
+    return ()=>listener.remove();
+  },[depot]);
+  async function changerVue(suivante:Vue){
+    try{
+      if(journal.current.estSale())await viderBrouillon();
+      setVue(suivante);setErreur('');setMessage('');
+    }catch(e){signaler(e);}
+  }
+  function saisirCode(texte:string){
+    journal.current.saisir(texte);
+    setCode(texte);setEditionModifiee(true);setControles(null);setImportPret(null);
+  }
 
   async function ouvrirFichier(chemin:string){
     try {
-      if(editionModifiee)await sauvegarderBrouillon();
-      setSelection(chemin);setCode(fichiers[chemin] ?? '');setAffichageEditeur('code');
+      await viderBrouillon();
+      const texte=fichiersActuels(sources,etatRef.current??atelier!)[chemin]??'';
+      journal.current.ouvrir(chemin,texte);
+      setSelection(chemin);setCode(texte);setAffichageEditeur('code');
       setEditionModifiee(false);setControles(null);setVue('editeur');setErreur('');setMessage('');
     }catch(e){signaler(e);}
   }
@@ -203,7 +247,7 @@ export default function ElyndorLabPanel() {
     </View>
     <View style={styles.onglets}>
       {ONGLETS.map((onglet)=><Pressable key={onglet.id} accessibilityRole="button"
-        onPress={()=>{setVue(onglet.id);setErreur('');setMessage('');}}
+        onPress={()=>{void changerVue(onglet.id);}}
         style={[styles.pastille,vue===onglet.id&&styles.pastilleActive]}>
         <Text style={[styles.textePastille,vue===onglet.id&&styles.textePastilleActive]}>{onglet.nom}</Text>
       </Pressable>)}
@@ -250,7 +294,7 @@ export default function ElyndorLabPanel() {
             <Text style={styles.textePastille}>Différences</Text>
           </Pressable>
         </View>
-        {affichageEditeur==='code' ? <TextInput style={styles.editeur} value={code} onChangeText={(t)=>{setCode(t);setEditionModifiee(true);setControles(null);}}
+        {affichageEditeur==='code' ? <TextInput style={styles.editeur} value={code} onChangeText={saisirCode}
           multiline autoCorrect={false} autoCapitalize="none" textAlignVertical="top" scrollEnabled
           placeholder="Colle ton code ici…" placeholderTextColor={couleurs.texteFaible}/> :
           <View style={styles.bandeau}>
@@ -264,11 +308,11 @@ export default function ElyndorLabPanel() {
             </View>)}
           </View>}
         <View style={styles.actions}>
-          <Bouton titre="Coller" variante="secondaire" onPress={()=>{void Clipboard.getStringAsync().then((texte)=>{setCode(texte);setEditionModifiee(true);}).catch(signaler);}} style={styles.petita}/>
+          <Bouton titre="Coller" variante="secondaire" onPress={()=>{void Clipboard.getStringAsync().then(saisirCode).catch(signaler);}} style={styles.petita}/>
           <Bouton titre="Copier" variante="secondaire" onPress={()=>{void Clipboard.setStringAsync(code);}} style={styles.petita}/>
         </View>
         <Bouton titre={editionModifiee?'Enregistrer le brouillon':'Brouillon enregistré'} variante="secondaire"
-          desactive={!editionModifiee||occupe} onPress={()=>{void sauvegarderBrouillon().catch(signaler);}}/>
+          desactive={!editionModifiee||occupe} onPress={()=>{void viderBrouillon().catch(signaler);}}/>
         <Bouton titre="Vérifier ce fichier" onPress={tester} desactive={occupe}/>
         <Bouton titre="Supprimer ce fichier de la copie" variante="danger" onPress={demanderSuppression} desactive={occupe}/>
         <Text style={styles.aide}>Éditeur tactile et presse-papiers. Ce terminal n'exécute pas de commandes système arbitraires.</Text>
