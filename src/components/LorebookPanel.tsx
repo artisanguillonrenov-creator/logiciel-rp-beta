@@ -304,7 +304,11 @@ export default function LorebookPanel() {
         {proposition ? <View style={styles.proposition}>
           <Text style={styles.titre}>Proposition IA — non publiée</Text>
           {proposition.commentaire ? <Text style={styles.aide}>{proposition.commentaire}</Text> : null}
-          {proposition.fiche ? <Text selectable style={styles.texte}>{proposition.fiche.contenu}</Text> : null}
+          {proposition.fiche ? <>
+            <Text selectable style={styles.texte}>{proposition.fiche.contenu}</Text>
+            <Text style={styles.aide}>Champs proposés : {proposition.fiche.primaryKeys.length} mots-clés principaux · {proposition.fiche.secondaryKeys.length} secondaires · {proposition.fiche.negativeKeys.length} exclusions · catégorie {proposition.fiche.category} · priorité {proposition.fiche.priority} · portée {proposition.fiche.scope}.</Text>
+            <Text style={styles.aide}>« Accepter dans le formulaire » remplira aussi Activation et Avancé. Aucune sauvegarde ni publication automatique.</Text>
+          </> : null}
           <Text style={styles.aide}>Sources consultées (extraits, vérification non exhaustive) : {proposition.sources.join(' · ')}</Text>
           {proposition.fiche ? <Bouton titre="Accepter dans le formulaire" onPress={() => {
             if (proposition.fiche) { setEdition(proposition.fiche); preparerChamps(proposition.fiche); }
