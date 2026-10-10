@@ -12,7 +12,6 @@ export interface ParametresAtelier {
   budgetLorePassages: number;
   maxSouvenirs: number;
   temperatureDelta: number;
-  margeTokensEtat: number;
   narrateur: ReglagesNarrateur;
 }
 export interface EtatAtelier {
@@ -43,7 +42,6 @@ export const PARAMETRES_DEFAUT: Readonly<ParametresAtelier> = Object.freeze({
   budgetLorePassages: 2500,
   maxSouvenirs: 3,
   temperatureDelta: 0,
-  margeTokensEtat: 350,
   narrateur: reglagesNarrateurDefaut(),
 });
 export type CleParametreSimple = Exclude<keyof ParametresAtelier, 'narrateur'>;
@@ -51,14 +49,16 @@ export const LIMITES_ATELIER: Readonly<Record<CleParametreSimple, { min: number;
   budgetLorePassages: { min: 1000, max: 5000, pas: 250 },
   maxSouvenirs: { min: 1, max: 8, pas: 1 },
   temperatureDelta: { min: -0.3, max: 0.3, pas: 0.05 },
-  margeTokensEtat: { min: 250, max: 1000, pas: 50 },
 });
 
 function objet(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 function copierParametres(v: ParametresAtelier): ParametresAtelier {
-  return { ...v, narrateur: validerReglagesNarrateur(v.narrateur) };
+  // Reconstitution explicite : ne pas réintroduire l'ancien champ margeTokensEtat
+  // dans les exports/restaurations de configurations historiques.
+  return { budgetLorePassages: v.budgetLorePassages, maxSouvenirs: v.maxSouvenirs,
+    temperatureDelta: v.temperatureDelta, narrateur: validerReglagesNarrateur(v.narrateur) };
 }
 function copierEtat(v: EtatAtelier): EtatAtelier {
   return { profilActif: v.profilActif, profils: {
@@ -88,6 +88,8 @@ function lireParametres(v: unknown): ParametresAtelier {
     }
     p[nom] = valeur;
   }
+  // Les anciens instantanés V1 peuvent encore contenir margeTokensEtat :
+  // ce champ obsolète est ignoré (aucun supplément à la narration).
   // Migration transparente des instantanés V1 créés avant l'atelier narrateur.
   p.narrateur = v.narrateur === undefined ? reglagesNarrateurDefaut() : validerReglagesNarrateur(v.narrateur);
   return p;
