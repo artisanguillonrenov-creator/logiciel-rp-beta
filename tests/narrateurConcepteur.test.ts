@@ -35,7 +35,7 @@ test('ancienne configuration V1 convertie sans suppression des réglages existan
   delete serialisee.profils.benchmark.narrateur;
   const migree = validerConfigurationAtelier(serialisee);
   assert.equal(migree.profils.production.narrateur.longueurs.courte.max, 160);
-  assert.equal(migree.profils.benchmark.margeTokensEtat, 350);
+  assert.equal('margeTokensEtat' in migree.profils.benchmark, false);
   const ancienInstantane = JSON.stringify({
     format: 'elyndor-atelier-configuration', schema: 1, configuration: serialisee,
   });
@@ -71,14 +71,11 @@ test('hors limite persistante : échouer au lieu de publier une réponse non con
   }), /hors fourchette/);
 });
 
-test('tokenizer inaccessible : ne jamais prétendre un comptage exact', async () => {
-  const r = await controlerLongueurNarration({
+test('tokenizer inaccessible : aucun texte non certifié ne sort', async () => {
+  await assert.rejects(controlerLongueurNarration({
     texte: 'Un récit complet.', plage: { min: 140, max: 160 }, temperature: 0.7,
     compter: async () => null,
-  });
-  assert.equal(r.conforme, false);
-  assert.equal(r.verification, 'indisponible');
-  assert.equal(r.texte, 'Un récit complet.');
+  }), /Comptage exact/);
 });
 
 test('même sans tokenizer, une réponse coupée reste bloquée', async () => {
@@ -86,5 +83,5 @@ test('même sans tokenizer, une réponse coupée reste bloquée', async () => {
     texte: 'La porte commence à', plage: { min: 140, max: 160 }, temperature: 0.7,
     compter: async () => null,
     reformuler: async () => 'La porte commence à',
-  }), /incomplète/);
+  }), /Comptage exact/);
 });
