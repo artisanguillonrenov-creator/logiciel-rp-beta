@@ -74,7 +74,8 @@ export async function importerArchiveLab(atelier:AtelierLocal,depot:DepotSources
     const entreeZip=entree.files[nom] as typeof entree.files[string] & {_data?:unknown};
     const info=capaciteFichier(entreeZip._data);
     if(!info)throw new Error('Archive ZIP sans taille décompressée vérifiable.');
-    if(info.uncompressedSize>MAX_ARCHIVE_DECOMPRESSEE || info.uncompressedSize<0 ||
+    const limiteParFichier=nom===MANIFESTE_LAB?2*1024*1024:2*1024*1024;
+    if(info.uncompressedSize>limiteParFichier || info.uncompressedSize<0 ||
       info.compressedSize<0 || (info.compressedSize===0 && info.uncompressedSize>0) ||
       (info.compressedSize>0 && info.uncompressedSize/info.compressedSize>1000)) {
         throw new Error('Archive ZIP à décompression excessive ou suspecte.');
