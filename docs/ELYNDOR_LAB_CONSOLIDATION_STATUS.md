@@ -21,7 +21,7 @@ La branche de production n'est pas modifiée par ce chantier.
 - Aucun npm test, tsc, export web ou test Android physique n'a encore été exécuté sur ces changements. Les nouveaux tests sont **écrits mais non exécutés**. Il peut donc subsister des erreurs de compilation et des problèmes d'intégration.
 - Les binaires / portraits / images ne sont PAS inclus dans le ZIP : l'archive reste exclusivement une archive des sources texte, non un clone intégral du dépôt.
 - Le système de fichiers physiques est un miroir reconstructible. La bascule complète sur un modèle fichier-par-fichier autoritaire avec migration prouvée n'est pas achevée.
-- Pas de sauvegarde automatique via Android SAF vers un dossier externe ni restauration complète après désinstallation. Le partage manuel d'un ZIP peut être enregistré hors de l'app, mais il faut vérifier la destination réelle.
+- Une action **manuelle Android SAF** permet désormais de choisir un dossier hors de l'application pour sauvegarder le ZIP texte ; contrôle de présence du fichier après écriture. Cette fonction n'est pas encore testée sur appareil. Il n'y a PAS de sauvegarde automatique périodique, de vérification cryptographique externe ni de restauration native de l'application après désinstallation. La réimportation demeure liée à la référence de code.
 - Chantiers indépendants/branches locales véritables, migration de références après OTA/APK, éditeur avancé, tests natifs end-to-end : toujours incomplets.
 - Compilation locale TypeScript/Metro/Hermes et activation sans APK : toujours NON démontrées. Le bouton doit rester désactivé. La récupération native après un crash du bundle n'est pas implémentée.
 - Aucune PR, fusion, publication OTA, build APK ni lancement RunPod.
