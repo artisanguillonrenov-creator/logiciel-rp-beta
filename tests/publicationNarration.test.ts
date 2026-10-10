@@ -53,16 +53,18 @@ test('le compteur reçoit exactement la version préparée qui sera publiée', a
   assert.equal(controle.conforme, true);
 });
 
-test('une régénération produit le seul texte admissible après le nouvel essai', async () => {
-  const lectures: string[] = [];
+test('une longueur trop courte conserve le texte sans appel au modèle', async () => {
+  let reformulations = 0;
   const controle = await controlerLongueurNarration({
     texte: 'Trop court.', plage: { min: 20, max: 40 }, temperature: 0.7,
-    compter: async (texte) => { lectures.push(texte); return texte.length; },
-    reformuler: async () => 'SYLVANA : « Un nouveau choix »',
+    compter: async (texte) => texte.length,
+    reformuler: async () => { reformulations++; return 'Autre texte'; },
   });
-  assert.equal(controle.corrige, true);
-  assert.equal(controle.texte, lectures.at(-1));
+  assert.equal(controle.texte, 'Trop court.');
+  assert.equal(controle.conforme, false);
+  assert.equal(controle.corrige, false);
   assert.equal(controle.verification, 'exacte');
+  assert.equal(reformulations, 0);
 });
 
 test('tokenizer exact : URL /tokenize racine, Unicode conservé et réponse mesurée', async () => {
@@ -94,12 +96,11 @@ test('tokenizer : 404, faux résultat, erreur réseau et ids de tokens invalides
   assert.equal(await compterTokensNarration('Test.', erreur, async () => undefined), null);
 });
 
-test('234 tokens mais phrase tronquée : garder la dernière phrase complète sans génération GPU', async () => {
+test('une fin tronquée reste inchangée sans tentative de réécriture', async () => {
   const phrase = Array(219).fill('mot').join(' ') + ' terminé.';
   const coupe = phrase + ' ' + Array(14).fill('interrompu').join(' ');
-  const compter = async (texte: string) => texte.trim().split(/\s+/).length;
+  const compter = async (texte: string) => texte.trim().split(/\\s+/).length;
   let appelsIA = 0;
-  assert.equal(await compter(coupe), 234);
   const resultat = await controlerLongueurNarration({
     texte: coupe,
     plage: { min: 215, max: 235 },
@@ -108,23 +109,39 @@ test('234 tokens mais phrase tronquée : garder la dernière phrase complète sa
     reformuler: async () => { appelsIA++; throw Error('Pas de génération nécessaire'); },
   });
   assert.equal(resultat.conforme, true);
-  assert.equal(resultat.corrige, true);
-  assert.equal(resultat.tokens, 220);
-  assert.equal(resultat.texte, phrase);
+  assert.equal(resultat.corrige, false);
+  assert.equal(resultat.tokens, 234);
+  assert.equal(resultat.texte, coupe);
   assert.equal(appelsIA, 0);
 });
 
-test('une fin tronquée ne doit pas être coupée si cela descend sous 215 tokens', async () => {
-  const phrase = Array(209).fill('mot').join(' ') + ' terminé.';
-  const coupe = phrase + ' ' + Array(24).fill('interrompu').join(' ');
-  const compter = async (texte: string) => texte.trim().split(/\s+/).length;
+test('un nombre de tokens hors cible ne bloque jamais le récit', async () => {
+  const texte = 'Corvin tend la clef sanglante vers William.';
   let appelsIA = 0;
-  await assert.rejects(controlerLongueurNarration({
-    texte: coupe,
-    plage: { min: 215, max: 235 },
+  const resultat = await controlerLongueurNarration({
+    texte,
+    plage: { min: 280, max: 320 },
     temperature: 0.85,
-    compter,
-    reformuler: async () => { appelsIA++; return coupe; },
-  }), /incomplète/);
-  assert.equal(appelsIA, 2);
+    compter: async () => 413,
+    reformuler: async () => { appelsIA++; return 'Texte modifié'; },
+  });
+  assert.equal(resultat.conforme, false);
+  assert.equal(resultat.texte, texte);
+  assert.equal(resultat.tokens, 413);
+  assert.equal(resultat.corrige, false);
+  assert.equal(appelsIA, 0);
+});
+
+test('une panne de comptage ne bloque jamais le récit', async () => {
+  const texte = 'Sylvana répond.';
+  const resultat = await controlerLongueurNarration({
+    texte,
+    plage: { min: 280, max: 320 },
+    temperature: 0.7,
+    compter: async () => { throw new Error('Compteur indisponible'); },
+  });
+  assert.equal(resultat.texte, texte);
+  assert.equal(resultat.tokens, null);
+  assert.equal(resultat.conforme, false);
+  assert.equal(resultat.verification, 'indisponible');
 });
