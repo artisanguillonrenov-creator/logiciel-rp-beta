@@ -64,8 +64,11 @@ test('si le tokenizer échoue, la phase 2 ne consomme pas de GPU pour rien', asy
     async () => { nombreAppels++; return 'La porte reste ouverte.'; },
     async () => null);
   assert.equal(nombreAppels, 1);
-  await assert.rejects(controlerLongueurNarration({
+  const controle = await controlerLongueurNarration({
     texte: sortie, plage: { min: 215, max: 235 }, temperature: 0.85,
     compter: async () => null,
-  }), /Comptage exact/);
+  });
+  assert.equal(controle.texte, sortie);
+  assert.equal(controle.verification, 'indisponible');
+  assert.equal(controle.conforme, false);
 });
