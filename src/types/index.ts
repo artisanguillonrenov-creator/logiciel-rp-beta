@@ -406,14 +406,18 @@ export type ProfilContenu = 'grand_public' | 'adulte';
 // 'serveur' (repris de la V13 « Modèle local ») : un runtime compatible
 // OpenAI (LM Studio, Ollama…) lancé sur un PC du réseau local — disponible
 // sur toutes les plateformes, voir src/engine/serveurLocal.ts.
-export type FournisseurLLM = 'openrouter' | 'infermatic' | 'local' | 'serveur';
+export type FournisseurLLM = 'openrouter' | 'openai' | 'infermatic' | 'local' | 'serveur';
 export type MoteurInference = FournisseurLLM;
 
 export interface AppSettings {
   openRouterApiKey: string;
+  /** Clé OpenAI directe, stockée dans SecureStore et jamais dans les préférences publiques. */
+  openAiApiKey?: string;
+  /** Modèle OpenAI sélectionné, indépendant du modèle OpenRouter. */
+  openAiModel?: string;
   model: string;
   /** Marqueur de sélection explicite : distingue une ancienne migration Cloud d'un choix RunPod récent. */
-  fournisseurNarration?: 'openrouter' | 'runpod' | 'serveur';
+  fournisseurNarration?: 'openrouter' | 'openai' | 'runpod' | 'serveur';
   /** Services indépendants, sélectionnés dans les réglages utilisateur. */
   fournisseurImages?: 'desactive' | 'runpod' | 'openrouter';
   modeleImages?: string;
