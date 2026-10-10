@@ -419,8 +419,10 @@ export interface AppSettings {
   /** Marqueur de sélection explicite : distingue une ancienne migration Cloud d'un choix RunPod récent. */
   fournisseurNarration?: 'openrouter' | 'openai' | 'runpod' | 'serveur';
   /** Services indépendants, sélectionnés dans les réglages utilisateur. */
-  fournisseurImages?: 'desactive' | 'runpod' | 'openrouter';
+  fournisseurImages?: 'desactive' | 'runpod' | 'openrouter' | 'openai';
   modeleImages?: string;
+  /** Modèle image OpenAI indépendant du modèle textuel et du modèle image OpenRouter. */
+  modeleImagesOpenAI?: string;
   /** Aucun appel de génération image facturable sans opt-in explicite. */
   autoriserImagesPayantes?: boolean;
   /** Aucun service embeddings distants ne doit démarrer si non choisi. */

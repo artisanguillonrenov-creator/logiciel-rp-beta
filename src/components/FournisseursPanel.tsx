@@ -5,16 +5,17 @@ import type {AppSettings} from '../types';
 import { ELYNDOR_CLOUD_REGLAGE_URL } from '../engine/elyndorCloud';
 import {listerModeles,listerModelesGPT,MODELES_GPT_SUGGERES} from '../engine/elyndorCloudClient';
 import {listerModelesImagesOpenRouter} from '../engine/fournisseursImages';
+import {listerModelesImagesOpenAI, MODELES_IMAGES_OPENAI_SUGGERES} from '../engine/openAiImages';
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
 type ModeTexte='openrouter'|'openai'|'runpod'|'serveur';
-type ModeImages='desactive'|'runpod'|'openrouter';
+type ModeImages='desactive'|'runpod'|'openrouter'|'openai';
 const LABELS:Record<ModeTexte,string>={
   openrouter:'OpenRouter',openai:'OpenAI / GPT',runpod:'RunPod Elyndor',serveur:'Autre API compatible',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
-  desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',
+  desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
   if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
@@ -32,6 +33,7 @@ export default function FournisseursPanel(){
   const [catalogue,setCatalogue]=useState<Array<{id:string;nom:string}>>([]);
   const [modelesGPT,setModelesGPT]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImage,setCatalogueImage]=useState<Array<{id:string;nom:string}>>([]);
+  const [catalogueImageOpenAI,setCatalogueImageOpenAI]=useState<Array<{id:string;nom:string}>>([]);
   useEffect(()=>{
     getSettings().then(s=>{
       setCfg(s);setMode(modeDuTexte(s));setSelection(s.fournisseurImages||'desactive');
@@ -56,6 +58,16 @@ export default function FournisseursPanel(){
       setModelesGPT(modeles);
       setMsg(modeles.length+' modèles GPT détectés sur l’API OpenAI. La disponibilité réelle dépend de ton compte.');
     }catch(e){setMsg('Connexion OpenAI : '+(e instanceof Error?e.message:String(e)));}
+    finally{setBusy(false);}
+  };
+  const chargerImagesOpenAI=async()=>{
+    if(!cfg?.openAiApiKey?.trim()){setMsg('Entre ta clé API OpenAI pour afficher les modèles image.');return;}
+    setBusy(true);setMsg('');
+    try{
+      const modeles=await listerModelesImagesOpenAI(cfg.openAiApiKey);
+      setCatalogueImageOpenAI(modeles);
+      setMsg(modeles.length+' modèles GPT Image trouvés. La génération peut nécessiter un accès et un solde API.');
+    }catch(e){setMsg('Catalogue image OpenAI : '+(e instanceof Error?e.message:String(e)));}
     finally{setBusy(false);}
   };
   const enregistrer=async()=>{
@@ -83,8 +95,14 @@ export default function FournisseursPanel(){
       if(mode==='serveur' && (!v.serveurLocalUrl?.startsWith('https://') || !v.serveurLocalModele?.trim())){
         throw new Error('L’API personnalisée exige une adresse HTTPS et un identifiant de modèle.');
       }
+      if(selection==='openai' && (!v.openAiApiKey?.trim() || !v.modeleImagesOpenAI?.trim())){
+        throw new Error('Renseigne la clé API OpenAI et choisis un modèle GPT Image.');
+      }
       if(selection==='openrouter' && !v.modeleImages?.trim()){
         throw new Error('Choisis un modèle image OpenRouter ou désactive les images.');
+      }
+      if((selection==='openrouter'||selection==='openai') && v.autoriserImagesPayantes!==true){
+        throw new Error('Confirme l’autorisation des images payantes pour utiliser ce fournisseur.');
       }
       await saveSettings(v);
       setCfg(await getSettings());
@@ -176,6 +194,44 @@ export default function FournisseursPanel(){
         onPress={()=>set({autoriserImagesPayantes:!cfg.autoriserImagesPayantes})}>
         <Text style={st.name}>{cfg.autoriserImagesPayantes?'☑':'☐'} Autoriser les générations d’images payantes</Text>
         <Text style={st.text}>Désactivé par défaut. Peut entraîner des frais sur OpenRouter.</Text>
+      </Pressable>
+    </>:null}
+    {selection==='openai'?<>
+      <Text style={st.text}>OpenAI facture les images indépendamment de ton abonnement ChatGPT. La clé API est enregistrée dans le coffre sécurisé Android.</Text>
+      {mode!=='openai'?<>
+        <Text style={st.label}>Clé API OpenAI (images)</Text>
+        <TextInput style={st.input} value={cfg.openAiApiKey||''}
+          secureTextEntry={!voirCle} autoCapitalize="none" autoCorrect={false}
+          placeholder="sk-…" placeholderTextColor={couleurs.texteFaible}
+          onChangeText={t=>set({openAiApiKey:t.trim()})}/>
+        <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+          <Text style={st.text}>{voirCle?'Masquer la clé':'Afficher la clé'}</Text>
+        </Pressable>
+      </>:null}
+      <Text style={st.label}>Modèle image GPT</Text>
+      <TextInput style={st.input} value={cfg.modeleImagesOpenAI||'gpt-image-1-mini'}
+        autoCapitalize="none" autoCorrect={false}
+        onChangeText={t=>set({modeleImagesOpenAI:t.trim()})}/>
+      <Text style={st.text}>Suggestions (selon l’accès de ton compte API) :</Text>
+      {MODELES_IMAGES_OPENAI_SUGGERES.map(id=><Pressable key={id}
+        style={[st.option,cfg.modeleImagesOpenAI===id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:cfg.modeleImagesOpenAI===id}}
+        onPress={()=>set({modeleImagesOpenAI:id})}>
+        <Text style={st.text}>{cfg.modeleImagesOpenAI===id?'● ':'○ '}{id}</Text>
+      </Pressable>)}
+      <Bouton titre="Rechercher mes modèles image OpenAI" variante="secondaire" desactive={busy}
+        onPress={()=>void chargerImagesOpenAI()}/>
+      {catalogueImageOpenAI.slice(0,60).map(item=><Pressable key={item.id}
+        style={[st.option,cfg.modeleImagesOpenAI===item.id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:cfg.modeleImagesOpenAI===item.id}}
+        onPress={()=>set({modeleImagesOpenAI:item.id})}>
+        <Text style={st.text}>{cfg.modeleImagesOpenAI===item.id?'● ':'○ '}{item.nom}</Text>
+      </Pressable>)}
+      <Pressable style={[st.option,cfg.autoriserImagesPayantes&&st.selected]}
+        accessibilityRole="switch" accessibilityState={{checked:cfg.autoriserImagesPayantes===true}}
+        onPress={()=>set({autoriserImagesPayantes:!cfg.autoriserImagesPayantes})}>
+        <Text style={st.name}>{cfg.autoriserImagesPayantes?'☑':'☐'} Autoriser les générations d’images payantes OpenAI</Text>
+        <Text style={st.text}>Désactivé par défaut. Aucune image payante ne peut être créée sans cette autorisation.</Text>
       </Pressable>
     </>:null}
     <Text style={st.label}>Recherche sémantique</Text>

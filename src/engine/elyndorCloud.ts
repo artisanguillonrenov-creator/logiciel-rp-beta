@@ -211,6 +211,7 @@ export function normaliserReglagesFournisseurs(valeur: AppSettings): AppSettings
     openAiModel: valeur.openAiModel || 'gpt-4.1-mini',
     fournisseurImages: valeur.fournisseurImages || 'desactive',
     modeleImages: valeur.modeleImages || '',
+    modeleImagesOpenAI: valeur.modeleImagesOpenAI || 'gpt-image-1-mini',
     autoriserImagesPayantes: valeur.autoriserImagesPayantes === true,
     fournisseurEmbeddings: valeur.fournisseurEmbeddings || 'desactive',
   };

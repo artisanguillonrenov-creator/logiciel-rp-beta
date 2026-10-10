@@ -34,7 +34,9 @@ export function calculerCapacites(
   const images = settings.fournisseurImages === 'runpod'
     ? imagesElyndorCloudDisponibles()
     : settings.fournisseurImages === 'openrouter'
-      && !!settings.openRouterApiKey && !!settings.modeleImages && settings.autoriserImagesPayantes === true;
+      && !!settings.openRouterApiKey && !!settings.modeleImages && settings.autoriserImagesPayantes === true
+      || settings.fournisseurImages === 'openai'
+      && !!settings.openAiApiKey && !!settings.modeleImagesOpenAI && settings.autoriserImagesPayantes === true;
   // Recherche sémantique (ObjectBox) via les embeddings Elyndor Cloud ; la
   // recherche lexicale reste le relais automatique en cas d'échec réseau.
   const embeddings = settings.fournisseurEmbeddings === 'runpod' && !!ELYNDOR_CLOUD_MODELE_EMBEDDINGS;
