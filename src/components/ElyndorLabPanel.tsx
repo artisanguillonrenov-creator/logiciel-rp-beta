@@ -39,7 +39,7 @@ export default function ElyndorLabPanel() {
   const [message,setMessage] = useState('');
   const [erreur,setErreur] = useState('');
   const [occupe,setOccupe] = useState(false);
-  const [importPret,setImportPret] = useState<(ResultatImportLab & {details:ResumeImport})|null>(null);
+  const [importPret,setImportPret] = useState<(ResultatImportLab & {details:ResumeImport;empreinteAvant:string})|null>(null);
   const etatRef=useRef<AtelierLocal|null>(null);
   const journal=useRef(new JournalBrouillon());
   const fileSauvegarde=useRef<Promise<AtelierLocal|null>>(Promise.resolve(null));
@@ -214,7 +214,7 @@ export default function ElyndorLabPanel() {
       if(!depot)throw new Error('Sources locales non disponibles.');
       const resultat=await importerArchiveLab(courant,depot);
       const details=comparerArbres(fichiersActuels(sources,courant),fichiersActuels(sources,resultat.atelier));
-      setImportPret({...resultat,details});
+      setImportPret({...resultat,details,empreinteAvant:JSON.stringify(courant.changements)});
       messageOk(resultat.nombre+' fichiers analysés. Aucun changement appliqué : confirme l’importation ci-dessous.');
     }catch(e){signaler(e);}finally{setOccupe(false);}
   }
@@ -222,7 +222,7 @@ export default function ElyndorLabPanel() {
     if(!atelier || !importPret)return;
     try{
       const courant=await viderBrouillon()??atelier;
-      if(importPret.referenceAvant!==courant.reference)throw new Error('La référence locale a changé depuis la prévisualisation ZIP.');
+      if(importPret.referenceAvant!==courant.reference || importPret.empreinteAvant!==JSON.stringify(courant.changements))throw new Error('Le travail local a changé depuis la prévisualisation ZIP. Relance l’analyse pour éviter une perte de données.');
       const avecSecours=enregistrerVersion(courant,'Sauvegarde avant import ZIP');
       const versions=[...avecSecours.versions];
       for(const version of importPret.versionsImportees){
@@ -243,7 +243,7 @@ export default function ElyndorLabPanel() {
   if(!atelier || !depot) return <View style={styles.section}>
     <ActivityIndicator color={couleurs.dore}/>
     <Text style={styles.aide}>{erreur || 'Ouverture de la copie locale…'}</Text>
-    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,b])=>{setAtelier(a);setDepot(b);}).catch(signaler);}}/>:null}
+    {erreur ? <Bouton titre="Réessayer" onPress={()=>{setErreur('');void Promise.all([lireAtelierLocal(),lireDepotSourcesLab()]).then(([a,b])=>{etatRef.current=a;setAtelier(a);setDepot(b);}).catch(signaler);}}/>:null}
   </View>;
   return <View style={styles.section}>
     <Text style={styles.surtitre}>ELYNDOR LAB · COPIE LOCALE</Text>
