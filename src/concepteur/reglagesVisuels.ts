@@ -65,8 +65,8 @@ export interface ReglagesVisuels {
 export const REGLAGES_VISUELS_INITIAUX: Readonly<ReglagesVisuels> =
   Object.freeze({
     schema: 1, preset: 'elyndor', intensite: 1, negatifAdditionnel: '',
-    cadrageIllustration: 'large', prioriteIllustration: 'decor',
-    eviterPortraitScene: true, referencesPersonnagesScene: false,
+    cadrageIllustration: 'automatique', prioriteIllustration: 'action',
+    eviterPortraitScene: true, referencesPersonnagesScene: true,
     referencesScenePrecedente: true,
     tailleScene: '1344x768', taillePortrait: '896x1152',
     pasScene: null, pasPortrait: null,
