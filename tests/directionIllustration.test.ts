@@ -27,22 +27,22 @@ function scene() {
   };
 }
 
-test('les scènes 16:9 privilégient le décor et un plan large plutôt que le buste', () => {
+test('les scènes 16:9 privilégient l’action en plan moyen plutôt que le buste', () => {
   const avant = scene();
   const apres = reglerDirectionIllustration(avant, {...REGLAGES_VISUELS_INITIAUX});
   assert.equal(avant.camera.typePlan, 'plan rapproché poitrine sur deux personnages');
-  assert.match(apres.camera.typePlan, /plan large de scène/);
-  assert.match(apres.camera.composition, /lieu/);
+  assert.match(apres.camera.typePlan, /plan moyen cinématographique/);
+  assert.match(apres.camera.composition, /interaction/);
   assert.equal(apres.decor.lieu, avant.decor.lieu);
   assert.deepEqual(apres.personnages, avant.personnages);
   assert.equal(apres.action, avant.action);
   assert.equal(apres.profil, avant.profil);
   const prompt = construirePromptSdxl(apres) ?? '';
-  assert.match(prompt, /cinematic wide shot/);
+  assert.match(prompt, /story action and interaction/);
   assert.match(prompt, /merchant interior/);
   assert.doesNotMatch(prompt, /close-up portrait/);
   assert.doesNotMatch(prompt, /cinematic portrait/);
-  assert.match(formaterPromptImage(apres), /plan large de scène/);
+  assert.match(formaterPromptImage(apres), /plan moyen cinématographique/);
   assert.match(negatifCadrageIllustration(REGLAGES_VISUELS_INITIAUX), /headshot/);
 });
 

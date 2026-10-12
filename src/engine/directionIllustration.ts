@@ -36,11 +36,14 @@ const PRIORITES = {
   },
 } as const;
 
-/** Ne retirer que les consignes explicitement photographiques contradictoires. */
+/** Écarter les poses de portrait sans perdre les attributs du personnage. */
 export function retirerMotsPortraitDuPromptCourt(prompt: string): string {
   return prompt.split(',')
     .map((segment) => segment.trim())
-    .filter((segment) => !/^(?:cinematic\s+)?(?:close[ -]?up(?:\s+(?:portrait|shot))?|headshot|bust(?:\s+portrait)?|portrait(?:\s+shot)?|upper[ -]body\s+portrait|studio\s+portrait)$/i.test(segment))
+    // « portrait of a dark elf » contient une identité à conserver.
+    .map((segment) => segment.replace(/^(?:cinematic\s+|studio\s+)?portrait\s+of\s+/i, '').trim())
+    .filter((segment) => !/^(?:(?:cinematic|studio|professional|static)\s+)*(?:close[ -]?up(?:\s+(?:portrait|shot|face))?|headshot|bust(?:[ -]only|[ -]portrait)?|portrait(?:\s+(?:shot|photo|photograph))?|upper[ -]body[ -]portrait|studio[ -]photo(?:graph)?)$/i.test(segment))
+    .filter(Boolean)
     .join(', ');
 }
 
@@ -56,14 +59,14 @@ export function reglerDirectionIllustration(
     plan.camera,
     priorite.fr,
     v.eviterPortraitScene
-      ? 'illustration de la scène et non portrait de personnage : éviter gros plan, tête seule, buste isolé, pose devant fond neutre'
+      ? 'scène vécue avec gestes et interactions réels ; personnages intégrés à la profondeur du lieu, sans pose devant l’objectif'
       : '',
   ].filter(Boolean).join(' ; ');
 
   const indicesAnglais = [
     plan.anglais,
     priorite.anglais,
-    v.eviterPortraitScene ? 'not a portrait, no isolated face, no studio pose' : '',
+    v.eviterPortraitScene ? 'environmental storytelling, natural character gestures, cinematic scene framing' : '',
   ].filter(Boolean).join(', ');
 
   const promptSdxl = v.eviterPortraitScene && structure.promptSdxl
@@ -71,12 +74,17 @@ export function reglerDirectionIllustration(
     : structure.promptSdxl;
 
   if (!consignesLongues && !indicesAnglais) return structure;
+  // Le profil « dialogue » proposait souvent un cadrage poitrine, même avec
+  // un décor 16:9. Automatique conserve les vrais plans de scène, pas les bustes.
+  const planNaturel = v.eviterPortraitScene && /portrait|buste|gros plan|close[ -]?up|visage|poitrine/i.test(structure.camera.typePlan)
+    ? 'plan moyen cinématographique sur les personnages en interaction dans le décor'
+    : structure.camera.typePlan;
   return {
     ...structure,
     promptSdxl,
     camera: {
       ...structure.camera,
-      typePlan: plan.camera || structure.camera.typePlan,
+      typePlan: plan.camera || planNaturel,
       composition: [priorite.fr, structure.camera.composition].filter(Boolean).join(' ; '),
       profondeur: v.prioriteIllustration === 'decor'
         ? 'profondeur de scène lisible : premier plan, personnages, second plan et architecture'
@@ -94,6 +102,6 @@ export function reglerDirectionIllustration(
 export function negatifCadrageIllustration(v: ReglagesVisuels): string {
   const config = validerReglagesVisuels(v);
   return config.eviterPortraitScene
-    ? 'headshot, tight face crop, isolated character portrait, studio backdrop, bust-only composition, close-up portrait'
+    ? 'headshot, tight face crop, isolated character portrait, studio backdrop, bust-only composition, close-up portrait, static front-facing pose, posing for camera'
     : '';
 }

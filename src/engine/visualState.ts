@@ -454,8 +454,8 @@ export type TypeReference =
   | 'scene-avant-derniere';
 
 const PRIORITE_REFERENCE: Record<TypeReference, number> = {
-  'joueur-portrait': 0,
-  'joueur-avatar': 1,
+  'joueur-avatar': 0,
+  'joueur-portrait': 1,
   'pnj-principal': 2,
   'pnj-secondaire': 3,
   'scene-precedente': 4,
@@ -480,9 +480,10 @@ export function selectionnerReferencesGenerateur(
   const estScene = (ref: ReferenceVisuelle) => ref.type === 'scene-precedente' || ref.type === 'scene-avant-derniere';
   // Un visage par personnage visible, dans l'ordre des personnages de la
   // scène (le serveur place chaque visage dans sa bande, de gauche à droite).
-  // Le joueur n'en garde qu'un : portrait de création, sinon avatar.
-  const portraitJoueur = references.some((ref) => ref.type === 'joueur-portrait' && !!ref.uri);
-  const visages = references.filter((ref) => !!ref.uri && !estScene(ref) && !(portraitJoueur && ref.type === 'joueur-avatar'));
+  // Le joueur n'en garde qu'un : avatar individuel, sinon portrait race/sexe.
+  // La référence guide le visage ; elle ne doit pas imposer le cadrage portrait.
+  const avatarJoueur = references.some((ref) => ref.type === 'joueur-avatar' && !!ref.uri);
+  const visages = references.filter((ref) => !!ref.uri && !estScene(ref) && !(avatarJoueur && ref.type === 'joueur-portrait'));
   const scene = ordonnerReferences(references.filter(estScene), 1)[0];
   const vus = new Set<string>();
   return [

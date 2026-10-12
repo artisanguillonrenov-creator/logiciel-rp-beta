@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View 
 import { MODULES_BASE } from '../engine/visualBible';
 import { GABARIT_PROMPT_SCENE_SDXL, GABARIT_PROMPT_PORTRAIT_SDXL } from '../engine/directionArtistique';
 import {
-  appliquerPresetVisuel, REGLAGES_VISUELS_INITIAUX, validerReglagesVisuels, NOMS_MODULES_IMAGES,
+  appliquerModulesVisuels, appliquerPresetVisuel, REGLAGES_VISUELS_INITIAUX, validerReglagesVisuels, NOMS_MODULES_IMAGES,
   type ReglagesVisuels, type PresetVisuel, type CadrageIllustration, type PrioriteIllustration,
 } from '../concepteur/reglagesVisuels';
 import { enregistrerReglagesVisuels, lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
@@ -17,9 +17,9 @@ const PRESETS: Array<{ id: PresetVisuel; titre: string; detail: string }> = [
   { id: 'nerveux', titre: 'Nerveux', detail: 'Style cinématographique plus appuyé.' },
 ];
 const CADRAGES: Array<{ id: CadrageIllustration; titre: string; detail: string }> = [
-  { id: 'automatique', titre: 'Automatique selon le récit', detail: 'Conserve le cadrage choisi par le directeur artistique.' },
+  { id: 'automatique', titre: 'Automatique selon le récit — recommandé', detail: 'Choisit la caméra selon le récit en évitant les poses de portrait.' },
   { id: 'moyen', titre: 'Plan moyen', detail: 'Personnages et interactions avec un décor identifiable.' },
-  { id: 'large', titre: 'Plan large — recommandé', detail: 'Scène entière et personnages intégrés à leur environnement.' },
+  { id: 'large', titre: 'Plan large', detail: 'Scène entière et personnages intégrés à leur environnement.' },
   { id: 'ensemble', titre: 'Très grand plan d’ensemble', detail: 'Décor monumental, personnages plus petits dans l’image.' },
 ];
 const PRIORITES: Array<{ id: PrioriteIllustration; titre: string; detail: string }> = [
@@ -45,7 +45,7 @@ export default function AtelierVisuelPanel() {
     return ()=>{actif=false;};
   },[]);
   const changements = initial && JSON.stringify(initial)!==JSON.stringify(edite);
-  const modules = useMemo(()=>appliquerPresetVisuel(MODULES_BASE,edite),[edite]);
+  const modules = useMemo(()=>appliquerModulesVisuels(MODULES_BASE,edite,'scene'),[edite]);
   async function sauvegarder(valeur: ReglagesVisuels) {
     setOperation(true);setMessage('');setErreur('');
     try {
@@ -163,15 +163,15 @@ export default function AtelierVisuelPanel() {
         accessibilityState={{checked: edite.referencesPersonnagesScene}}
         onPress={()=>setEdite(v=>({...v,referencesPersonnagesScene:!v.referencesPersonnagesScene}))}
         style={[styles.choix,edite.referencesPersonnagesScene&&styles.actif]}>
-        <Text style={styles.nom}>{edite.referencesPersonnagesScene?'Activées':'Désactivées — recommandé pour les plans larges'}</Text>
-        <Text style={styles.aide}>Si activées, les portraits peuvent aider à conserver les visages, mais risquent de favoriser des plans serrés selon le modèle. Les scènes précédentes restent utilisables comme références de décor.</Text>
+        <Text style={styles.nom}>{edite.referencesPersonnagesScene?'Activées — identité préservée':'Désactivées — sans références de visages'}</Text>
+        <Text style={styles.aide}>Les portraits race/sexe et les avatars PNJ guident l’identité sans imposer le cadrage des illustrations. Un cadrage cinématographique et un négatif adapté limitent les poses de studio.</Text>
       </Pressable>
       <Text style={styles.label}>Exclusions visuelles supplémentaires</Text>
       <TextInput value={edite.negatifAdditionnel} onChangeText={v=>setEdite(x=>({...x,negatifAdditionnel:v}))}
         style={styles.champ} multiline maxLength={350} textAlignVertical="top"
         placeholder="Ex : arrière-plan flou, reflets excessifs" placeholderTextColor={couleurs.texteFaible}/>
       <Text style={styles.aide}>S’ajoutent aux exclusions techniques et aux protections du profil Grand public ; elles ne les remplacent jamais.</Text>
-      <Text style={styles.label}>Poids qui seront envoyés au générateur</Text>
+      <Text style={styles.label}>Poids de base des LoRA pour les scènes</Text>
       {Object.entries(modules).map(([nom,poids])=><View key={nom} style={styles.poids}>
         <Text style={styles.aide}>{nom}</Text><Text style={styles.nom}>{poids.toFixed(2)}</Text>
       </View>)}
@@ -212,7 +212,7 @@ export default function AtelierVisuelPanel() {
             {text:'Restaurer',onPress:()=>{void sauvegarder({...REGLAGES_VISUELS_INITIAUX});}},
           ])} style={styles.bouton}/>
     </>}
-    <AtelierApercuImage/>
+    {!charge ? <AtelierApercuImage reglagesVisuels={edite}/> : null}
     {operation?<ActivityIndicator color={couleurs.accent}/>:null}
     {message?<Text style={styles.succes}>{message}</Text>:null}
     {erreur?<Text style={styles.erreur}>{erreur}</Text>:null}
