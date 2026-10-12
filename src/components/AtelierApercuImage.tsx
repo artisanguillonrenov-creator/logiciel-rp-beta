@@ -5,6 +5,7 @@ import {genererImageSelonReglages} from '../engine/fournisseursImages';
 import type {FormatImage,RequeteImage} from '../engine/elyndorCloudImages';
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
+import {ImageAgrandissable} from './VisionneuseImage';
 
 export default function AtelierApercuImage(){
   const [prompt,setPrompt]=useState('');
@@ -67,7 +68,7 @@ export default function AtelierApercuImage(){
     <Bouton titre={attente?'Génération en cours…':'Générer l’aperçu'} desactive={attente||!accord||!prompt.trim()}
       onPress={()=>void essayer()}/>
     {attente?<ActivityIndicator color={couleurs.accent}/>:null}
-    {images.map((uri,i)=><Image key={i} source={{uri}} resizeMode="contain"
+    {images.map((uri,i)=><ImageAgrandissable key={i} uri={uri} titre={`Aperçu ${i+1}`}
       style={{width:'100%',height:format==='16:9'?230:310,marginTop:8}}/>)}
     {message?<Text style={st.aide}>{message}</Text>:null}
     {dernier?<View>
