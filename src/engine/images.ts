@@ -2,8 +2,8 @@ import { Image } from 'react-native';
 import { getSettings } from '../storage/storage';
 import { genererImageSelonReglages } from './fournisseursImages';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
-import { reglerDirectionIllustration, negatifCadrageIllustration } from './directionIllustration';
-import { appliquerModulesVisuels, enrichirNegatifVisuel, REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
+import { REGLAGES_VISUELS_INITIAUX } from '../concepteur/reglagesVisuels';
+import { preparerRequetePortrait, preparerRequeteScene } from './requetesVisuelles';
 import type { AppSettings, EntreeLoreEmergent, ProfilContenu, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
@@ -18,12 +18,7 @@ import {
 } from './elyndorCloudImages';
 import {
   STYLE_PORTRAIT_ELYNDOR,
-  MODULES_BASE,
   construirePromptPortraitSdxl,
-  construirePromptSdxl,
-  modulesPourScene,
-  formaterPromptImage,
-  negatifAplati,
   type PromptImageStructure,
 } from './visualBible';
 import { redigerPromptPortraitSdxl } from './directionArtistique';
@@ -31,7 +26,6 @@ import { canonRace, detecterRacePnj, negatifSdxlRace, referenceRaceFiable, trait
 import {
   ID_ASSET_JOUEUR,
   ordonnerReferences,
-  selectionnerReferencesGenerateur,
   type PersonnageVisibleResolu,
   type ReferenceVisuelle,
   type SceneIllustree,
@@ -99,10 +93,16 @@ export async function collecterReferencesScene(
   const candidats: ReferenceVisuelle[] = [];
   for (const personnage of visibles) {
     if (personnage.type === 'joueur') {
-      const portrait = await obtenirPortraitReferenceJoueur(story);
-      if (portrait) candidats.push({ type: 'joueur-portrait', uri: portrait, libelle: `visage de référence de ${personnage.nom} (portrait de création)` });
+      // L'avatar individuel, s'il existe, garantit mieux la continuité
+      // d'identité. Le portrait race/sexe reste le repli et la référence
+      // de création de cet avatar.
       const avatar = await versReference(await obtenirAvatarPnj(story.meta.id, ID_ASSET_JOUEUR).catch(() => null));
-      if (avatar) candidats.push({ type: 'joueur-avatar', uri: avatar, libelle: `avatar de ${personnage.nom}` });
+      if (avatar) {
+        candidats.push({ type: 'joueur-avatar', uri: avatar, libelle: 'avatar de ' + personnage.nom });
+      } else {
+        const portrait = await obtenirPortraitReferenceJoueur(story);
+        if (portrait) candidats.push({ type: 'joueur-portrait', uri: portrait, libelle: 'visage de référence de ' + personnage.nom + ' (race/sexe)' });
+      }
     } else if (personnage.type === 'pnj' && personnage.assetId) {
       const avatar = await versReference(await obtenirAvatarPnj(story.meta.id, personnage.assetId).catch(() => null));
       if (avatar) {
@@ -131,29 +131,6 @@ export async function collecterReferencesScene(
   return candidats.filter((ref) => gardes.has(ref));
 }
 
-// Chroma sait produire du contenu explicite : hors profil Adulte, il
-// est exclu par le prompt négatif, en plus du filtrage du texte en amont.
-const NEGATIF_GRAND_PUBLIC = 'nsfw, nudity, nude, naked, explicit, sexual content, gore';
-
-/** Garde en tête les déclencheurs LoRA du prompt anglais, puis place les
- * consignes concepteur avant le reste (priorité dans le CLIP). */
-function enrichirPromptCourt(prompt: string | undefined, ajout: string): string | undefined {
-  const extra = ajout.trim();
-  if (!extra || !prompt) return prompt;
-  const parties = prompt.split(', ');
-  if (parties[0] === 'elyndor style' && parties.length >= 2) {
-    return [...parties.slice(0, 2), extra, ...parties.slice(2)].join(', ');
-  }
-  return [extra, prompt].join(', ');
-}
-function enrichirPromptLong(prompt: string, ajout: string): string {
-  return ajout.trim() ? prompt + '\n\n[INSTRUCTIONS VISUELLES CONCEPTEUR]\n' + ajout.trim() : prompt;
-}
-
-function negatifPourProfil(profil: ProfilContenu | undefined): string {
-  return profil === 'adulte' ? negatifAplati() : `${negatifAplati()}, ${NEGATIF_GRAND_PUBLIC}`;
-}
-
 /** Prompt final + génération 16:9 d'une scène. */
 export async function genererImageScene(
   structure: PromptImageStructure,
@@ -162,28 +139,8 @@ export async function genererImageScene(
   storyId?: string,
 ): Promise<string> {
   const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
-  const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
-  const dirigee = reglerDirectionIllustration(structure, visuel);
-  const selection = selectionnerReferencesGenerateur(references);
-  const referencesScene = selection.filter(ref =>
-    (ref.role === 'scene' && visuel.referencesScenePrecedente) ||
-    (ref.role === 'personnage' && visuel.referencesPersonnagesScene));
-  return generer({
-    prompt: enrichirPromptLong(formaterPromptImage(dirigee, referencesScene.length ? references : []), visuel.positifScene),
-    promptCourt: enrichirPromptCourt(construirePromptSdxl(dirigee), visuel.positifScene),
-    negatif: enrichirNegatifVisuel(
-      [negatifPourProfil(profil), negatifCadrageIllustration(visuel), visuel.negatifScene].filter(Boolean).join(', '),
-      visuel,
-    ),
-    modules: appliquerModulesVisuels(modulesPourScene(dirigee), visuel, 'scene'),
-    references: referencesScene,
-    format: '16:9',
-    size: visuel.tailleScene,
-    ...(visuel.pasScene !== null ? { steps: visuel.pasScene } : {}),
-    ...(visuel.guidanceScene !== null ? { guidance: visuel.guidanceScene } : {}),
-    ...(visuel.graineScene !== null ? { seed: visuel.graineScene } : {}),
-    storyId,
-  });
+  const visuel = await lireReglagesVisuels().catch(() => ({ ...REGLAGES_VISUELS_INITIAUX }));
+  return generer(preparerRequeteScene(structure, references, visuel, profil, storyId));
 }
 
 export function construirePromptAvatarPnj(pnj: EntreeLoreEmergent): string {
@@ -215,22 +172,11 @@ async function genererPortrait(
   storyId?: string,
 ): Promise<string> {
   const generer = generateurCourant ?? genererImageSelonReglages(await getSettings());
-  const visuel = await lireReglagesVisuels().catch(() => ({...REGLAGES_VISUELS_INITIAUX}));
-  return generer({
-    prompt: enrichirPromptLong(prompt, visuel.positifPortrait),
-    promptCourt: enrichirPromptCourt(promptCourt, visuel.positifPortrait),
-    negatif: enrichirNegatifVisuel(
-      [negatifPourProfil(profil), negatifSupplementaire, visuel.negatifPortrait].filter(Boolean).join(', '), visuel),
-    modules: appliquerModulesVisuels(MODULES_BASE, visuel, 'portrait'),
-    references: references.filter((r): r is ReferenceImage => !!r?.image),
-    format: '3:4',
-    size: visuel.taillePortrait,
-    ...(visuel.pasPortrait !== null ? { steps: visuel.pasPortrait } : {}),
-    ...(visuel.guidancePortrait !== null ? { guidance: visuel.guidancePortrait } : {}),
-    ...(visuel.grainePortrait !== null ? { seed: visuel.grainePortrait } : {}),
-    ...(visuel.poidsReferenceRacePortrait !== null ? { poidsRace: visuel.poidsReferenceRacePortrait } : {}),
-    storyId,
-  });
+  const visuel = await lireReglagesVisuels().catch(() => ({ ...REGLAGES_VISUELS_INITIAUX }));
+  return generer(preparerRequetePortrait(
+    prompt, promptCourt, references.filter((r): r is ReferenceImage => !!r?.image),
+    visuel, profil, negatifSupplementaire, storyId,
+  ));
 }
 
 /** Avatar en cache, sinon généré (cadrage portrait conservé) puis mis en cache. */
