@@ -195,11 +195,11 @@ test('les références priorisent les personnages visibles avant les scènes pr�
     { type: 'pnj-secondaire', uri: 'data:sylvana', libelle: 'doublon' },
   ];
   assert.deepEqual(ordonnerReferences(refs, 10).map((r) => r.uri), [
-    'data:portrait', 'data:avatar', 'data:orsk', 'data:sylvana', 'data:s1', 'data:s2',
+    'data:avatar', 'data:portrait', 'data:orsk', 'data:sylvana', 'data:s1', 'data:s2',
   ]);
   // Limite du fournisseur : ce sont les scènes qui sautent, jamais un visage.
   assert.deepEqual(ordonnerReferences(refs, 4).map((r) => r.type), [
-    'joueur-portrait', 'joueur-avatar', 'pnj-principal', 'pnj-secondaire',
+    'joueur-avatar', 'joueur-portrait', 'pnj-principal', 'pnj-secondaire',
   ]);
 });
 
@@ -386,7 +386,7 @@ test('le serveur reçoit le visage de chaque personnage visible et la scène la 
   ];
   assert.deepEqual(selectionnerReferencesGenerateur(refs), [
     { role: 'personnage', image: 'data:sylvana' },
-    { role: 'personnage', image: 'data:portrait' },
+    { role: 'personnage', image: 'data:avatar' },
     { role: 'scene', image: 'data:s1' },
   ]);
   assert.deepEqual(selectionnerReferencesGenerateur(refs.slice(0, 2)), [{ role: 'scene', image: 'data:s1' }]);
