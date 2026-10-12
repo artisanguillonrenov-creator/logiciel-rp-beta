@@ -5,6 +5,7 @@ import { ROLES_CANON } from './canonElyndor';
 import { prenomRole } from './rolesCanon';
 import { RACES_ELYNDOR } from '../data/races';
 import { filtrerTextePourProfil } from './contenuAdulte';
+import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import {
   PROFILS,
   estProfilCadrage,
@@ -64,14 +65,14 @@ const REGLES_PROMPT_SDXL = `Règles :
   - Pour renforcer un autre détail essentiel qui se perd, la syntaxe est (mot clé)1.3, jamais (mot:1.3) ; au plus 2 renforts en plus de l'âge et de la carnation.
   - Au-delà de la longueur demandée, le modèle d'image ignore la fin du prompt : coupe les détails secondaires plutôt qu'un personnage.`;
 
-const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
+export const GABARIT_PROMPT_SCENE_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 45 mots au total (30 à 50 avec plusieurs personnages). Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
   (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin and [couleur + coiffure] hair, [tenue : matière + couleur], [action ou posture] in [lieu + 1 ou 2 adjectifs concrets], [lumière], [type de plan]
   Plusieurs personnages : commence par leur nombre, puis un groupe de 10 à 15 mots par personnage (âge, race, sexe, rôle, carnation, cheveux, tenue, action), de GAUCHE à DROITE dans le cadre et dans le même ordre que "personnagesVisibles" (chaque visage de référence est placé dans sa bande, de gauche à droite). Le lieu, la lumière et le plan viennent UNE SEULE FOIS, à la fin, jamais répétés pour chaque personnage. Chaque personnage visible figure dans le prompt avec son âge, même un adversaire au second plan ; au-delà de 3, décris les 3 principaux et résume les autres en quelques mots (« 3 guards in background »).
   Sans personnage visible (paysage, décor seul) : commence directement par le lieu, sans âge ni personnage inventé.
   À plusieurs : [nombre de personnages], [groupe du 1er personnage], [groupe du 2e personnage], [interaction], in [lieu], [lumière], [type de plan]
   ${REGLES_PROMPT_SDXL}`;
 
-const GABARIT_PROMPT_PORTRAIT_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 40 mots au total. Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
+export const GABARIT_PROMPT_PORTRAIT_SDXL = `EN ANGLAIS, en groupes de mots clés courts séparés par des virgules, 25 à 40 mots au total. Les mots de style et de qualité sont déjà enregistrés et ajoutés par l'application : tu décris UNIQUEMENT ce qui se voit, avec des mots clés tirés de la scène et des fiches, jamais repris d'un exemple. Gabarit :
   (N years old)1.2 [race] [female|male] [rôle] with [carnation] skin, [couleur] eyes and [couleur + coiffure] hair, [traits du visage : cicatrice, barbe, tatouage, maquillage], [expression], [tenue visible aux épaules : matière + couleur], [bijou ou accessoire], dark plain background, close-up portrait
   ${REGLES_PROMPT_SDXL}`;
 
@@ -427,6 +428,11 @@ export async function redigerPromptSdxl(
   storyId?: string,
   consigne = CONSIGNE_PROMPT_SDXL,
 ): Promise<string | undefined> {
+  const visuel = await lireReglagesVisuels().catch(() => null);
+  const portrait = consigne === CONSIGNE_PROMPT_PORTRAIT_SDXL;
+  const origine = portrait ? GABARIT_PROMPT_PORTRAIT_SDXL : GABARIT_PROMPT_SCENE_SDXL;
+  const personnalisee = (portrait ? visuel?.consigneNarrateurPortrait : visuel?.consigneNarrateurScene)?.trim();
+  const consigneEffective = personnalisee ? consigne.replace(origine, personnalisee) : consigne;
   const sortie = await appellerModele({
     ...configurationLLM(settings),
     storyId,
@@ -434,7 +440,7 @@ export async function redigerPromptSdxl(
     maxTokens: 420,
     signal,
     messages: [
-      { role: 'system', content: consigne },
+      { role: 'system', content: consigneEffective },
       { role: 'user', content: `Cadrage imposé : ${cadrage}\n\nDescription :\n${texteProfil(description, settings)}` },
     ],
   });
@@ -497,16 +503,19 @@ export function directionDeRepli(story: StoryState): DirectionArtistique {
 }
 
 /** Messages de l'appel : contexte complet du narrateur quand il est fourni. */
-export function messagesDirection(story: StoryState, settings: AppSettings, contexteNarrateur?: string) {
+export function messagesDirection(story: StoryState, settings: AppSettings, contexteNarrateur?: string, consigneNarrateurScene?: string | null) {
+  const instruction = consigneNarrateurScene?.trim()
+    ? INSTRUCTION_DIRECTION.replace(GABARIT_PROMPT_SCENE_SDXL, consigneNarrateurScene.trim())
+    : INSTRUCTION_DIRECTION;
   if (!contexteNarrateur) {
     return [
       { role: 'system' as const, content: construireContexteDirection(story, settings) },
-      { role: 'user' as const, content: INSTRUCTION_DIRECTION },
+      { role: 'user' as const, content: instruction },
     ];
   }
   return [
     { role: 'system' as const, content: contexteNarrateur },
-    { role: 'user' as const, content: `${construireContexteDirection(story, settings, true)}\n\n${PAUSE_NARRATION}\n\n${INSTRUCTION_DIRECTION}` },
+    { role: 'user' as const, content: `${construireContexteDirection(story, settings, true)}\n\n${PAUSE_NARRATION}\n\n${instruction}` },
     // Réponse amorcée par le début du JSON : sans elle, Euryale refusait
     // une fois sur deux (« Je ne peux pas créer… ») et l'illustration
     // retombait sur le repli local.
@@ -528,6 +537,7 @@ export async function demanderDirectionArtistique(
   contexteNarrateur?: string,
 ): Promise<DirectionArtistique> {
   try {
+    const visuel = await lireReglagesVisuels().catch(() => null);
     const demander = async (temperature: number) => completerAmorce(await appellerModele({
       ...configurationLLM(settings),
       storyId: story.meta.id,
@@ -535,7 +545,7 @@ export async function demanderDirectionArtistique(
       maxTokens: 1600,
       signal,
       diagnosticLabel: 'Direction artistique',
-      messages: messagesDirection(story, settings, contexteNarrateur),
+      messages: messagesDirection(story, settings, contexteNarrateur, visuel?.consigneNarrateurScene),
     }), !!contexteNarrateur);
     // Un refus ou un JSON illisible : un second essai, le contexte est en cache.
     const direction = analyserReponseDirection(await demander(0.3), story)

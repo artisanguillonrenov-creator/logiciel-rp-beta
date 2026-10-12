@@ -57,6 +57,10 @@ export interface ReglagesVisuels {
   negatifScene: string;
   positifPortrait: string;
   negatifPortrait: string;
+  /** Texte complet de guidage SDXL du narrateur pour les illustrations. null = consigne intégrée d'origine. */
+  consigneNarrateurScene?: string | null;
+  /** Texte complet de guidage SDXL du narrateur pour les avatars. null = consigne intégrée d'origine. */
+  consigneNarrateurPortrait?: string | null;
 }
 export const REGLAGES_VISUELS_INITIAUX: Readonly<ReglagesVisuels> =
   Object.freeze({
@@ -71,6 +75,7 @@ export const REGLAGES_VISUELS_INITIAUX: Readonly<ReglagesVisuels> =
     poidsReferenceRacePortrait: null,
     modulesScene: {}, modulesPortrait: {},
     positifScene: '', negatifScene: '', positifPortrait: '', negatifPortrait: '',
+    consigneNarrateurScene: null, consigneNarrateurPortrait: null,
   });
 const PRESETS: readonly PresetVisuel[] = ['elyndor','equilibre','nerveux'];
 export function validerReglagesVisuels(value: unknown): ReglagesVisuels {
@@ -99,7 +104,9 @@ export function validerReglagesVisuels(value: unknown): ReglagesVisuels {
     (v.positifScene !== undefined && (typeof v.positifScene !== 'string' || v.positifScene.length > 500)) ||
     (v.negatifScene !== undefined && (typeof v.negatifScene !== 'string' || v.negatifScene.length > 500)) ||
     (v.positifPortrait !== undefined && (typeof v.positifPortrait !== 'string' || v.positifPortrait.length > 500)) ||
-    (v.negatifPortrait !== undefined && (typeof v.negatifPortrait !== 'string' || v.negatifPortrait.length > 500))) {
+    (v.negatifPortrait !== undefined && (typeof v.negatifPortrait !== 'string' || v.negatifPortrait.length > 500)) ||
+    (v.consigneNarrateurScene != null && (typeof v.consigneNarrateurScene !== 'string' || v.consigneNarrateurScene.length > 8000)) ||
+    (v.consigneNarrateurPortrait != null && (typeof v.consigneNarrateurPortrait !== 'string' || v.consigneNarrateurPortrait.length > 8000))) {
     throw Error('Paramètres visuels hors limites : aucune modification appliquée.');
   }
   // Les anciennes configurations visuelles V1 n'ont pas ces champs.
@@ -124,6 +131,8 @@ export function validerReglagesVisuels(value: unknown): ReglagesVisuels {
     negatifScene: (v.negatifScene ?? '').trim(),
     positifPortrait: (v.positifPortrait ?? '').trim(),
     negatifPortrait: (v.negatifPortrait ?? '').trim(),
+    consigneNarrateurScene: v.consigneNarrateurScene?.trim() || null,
+    consigneNarrateurPortrait: v.consigneNarrateurPortrait?.trim() || null,
   };
 }
 const borner = (v: number) => Math.max(0, Math.min(1.5, Number(v.toFixed(2))));

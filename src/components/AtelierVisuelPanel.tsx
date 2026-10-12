@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MODULES_BASE } from '../engine/visualBible';
+import { GABARIT_PROMPT_SCENE_SDXL, GABARIT_PROMPT_PORTRAIT_SDXL } from '../engine/directionArtistique';
 import {
   appliquerPresetVisuel, REGLAGES_VISUELS_INITIAUX, validerReglagesVisuels, NOMS_MODULES_IMAGES,
   type ReglagesVisuels, type PresetVisuel, type CadrageIllustration, type PrioriteIllustration,
@@ -70,6 +71,16 @@ export default function AtelierVisuelPanel() {
       <TextInput value={edite[cle]} onChangeText={t=>changer({[cle]:t} as Partial<ReglagesVisuels>)}
         multiline maxLength={500} textAlignVertical="top" style={styles.champ}
         placeholderTextColor={couleurs.texteFaible} placeholder="Instructions supplémentaires (facultatif)"/>
+    </View>;
+  const consigneNarrateur = (titre:string,cle:'consigneNarrateurScene'|'consigneNarrateurPortrait',origine:string)=>
+    <View key={cle}>
+      <Text style={styles.label}>{titre}</Text>
+      <Text style={styles.aide}>Voici la consigne SDXL actuelle donnée au narrateur. Tu peux la modifier ; les règles générales de continuité et le format de la direction artistique restent conservés.</Text>
+      <TextInput value={edite[cle] ?? origine} onChangeText={v=>changer({[cle]:v} as Partial<ReglagesVisuels>)}
+        multiline scrollEnabled maxLength={8000} textAlignVertical="top" style={[styles.champ,{minHeight:220,maxHeight:300}]}
+        placeholderTextColor={couleurs.texteFaible}/>
+      <Bouton titre="Restaurer la consigne d’origine" variante="secondaire" desactive={operation}
+        onPress={()=>changer({[cle]:null} as Partial<ReglagesVisuels>)}/>
     </View>;
   const tailles = (titre:string,cle:'tailleScene'|'taillePortrait',options:readonly string[])=>
     <View key={cle}>
@@ -170,6 +181,10 @@ export default function AtelierVisuelPanel() {
         onPress={()=>changer({referencesScenePrecedente:!edite.referencesScenePrecedente})}>
         <Text style={styles.nom}>{edite.referencesScenePrecedente?'● Activées':'○ Désactivées'}</Text>
       </Pressable>
+      <Text style={styles.label}>Consignes du narrateur pour les images</Text>
+      <Text style={styles.aide}>Les textes d’origine sont affichés, même sans réglage personnalisé. Les modifications agissent sur la rédaction des prompts SDXL pour les prochaines générations, et pas seulement sur les mots ajoutés à l’image.</Text>
+      {consigneNarrateur('Illustrations de scènes — consigne actuelle','consigneNarrateurScene',GABARIT_PROMPT_SCENE_SDXL)}
+      {consigneNarrateur('Avatars et portraits — consigne actuelle','consigneNarrateurPortrait',GABARIT_PROMPT_PORTRAIT_SDXL)}
       <Text style={styles.label}>Technique — illustrations 16:9</Text>
       {tailles('Résolution de scène','tailleScene',['1024x576','1344x768','1536x864'])}
       {numerique('Étapes (1–80)','pasScene')}
