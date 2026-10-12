@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ImageAgrandissable, VisionneuseImage } from '../components/VisionneuseImage';
 import {
   ActivityIndicator,
   FlatList,
@@ -734,7 +735,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                 ? () => (
                     <Panneau style={styles.panneauImageGeneree}>
                       <Text style={styles.titreModal}>{t('Illustration de la scène')}</Text>
-                      <Image source={{ uri: imageGeneree }} style={styles.imageGeneree} resizeMode="contain" accessibilityLabel={t('Illustration générée pour cette scène')} />
+                      <ImageAgrandissable uri={imageGeneree} titre={t('Illustration de la scène')} style={styles.imageGeneree} accessibilityLabel={t('Illustration générée pour cette scène')} />
                       <Text style={styles.aideImageGeneree}>{t('Les illustrations de tes scènes sont conservées sur la tablette, jusqu’à la suppression volontaire de l’histoire.')}</Text>
                       {imagesDisponibles && (
                         <View style={styles.rangeeRegeneration}>
@@ -1130,17 +1131,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
         </View>
       </Modal>
 
-      <Modal visible={!!portraitAgrandi} animationType="fade" transparent onRequestClose={() => setPortraitAgrandi(null)}>
-        <Pressable style={styles.superpositionSuppression} onPress={() => setPortraitAgrandi(null)}>
-          <Panneau style={styles.panneauPortraitAgrandi}>
-            {portraitAgrandi?.avatarUri ? (
-              <Image source={{ uri: portraitAgrandi.avatarUri }} style={styles.imagePortraitAgrandi} resizeMode="cover" />
-            ) : null}
-            <Text style={styles.titreModal}>{portraitAgrandi?.titre}</Text>
-            <Bouton titre={t('Fermer')} variante="secondaire" onPress={() => setPortraitAgrandi(null)} style={{ marginTop: espacement.sm }} />
-          </Panneau>
-        </Pressable>
-      </Modal>
+      <VisionneuseImage uri={portraitAgrandi?.avatarUri ?? null} titre={portraitAgrandi?.titre} onFermer={() => setPortraitAgrandi(null)} />
 
       <Modal visible={modalExportOuvert} animationType="fade" transparent onRequestClose={() => setModalExportOuvert(false)}>
         <Pressable style={styles.superpositionSuppression} onPress={() => setModalExportOuvert(false)}>
