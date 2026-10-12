@@ -114,6 +114,14 @@ def open_regular(path):
     return os.fdopen(fd, "rb")
 
 
+def flush_directory(path):
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def digest(root, rel):
     p = safe_path(root, rel)
     h = hashlib.sha256()
@@ -192,6 +200,9 @@ def copy_one(src, dst, rel, fingerprint, golden=None):
         safe_path(dst, rel)
         os.replace(name, q)
         name = None
+        with open_regular(q) as persisted:
+            os.fsync(persisted.fileno())
+        flush_directory(q.parent)
         if digest(dst, rel) != actual:
             raise UnsafeState("FINAL_COPY_HASH_FAILED: " + rel)
         return actual
@@ -330,6 +341,8 @@ def main():
         json.dump(result, f, indent=2, ensure_ascii=False)
         f.flush()
         os.fsync(f.fileno())
+    flush_directory(report_dir)
+    flush_directory(report_dir.parent)
     emit("ELYNDOR_VALIDATION_RESULT", report=str(report), **result)
 
 
