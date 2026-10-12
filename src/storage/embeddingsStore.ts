@@ -220,6 +220,11 @@ async function assurerEmbeddingsTransaction(
   );
 }
 
+/** Erreur du stockage local (base pleine, écriture refusée), pas du calcul des embeddings. */
+function erreurStockage(erreur: unknown): boolean {
+  return erreur instanceof Error && /SQLITE_|disk is full|database|AsyncStorage/i.test(erreur.message);
+}
+
 /**
  * Sérialise lecture/calcul/écriture puis prépare l'index HNSW Android.
  * ObjectBox est une optimisation : une absence du module natif ou une erreur
@@ -230,7 +235,18 @@ export async function assurerEmbeddings(
   appSettings: AppSettings,
   diagnosticLabel = 'Index sémantique',
 ): Promise<Record<string, number[]>> {
-  const vecteurs = await planifierTransactionCache(() => assurerEmbeddingsTransaction(entrees, appSettings, diagnosticLabel));
+  const vecteurs = await planifierTransactionCache(async () => {
+    try {
+      return await assurerEmbeddingsTransaction(entrees, appSettings, diagnosticLabel);
+    } catch (erreur) {
+      if (!erreurStockage(erreur)) throw erreur;
+      // Cache plein (SQLITE_FULL, plafond AsyncStorage) : il est vidé pour
+      // rendre la place aux autres réglages, et le tour continue sans cache.
+      await viderCacheEmbeddings().catch(() => undefined);
+      const { vecteurs: calcules } = await obtenirEmbeddings(entrees.map((e) => e.contenu), appSettings, `${diagnosticLabel} — sans cache`);
+      return Object.fromEntries(entrees.map((e, i) => [e.id, calcules[i]]));
+    }
+  });
   const debutIndex = Date.now();
   try {
     await preparerIndexObjectBox(entrees, vecteurs);
