@@ -1,6 +1,6 @@
 import type { LoreEntry, Message } from '../types';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, preparerRequeteLore, SEUIL_LORE_HYBRIDE, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
-import { compterMot, contientExpression, ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
+import { contientExpression, ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
 
 // Recherche lexicale locale (reprise de la V13) : repli quand aucun
 // fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
@@ -70,21 +70,35 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   const maintenant = options.maintenant ?? Date.now();
   const racinesTermes = termes.map(racineSimple);
 
-  const notes = items.map((item) => {
+  // Passe 1 : chaque élément est analysé une fois (mots entiers et racines simples).
+  const analyses = items.map((item) => {
     const titre = titreDe?.(item) ?? '';
     const texte = texteDe(item);
-    const racinesTitre = ensembleRacines(termesRecherche(titre));
     const motsCorps = normaliserRecherche(`${titre} ${texte}`).split(' ').map(racineSimple);
-    const corps = motsCorps.join(' ');
+    const comptes = new Map<string, number>();
+    for (const mot of motsCorps) comptes.set(mot, (comptes.get(mot) ?? 0) + 1);
+    return { item, texte, comptes, corps: motsCorps.join(' '), racinesTitre: ensembleRacines(termesRecherche(titre)) };
+  });
+  // Poids de rareté (IDF) : un mot présent dans presque tous les éléments
+  // (« marché », le nom du PNJ du moment) compte peu ; un mot rare de la
+  // question du joueur (« clé », « argent ») fait la différence. Sans cela, dans
+  // une longue histoire, les mots communs noyaient la question.
+  const poids = racinesTermes.map((racine) => {
+    const df = analyses.reduce((n, a) => n + (a.comptes.has(racine) ? 1 : 0), 0);
+    return Math.log(1 + (analyses.length + 1) / (df + 1));
+  });
+  const poidsTotal = poids.reduce((n, w) => n + w, 0) || 1;
+
+  const notes = analyses.map(({ item, texte, comptes, corps, racinesTitre }) => {
     let trouves = 0;
     let frequence = 0;
     let dansTitre = 0;
-    for (const racine of racinesTermes) {
-      const n = compterMot(motsCorps, racine);
-      if (n > 0) trouves += 1;
-      frequence += Math.min(n, 4);
+    racinesTermes.forEach((racine, i) => {
+      const n = comptes.get(racine) ?? 0;
+      if (n > 0) trouves += poids[i];
+      frequence += Math.min(n, 4) * (poids[i] / poidsTotal) * racinesTermes.length;
       if (racinesTitre.has(racine)) dansTitre += 1;
-    }
+    });
     if (!trouves) return { item, score: 0, extrait: '' };
     let fraicheur = 0;
     const date = dateDe?.(item);
@@ -92,7 +106,7 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
       const jours = Math.max(0, (maintenant - date) / 86_400_000);
       fraicheur = Math.max(0, 0.7 - 0.25 * Math.log10(1 + jours));
     }
-    const score = 5 * (trouves / termes.length)
+    const score = 5 * (trouves / poidsTotal)
       + 1.2 * Math.log2(1 + frequence)
       + 1.8 * dansTitre
       + (expression.length >= 6 && contientExpression(corps, expression.split(' ').map(racineSimple).join(' ')) ? 2.5 : 0)

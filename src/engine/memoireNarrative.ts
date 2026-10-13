@@ -387,10 +387,31 @@ export function construireBlocsContexte(
   return { blocs, totalCaracteres: total, rejetes, manques };
 }
 
-export function formaterBlocsContexte(blocs: BlocContexte[]): string {
+/**
+ * Un échange n'est rappelé qu'une fois. Le noyau V12 fait autorité, puis la
+ * mémoire des événements, puis les souvenirs bruts (mêmes messages sous une
+ * autre forme) : une source plus basse ne répète pas ce qu'une plus haute
+ * a déjà fourni.
+ */
+export function ecarterDoublons<S extends { message: { id: string } }>(entree: {
+  blocs: BlocContexte[];
+  idsNoyau: ReadonlySet<string>;
+  souvenirs: S[];
+}): { blocsUtiles: BlocContexte[]; souvenirsUtiles: S[]; doublonsEcartes: number } {
+  const blocsUtiles = entree.blocs.filter((b) => !(b.type === 'event' && b.messageIds?.some((id) => entree.idsNoyau.has(id))));
+  const couverts = new Set([...entree.idsNoyau, ...blocsUtiles.flatMap((b) => b.messageIds ?? [])]);
+  const souvenirsUtiles = entree.souvenirs.filter((s) => !couverts.has(s.message.id));
+  return {
+    blocsUtiles,
+    souvenirsUtiles,
+    doublonsEcartes: (entree.blocs.length - blocsUtiles.length) + (entree.souvenirs.length - souvenirsUtiles.length),
+  };
+}
+
+export function formaterBlocsContexte(blocs: BlocContexte[], avecConsigne = true): string {
   if (!blocs.length) return '';
   return [
-    'Utilise uniquement ces blocs comme rappels factuels. Un PNJ ne doit pas connaître un événement auquel il n’a pas eu accès.',
+    ...(avecConsigne ? ['Utilise uniquement ces blocs comme rappels factuels. Un PNJ ne doit pas connaître un événement auquel il n’a pas eu accès.'] : []),
     ...blocs.map((b) => `- [${b.type} | ${b.source} | P${b.priorite}] ${b.texte}`),
   ].join('\n');
 }

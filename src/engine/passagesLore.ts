@@ -293,8 +293,12 @@ export function selectionnerPassagesDetaille(
   const coutDe = (passage: PassageLore, contenu: string) =>
     contenu.length + (parEntree.has(passage.entreeId) ? SEPARATEUR_PASSAGES.length : passage.titre.length + 6);
 
-  const ajouter = (note: Note, niveau: NiveauContexte, contenu: string, raison: string, raccourci = false) => {
+  const ajouter = (note: Note, niveauPasse: NiveauContexte, contenu: string, raisonPasse: string, raccourci = false) => {
     const { passage, score } = note;
+    // Une fiche certaine pour la scène reste P0, même retenue par une autre passe.
+    const ancree = !!options.ancres?.has(passage.entreeId);
+    const niveau: NiveauContexte = ancree ? 'P0' : niveauPasse;
+    const raison = ancree ? (options.raisonsAncres?.get(passage.entreeId) ?? 'nom canonique cité') : raisonPasse;
     utilise += coutDe(passage, contenu);
     retenus.add(passage.id);
     const groupe = parEntree.get(passage.entreeId);
@@ -334,19 +338,23 @@ export function selectionnerPassagesDetaille(
       const actuel = meilleurs.get(note.passage.entreeId);
       if (!actuel || note.score > actuel.score) meilleurs.set(note.passage.entreeId, note);
     }
-    const plafondP0 = Math.floor(budget * PART_MAX_P0);
+    // La meilleure fiche peut prendre tout le budget ; les suivantes, au plus
+    // PART_MAX_P0, pour laisser de la place au message du joueur (P1).
+    const plafondSuivants = Math.floor(budget * PART_MAX_P0);
+    let premiere = true;
     for (const note of [...meilleurs.values()].sort((a, b) => b.score - a.score)) {
       const { passage } = note;
-      const raison = options.raisonsAncres?.get(passage.entreeId) ?? 'nom canonique cité';
-      const place = plafondP0 - utilise - (passage.titre.length + 6);
+      const plafond = premiere ? budget : plafondSuivants;
+      const place = plafond - utilise - (passage.titre.length + 6);
       if (passage.contenu.length <= place) {
-        ajouter(note, 'P0', passage.contenu, raison);
+        ajouter(note, 'P0', passage.contenu, '');
       } else if (place >= TAILLE_MIN_P0_RACCOURCI) {
-        ajouter(note, 'P0', raccourcir(passage.contenu, place), raison, true);
+        ajouter(note, 'P0', raccourcir(passage.contenu, place), '', true);
       } else {
         rejets.set(passage.entreeId, { id: passage.entreeId, titre: passage.titre, cause: 'budget', score: note.score });
-        manques.push(`fiche canonique « ${passage.titre} » absente : budget du lore épuisé`);
+        continue;
       }
+      premiere = false;
     }
   }
 
@@ -356,6 +364,12 @@ export function selectionnerPassagesDetaille(
     : notesScene;
   remplir(classer(combinees), budget, notesMessage ? 'P2' : 'P1');
 
+  // Manque canonique : une fiche certaine pour la scène qui n'a finalement trouvé aucune place.
+  for (const id of options.ancres ?? []) {
+    if (parEntree.has(id)) continue;
+    const note = rejets.get(id);
+    if (note) manques.push(`fiche canonique « ${note.titre} » absente : budget du lore épuisé`);
+  }
   const groupes = [...parEntree.entries()].sort((a, b) => RANG_NIVEAU[a[1].niveau] - RANG_NIVEAU[b[1].niveau]);
   const entrees = groupes.map(([id, groupe]): LoreEntry => ({
     id,

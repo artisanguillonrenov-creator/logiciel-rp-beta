@@ -4,9 +4,10 @@
 // Il reconstitue, avec les fonctions pures du jeu, ce qui part au narrateur
 // pour quelques scènes, avec les budgets des moteurs local et distant.
 import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor, extraireAncresCanoniques } from '../src/engine/loreLoader';
-import { construirePassages, selectionnerPassages } from '../src/engine/passagesLore';
-import { BUDGET_SYSTEM_DISTANT, BUDGET_SYSTEM_LOCAL, construireSystemPrompt } from '../src/engine/promptBuilder';
+import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { construirePassages, selectionnerPassages, selectionnerPassagesDetaille } from '../src/engine/passagesLore';
+import { resoudreEntitesScene } from '../src/engine/entitesScene';
+import { BUDGET_SYSTEM_DISTANT, BUDGET_SYSTEM_LOCAL, construireSystemPromptDetaille } from '../src/engine/promptBuilder';
 import { construireBlocsContexte, formaterBlocsContexte, synchroniserMemoireNarrative } from '../src/engine/memoireNarrative';
 import { preparerTour } from '../src/engine/ficheScene';
 import { creerNouvelleHistoire } from '../src/engine/story';
@@ -60,16 +61,24 @@ function mesurerScene(story: StoryState, message: string, budgetSysteme: number)
   const requeteMessage = [preparation.ville && `Ville : ${preparation.ville}`, preparation.intention.lieu && `Lieu visé : ${preparation.intention.lieu.libelle}`, ...preparation.intention.fiches, message].filter(Boolean).join('\n');
   const requeteScene = [preparation.ville && `Ville : ${preparation.ville}`, story.messages.at(-1)?.content].filter(Boolean).join('\n');
   const passages = construirePassages(LORE);
-  const ancres = new Set(extraireAncresCanoniques(`${requeteMessage}\n${requeteScene}`, LORE).map((e) => e.id));
-  const lore = selectionnerPassages(passages, requeteScene, { requeteMessage, ancres });
+  const resolution = resoudreEntitesScene({
+    pool: LORE, messageJoueur: message, ville: preparation.ville, lieuActuel: story.scene?.lieu || undefined,
+    destination: preparation.intention.lieu?.libelle, fichesIntention: preparation.intention.fiches,
+    derniereReponse: story.messages.at(-1)?.content, memoire: [story.memoire.resume], presents: [],
+  });
+  const ancres = resolution.ancresP0;
+  const { entrees: lore, rapport } = selectionnerPassagesDetaille(passages, requeteScene, { requeteMessage, ancres, raisonsAncres: resolution.raisons });
   const evenements = synchroniserMemoireNarrative(story);
-  const blocs = construireBlocsContexte(story, message, evenements);
   const noyauStory = assurerNoyau(story, evenements);
   const noyau = construireContexteNoyau(noyauStory, message);
+  const idsNoyau = new Set(noyau.idsMessages);
+  const blocs = construireBlocsContexte(story, message, evenements, { exclureMessageIds: idsNoyau });
   const contrat = construireContratNarratifNatif(noyauStory, message, 'adulte');
-  const prompt = construireSystemPrompt({
+  const { texte: prompt, rapport: rapportPrompt } = construireSystemPromptDetaille({
     meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: lore, messagesRecents: [], messageJoueur: message,
-    contratNarratif: contrat.texte, blocsContexte: [noyau.texte, formaterBlocsContexte(blocs.blocs)].filter(Boolean).join('\n\n'),
+    contratNarratif: contrat.texte,
+    contexteP0: formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau === 'P0')),
+    blocsContexte: [noyau.texte, formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau !== 'P0'), false)].filter(Boolean).join('\n\n'),
     etatMonde: noyau.texteMonde, engagementsEtRelations: noyau.texteSocial, souvenirs: '', ficheScene: preparation.fiche, directiveEtat: noyau.directive,
   }, { budgetSysteme });
   const selectionnes = lore.reduce((n, e) => n + e.titre.length + e.contenu.length + 6, 0);
@@ -92,6 +101,10 @@ function mesurerScene(story: StoryState, message: string, budgetSysteme: number)
     loreCoupeOuAbsent: perdus.map((t) => `${t.ancre ? '[ancre] ' : ''}${t.titre}${t.titrePresent ? ' (tronquée)' : ' (absente)'}`),
     blocsSelectionnes: `${blocs.blocs.length} blocs, ${blocs.totalCaracteres} car.`,
     blocsPresents: formaterBlocsContexte(blocs.blocs).split('\n').slice(1).filter((l) => prompt.includes(l.slice(0, 60))).length,
+    niveauxLore: lore.map((e) => `${e.niveau} ${e.titre}`),
+    manquesLore: rapport.manques,
+    manquesPrompt: rapportPrompt.manques,
+    avertissements: rapportPrompt.avertissements,
   };
 }
 

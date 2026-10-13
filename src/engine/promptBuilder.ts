@@ -200,6 +200,8 @@ export interface ContexteConstruction {
   // Blocs de la mémoire narrative (voir memoireNarrative.ts), déjà formatés.
   // Continuité active (P1) : noyau V12, événements passés, mémoire des PNJ…
   blocsContexte?: string;
+  // Nombre d'échanges rappelés par une seule source au lieu de plusieurs (diagnostic).
+  doublonsEcartes?: number;
   // Essentiels de la mémoire (P0) : scène actuelle et faits canon pertinents.
   // Ils passent avant tout le reste du contexte variable.
   contexteP0?: string;
@@ -342,7 +344,9 @@ Humour : ${libelleHumour(ctx.settings.humour)}.
 
 ${FORMAT_DIALOGUES_PNJ}
 Narration/action restent hors de ces lignes (entre astérisques si besoin). N'utilise jamais cette étiquette pour {{user}} : tu n'écris jamais ses paroles (règle 1).
-${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
+`;
+  // Consignes propres à ce tour (état machine, correction, registre imposé) : jamais coupées.
+  const consignesTour = `${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n[CORRECTION REQUISE]\n${tronquer(ctx.noteCorrection, 900)}\n` : ''}${ctx.instructionRegistreOverride ? `\n${ctx.instructionRegistreOverride}\n` : ''}`;
 
   // V2.1 : contrat calculé par le noyau TypeScript, non les 15 fiches texte.
   // Il varie par tour et ne doit pas casser le cache du préfixe statique.
@@ -352,7 +356,7 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   const rappel = contrat ? RAPPEL_FINAL : '';
   const registre = ctx.registreAdulte ? RAPPEL_REGISTRE_ADULTE : '';
   const fiche = ctx.ficheScene ? `\n\n${ctx.ficheScene}` : '';
-  const fixe = prefixe.length + styleBloc.length + fiche.length + contrat.length + rappel.length + registre.length;
+  const fixe = prefixe.length + styleBloc.length + consignesTour.length + fiche.length + contrat.length + rappel.length + registre.length;
 
   const manques: string[] = [];
   const avertissements: string[] = [];
@@ -441,8 +445,21 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
   const perso = persoBloc(Math.min(longDescription, Math.max(PLANCHER_DESCRIPTION, room - depart)), depart);
 
   const milieu = `${resumeTexte}${faitsRendu}${etat}${memoire}${souvenirsRendu}${lore.texte}`;
-  const texte = `${prefixe}${perso}${styleBloc}${milieu}${fiche}${contrat}${rappel}${registre}`;
-  if (texte.length > budget) avertissements.push(`prompt de ${texte.length} car. pour un budget de ${budget} : seules les parties qui ne se coupent jamais dépassent`);
+  // La limite reste stricte (fenêtre des modèles à contexte étroit). Quand les
+  // parties fixes la dépassent, la coupe suit l'ordre historique, mais elle est
+  // dite : fiche du personnage au minimum (déjà fait), puis fin des règles de
+  // style. Les règles immuables, le contrat, la fiche de scène et les consignes
+  // du tour ne sont jamais coupés.
+  let style = styleBloc;
+  let exces = prefixe.length + perso.length + style.length + consignesTour.length + milieu.length + fiche.length + contrat.length + rappel.length + registre.length - budget;
+  if (exces > 0) {
+    const coupe = Math.min(exces, style.length);
+    style = tronquer(style, style.length - coupe);
+    avertissements.push(`règles de style tronquées de ${coupe} car. : les parties qui ne se coupent jamais (${fixe} car.) ne laissent pas de place dans ${budget} car.`);
+    exces = prefixe.length + perso.length + style.length + consignesTour.length + milieu.length + fiche.length + contrat.length + rappel.length + registre.length - budget;
+  }
+  const texte = `${prefixe}${perso}${style}${consignesTour}${milieu}${fiche}${contrat}${rappel}${registre}`;
+  if (texte.length > budget) avertissements.push(`prompt de ${texte.length} car. pour un budget de ${budget} : seules les parties qui ne se coupent jamais dépassent (${texte.length - budget} car.)`);
 
   const sections: SectionPrompt[] = [
     { nom: 'règles, style, contrat, fiche de scène', niveau: 'fixe', demande: fixe, transmis: fixe },
@@ -465,8 +482,16 @@ export function construireSystemPrompt(ctx: ContexteConstruction, options: Optio
   return construireSystemPromptDetaille(ctx, options).texte;
 }
 
+export function construireMessagesDetaille(ctx: ContexteConstruction, options: OptionsPrompt = {}): { messages: ChatMessage[]; rapport: RapportPrompt } {
+  const { texte, rapport } = construireSystemPromptDetaille(ctx, options);
+  return { messages: assemblerMessages(ctx, options, texte), rapport };
+}
+
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
-  const systemPrompt = construireSystemPrompt(ctx, options);
+  return assemblerMessages(ctx, options, construireSystemPrompt(ctx, options));
+}
+
+function assemblerMessages(ctx: ContexteConstruction, options: OptionsPrompt, systemPrompt: string): ChatMessage[] {
   const budgetConversation = options.budgetConversation ?? BUDGET_CONVERSATION_DISTANT;
   const budgetRecents = budgetMessagesRecents(ctx.messageJoueur, budgetConversation);
   const recents = selectionnerMessagesRecents(ctx.messagesRecents, budgetRecents).map((m) => ({
