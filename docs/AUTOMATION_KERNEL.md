@@ -22,7 +22,7 @@ Le résolveur calcule les capacités effectives suivantes :
 - profil adulte ;
 - mode concepteur.
 
-Une capacité est dérivée des prérequis réels, pas des anciens réglages. Exemple : `genererImagesActive` n’est plus lu ; les images et portraits ne sont disponibles que lorsque le modèle image Elyndor Cloud est publié (`ELYNDOR_CLOUD_MODELE_IMAGE`, voir `docs/ILLUSTRATION_V2.md`).
+Une capacité est dérivée des prérequis réels, pas des anciens réglages. Exemple : `genererImagesActive` n’est plus lu ; les images et portraits ne sont disponibles que lorsqu'un générateur d'images est explicitement choisi et autorisé (voir `docs/ILLUSTRATION_V3.md`).
 
 ## File persistante
 

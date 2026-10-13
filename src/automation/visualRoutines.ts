@@ -1,22 +1,12 @@
 import type { AppSettings, StoryState } from '../types';
-import {
-  collecterReferencesScene,
-  genererImageScene,
-  obtenirOuGenererAvatarJoueur,
-  obtenirOuGenererAvatarPnj,
-} from '../engine/images';
-import { demanderDirectionArtistique, textesNarratifsEtablis } from '../engine/directionArtistique';
-import { construireContexteNarrateurPourIllustration } from '../engine/generateTurn';
-import { appliquerModeRegeneration, consoliderAvecEtatVisuel } from '../engine/visualBible';
+import { obtenirOuGenererAvatarJoueur, obtenirOuGenererAvatarPnj } from '../engine/images';
+import { preparerScene } from '../engine/illustrationScene';
+import { executerImage } from '../engine/serviceVisuel';
 import {
   ajouterSceneIllustree,
-  appliquerChangementsVisuels,
   lireEtatVisuel,
   listerPnjVisuels,
-  resoudrePersonnagesVisibles,
-  type EtatVisuelHistoire,
   type ModeIllustration,
-  type SceneIllustree,
 } from '../engine/visualState';
 import {
   enregistrerAvatarPnj,
@@ -122,14 +112,15 @@ async function synchroniserAvatars(story: StoryState, settings: AppSettings): Pr
 }
 
 /**
- * Pipeline V2 d'une illustration de scène :
- * état narratif + état visuel + personnages visibles + références de scènes récentes
- * → direction artistique (modèle narratif) → prompt structuré → image 16:9
- * → mise à jour de l'état visuel → conservation de toutes les scènes.
+ * Pipeline V3 d'une illustration de scène :
+ * relevé visuel en mots-clés (narrateur, un appel) → validation et
+ * consolidation par le canon et l'état visuel → contrat factuel → moteur
+ * visuel central (style unique de l'Atelier, capacités du générateur) →
+ * image 16:9 → mise à jour de l'état visuel → conservation de toutes les scènes.
  *
- * Une régénération (mode ≠ 'nouvelle') réutilise le canon visuel enregistré
- * pour cette révision : mêmes personnages, apparences, lieu et moment ; seule
- * la mise en scène change et l'état visuel n'est pas réanalysé.
+ * Une régénération (mode ≠ 'nouvelle') réutilise le contrat enregistré pour
+ * cette révision : mêmes personnages, apparences, lieu et moment ; seule la
+ * prise de vue change et rien n'est réanalysé.
  */
 async function genererScene(
   story: StoryState,
@@ -138,65 +129,32 @@ async function genererScene(
   deps: VisualAutomationDeps,
 ): Promise<string> {
   verifierCapaciteImages(settings);
-  const revision = calculerRevisionNarrative(story);
-  const etatInitial = lireEtatVisuel(story);
-  const existante = etatInitial.scenesIllustrees.find((scene) => scene.revision === revision);
-  const precedentes = etatInitial.scenesIllustrees.filter((scene) => scene.revision !== revision);
-
-  let etat: EtatVisuelHistoire;
-  let scene: SceneIllustree;
-  if (mode !== 'nouvelle' && existante) {
-    const variante = existante.regenerations + 1;
-    etat = etatInitial;
-    scene = {
-      ...existante,
-      // Les identités sont re-résolues pour retrouver un avatar créé depuis.
-      personnagesVisibles: resoudrePersonnagesVisibles(story, existante.personnagesVisibles.map((p) => p.nom)),
-      structure: appliquerModeRegeneration(existante.structure, mode, variante),
-      regenerations: variante,
-      creeLe: Date.now(),
-    };
-  } else {
-    // Même contexte que pour répondre au joueur ; sans lui (lore ou
-    // embeddings indisponibles), la direction garde son contexte propre.
-    const contexteNarrateur = await construireContexteNarrateurPourIllustration(story, settings).catch(() => undefined);
-    const direction = await demanderDirectionArtistique(story, settings, undefined, contexteNarrateur);
-    const resultat = appliquerChangementsVisuels(
-      etatInitial,
-      direction.changements,
-      textesNarratifsEtablis(story, etatInitial.derniereAnalyseIndex),
-      story.messages.length,
-      (nom) => resoudrePersonnagesVisibles(story, [nom])[0]?.assetId,
-    );
-    etat = { ...resultat.etat, derniereAnalyseIndex: story.messages.length };
-    scene = {
-      revision,
-      messageIndex: story.messages.length,
-      creeLe: Date.now(),
-      profil: direction.structure.profil,
-      personnagesVisibles: direction.visibles,
-      structure: consoliderAvecEtatVisuel(direction.structure, etat),
-      regenerations: 0,
-    };
-  }
-
-  const references = await collecterReferencesScene(story, scene.personnagesVisibles, precedentes);
-  const dataUrl = await genererImageScene(scene.structure, references, settings.profilContenu, story.meta.id);
-
-  const uri = await enregistrerIllustrationScene(story.meta.id, revision, dataUrl);
+  const etatAvant = lireEtatVisuel(story);
+  const preparee = await preparerScene(story, settings, mode, { extraction: 'modele' });
+  const resultat = await executerImage({
+    contrat: preparee.contrat,
+    candidats: preparee.candidats,
+    negatifCanon: preparee.negatifCanon,
+    storyId: story.meta.id,
+    revision: preparee.revision,
+    extraction: preparee.extraction,
+    destination: `scène ${preparee.revision}`,
+  });
+  if (!resultat.image) throw new Error('Le générateur n’a renvoyé aucune image.');
+  const uri = await enregistrerIllustrationScene(story.meta.id, preparee.revision, resultat.image);
 
   // Mise à jour inconditionnelle (pas de garde de révision) : l'illustration
   // existe désormais même si le joueur a poursuivi entre-temps, et l'état
   // visuel ne dépend que des événements déjà analysés.
   await deps.updateStoryIf(story.meta.id, () => true, (courante) => {
     const actuel = lireEtatVisuel(courante);
-    const base = actuel.sequence > etatInitial.sequence ? actuel : etat;
+    const base = actuel.sequence > etatAvant.sequence ? actuel : preparee.etat;
     return {
       ...courante,
       etatVisuel: {
         ...base,
-        sequence: Math.max(actuel.sequence, etat.sequence) + 1,
-        scenesIllustrees: ajouterSceneIllustree(actuel.scenesIllustrees, scene).scenes,
+        sequence: Math.max(actuel.sequence, preparee.etat.sequence) + 1,
+        scenesIllustrees: ajouterSceneIllustree(actuel.scenesIllustrees, preparee.scene).scenes,
       },
     };
   });

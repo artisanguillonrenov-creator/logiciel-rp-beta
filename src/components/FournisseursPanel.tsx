@@ -145,7 +145,7 @@ export default function FournisseursPanel(){
   return <View style={st.panel}>
     <Text style={st.title}>Fournisseurs IA</Text>
     <Text style={st.text}>Choisis indépendamment le narrateur, les images et la recherche. Les paramètres incompatibles ne seront pas envoyés au nouveau fournisseur.</Text>
-    <Text style={st.label}>Narrateur et directeur artistique</Text>
+    <Text style={st.label}>Narrateur (récit et relevé visuel des images)</Text>
     {(Object.keys(LABELS) as ModeTexte[]).map(x=><Pressable key={x} style={[st.option,mode===x&&st.selected]}
       accessibilityRole="radio" accessibilityState={{checked:mode===x}} onPress={()=>setMode(x)}>
       <Text style={st.name}>{mode===x?'● ':'○ '}{LABELS[x]}</Text>

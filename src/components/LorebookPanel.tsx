@@ -11,6 +11,7 @@ import { infererScopeLore, type ScopeLore } from '../engine/loreScoring';
 import { getStoriesIndex, getStory } from '../storage/storage';
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from './Bouton';
+import ReferencesVisuellesFiche from './ReferencesVisuellesFiche';
 import {
   abandonnerBrouillonLore, appliquerLorePublie, analyserImportLore, creerExportLore, creerEtatLore,
   enregistrerFicheLore, ficheOrigine, listerFichesLore, publierBrouillonLore, restaurerRevisionLore,
@@ -30,7 +31,7 @@ const MODES: Array<{ id: ActionAI; titre: string }> = [
 const erreurTexte = (e: unknown) => e instanceof Error ? e.message : 'Opération impossible.';
 const separer = (v: string) => v.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
 const dossierFiche = (f: FicheAffichee) => dossiersNavigationLore(f);
-type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic';
+type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic' | 'images';
 interface LoreProposition { id: string; titre: string; contenu: string; categorie: string; origine: string; }
 
 export default function LorebookPanel() {
@@ -274,9 +275,9 @@ export default function LorebookPanel() {
       {courante?.protegee ? <Text style={styles.aide}>Canon protégé : toute modification devient un brouillon jusqu’à publication confirmée.</Text> : null}
       {etat.brouillons[id] ? <Text style={styles.avertissement}>Brouillon non publié</Text> : null}
       <View style={styles.onglets}>
-        {(['contenu', 'activation', 'avance', 'diagnostic'] as Onglet[]).map(o =>
+        {(['contenu', 'activation', 'avance', 'diagnostic', 'images'] as Onglet[]).map(o =>
           <Pressable key={o} onPress={() => setOnglet(o)} style={[styles.puce, o === onglet && styles.puceActive]}>
-            <Text style={styles.nomPuce}>{({contenu:'Contenu',activation:'Activation',avance:'Avancé',diagnostic:'Diagnostic'})[o]}</Text>
+            <Text style={styles.nomPuce}>{({contenu:'Contenu',activation:'Activation',avance:'Avancé',diagnostic:'Diagnostic',images:'Images'})[o]}</Text>
           </Pressable>)}
       </View>
       {onglet === 'contenu' ? <View>
@@ -361,6 +362,9 @@ export default function LorebookPanel() {
         {resultats?.map((v, i) => <Text key={i} style={styles.texte}>{i + 1}. {v}</Text>)}
         {signalerDoublonsLore(edition, fiches, id).map(v => <Text key={v} style={styles.avertissement}>Doublon de titre potentiel : {v}</Text>)}
       </View> : null}
+      {onglet === 'images' ? (courante
+        ? <ReferencesVisuellesFiche ficheId={id}/>
+        : <Text style={styles.aide}>Enregistre d’abord la fiche pour lui rattacher des images.</Text>) : null}
       <Bouton titre={courante?.protegee || !courante ? 'Enregistrer en brouillon' : 'Enregistrer la fiche'}
         onPress={() => void sauvegarder()} desactive={occupe} style={styles.bouton}/>
       {etat.brouillons[id] && !modifie ? <>

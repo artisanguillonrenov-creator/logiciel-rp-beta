@@ -7,7 +7,7 @@ import {
   assurerPodElyndorCloud, definirPodElyndorCloud, originePodElyndorCloud,
   podElyndorCloud, rafraichirPodElyndorCloud, revenirAuPodPublieElyndorCloud,
 } from '../engine/elyndorCloud';
-import { ELYNDOR_CLOUD_MODELE_IMAGE } from '../engine/elyndorCloudImages';
+import { IDENTIFIANT_TECHNIQUE_IMAGE_POD } from '../engine/elyndorCloudImages';
 import {
   lirePodConcepteur, enregistrerPodConcepteur, effacerPodConcepteur, validerIdentifiantPod,
 } from '../concepteur/podStore';
@@ -128,7 +128,7 @@ export default function AtelierRunpodPanel() {
       <Text selectable style={styles.code}>{podActif || '—'}</Text>
       <Text style={styles.note}>Origine : {ORIGINES[origine]}</Text>
       <Text style={styles.note}>Narration attendue : {ELYNDOR_CLOUD_MODELE}</Text>
-      <Text style={styles.note}>Image attendue : {ELYNDOR_CLOUD_MODELE_IMAGE ?? 'désactivée'} · Embeddings : {ELYNDOR_CLOUD_MODELE_EMBEDDINGS ?? 'désactivés'}</Text>
+      <Text style={styles.note}>Images : {IDENTIFIANT_TECHNIQUE_IMAGE_POD ? 'serveur d’images du pod' : 'désactivées'} · Embeddings : {ELYNDOR_CLOUD_MODELE_EMBEDDINGS ?? 'désactivés'}</Text>
 
       <Text style={styles.label}>ID du nouveau pod RunPod</Text>
       <TextInput

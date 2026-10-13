@@ -1,6 +1,6 @@
 import type { AppSettings, StoryState } from '../types';
 import { ELYNDOR_CLOUD_MODELE, ELYNDOR_CLOUD_MODELE_EMBEDDINGS, podElyndorCloud } from './elyndorCloud';
-import { ELYNDOR_CLOUD_MODELE_IMAGE } from './elyndorCloudImages';
+import { IDENTIFIANT_TECHNIQUE_IMAGE_POD } from './elyndorCloudImages';
 import type { EntreeJournal } from './journalDiagnostic';
 
 // Export « Diagnostic » : un seul fichier JSON avec tout ce qu'il faut pour
@@ -53,7 +53,7 @@ export function construireExportDiagnostic(params: {
     elyndorCloud: {
       pod: podElyndorCloud(),
       modeleNarration: ELYNDOR_CLOUD_MODELE,
-      modeleImage: ELYNDOR_CLOUD_MODELE_IMAGE,
+      modeleImage: IDENTIFIANT_TECHNIQUE_IMAGE_POD,
       modeleEmbeddings: ELYNDOR_CLOUD_MODELE_EMBEDDINGS,
     },
     resume: {

@@ -1,9 +1,9 @@
 # Concepteur — modules supplémentaires reliés
 
-## Atelier visuel : action réelle sur le générateur
-\`src/concepteur/reglagesVisuels.ts\` établit trois préréglages et l'intensité artistique, plus un négatif supplémentaire. Les réglages sont stockés **localement sur l'appareil** dans \`@elyndor/concepteur/visuel-v1\`. Le chemin \`src/engine/images.ts\` les lit avant la génération de toute nouvelle scène ou portrait ; il transmet les poids de modules modifiés et la liste d'exclusions à **Elyndor Cloud**. La valeur par défaut préserve strictement l'ancien comportement. Les filtres de sécurité Grand public et négatifs techniques restent présents, sans possibilité de les désactiver par l'atelier.
+## Atelier visuel : configuration unique (V3)
+\`src/concepteur/reglagesVisuels.ts\` (schéma 3, clé \`@elyndor/concepteur/visuel-v3\`) porte l'identité artistique globale, la consigne d'extraction universelle du narrateur, le positif et le négatif globaux, le cadrage, les références et les paramètres techniques par format. Toute image passe par \`src/engine/serviceVisuel.ts\`, qui n'envoie au générateur que ce qu'il prend en charge. L'ancienne configuration (\`visuel-v1\`) est migrée sans être modifiée. Détails : \`docs/ILLUSTRATION_V3.md\`.
 
-**Ce que la fonction ne fait pas :** elle n'installe pas de LoRA sur RunPod, ne remplace pas le modèle d'images, ne change pas le format ni ne génère une image d'essai silencieusement. La compatibilité des modules reste dépendante du pod réellement actif.
+**Ce que la fonction ne fait pas :** elle n'installe pas de module sur RunPod, ne remplace pas le modèle d'images et ne génère jamais d'image d'essai sans confirmation. Les protections du profil Grand public restent appliquées séparément.
 
 ## Maintenance : actions fonctionnelles à la demande
 - Vérification du catalogue \`version.json\` par \`verifierMiseAJour\`; ouverture contrôlée des destinations GitHub/Expo officielles ;
