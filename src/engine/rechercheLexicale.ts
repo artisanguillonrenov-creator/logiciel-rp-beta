@@ -145,7 +145,11 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   return retenus;
 }
 
-/** Fiches de lore classées avec le même score hybride que le mode embeddings. */
+/**
+ * Fiches de lore classées avec le même score hybride que le mode embeddings.
+ * @deprecated Aucun appelant de production : le jeu passe par passagesLore.ts
+ * (passages, ancres P0, rapport). Conservée pour ses tests et l'interface du lorebook.
+ */
 export function rechercherLoreLexical(entrees: LoreEntry[], requete: string): LoreEntry[] {
   const termes = preparerRequeteLore(requete).termes;
   const toujoursActives: LoreEntry[] = [];

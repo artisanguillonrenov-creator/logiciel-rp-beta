@@ -71,20 +71,6 @@ function formaterFaits(faits: Fact[], budget = 3200): string {
   return tronquer(faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'), budget);
 }
 
-function formaterLore(entries: LoreEntry[], titre: string, budget: number, longueurEntree: number): string {
-  if (entries.length === 0 || budget <= 0) return '';
-  const blocs: string[] = [];
-  let restant = budget;
-  for (const entry of entries) {
-    const bloc = `### ${entry.titre}\n${tronquer(entry.contenu, longueurEntree)}`;
-    if (bloc.length > restant && blocs.length > 0) break;
-    blocs.push(tronquer(bloc, restant));
-    restant -= blocs.at(-1)!.length + 2;
-    if (restant <= 80) break;
-  }
-  return blocs.length ? `\n\n[${titre}]\n${blocs.join('\n\n')}` : '';
-}
-
 function instructionLongueur(longueur: StorySettings['longueur'], plages?: PlagesLongueur): string {
   return consigneLongueur(longueur, plages);
 }

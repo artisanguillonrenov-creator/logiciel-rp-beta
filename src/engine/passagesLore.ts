@@ -338,23 +338,38 @@ export function selectionnerPassagesDetaille(
       const actuel = meilleurs.get(note.passage.entreeId);
       if (!actuel || note.score > actuel.score) meilleurs.set(note.passage.entreeId, note);
     }
-    // La meilleure fiche peut prendre tout le budget ; les suivantes, au plus
-    // PART_MAX_P0, pour laisser de la place au message du joueur (P1).
-    const plafondSuivants = Math.floor(budget * PART_MAX_P0);
-    let premiere = true;
-    for (const note of [...meilleurs.values()].sort((a, b) => b.score - a.score)) {
+    // Répartition équitable : une seule fiche certaine peut prendre tout le budget ;
+    // plusieurs se partagent au plus PART_MAX_P0 (le reste va au message du joueur).
+    // Les fiches courtes restent entières, les longues sont raccourcies de façon
+    // égale ; si une part tombe sous la taille lisible, la fiche au score le plus
+    // bas est écartée et le manque déclaré.
+    let candidats = [...meilleurs.values()].sort((a, b) => b.score - a.score);
+    const plafondTotal = (n: number) => (n === 1 ? budget : Math.floor(budget * PART_MAX_P0));
+    const repartir = (liste: Note[]) => {
+      let disponible = plafondTotal(liste.length) - liste.reduce((n, x) => n + x.passage.titre.length + 6, 0);
+      const parLongueur = [...liste].sort((a, b) => a.passage.contenu.length - b.passage.contenu.length);
+      const parts = new Map<Note, number>();
+      parLongueur.forEach((note, i) => {
+        const part = Math.max(0, Math.floor(disponible / (parLongueur.length - i)));
+        const alloue = Math.min(note.passage.contenu.length, part);
+        parts.set(note, alloue);
+        disponible -= alloue;
+      });
+      return parts;
+    };
+    let parts = repartir(candidats);
+    while (candidats.length > 1 && candidats.some((n) => parts.get(n)! < Math.min(n.passage.contenu.length, TAILLE_MIN_P0_RACCOURCI))) {
+      const ecartee = candidats[candidats.length - 1];
+      rejets.set(ecartee.passage.entreeId, { id: ecartee.passage.entreeId, titre: ecartee.passage.titre, cause: 'budget', score: ecartee.score });
+      candidats = candidats.slice(0, -1);
+      parts = repartir(candidats);
+    }
+    for (const note of candidats) {
       const { passage } = note;
-      const plafond = premiere ? budget : plafondSuivants;
-      const place = plafond - utilise - (passage.titre.length + 6);
-      if (passage.contenu.length <= place) {
-        ajouter(note, 'P0', passage.contenu, '');
-      } else if (place >= TAILLE_MIN_P0_RACCOURCI) {
-        ajouter(note, 'P0', raccourcir(passage.contenu, place), '', true);
-      } else {
-        rejets.set(passage.entreeId, { id: passage.entreeId, titre: passage.titre, cause: 'budget', score: note.score });
-        continue;
-      }
-      premiere = false;
+      const alloue = parts.get(note)!;
+      if (alloue >= passage.contenu.length) ajouter(note, 'P0', passage.contenu, '');
+      else if (alloue >= TAILLE_MIN_P0_RACCOURCI) ajouter(note, 'P0', raccourcir(passage.contenu, alloue), '', true);
+      else rejets.set(passage.entreeId, { id: passage.entreeId, titre: passage.titre, cause: 'budget', score: note.score });
     }
   }
 
