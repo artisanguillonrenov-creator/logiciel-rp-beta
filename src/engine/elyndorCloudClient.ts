@@ -1,5 +1,6 @@
 import type { AppSettings, MoteurInference } from '../types';
 import { reponseChatGPT } from './chatgptSubscription';
+import { convertirReponseCloudflare, genererTexteHorde } from './fournisseursNarrationGratuits';
 import { ajouterInstructionsOutilsJson, extraireAppelsOutilsJson } from './toolCallingJson';
 import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './reasoningPolicy';
 import { enregistrerUsageAppel } from './mesureTokens';
@@ -87,7 +88,7 @@ export function configurationLLM(settings: AppSettings, _modeleOverride?: string
   const route = resoudreRouteTexte(settings);
   return {
     apiKey: route.apiKey, model: route.model,
-    moteurInference: (route.fournisseur === 'chatgpt' ? 'chatgpt' : route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
+    moteurInference: (route.fournisseur === 'chatgpt' ? 'chatgpt' : route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : route.fournisseur === 'cloudflare' ? 'cloudflare' : route.fournisseur === 'aihorde' ? 'aihorde' : 'serveur') as MoteurInference,
     baseUrl: route.url.replace(/\/chat\/completions$/, ''),
   };
 }
@@ -260,13 +261,21 @@ async function appelerChatDetaille(
 
   let response: Response;
   try {
+    if (route.fournisseur === 'aihorde') {
+      const texte = await genererTexteHorde(messages, route.model, route.apiKey, temperature, maxTokens, signal);
+      response = new Response(JSON.stringify({
+        choices: [{ message: { role: 'assistant', content: texte }, finish_reason: 'stop' }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } else {
     response = await fetchCloud({
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(route.apiKey ? { Authorization: `Bearer ${route.apiKey}` } : {}),
     },
-    body: JSON.stringify({
+    body: JSON.stringify(route.fournisseur === 'cloudflare'
+      ? { messages, temperature, max_tokens: maxTokens, stream: false }
+      : {
       model: route.model,
       messages,
       // Les modèles GPT de raisonnement n'acceptent pas la température
@@ -289,6 +298,7 @@ async function appelerChatDetaille(
       ...(tools ? { tools, tool_choice: 'auto' } : { stream_options: { include_usage: true } }),
     }),
   }, signal, route);
+    }
   } catch (erreur) {
     journaliser('appel-ia', {
       composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
@@ -329,7 +339,8 @@ async function appelerChatDetaille(
     );
   }
 
-  const data = analyserCorpsReponse(await response.text());
+  const brut = analyserCorpsReponse(await response.text());
+  const data = route.fournisseur === 'cloudflare' ? convertirReponseCloudflare(brut) : brut;
   enregistrerUsageAppel(data?.usage);
   enregistrerAppelIADiagnostic({
     composant: diagnosticLabel ?? 'Elyndor Cloud',
@@ -410,6 +421,17 @@ export async function appellerModeleAvecOutils({
   diagnosticLabel,
   storyId,
 }: AppelModeleAvecOutilsOptions): Promise<{ contenu: string; appelsOutils: AppelOutil[] }> {
+  const route = resoudreRouteTexte(reglagesFournisseursActifs());
+  // Ces API ne disposent pas du même protocole d'outils OpenAI. La voie JSON
+  // existante leur fournit les mêmes instructions structurées sans tenter
+  // d'envoyer le paramètre incompatible « tools ».
+  if (route.fournisseur === 'cloudflare' || route.fournisseur === 'aihorde') {
+    const message = await appelerChat(
+      ajouterInstructionsOutilsJson(messages, outils), temperature, maxTokens, signal,
+      undefined, diagnosticLabel, storyId,
+    );
+    return extraireAppelsOutilsJson(typeof message.content === 'string' ? message.content : '');
+  }
   const schemas = outils.map(versSchemaOutil);
 
   try {
