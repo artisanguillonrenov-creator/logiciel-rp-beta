@@ -63,6 +63,10 @@ export function construireRequeteTexteHorde(
 
 export function convertirReponseCloudflare(data: any): Record<string, any> {
   const result = data?.result;
+  // Selon le modèle Workers AI, la réponse est de type {result:{response}}
+  // ou déjà au format OpenAI-compatible {choices:[{message}]}.
+  const compatible = result?.choices ? result : data?.choices ? data : null;
+  if (compatible?.choices?.[0]?.message) return compatible;
   const reponse = result?.response ?? data?.response;
   if (typeof reponse !== 'string') {
     throw new Error('Cloudflare : aucune réponse textuelle exploitable.');
@@ -123,6 +127,7 @@ export async function genererTexteHorde(
     throw new Error('AI Horde : génération refusée par la file d’attente.');
   }
   const debut = Date.now();
+  let termine = false;
   try {
     while (Date.now() - debut < DELAI_HORDE_MS) {
       await attendre(3500, signal);
@@ -133,12 +138,13 @@ export async function genererTexteHorde(
       if (resultat?.done === true || (resultat?.finished ?? 0) > 0) {
         const texte = resultat?.generations?.[0]?.text;
         if (typeof texte !== 'string' || !texte.trim()) throw new Error('AI Horde n’a renvoyé aucun texte.');
+        termine = true;
         return texte.trim();
       }
     }
     throw new Error('AI Horde : attente supérieure à quatre minutes ; choisis un autre modèle actif.');
   } finally {
-    if (signal?.aborted || Date.now() - debut >= DELAI_HORDE_MS) {
+    if (!termine) {
       try {
         await lecteur(`${HORDE_API}/generate/text/status/${id}`, { method: 'DELETE', headers: entetes });
       } catch { /* abandon best effort, ne masque pas l'erreur principale */ }
