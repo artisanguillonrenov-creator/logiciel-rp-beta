@@ -207,8 +207,9 @@ interface SelectionLore {
 const MAX_LIGNES_RAPPORT = 8;
 
 /** Lignes du diagnostic concepteur : ce qui est retenu, rejeté, manquant, et pourquoi. */
-function lignesRapportLore(rapport: RapportSelectionLore, resolution: ResolutionEntites): string[] {
+function lignesRapportLore(rapport: RapportSelectionLore, resolution: ResolutionEntites, durees: { resolutionMs: number; indexMs: number; classementMs: number }): string[] {
   const lignes = [
+    `durées : résolution des entités ${durees.resolutionMs} ms · index des passages ${durees.indexMs} ms · classement ${durees.classementMs} ms`,
     `lore : ${rapport.passagesAnalyses} passages analysés, ${rapport.retenus.length} fiches retenues, ${rapport.utilise}/${rapport.budget} caractères (budget en caractères, pas en jetons)`,
     ...rapport.retenus.slice(0, MAX_LIGNES_RAPPORT).map((r) => `[${r.niveau}] ${formaterDebug(r.titre, r.score)} — ${r.raison}${r.raccourci ? ' (raccourcie)' : ''} · ${r.caracteres} car.`),
     ...rapport.rejetes.slice(0, 4).map((r) => `rejetée : ${formaterDebug(r.titre, r.score)} — ${r.cause === 'budget' ? 'budget épuisé' : 'quota par fiche atteint'}`),
@@ -247,13 +248,16 @@ export async function calculerSelectionLore(
 
   // Moteur de recherche du lore : tous les passages de toutes les entrées
   // sont notés, seuls les meilleurs partent au narrateur (BUDGET_LORE_PASSAGES).
+  const debutIndex = Date.now();
   const passagesLore = construirePassages(poolElyndor);
+  const dureeIndexMs = Date.now() - debutIndex;
   const preparation = preparerTour(story, messageJoueur);
   const requetesLore = construireRequetesLore(story, messageJoueur, appSettings, preparation);
   // Entités de la scène : seuls les noms cités dans le message, la ville, la
   // destination ou la dernière réponse sont certains (P0). Un nom présent
   // seulement dans le résumé ou les faits d'un récit passé n'est qu'évoqué.
   const derniereReponse = [...story.messages].reverse().find((m) => m.role === 'assistant')?.content;
+  const debutResolution = Date.now();
   const resolution = resoudreEntitesScene({
     pool: poolElyndor,
     messageJoueur,
@@ -265,6 +269,7 @@ export async function calculerSelectionLore(
     memoire: [story.memoire.resume, ...story.memoire.faits.map((f) => f.texte)],
     presents: story.scene?.presents ?? [],
   });
+  const dureeResolutionMs = Date.now() - debutResolution;
 
   // La frontière entre contexte direct et recherche historique n'est plus
   // un nombre fixe de messages. Elle dépend du budget réel de conversation
@@ -288,6 +293,7 @@ export async function calculerSelectionLore(
   // lorsqu'aucun fournisseur n'est configuré que lorsqu'un endpoint
   // d'embeddings configuré refuse ou échoue pendant l'appel.
   const selectionLexicale = (raison: string, statut: 'ok' | 'repli' = 'repli'): SelectionLore => {
+    const debutClassement = Date.now();
     const { entrees: loreElyndor, rapport } = selectionnerPassagesDetaille(passagesLore, requetesLore.scene, {
       requeteMessage: requetesLore.message,
       ancres: resolution.ancresP0,
@@ -308,7 +314,7 @@ export async function calculerSelectionLore(
         `${messagesAnciens.length} messages anciens consultables`,
         `${loreElyndor.length} entrées lore retenues`,
         `${souvenirs.length} souvenirs retenus`,
-        ...lignesRapportLore(rapport, resolution),
+        ...lignesRapportLore(rapport, resolution, { resolutionMs: dureeResolutionMs, indexMs: dureeIndexMs, classementMs: Date.now() - debutClassement }),
       ],
     );
     return {
@@ -336,6 +342,7 @@ export async function calculerSelectionLore(
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
+    const debutClassementSemantique = Date.now();
     const { entrees: loreElyndor, rapport } = selectionnerPassagesDetaille(passagesLore, requetesLore.scene, {
       vecteurRequete: vecteurScene ?? vecteurRequete,
       requeteMessage: requetesLore.message,
@@ -360,7 +367,7 @@ export async function calculerSelectionLore(
         `${messagesAnciens.length} messages anciens consultables`,
         `${loreElyndor.length} entrées lore retenues`,
         `${souvenirs.length} souvenirs retenus`,
-        ...lignesRapportLore(rapport, resolution),
+        ...lignesRapportLore(rapport, resolution, { resolutionMs: dureeResolutionMs, indexMs: dureeIndexMs, classementMs: Date.now() - debutClassementSemantique }),
       ],
     );
 
@@ -494,7 +501,10 @@ export async function construireContexteNarrateurPourIllustration(story: StorySt
   const storyCourante = assurerNoyau(story, evenements);
   const reglagesAtelier = await parametresDeLaSession(appSettings);
   const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings, undefined, reglagesAtelier);
-  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  // Les événements déjà rappelés par le noyau V12 ne sont pas choisis une seconde fois.
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements, {
+    exclureMessageIds: new Set(construireContexteNoyau(storyCourante as Parameters<typeof construireContexteNoyau>[0], messageJoueur).idsMessages),
+  });
   const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs, true, reglagesAtelier);
   // Pas de bloc d'état machine : la réponse attendue est la direction artistique.
   return construireSystemPrompt(
@@ -616,7 +626,10 @@ async function genererTourInterne(
   ajouterEtapeDiagnostic('Méta-moteurs V2.1 — contrat narratif', 'contexte', 'ok', 0, undefined,
     [`${contrat.contributions.filter((m) => m.actif).length}/15 responsabilités mobilisées`, ...debugLore.metamoteurs]);
   const debutContexte = Date.now();
-  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  // Les événements déjà rappelés par le noyau V12 ne sont pas choisis une seconde fois.
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements, {
+    exclureMessageIds: new Set(construireContexteNoyau(storyCourante as Parameters<typeof construireContexteNoyau>[0], messageJoueur).idsMessages),
+  });
   const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs, true, reglagesAtelier);
   ajouterEtapeDiagnostic(
     'Construire contexte du tour',
@@ -624,7 +637,14 @@ async function genererTourInterne(
     'ok',
     Date.now() - debutContexte,
     undefined,
-    [`${blocs.blocs.length} blocs mémoire retenus`, `${blocs.totalCaracteres} caractères mémoire narrative`],
+    [
+      `${blocs.blocs.length} blocs mémoire retenus`,
+      `${blocs.totalCaracteres} caractères mémoire narrative`,
+      ...blocs.blocs.map((b) => `[${b.niveau}] ${b.type} · ${b.source}`),
+      ...blocs.rejetes.slice(0, 6).map((r) => `rejeté : ${r.type} ${r.id} [${r.niveau}] — ${r.cause === 'budget' ? 'budget épuisé' : r.cause === 'doublon' ? 'doublon' : 'déjà fourni par une autre source'}`),
+      ...blocs.manques.map((m) => `MANQUE : ${m}`),
+      `${evenements.filter((e) => e.lieuSource === 'inconnu').length}/${evenements.length} événements au lieu inconnu (jamais déduit du lieu actuel)`,
+    ],
   );
 
   const modelePourAppel = modeleOverridePourFournisseur(

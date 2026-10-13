@@ -1,6 +1,6 @@
 import type { LoreEntry, Message } from '../types';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, preparerRequeteLore, SEUIL_LORE_HYBRIDE, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
-import { contientExpression, ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
+import { ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
 
 // Recherche lexicale locale (reprise de la V13) : repli quand aucun
 // fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
@@ -47,6 +47,16 @@ function extraire(texte: string, termes: string[], max: number): string {
   return `${depart > 0 ? '…' : ''}${texte.slice(depart, depart + max).trim()}${depart + max < texte.length ? '…' : ''}`;
 }
 
+interface AnalyseElement {
+  titre: string;
+  texte: string;
+  comptes: Map<string, number>;
+  corps: string;
+  racinesTitre: Set<string>;
+}
+
+const analysesMemorisees = new WeakMap<object, AnalyseElement>();
+
 export interface OptionsClassement<T> {
   requete: string;
   items: T[];
@@ -69,15 +79,23 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   const expression = normaliserRecherche(options.requete);
   const maintenant = options.maintenant ?? Date.now();
   const racinesTermes = termes.map(racineSimple);
+  // Expression complète de la requête, en racines, cherchée telle quelle (mots entiers).
+  const expressionRacines = expression.length >= 6 ? ` ${expression.split(' ').map(racineSimple).join(' ')} ` : '';
 
-  // Passe 1 : chaque élément est analysé une fois (mots entiers et racines simples).
+  // Passe 1 : chaque élément est analysé une fois (mots entiers et racines
+  // simples). Un élément inchangé d'un tour à l'autre (événement, fait…) garde
+  // son analyse : elle ne se refait que si son texte ou son titre a changé.
   const analyses = items.map((item) => {
     const titre = titreDe?.(item) ?? '';
     const texte = texteDe(item);
+    const memorise = typeof item === 'object' && item !== null ? analysesMemorisees.get(item as object) : undefined;
+    if (memorise && memorise.texte === texte && memorise.titre === titre) return { item, ...memorise };
     const motsCorps = normaliserRecherche(`${titre} ${texte}`).split(' ').map(racineSimple);
     const comptes = new Map<string, number>();
     for (const mot of motsCorps) comptes.set(mot, (comptes.get(mot) ?? 0) + 1);
-    return { item, texte, comptes, corps: motsCorps.join(' '), racinesTitre: ensembleRacines(termesRecherche(titre)) };
+    const analyse = { titre, texte, comptes, corps: motsCorps.join(' '), racinesTitre: ensembleRacines(termesRecherche(titre)) };
+    if (typeof item === 'object' && item !== null) analysesMemorisees.set(item as object, analyse);
+    return { item, ...analyse };
   });
   // Poids de rareté (IDF) : un mot présent dans presque tous les éléments
   // (« marché », le nom du PNJ du moment) compte peu ; un mot rare de la
@@ -109,7 +127,7 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
     const score = 5 * (trouves / poidsTotal)
       + 1.2 * Math.log2(1 + frequence)
       + 1.8 * dansTitre
-      + (expression.length >= 6 && contientExpression(corps, expression.split(' ').map(racineSimple).join(' ')) ? 2.5 : 0)
+      + (expressionRacines && ` ${corps} `.includes(expressionRacines) ? 2.5 : 0)
       + fraicheur;
     return { item, score, extrait: extraire(texte, termes, budget.maxCaracteresParResultat) };
   });
