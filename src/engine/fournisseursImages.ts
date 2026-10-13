@@ -38,6 +38,11 @@ export interface CapacitesGenerateur {
     maxVisages: number;
     /** Rôles que le fournisseur distingue (vide : images transmises sans rôle). */
     roles: Array<'personnage' | 'scene' | 'race'>;
+    /**
+     * Une seule référence « générale » (décor, continuité ou race) en plus des
+     * visages : les suivantes seraient mal interprétées par le générateur.
+     */
+    referenceGeneraleUnique?: boolean;
   };
   /** Tailles acceptées par format ; null : dimensions imposées par le fournisseur. */
   tailles: Record<FormatImage, readonly string[]> | null;
@@ -59,7 +64,9 @@ export function capacitesElyndorCloud(): CapacitesGenerateur {
     nom: 'Elyndor Cloud (pod)',
     source: 'declaree',
     negatif: true, graine: true, pas: true, guidance: true, modules: true, poidsReference: true,
-    references: { supportees: true, max: MAX_REFERENCES_IMAGE, maxVisages: MAX_VISAGES_POD, roles: ['personnage', 'scene', 'race'] },
+    // Le serveur garde la première scène OU la première race comme référence
+    // générale ; une seconde race serait lue comme un visage.
+    references: { supportees: true, max: MAX_REFERENCES_IMAGE, maxVisages: MAX_VISAGES_POD, roles: ['personnage', 'scene', 'race'], referenceGeneraleUnique: true },
     tailles: { '16:9': TAILLES_SCENE, '3:4': TAILLES_PORTRAIT },
     remarques: [
       'Capacités déclarées par le protocole du serveur Elyndor ; les modules absents du pod sont ignorés par lui (disponibilité non vérifiée par l’application).',

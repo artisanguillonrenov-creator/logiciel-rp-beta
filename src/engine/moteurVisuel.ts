@@ -118,6 +118,19 @@ export function selectionnerReferences(
       || (ORDRE_IDENTITE[a.ref.type] ?? 9) - (ORDRE_IDENTITE[b.ref.type] ?? 9)
       || a.ordre - b.ordre)
     .map(({ ref }) => ref);
+  // Générateur à référence générale unique : on garde celle qui sert le
+  // format (décor ou continuité pour une scène, race pour un portrait).
+  if (capacites.references.referenceGeneraleUnique) {
+    const prioritaires: RoleReference[] = portrait ? ['race', 'decor', 'continuite'] : ['decor', 'continuite', 'race'];
+    const generale = prioritaires.map((role) => tries.find((r) => r.role === role)).find(Boolean);
+    for (let i = tries.length - 1; i >= 0; i--) {
+      const ref = tries[i];
+      if (ref.role !== 'identite' && ref !== generale) {
+        ecarter(ref, `${capacites.nom} n’accepte qu’une référence générale (décor ou race) en plus des visages`);
+        tries.splice(i, 1);
+      }
+    }
+  }
   const entitesVues = new Set<string>();
   const retenues: ReferenceRetenue[] = [];
   let visages = 0;

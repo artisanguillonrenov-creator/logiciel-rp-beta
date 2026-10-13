@@ -35,6 +35,8 @@ import type { AppSettings, StoryState } from '../src/types';
 const REGLAGES = reglagesVisuelsInitiaux();
 const AVEC_PERSONNAGES: ReglagesVisuels = { ...REGLAGES, references: { ...REGLAGES.references, personnages: true } };
 const ELYNDOR = capacitesElyndorCloud();
+/** Générateur hypothétique acceptant plusieurs références générales. */
+const ELYNDOR_MULTIPLE: CapacitesGenerateur = { ...ELYNDOR, references: { ...ELYNDOR.references, referenceGeneraleUnique: false } };
 const OPENAI = capacitesOpenAI('gpt-image-1-mini');
 const SANS_REFERENCES: CapacitesGenerateur = { ...ELYNDOR, nom: 'Générateur texte seul', references: { supportees: false, max: 0, maxVisages: 0, roles: [] } };
 const MARQUEURS_MODELE = /sdxl|lustify|chroma|flux|\blora\b|years old\)\d|\)\s*1\.\d|elyndor style/i;
@@ -466,11 +468,27 @@ test('V32 — scène avec PNJ, race et lieu référencés : propositions filtré
     { id: 'lore:halles', type: 'lieu', role: 'decor', lieu: 'covered market', libelle: 'Halles', uri: 'data:h' },
     { id: 'lore:chateau', type: 'lieu', role: 'decor', lieu: 'castle', libelle: 'Château', uri: 'data:c' },
   ];
-  const { retenues, ecartees } = selectionnerReferences(candidats, contrat, AVEC_PERSONNAGES, ELYNDOR);
+  const { retenues, ecartees } = selectionnerReferences(candidats, contrat, AVEC_PERSONNAGES, ELYNDOR_MULTIPLE);
   assert.deepEqual(retenues.map((r) => r.id), ['avatar:pnj-sylvana', 'race:elfes-noirs-Femme', 'lore:halles']);
   assert.deepEqual(retenues.map((r) => r.roleGenerateur), ['personnage', 'race', 'scene']);
   assert.ok(ecartees.find((e) => e.id === 'avatar:pnj-kael')?.raison.includes('non visible'));
   assert.ok(ecartees.find((e) => e.id === 'lore:chateau')?.raison.includes('autre lieu'));
+});
+
+test('serveur à référence générale unique : une seule image de race ou de décor en plus des visages', () => {
+  const { contrat } = contratMarche();
+  const candidats: ReferenceCandidate[] = [
+    { id: 'race:elfes-noirs', type: 'race', role: 'race', entite: 'pnj-sylvana', libelle: 'race elfe', uri: 'data:r1' },
+    { id: 'race:orcs', type: 'race', role: 'race', entite: 'pnj-sylvana', libelle: 'race orc', uri: 'data:r2' },
+    { id: 'lore:halles', type: 'lieu', role: 'decor', lieu: 'covered market', libelle: 'Halles', uri: 'data:h' },
+    { id: 'scene:avant', type: 'scene-precedente', role: 'continuite', lieu: 'covered market', libelle: 'scène', uri: 'data:s' },
+  ];
+  const scene = selectionnerReferences(candidats, contrat, REGLAGES, ELYNDOR);
+  assert.deepEqual(scene.retenues.map((r) => r.id), ['lore:halles']);
+  assert.equal(scene.ecartees.filter((e) => /une référence générale/.test(e.raison)).length, 3);
+  // Portrait : la race est la référence générale utile.
+  const portrait = contratPortrait({ story: histoire(), sujet: { nom: 'Sylvana Nocturne', type: 'pnj', assetId: 'pnj-sylvana', principal: true }, extraction: null, parModele: false, etat: etatVisuelVide() }).contrat;
+  assert.deepEqual(selectionnerReferences(candidats.slice(0, 2), portrait, REGLAGES, ELYNDOR).retenues.map((r) => r.id), ['race:elfes-noirs']);
 });
 
 test('consigne universelle unique, éditable, format JSON fixe ; contexte du narrateur conservé', () => {
