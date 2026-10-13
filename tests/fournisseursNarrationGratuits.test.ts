@@ -89,3 +89,60 @@ test('le catalogue Horde affiche uniquement les modèles texte servis par un wor
   const liste = await listerModelesNarrationHorde(lecteur);
   assert.deepEqual(liste.map(m=>m.id), ['horde-a', 'horde-b']);
 });
+
+test('le client Elyndor envoie les messages au modèle Cloudflare choisi, sans démarrer Runpod', async () => {
+  const { activerReglagesFournisseurs } = await import('../src/engine/fournisseursRuntime');
+  const { appellerModele } = await import('../src/engine/elyndorCloudClient');
+  const original = globalThis.fetch;
+  const captured: Array<{url:string;init:RequestInit}> = [];
+  const compte = 'f'.repeat(32);
+  try {
+    activerReglagesFournisseurs({
+      ...BASE, fournisseurNarration: 'cloudflare', moteurInference: 'cloudflare',
+      modeleNarrationCloudflare: '@cf/zai-org/glm-4.7-flash',
+      cloudflareAccountId: compte, cloudflareApiKey: 'jeton-test',
+    });
+    globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      captured.push({url:String(url),init:init||{}});
+      return new Response(JSON.stringify({ success: true, result: { response: 'Une épaisse brume enveloppe la cité.' } }),
+        { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    const texte = await appellerModele({
+      apiKey: '', model: '', messages: [
+        {role:'system',content:'Narrateur Elyndor'},
+        {role:'user',content:'Décris la ville'},
+      ],
+      temperature:0.6,maxTokens:200,
+    });
+    assert.equal(texte,'Une épaisse brume enveloppe la cité.');
+    assert.equal(captured.length,1);
+    assert.ok(captured[0].url.includes(`/accounts/${compte}/ai/run/@cf/zai-org/glm-4.7-flash`));
+    assert.equal(captured[0].init.headers && (captured[0].init.headers as Record<string,string>).Authorization, 'Bearer jeton-test');
+    const payload = JSON.parse(String(captured[0].init.body));
+    assert.equal(payload.messages[0].role,'system');
+    assert.equal(payload.max_tokens,200);
+    assert.equal(payload.stream,false);
+    assert.equal(payload.model,undefined, 'Workers AI /ai/run identifie le modèle dans l’URL');
+  } finally {
+    globalThis.fetch = original;
+    activerReglagesFournisseurs(BASE);
+  }
+});
+
+test('une demande AI Horde annulée libère sa tâche sans produire de narration', async () => {
+  const { genererTexteHorde } = await import('../src/engine/fournisseursNarrationGratuits');
+  const appels: Array<{url:string;method?:string}> = [];
+  const lecteur = (async (url: string | URL | Request, init?: RequestInit) => {
+    appels.push({ url:String(url), method:init?.method });
+    if (String(url).endsWith('/generate/text/async')) {
+      return {ok:true,json:async()=>({id:'01234567-abcd-1234-abcd-abc00000ffff'})};
+    }
+    return {ok:true,json:async()=>({})};
+  }) as unknown as typeof fetch;
+  const controleur = new AbortController();
+  controleur.abort();
+  await assert.rejects(genererTexteHorde([{role:'user',content:'Une scène'}], 'modele-rp', '', 0.7, 200,
+    controleur.signal, lecteur), /annulée/);
+  assert.equal(appels.length,2);
+  assert.equal(appels[1].method,'DELETE');
+});
