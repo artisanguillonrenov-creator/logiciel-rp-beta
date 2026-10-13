@@ -107,6 +107,8 @@ let LORE_ELYNDOR = LORE_ELYNDOR_BASE;
 
 /** Charge les fiches réellement publiées avant CHAQUE sélection narrative. */
 async function assurerLorePublie() {
+  // Synonymes de recherche saisis dans l'Atelier (lecture unique, mise en cache).
+  await (require('../concepteur/synonymesStore') as typeof import('../concepteur/synonymesStore')).chargerSynonymesPersonnalises().catch(() => undefined);
   const etat = await lireLoreAtelier();
   LORE_ELYNDOR = appliquerLorePublie(LORE_ELYNDOR_BASE, etat);
   return LORE_ELYNDOR;
@@ -215,6 +217,7 @@ function lignesRapportLore(rapport: RapportSelectionLore, resolution: Resolution
     ...rapport.rejetes.slice(0, 4).map((r) => `rejetée : ${formaterDebug(r.titre, r.score)} — ${r.cause === 'budget' ? 'budget épuisé' : 'quota par fiche atteint'}`),
     ...rapport.manques.map((m) => `MANQUE CANON : ${m}`),
     ...resolution.ambigus.map((a) => `ambiguïté « ${a.alias} » : ${a.candidats.join(' | ')}${a.resolu ? ' (tranchée par la ville)' : ' (non tranchée, aucune ancre)'}`),
+    ...resolution.approches.map((a) => `nom mal écrit reconnu : « ${a.ecrit} » → ${a.nom}`),
   ];
   if (resolution.evoquees.size) lignes.push(`${resolution.evoquees.size} fiche(s) seulement évoquée(s) par le résumé ou les faits : pas d'ancre`);
   return lignes;
