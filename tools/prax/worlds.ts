@@ -6,6 +6,7 @@ import * as bar from '../../src/prax/worlds/bar';
 import * as village from '../../src/prax/worlds/village';
 import * as play from '../../src/prax/worlds/play';
 import * as audience from '../../src/prax/worlds/audience';
+import * as vampire from '../../src/prax/worlds/vampire';
 import { compile } from '../../src/prax/script/compile';
 import { decodeScript } from '../../src/prax/script/json';
 import { CG1_SCRIPT_JSON } from './fixtures';
@@ -32,6 +33,8 @@ export function buildWorld(name: string): State {
       return audience.audienceWorld();
     case 'cg1':
       return compile(decodeScript(CG1_SCRIPT_JSON));
+    case 'vampire':
+      return vampire.vampireWorld();
     default:
       throw new Error(`monde inconnu : ${name}`);
   }
