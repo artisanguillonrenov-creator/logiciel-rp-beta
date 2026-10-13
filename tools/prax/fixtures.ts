@@ -1,0 +1,4 @@
+/** Monture CG-1 de Prax (conformance/fixtures/cg1_supersession.json, BSD-3-Clause) : une
+ * pièce qui arme son propre minuteur puis le désarme par une insertion nue (loi de
+ * supplantation v44). Ce n'est pas un monde livré, seulement une monture de test. */
+export const CG1_SCRIPT_JSON = "{\"cast\":[{\"desires\":[],\"name\":\"p\",\"playable\":true,\"traits\":[]},{\"desires\":[{\"utility\":100,\"when\":[{\"match\":\"vigilHeld\"}]}],\"name\":\"q\",\"playable\":false,\"traits\":[]}],\"scenes\":[{\"beats\":[{\"effects\":[{\"insert\":\"lantern.lit\"},{\"insert\":\"vigilHeld\"}],\"label\":\"[Actor]: shield the lantern from the wind\",\"speaker\":\"q\",\"when\":[{\"not\":\"vigilHeld\"}]}],\"id\":\"vigil\",\"junctions\":[{\"name\":\"darkness\",\"when\":[{\"not\":\"lantern.lit\"}]}],\"opening\":\"A night watch. The lantern burns, but the wind is up.\",\"setup\":[{\"insertFor\":{\"rounds\":3,\"sentence\":\"lantern.lit\"}}]}],\"start\":\"vigil\"}";

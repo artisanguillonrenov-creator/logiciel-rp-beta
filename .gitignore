@@ -60,3 +60,4 @@ yarn-error.*
 Thumbs.db
 __pycache__/
 .fabrique-dist/
+.prax-dist/

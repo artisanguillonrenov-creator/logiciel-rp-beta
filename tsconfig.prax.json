@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.test.json",
+  "compilerOptions": {
+    "outDir": ".prax-dist"
+  },
+  "include": ["src/prax/**/*.ts", "tests/prax*.test.ts", "tools/prax/**/*.ts"]
+}
