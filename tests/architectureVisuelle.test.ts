@@ -13,7 +13,8 @@ function fichiers(dossier: string): string[] {
   return readdirSync(dossier).flatMap((nom) => {
     const chemin = join(dossier, nom);
     if (statSync(chemin).isDirectory()) return fichiers(chemin);
-    return /\.(ts|tsx)$/.test(nom) ? [chemin] : [];
+    // Les fichiers générés (copie texte des sources pour le labo) ne sont pas du code exécuté.
+    return /\.(ts|tsx)$/.test(nom) && !/\.generated\.tsx?$/.test(nom) ? [chemin] : [];
   });
 }
 
