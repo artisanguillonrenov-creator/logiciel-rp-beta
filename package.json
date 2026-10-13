@@ -41,6 +41,9 @@
   },
   "scripts": {
     "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js",
+    "prax:build": "rm -rf .prax-dist && tsc -p tsconfig.prax.json",
+    "prax:conformance": "npm run prax:build && node .prax-dist/tools/prax/conformance.js",
+    "prax": "npm run prax:build --silent && node .prax-dist/tools/prax/cli.js",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
