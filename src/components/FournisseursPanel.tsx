@@ -11,12 +11,13 @@ import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
 type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt';
-type ModeImages='desactive'|'runpod'|'openrouter'|'openai';
+type ModeImages='desactive'|'runpod'|'openrouter'|'openai'|'cloudflare'|'aihorde';
 const LABELS:Record<ModeTexte,string>={
   openrouter:'OpenRouter',openai:'OpenAI / GPT (clé API)',runpod:'RunPod Elyndor',serveur:'Autre API compatible',chatgpt:'ChatGPT — abonnement (sans clé API)',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
+  cloudflare:'Cloudflare FLUX.2 Klein 4B (quota gratuit)',aihorde:'AI Horde (communautaire, gratuit)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
   if(v.moteurInference==='chatgpt'||v.fournisseurNarration==='chatgpt')return 'chatgpt';
@@ -129,6 +130,9 @@ export default function FournisseursPanel(){
       if(selection==='openai' && (!v.openAiApiKey?.trim() || !v.modeleImagesOpenAI?.trim())){
         throw new Error('Renseigne la clé API OpenAI et choisis un modèle GPT Image.');
       }
+      if(selection==='cloudflare' && (!/^[a-z0-9]{32}$/i.test(v.cloudflareAccountId?.trim() || '') || !v.cloudflareApiKey?.trim())){
+        throw new Error('Cloudflare : renseigne ton Account ID (32 caractères) et ton jeton API Workers AI.');
+      }
       if(selection==='openrouter' && !v.modeleImages?.trim()){
         throw new Error('Choisis un modèle image OpenRouter ou désactive les images.');
       }
@@ -222,6 +226,39 @@ export default function FournisseursPanel(){
       accessibilityState={{checked:selection===x}} onPress={()=>setSelection(x)}>
       <Text style={st.name}>{selection===x?'● ':'○ '}{MODES_IMAGES[x]}</Text>
     </Pressable>)}
+    {selection==='cloudflare'?<>
+      <Text style={st.text}>Modèle : FLUX.2 Klein 4B. Jusqu’à 4 images de référence pour les personnages et les lieux. Pas de paiement automatique : le quota gratuit Cloudflare reste limité.</Text>
+      <Text style={st.label}>Cloudflare Account ID</Text>
+      <TextInput style={st.input} value={cfg.cloudflareAccountId||''}
+        autoCapitalize="none" autoCorrect={false} placeholder="Identifiant de compte (32 caractères)"
+        placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({cloudflareAccountId:t.trim()})}/>
+      <Text style={st.label}>Jeton API Cloudflare Workers AI</Text>
+      <TextInput style={st.input} value={cfg.cloudflareApiKey||''}
+        secureTextEntry={!voirCle} autoCapitalize="none" autoCorrect={false}
+        placeholder="Token Workers AI" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({cloudflareApiKey:t.trim()})}/>
+      <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+        <Text style={st.text}>{voirCle?'Masquer le jeton':'Afficher le jeton'}</Text>
+      </Pressable>
+      <Text style={st.text}>Le jeton personnel reste dans le coffre sécurisé de l’appareil. Pour une diffusion publique, il faudra une passerelle serveur plutôt qu’une clé partagée dans l’APK.</Text>
+    </>:null}
+    {selection==='aihorde'?<>
+      <Text style={st.text}>AI Horde génère sur les ordinateurs de bénévoles. Les délais et les modèles varient. En mode anonyme, les demandes peuvent être partagées pour l’entraînement ; n’envoie aucune donnée privée. Les images de référence ne sont pas transmises.</Text>
+      <Text style={st.label}>Clé AI Horde (facultative)</Text>
+      <TextInput style={st.input} value={cfg.aiHordeApiKey||''}
+        secureTextEntry={!voirCle} autoCapitalize="none" autoCorrect={false}
+        placeholder="Vide = génération anonyme" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({aiHordeApiKey:t.trim()})}/>
+      <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+        <Text style={st.text}>{voirCle?'Masquer la clé':'Afficher la clé'}</Text>
+      </Pressable>
+      <Text style={st.label}>Nom exact du modèle Horde (facultatif)</Text>
+      <TextInput style={st.input} value={cfg.modeleImagesHorde||''}
+        autoCapitalize="none" autoCorrect={false}
+        placeholder="Vide = disponibilité communautaire" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({modeleImagesHorde:t.trim()})}/>
+    </>:null}
     {selection==='openrouter'?<>
       <Text style={st.label}>Modèle image OpenRouter</Text>
       <TextInput style={st.input} value={cfg.modeleImages||''}
