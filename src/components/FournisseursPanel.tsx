@@ -227,7 +227,7 @@ export default function FournisseursPanel(){
       <Text style={st.name}>{selection===x?'● ':'○ '}{MODES_IMAGES[x]}</Text>
     </Pressable>)}
     {selection==='cloudflare'?<>
-      <Text style={st.text}>Modèle : FLUX.2 Klein 4B. Jusqu’à 4 images de référence pour les personnages et les lieux. Pas de paiement automatique : le quota gratuit Cloudflare reste limité.</Text>
+      <Text style={st.text}>Modèle : FLUX.2 Klein 4B. Jusqu’à 4 images de référence pour les personnages et les lieux. Le quota gratuit Cloudflare est limité ; selon ton plan, un dépassement peut être facturé. Surveille ta consommation.</Text>
       <Text style={st.label}>Cloudflare Account ID</Text>
       <TextInput style={st.input} value={cfg.cloudflareAccountId||''}
         autoCapitalize="none" autoCorrect={false} placeholder="Identifiant de compte (32 caractères)"
