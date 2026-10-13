@@ -1,13 +1,10 @@
 import type { LoreEntry } from '../types';
 import { similariteCosinus } from './embeddings';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, type ScopeLore } from './loreScoring';
+import { contientExpression, normaliserTexte, positionExpression } from './texteRecherche';
 
-function normalise(texte: string): string {
-  return texte
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // retire les accents
-}
+// Normalisation commune à toute la recherche (texteRecherche.ts).
+const normalise = normaliserTexte;
 
 // --- Métamoteurs (format RISU) -----------------------------------------
 
@@ -250,10 +247,7 @@ function sujetCanoniqueTitre(titre: string): string {
 }
 
 function normaliserAncre(texte: string): string {
-  return normalise(texte)
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normaliserTexte(texte);
 }
 
 function estEntreeAncrable(entree: ElyndorEntryChargee): boolean {
@@ -276,7 +270,7 @@ function estEntreeAncrable(entree: ElyndorEntryChargee): boolean {
 
 function contientExpressionCanonique(requeteNormalisee: string, aliasNormalise: string): boolean {
   if (aliasNormalise.length < 3) return false;
-  return ` ${requeteNormalisee} `.includes(` ${aliasNormalise} `);
+  return contientExpression(requeteNormalisee, aliasNormalise);
 }
 
 function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
@@ -291,7 +285,7 @@ function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
   for (const cle of [...(entree.primaryKeys ?? []), ...(entree.secondaryKeys ?? [])]) {
     const alias = normaliserAncre(cle);
     if (!alias || alias.length < 3) continue;
-    if (alias.includes(sujet) || sujet.includes(alias)) aliases.add(alias);
+    if (contientExpression(alias, sujet) || contientExpression(sujet, alias)) aliases.add(alias);
   }
   return [...aliases];
 }
@@ -314,7 +308,7 @@ export function extraireAncresCanoniques(
     let meilleurePosition = Number.POSITIVE_INFINITY;
     for (const alias of aliasesCanoniques(entree)) {
       if (!contientExpressionCanonique(requete, alias)) continue;
-      const position = requete.indexOf(alias);
+      const position = positionExpression(requete, alias);
       if (position >= 0) meilleurePosition = Math.min(meilleurePosition, position);
     }
     if (!Number.isFinite(meilleurePosition)) continue;

@@ -10,8 +10,10 @@ import {
 import { prioriserLoreCanon, type ElyndorEntryChargee } from '../src/engine/loreLoader';
 import type { Message } from '../src/types';
 
-test('les termes ignorent accents, casse, mots vides et doublons', () => {
-  assert.deepEqual(termesRecherche("L'Épée de la Reine et l'épée du Roi"), ["l'epee", 'reine', 'roi']);
+test('les termes ignorent accents, casse, mots vides et doublons ; l’apostrophe sépare les mots', () => {
+  // Avant : « l'epee » restait un seul mot et « épée » seul ne le retrouvait jamais.
+  assert.deepEqual(termesRecherche("L'Épée de la Reine et l'épée du Roi"), ['epee', 'reine', 'roi']);
+  assert.deepEqual(termesRecherche('Saint-Denis, la Porte d’Argent'), ['saint', 'denis', 'porte', 'argent']);
 });
 
 test('le lore partageant le plus de termes passe en tête, réduit à un extrait', () => {
