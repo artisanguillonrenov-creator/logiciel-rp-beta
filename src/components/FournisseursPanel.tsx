@@ -6,20 +6,26 @@ import type {AppSettings} from '../types';
 import { ELYNDOR_CLOUD_REGLAGE_URL } from '../engine/elyndorCloud';
 import {listerModeles,listerModelesGPT,MODELES_GPT_SUGGERES} from '../engine/elyndorCloudClient';
 import {listerModelesImagesOpenRouter} from '../engine/fournisseursImages';
+import {
+  listerModelesNarrationHorde, MODELES_NARRATION_CLOUDFLARE, MODELE_CLOUDFLARE_PAR_DEFAUT,
+} from '../engine/fournisseursNarrationGratuits';
 import {listerModelesImagesOpenAI, MODELES_IMAGES_OPENAI_SUGGERES} from '../engine/openAiImages';
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
-type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt';
+type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt'|'cloudflare'|'aihorde';
 type ModeImages='desactive'|'runpod'|'openrouter'|'openai'|'cloudflare'|'aihorde';
 const LABELS:Record<ModeTexte,string>={
   openrouter:'OpenRouter',openai:'OpenAI / GPT (clé API)',runpod:'RunPod Elyndor',serveur:'Autre API compatible',chatgpt:'ChatGPT — abonnement (sans clé API)',
+  cloudflare:'Cloudflare Workers AI (quota gratuit)',aihorde:'AI Horde (narration communautaire gratuite)',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
   cloudflare:'Cloudflare FLUX.2 Klein 4B (quota gratuit)',aihorde:'AI Horde (communautaire, gratuit)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
+  if(v.moteurInference==='cloudflare'||v.fournisseurNarration==='cloudflare')return 'cloudflare';
+  if(v.moteurInference==='aihorde'||v.fournisseurNarration==='aihorde')return 'aihorde';
   if(v.moteurInference==='chatgpt'||v.fournisseurNarration==='chatgpt')return 'chatgpt';
   if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
   if(v.moteurInference==='openrouter')return 'openrouter';
@@ -39,6 +45,7 @@ export default function FournisseursPanel(){
   const [voirCle,setVoirCle]=useState(false);
   const [catalogue,setCatalogue]=useState<Array<{id:string;nom:string}>>([]);
   const [modelesGPT,setModelesGPT]=useState<Array<{id:string;nom:string}>>([]);
+  const [modelesHorde,setModelesHorde]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImage,setCatalogueImage]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImageOpenAI,setCatalogueImageOpenAI]=useState<Array<{id:string;nom:string}>>([]);
   useEffect(()=>{
@@ -89,6 +96,15 @@ export default function FournisseursPanel(){
     }catch(e){setMsg('Connexion OpenAI : '+(e instanceof Error?e.message:String(e)));}
     finally{setBusy(false);}
   };
+  const chargerModelesHorde=async()=>{
+    setBusy(true);setMsg('');
+    try{
+      const liste=await listerModelesNarrationHorde();
+      setModelesHorde(liste);
+      setMsg(liste.length+' modèles narratifs actuellement servis par AI Horde. La disponibilité change à tout moment.');
+    }catch(e){setMsg('Catalogue AI Horde : '+(e instanceof Error?e.message:String(e)));}
+    finally{setBusy(false);}
+  };
   const chargerImagesOpenAI=async()=>{
     if(!cfg?.openAiApiKey?.trim()){setMsg('Entre ta clé API OpenAI pour afficher les modèles image.');return;}
     setBusy(true);setMsg('');
@@ -105,7 +121,7 @@ export default function FournisseursPanel(){
     try{
       const v:AppSettings={
         ...cfg,
-        moteurInference:mode==='chatgpt'?'chatgpt':mode==='openai'?'openai':mode==='openrouter'?'openrouter':'serveur',
+        moteurInference:mode==='chatgpt'?'chatgpt':mode==='openai'?'openai':mode==='openrouter'?'openrouter':mode==='cloudflare'?'cloudflare':mode==='aihorde'?'aihorde':'serveur',
         fournisseurNarration:mode,
         serveurLocalUrl:mode==='runpod'?ELYNDOR_CLOUD_REGLAGE_URL:cfg.serveurLocalUrl,
         serveurLocalModele:mode==='runpod'?'cydonia-24b-elyndor':cfg.serveurLocalModele,
@@ -123,6 +139,15 @@ export default function FournisseursPanel(){
       }
       if(mode==='openrouter' && !v.openRouterApiKey?.trim()){
         throw new Error('Entre ta clé API OpenRouter pour utiliser ses modèles.');
+      }
+      if(mode==='cloudflare' && (!/^[a-z0-9]{32}$/i.test(v.cloudflareAccountId?.trim()||'') || !v.cloudflareApiKey?.trim())){
+        throw new Error('Narration Cloudflare : renseigne ton Account ID et ton jeton Workers AI.');
+      }
+      if(mode==='cloudflare' && !MODELES_NARRATION_CLOUDFLARE.some(m=>m.id===(v.modeleNarrationCloudflare||MODELE_CLOUDFLARE_PAR_DEFAUT))){
+        throw new Error('Choisis un des modèles Cloudflare proposés pour le quota gratuit.');
+      }
+      if(mode==='aihorde' && !v.modeleNarrationHorde?.trim()){
+        throw new Error('AI Horde : sélectionne un modèle narratif actif avant d’enregistrer.');
       }
       if(mode==='serveur' && (!v.serveurLocalUrl?.startsWith('https://') || !v.serveurLocalModele?.trim())){
         throw new Error('L’API personnalisée exige une adresse HTTPS et un identifiant de modèle.');
@@ -164,6 +189,48 @@ export default function FournisseursPanel(){
       <Bouton titre="Choisir le modèle ChatGPT" variante="secondaire" desactive={busy} onPress={()=>void chargerModelesAbonnement()}/>
       {modelesAbonnement.map(m=><Pressable key={m.id} style={[st.option,cfg.chatgptModel===m.id&&st.selected]} onPress={()=>set({chatgptModel:m.id})}><Text style={st.text}>{cfg.chatgptModel===m.id?'● ':'○ '}{m.nom||m.id}</Text></Pressable>)}
       <Bouton titre="Déconnecter ChatGPT" variante="secondaire" onPress={()=>{void deconnecterChatGPT().then(()=>{setChatgptStatut('Non connecté');setChatgptCode('');setChatgptUrl('');}).catch(e=>setMsg(String(e)));}}/>
+    </>:null}
+    {mode==='cloudflare'?<>
+      <Text style={st.text}>Cloudflare Workers AI : le quota gratuit est partagé avec les images. Choisis un modèle et surveille le quota ; un compte Workers Paid peut entraîner une facturation au dépassement.</Text>
+      <Text style={st.label}>Modèle narratif Cloudflare</Text>
+      {MODELES_NARRATION_CLOUDFLARE.map(m=><Pressable key={m.id} style={[st.option,(cfg.modeleNarrationCloudflare||MODELE_CLOUDFLARE_PAR_DEFAUT)===m.id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:(cfg.modeleNarrationCloudflare||MODELE_CLOUDFLARE_PAR_DEFAUT)===m.id}}
+        onPress={()=>set({modeleNarrationCloudflare:m.id})}>
+        <Text style={st.name}>{(cfg.modeleNarrationCloudflare||MODELE_CLOUDFLARE_PAR_DEFAUT)===m.id?'● ':'○ '}{m.nom}</Text>
+        <Text style={st.text}>{m.id}</Text>
+      </Pressable>)}
+      <Text style={st.label}>Cloudflare Account ID</Text>
+      <TextInput style={st.input} value={cfg.cloudflareAccountId||''} autoCapitalize="none" autoCorrect={false}
+        placeholder="Identifiant de compte (32 caractères)" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({cloudflareAccountId:t.trim()})}/>
+      <Text style={st.label}>Jeton API Workers AI</Text>
+      <TextInput style={st.input} value={cfg.cloudflareApiKey||''} secureTextEntry={!voirCle}
+        autoCapitalize="none" autoCorrect={false} placeholder="Jeton Cloudflare"
+        placeholderTextColor={couleurs.texteFaible} onChangeText={t=>set({cloudflareApiKey:t.trim()})}/>
+      <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+        <Text style={st.text}>{voirCle?'Masquer le jeton':'Afficher le jeton'}</Text>
+      </Pressable>
+    </>:null}
+    {mode==='aihorde'?<>
+      <Text style={st.text}>Narration gratuite sur des machines bénévoles. Les scènes et consignes envoyées peuvent être traitées par des tiers. Délais variables ; contexte effectif limité selon les workers. Un modèle actif est obligatoire.</Text>
+      <Text style={st.label}>Modèle narratif AI Horde</Text>
+      <TextInput style={st.input} value={cfg.modeleNarrationHorde||''} autoCapitalize="none"
+        autoCorrect={false} placeholder="Modèle AI Horde sélectionné" placeholderTextColor={couleurs.texteFaible}
+        onChangeText={t=>set({modeleNarrationHorde:t})}/>
+      <Bouton titre="Afficher les modèles narratifs disponibles" variante="secondaire" desactive={busy}
+        onPress={()=>void chargerModelesHorde()}/>
+      {modelesHorde.map(m=><Pressable key={m.id} style={[st.option,cfg.modeleNarrationHorde===m.id&&st.selected]}
+        accessibilityRole="radio" accessibilityState={{checked:cfg.modeleNarrationHorde===m.id}}
+        onPress={()=>set({modeleNarrationHorde:m.id})}>
+        <Text style={st.text}>{cfg.modeleNarrationHorde===m.id?'● ':'○ '}{m.nom}</Text>
+      </Pressable>)}
+      <Text style={st.label}>Clé AI Horde (facultative)</Text>
+      <TextInput style={st.input} value={cfg.aiHordeApiKey||''} secureTextEntry={!voirCle}
+        autoCapitalize="none" autoCorrect={false} placeholder="Vide = anonyme"
+        placeholderTextColor={couleurs.texteFaible} onChangeText={t=>set({aiHordeApiKey:t.trim()})}/>
+      <Pressable accessibilityRole="button" onPress={()=>setVoirCle(x=>!x)}>
+        <Text style={st.text}>{voirCle?'Masquer la clé':'Afficher la clé'}</Text>
+      </Pressable>
     </>:null}
     {mode==='openrouter'?<>
       <Text style={st.label}>Clé API OpenRouter</Text>
