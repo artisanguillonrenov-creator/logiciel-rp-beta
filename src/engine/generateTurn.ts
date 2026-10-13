@@ -506,7 +506,7 @@ export async function construireContexteNarrateurPourIllustration(story: StorySt
     exclureMessageIds: new Set(construireContexteNoyau(storyCourante as Parameters<typeof construireContexteNoyau>[0], messageJoueur).idsMessages),
   });
   const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs, true, reglagesAtelier);
-  // Pas de bloc d'état machine : la réponse attendue est la direction artistique.
+  // Pas de bloc d'état machine : la réponse attendue est le relevé visuel en mots-clés.
   return construireSystemPrompt(
     { ...ctx, directiveEtat: undefined },
     { budgetSysteme: moteurAFenetreEtroite(appSettings) ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_ILLUSTRATION },

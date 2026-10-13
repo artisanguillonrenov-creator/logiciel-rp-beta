@@ -29,8 +29,8 @@ export interface StorySettings {
 // Panneau "Contexte de l'Histoire" (brief Phase 2) : lieu, date, ambiance,
 // objectifs en prose. Collecté à l'étape "Histoire" du parcours de
 // création en 5 étapes, affiché ensuite dans la conversation. Il sert aussi
-// de contexte à la direction artistique des illustrations (voir
-// src/engine/directionArtistique.ts) ; l'état visuel lui-même vit dans
+// de contexte au relevé visuel des illustrations (voir
+// src/engine/extracteurVisuel.ts) ; l'état visuel lui-même vit dans
 // StoryState.etatVisuel.
 export interface ContexteHistoire {
   lieu: string;

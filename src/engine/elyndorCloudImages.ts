@@ -1,30 +1,30 @@
-import { assurerPodElyndorCloud, podElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
-import { journaliser, resumerReferences } from './journalDiagnostic';
+import { assurerPodElyndorCloud, urlServeurImagesElyndorCloud } from './elyndorCloud';
+import type { FormatImage } from './contratVisuel';
 
 /**
- * Générateur d'images Elyndor Cloud.
+ * Adaptateur technique du serveur d'images Elyndor Cloud (pod, port 7860).
  *
- * Comme pour la narration, aucun fournisseur tiers n'est configurable :
- * Chroma1-HD (base Flux, sans filtre) est servi par le pod Elyndor Cloud (infra/runpod/
- * image_server.py, port 7860). Mettre ELYNDOR_CLOUD_MODELE_IMAGE à null
- * désactive la capacité `images` (voir automation/capabilities.ts).
- *
- * Contrat : OpenAI-compatible `/images/generations`, étendu par
- * `aspect_ratio`, `negative_prompt`, `reference_images` et `prompt_sdxl`
- * (prompt court en anglais, prioritaire : l'encodeur T5 de Chroma comprend
- * mieux l'anglais). `reference_images` est ignoré par Chroma (pas d'IP-Adapter).
- * Toute la logique de continuité (prompt, références, état visuel) reste
- * indépendante de ce module : un autre backend (serveur GPU, modèle local…)
- * n'aura qu'à implémenter `GenerateurImage`.
+ * Ce module ne fait que traduire une requête déjà construite par le moteur
+ * visuel (serviceVisuel) vers le protocole du serveur : OpenAI-compatible
+ * `/images/generations`, étendu par `aspect_ratio`, `negative_prompt`,
+ * `reference_images`, `modules`, `steps`, `guidance`, `seed`. Il n'ajoute
+ * aucun mot de style, aucun négatif et aucun module : tout vient de la requête.
  */
-export const ELYNDOR_CLOUD_MODELE_IMAGE: string | null = 'chroma1-hd';
 
-/** Limite du nombre d'images de référence envoyées par requête. */
+/**
+ * Identifiant technique attendu par le protocole OpenAI-compatible du pod.
+ * Il ne décrit aucun style ; null désactive la capacité `images`.
+ */
+export const IDENTIFIANT_TECHNIQUE_IMAGE_POD: string | null = 'elyndor-image';
+
+/** Limite du nombre d'images de référence acceptées par requête par le serveur. */
 export const MAX_REFERENCES_IMAGE = 6;
+/** Visages distincts que le serveur sait placer (un par personnage visible). */
+export const MAX_VISAGES_POD = 4;
 
 const DELAI_GENERATION_IMAGE_MS = 300_000;
 
-export type FormatImage = '16:9' | '3:4';
+export type { FormatImage };
 
 export const DIMENSIONS_FORMAT: Record<FormatImage, { width: number; height: number }> = {
   '16:9': { width: 1344, height: 768 },
@@ -32,28 +32,22 @@ export const DIMENSIONS_FORMAT: Record<FormatImage, { width: number; height: num
 };
 
 /**
- * Image de référence envoyée au serveur (IP-Adapter) : `personnage` guide le
- * visage du personnage principal visible, `scene` la continuité du décor,
- * de la lumière et de l'ambiance.
+ * Image de référence transmise au générateur : `personnage` guide un visage,
+ * `race` l'allure d'une race, `scene` la continuité du décor.
  */
 export interface ReferenceImage {
-  /** race : portrait prédéfini de la race, guide l'allure (peau, cheveux, parure) sans imposer le visage. */
   role: 'personnage' | 'scene' | 'race';
   image: string;
 }
 
+/** Requête EFFECTIVE, déjà filtrée selon les capacités du générateur. */
 export interface RequeteImage {
   prompt: string;
-  /** Version courte en anglais pour les modèles à encodeur CLIP (SDXL). */
-  promptCourt?: string;
   negatif?: string;
-  /** Modules LoRA et leur poids ; sans eux, le serveur applique ses modules par défaut. */
+  /** Modules demandés (peut être vide : aucun module par défaut côté serveur). */
   modules?: Record<string, number>;
-  /** Déjà triées par priorité (voir selectionnerReferencesGenerateur). */
   references: ReferenceImage[];
   format: FormatImage;
-  /** Histoire concernée (journal de diagnostic) ; jamais envoyée au serveur. */
-  storyId?: string;
   steps?: number;
   guidance?: number;
   seed?: number;
@@ -64,25 +58,26 @@ export interface RequeteImage {
 export type GenerateurImage = (requete: RequeteImage, signal?: AbortSignal) => Promise<string>;
 
 export class ErreurImagesIndisponibles extends Error {
-  constructor(message = 'Le générateur d’images Elyndor Cloud n’est pas encore disponible.') {
+  constructor(message = 'Le générateur d’images Elyndor Cloud n’est pas disponible.') {
     super(message);
     this.name = 'ErreurImagesIndisponibles';
   }
 }
 
 export function imagesElyndorCloudDisponibles(): boolean {
-  return !!ELYNDOR_CLOUD_MODELE_IMAGE;
+  return !!IDENTIFIANT_TECHNIQUE_IMAGE_POD;
 }
 
-export function construireCorpsRequeteImage(requete: RequeteImage, modele: string): Record<string, unknown> {
+export function construireCorpsRequeteImage(requete: RequeteImage, identifiant: string): Record<string, unknown> {
   const { width, height } = DIMENSIONS_FORMAT[requete.format];
   const references = requete.references.filter((ref) => !!ref.image).slice(0, MAX_REFERENCES_IMAGE);
   return {
-    model: modele,
+    model: identifiant,
     prompt: requete.prompt,
-    ...(requete.promptCourt ? { prompt_sdxl: requete.promptCourt } : {}),
     ...(requete.negatif ? { negative_prompt: requete.negatif } : {}),
-    ...(requete.modules ? { modules: requete.modules } : {}),
+    // Toujours explicite : un objet vide signifie « aucun module », jamais
+    // « modules par défaut du serveur ».
+    modules: requete.modules ?? {},
     n: 1,
     size: requete.size ?? `${width}x${height}`,
     aspect_ratio: requete.format,
@@ -106,8 +101,8 @@ export function extraireImageReponse(data: unknown): string | null {
 }
 
 export const genererImageElyndorCloud: GenerateurImage = async (requete, signal) => {
-  const modele = ELYNDOR_CLOUD_MODELE_IMAGE;
-  if (!modele) throw new ErreurImagesIndisponibles();
+  const identifiant = IDENTIFIANT_TECHNIQUE_IMAGE_POD;
+  if (!identifiant) throw new ErreurImagesIndisponibles();
 
   const controleur = new AbortController();
   const relayer = () => controleur.abort(signal?.reason);
@@ -115,25 +110,12 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
   else signal?.addEventListener('abort', relayer, { once: true });
   const timer = setTimeout(() => controleur.abort(new Error('Délai de génération d’image dépassé.')), DELAI_GENERATION_IMAGE_MS);
 
-  const debut = Date.now();
-  const trace = (statut: 'ok' | 'erreur', raison?: string) => journaliser('image', {
-    modele,
-    pod: podElyndorCloud(),
-    format: requete.format,
-    promptSdxl: requete.promptCourt ?? null,
-    prompt: requete.prompt,
-    negatif: requete.negatif ?? null,
-    references: resumerReferences(requete.references),
-    dureeMs: Date.now() - debut,
-    statut,
-    ...(raison ? { raison } : {}),
-  }, requete.storyId);
   try {
     await assurerPodElyndorCloud();
     const reponse = await fetch(`${urlServeurImagesElyndorCloud()}/images/generations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(construireCorpsRequeteImage(requete, modele)),
+      body: JSON.stringify(construireCorpsRequeteImage(requete, identifiant)),
       signal: controleur.signal,
     });
     if (!reponse.ok) {
@@ -141,10 +123,8 @@ export const genererImageElyndorCloud: GenerateurImage = async (requete, signal)
     }
     const image = extraireImageReponse(await reponse.json());
     if (!image) throw new ErreurImagesIndisponibles('Elyndor Cloud n’a renvoyé aucune image exploitable.');
-    trace('ok');
     return image;
   } catch (erreur) {
-    trace('erreur', erreur instanceof Error ? erreur.message : String(erreur));
     if (erreur instanceof ErreurImagesIndisponibles) throw erreur;
     if (signal?.aborted) throw new ErreurImagesIndisponibles('Génération d’image annulée.');
     if (controleur.signal.aborted) {

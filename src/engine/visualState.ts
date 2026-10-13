@@ -1,6 +1,8 @@
 import type { EntreeLoreEmergent, StoryState } from '../types';
 import { fusionnerDoublonsLore } from './loreEmergentDoublons';
-import type { PromptImageStructure, ProfilCadrage } from './visualBible';
+import { contientExpression } from './texteRecherche';
+import type { ContratVisuel, StructureIllustrationHeritee } from './contratVisuel';
+import type { ProfilCadrage } from './cadrageVisuel';
 
 // État visuel persistant V2 (refonte du système d'illustration) : la seule
 // source de vérité sur l'apparence COURANTE des personnages, le décor courant
@@ -56,6 +58,8 @@ export interface EtatVisuelDecor {
   mobilier: string[];
   traces: string[];
   majAuMessage: number;
+  /** Lieu de l'état de scène lors de la dernière synchronisation (détecte un déplacement). */
+  lieuScene?: string;
 }
 
 export interface PersonnageVisibleResolu {
@@ -71,12 +75,23 @@ export type ModeIllustration = 'nouvelle' | 'regenerer' | 'autre-cadrage' | 'aut
 export interface SceneIllustree {
   revision: string;
   messageIndex: number;
+  /** Dernier message au moment de l'illustration : situe la scène dans sa chronologie. */
+  messageId?: string;
   creeLe: number;
-  profil: ProfilCadrage;
+  profil: ProfilCadrage | string;
   personnagesVisibles: PersonnageVisibleResolu[];
-  /** Canon visuel de la scène : réutilisé tel quel par une régénération. */
-  structure: PromptImageStructure;
+  /** Contrat visuel de la scène (V3) : réutilisé tel quel par une régénération. */
+  contrat?: ContratVisuel;
+  /** Ancien format (avant la V3), conservé pour relire et régénérer les anciennes scènes. */
+  structure?: StructureIllustrationHeritee;
   regenerations: number;
+}
+
+/** Changement accepté, rattaché au message qui l'établit (retour arrière par branche). */
+export interface EntreeJournalVisuel {
+  messageId: string;
+  messageIndex: number;
+  changement: ChangementVisuel;
 }
 
 export interface EtatVisuelHistoire {
@@ -87,8 +102,17 @@ export interface EtatVisuelHistoire {
   decor: EtatVisuelDecor | null;
   /** Historique complet, de la plus ancienne à la plus récente. */
   scenesIllustrees: SceneIllustree[];
-  /** Nombre de messages déjà analysés par la direction artistique. */
+  /** Nombre de messages déjà analysés par l'extraction visuelle. */
   derniereAnalyseIndex: number;
+  /** Identifiant du dernier message analysé (détecte une édition ou une nouvelle branche). */
+  derniereAnalyseMessageId?: string;
+  /**
+   * Changements acceptés depuis la V3, dans l'ordre, avec le message qui les
+   * établit. Rejoués sur `base` quand un message disparaît de la chronologie.
+   */
+  journal?: EntreeJournalVisuel[];
+  /** État antérieur au journal (histoires commencées avant la V3). */
+  base?: { personnages: EtatVisuelPersonnage[]; decor: EtatVisuelDecor | null };
 }
 
 export function etatVisuelVide(): EtatVisuelHistoire {
@@ -254,7 +278,7 @@ function estDans<T extends string>(liste: readonly T[], champ: string): champ is
 }
 
 /**
- * Applique des changements proposés par la direction artistique. Chaque
+ * Applique des changements proposés par l'extraction visuelle. Chaque
  * changement doit citer un événement narratif présent dans `textesNarratifs`
  * (narration, fiche du joueur, fiche du PNJ) : sinon il est rejeté et l'état
  * reste inchangé. Le résultat est une nouvelle valeur, l'état d'entrée n'est
@@ -263,7 +287,8 @@ function estDans<T extends string>(liste: readonly T[], champ: string): champ is
 export function appliquerChangementsVisuels(
   etatInitial: EtatVisuelHistoire,
   changements: readonly ChangementVisuel[],
-  textesNarratifs: readonly string[],
+  /** null : changements déjà vérifiés (rejeu du journal). */
+  textesNarratifs: readonly string[] | null,
   messageIndex: number,
   resoudreAssetId: (nom: string) => string | undefined = () => undefined,
 ): ResultatChangements {
@@ -286,7 +311,7 @@ export function appliquerChangementsVisuels(
       rejetes.push({ changement, raison: 'valeur vide' });
       continue;
     }
-    if (!evenementEtabli(changement.evenement ?? '', textesNarratifs)) {
+    if (textesNarratifs && !evenementEtabli(changement.evenement ?? '', textesNarratifs)) {
       rejetes.push({ changement, raison: 'aucun événement narratif établi' });
       continue;
     }
@@ -336,7 +361,7 @@ export function appliquerChangementsVisuels(
         // Nouveau lieu : son état propre repart de zéro ; l'heure, la météo
         // et la lumière ambiante continuent, elles, de s'appliquer.
         const suite = decorVide(messageIndex);
-        decor = { ...suite, heure: decor.heure, meteo: decor.meteo, lumiere: decor.lumiere };
+        decor = { ...suite, heure: decor.heure, meteo: decor.meteo, lumiere: decor.lumiere, lieuScene: decor.lieuScene };
       }
       if (estDans(CHAMPS_DECOR_SCALAIRES, changement.champ)) {
         decor[changement.champ] = changement.operation === 'retirer' ? '' : valeur;
@@ -375,6 +400,80 @@ export function ajouterSceneIllustree(
     return { scenes: copie, evincees: [] };
   }
   return { scenes: [...scenes, nouvelle], evincees: [] };
+}
+
+// ---------------------------------------------------------------------------
+// Projection sur la chronologie courante
+// ---------------------------------------------------------------------------
+
+/** Vrai si la scène illustrée appartient à la chronologie actuelle de l'histoire. */
+export function sceneDansChronologie(scene: SceneIllustree, story: StoryState): boolean {
+  if (scene.messageIndex > story.messages.length) return false;
+  if (!scene.messageId) return true;
+  return story.messages.some((m) => m.id === scene.messageId);
+}
+
+/** Message qui établit un changement : le premier passage narratif qui le cite. */
+export function messageEtablissant(
+  story: StoryState,
+  evenement: string,
+  depuisIndex = 0,
+): { id: string; index: number } | null {
+  for (let i = Math.max(0, depuisIndex); i < story.messages.length; i++) {
+    const m = story.messages[i];
+    if (m.role === 'assistant' && evenementEtabli(evenement, [m.content])) return { id: m.id, index: i + 1 };
+  }
+  return null;
+}
+
+/**
+ * État visuel vu depuis la chronologie actuelle, sans appel IA :
+ * - un changement dont le message a disparu (tour édité, régénéré, autre
+ *   branche) est retiré en rejouant le journal sans lui ;
+ * - un personnage ou un décor daté après la fin du récit est ignoré ;
+ * - un déplacement relevé par l'état de scène (à chaque tour) remplace le
+ *   décor : les éléments propres à l'ancien lieu ne suivent pas.
+ */
+export function projeterEtatVisuel(etat: EtatVisuelHistoire, story: StoryState): EtatVisuelHistoire {
+  const longueur = story.messages.length;
+  const ids = new Set(story.messages.map((m) => m.id));
+  const journal = etat.journal ?? [];
+  const journalValide = journal.filter((e) => e.messageId === 'fiche' || (ids.has(e.messageId) && e.messageIndex <= longueur));
+  const futurs = etat.personnages.some((p) => p.majAuMessage > longueur) || (etat.decor?.majAuMessage ?? 0) > longueur;
+  let projete: EtatVisuelHistoire = etat;
+  if (journalValide.length !== journal.length || futurs) {
+    const base = etat.base ?? (journal.length ? { personnages: [], decor: null } : { personnages: etat.personnages, decor: etat.decor });
+    let reconstruit: EtatVisuelHistoire = {
+      ...etat,
+      personnages: base.personnages.filter((p) => p.majAuMessage <= longueur).map((p) => ({ ...p })),
+      decor: base.decor && base.decor.majAuMessage <= longueur ? { ...base.decor } : null,
+      journal: journalValide,
+    };
+    for (const entree of journalValide) {
+      reconstruit = { ...appliquerChangementsVisuels(reconstruit, [entree.changement], null, entree.messageIndex).etat, journal: journalValide };
+    }
+    projete = { ...reconstruit, sequence: etat.sequence };
+  }
+  const analyseValide = !etat.derniereAnalyseMessageId || ids.has(etat.derniereAnalyseMessageId);
+  if (!analyseValide || projete.derniereAnalyseIndex > longueur) {
+    projete = { ...projete, derniereAnalyseIndex: Math.max(0, Math.min(projete.derniereAnalyseIndex, longueur) - (analyseValide ? 0 : 10)) };
+  }
+  const scene = story.scene;
+  const decor = projete.decor;
+  if (scene?.lieu && normaliserVisuel(scene.lieu) !== normaliserVisuel(decor?.lieuScene ?? '')) {
+    const a = normaliserVisuel(scene.lieu);
+    const b = normaliserVisuel(decor?.lieu ?? '');
+    // Histoire antérieure : même lieu nommé autrement, on garde son décor.
+    const memeLieu = !!decor && !decor.lieuScene && !!b && (a.includes(b) || b.includes(a));
+    const index = Math.min(scene.majMessageIndex ?? longueur, longueur);
+    projete = {
+      ...projete,
+      decor: memeLieu && decor
+        ? { ...decor, lieuScene: scene.lieu }
+        : { ...decorVide(index), lieu: scene.lieu, lieuScene: scene.lieu, heure: decor?.heure ?? '', meteo: decor?.meteo ?? '', lumiere: decor?.lumiere ?? '' },
+    };
+  }
+  return projete;
 }
 
 // ---------------------------------------------------------------------------
@@ -424,95 +523,18 @@ export function resoudrePersonnagesVisibles(story: StoryState, noms: readonly st
 }
 
 /** Ancienne détection par nom, conservée uniquement comme repli hors ligne. */
-export function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteSceneMinuscule: string): boolean {
-  const titre = pnj.titre.trim().toLowerCase();
+export function pnjMentionneDansTexte(pnj: EntreeLoreEmergent, texteScene: string): boolean {
+  const titre = pnj.titre.trim();
   if (!titre) return false;
-  if (texteSceneMinuscule.includes(titre)) return true;
+  if (contientExpression(texteScene, titre)) return true;
   const premierMot = titre.split(/\s+/)[0];
-  return premierMot.length > 2 && texteSceneMinuscule.includes(premierMot);
+  return premierMot.length > 2 && contientExpression(texteScene, premierMot);
 }
 
 export function detecterPersonnagesParRepli(story: StoryState, texteScene: string): PersonnageVisibleResolu[] {
-  const minuscule = texteScene.toLowerCase();
   const noms = [
     story.meta.personnageNom,
-    ...listerPnjVisuels(story).filter((pnj) => pnjMentionneDansTexte(pnj, minuscule)).map((pnj) => pnj.titre),
+    ...listerPnjVisuels(story).filter((pnj) => pnjMentionneDansTexte(pnj, texteScene)).map((pnj) => pnj.titre),
   ];
   return resoudrePersonnagesVisibles(story, noms).slice(0, 4);
-}
-
-// ---------------------------------------------------------------------------
-// Priorité des références visuelles
-// ---------------------------------------------------------------------------
-
-export type TypeReference =
-  | 'joueur-portrait'
-  | 'joueur-avatar'
-  | 'pnj-principal'
-  | 'pnj-secondaire'
-  | 'scene-precedente'
-  | 'scene-avant-derniere';
-
-const PRIORITE_REFERENCE: Record<TypeReference, number> = {
-  'joueur-portrait': 0,
-  'joueur-avatar': 1,
-  'pnj-principal': 2,
-  'pnj-secondaire': 3,
-  'scene-precedente': 4,
-  'scene-avant-derniere': 5,
-};
-
-export interface ReferenceVisuelle {
-  type: TypeReference;
-  uri: string;
-  libelle: string;
-}
-
-/**
- * Ce que le serveur image sait exploiter : un visage (IP-Adapter « face »)
- * et une scène de continuité (IP-Adapter général, faible poids). On envoie
- * donc la référence de personnage la plus prioritaire et la scène la plus
- * récente, rien de plus : chaque image pèse plusieurs centaines de Ko.
- */
-export function selectionnerReferencesGenerateur(
-  references: readonly ReferenceVisuelle[],
-): { role: 'personnage' | 'scene'; image: string }[] {
-  const estScene = (ref: ReferenceVisuelle) => ref.type === 'scene-precedente' || ref.type === 'scene-avant-derniere';
-  // Un visage par personnage visible, dans l'ordre des personnages de la
-  // scène (le serveur place chaque visage dans sa bande, de gauche à droite).
-  // Le joueur n'en garde qu'un : portrait de création, sinon avatar.
-  const portraitJoueur = references.some((ref) => ref.type === 'joueur-portrait' && !!ref.uri);
-  const visages = references.filter((ref) => !!ref.uri && !estScene(ref) && !(portraitJoueur && ref.type === 'joueur-avatar'));
-  const scene = ordonnerReferences(references.filter(estScene), 1)[0];
-  const vus = new Set<string>();
-  return [
-    ...visages
-      .filter((ref) => (vus.has(ref.uri) ? false : (vus.add(ref.uri), true)))
-      .slice(0, MAX_VISAGES_SCENE)
-      .map((ref) => ({ role: 'personnage' as const, image: ref.uri })),
-    ...(scene ? [{ role: 'scene' as const, image: scene.uri }] : []),
-  ];
-}
-
-/** Visages transmis au serveur d'images (un par personnage visible). */
-export const MAX_VISAGES_SCENE = 4;
-
-/**
- * Trie les références par priorité (identité des personnages visibles
- * d'abord, continuité de décor ensuite) puis tronque à la limite du
- * fournisseur : une scène précédente ne peut jamais évincer un visage.
- */
-export function ordonnerReferences(candidats: readonly ReferenceVisuelle[], max: number): ReferenceVisuelle[] {
-  const vus = new Set<string>();
-  return candidats
-    .map((ref, ordre) => ({ ref, ordre }))
-    .filter(({ ref }) => !!ref.uri)
-    .sort((a, b) => PRIORITE_REFERENCE[a.ref.type] - PRIORITE_REFERENCE[b.ref.type] || a.ordre - b.ordre)
-    .map(({ ref }) => ref)
-    .filter((ref) => {
-      if (vus.has(ref.uri)) return false;
-      vus.add(ref.uri);
-      return true;
-    })
-    .slice(0, Math.max(0, max));
 }

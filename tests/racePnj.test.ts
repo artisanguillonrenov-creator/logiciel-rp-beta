@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canonRace, detecterRacePnj, negatifSdxlRace, referenceRaceFiable, traitsSdxlRace } from '../src/engine/racePnj';
+import { canonRace, detecterRacePnj, negatifVisuelRace, referenceRaceFiable, traitsVisuelsRace } from '../src/engine/racePnj';
 
 test('la race et le sexe d’un PNJ sont lus dans sa fiche', () => {
   const nkala = detecterRacePnj('N’Kala', 'Elfe noire de vingt-deux ans, guerrière, désormais au service de William.');
@@ -29,8 +29,8 @@ test('la race du sujet est la première citée, le sexe se lit aussi dans un nom
 
 test('Elfes Noirs : peau ébène imposée en anglais, portrait prédéfini (trop clair) écarté', () => {
   const nkala = detecterRacePnj('N’Kala', 'Elfe noire, guerrière.')!;
-  assert.match(traitsSdxlRace(nkala), /ebony skin/);
-  assert.match(negatifSdxlRace(nkala), /pale skin/);
+  assert.match(traitsVisuelsRace(nkala), /ebony skin/);
+  assert.match(negatifVisuelRace(nkala), /pale skin/);
   assert.equal(referenceRaceFiable(nkala), false);
   assert.match(canonRace(nkala), /Peau ébène/);
   assert.doesNotMatch(canonRace(nkala), /brun sombre/);

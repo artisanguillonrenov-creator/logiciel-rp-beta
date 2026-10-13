@@ -1,6 +1,5 @@
 import type { RequeteImage, GenerateurImage } from './elyndorCloudImages';
 import { ErreurImagesIndisponibles, extraireImageReponse } from './elyndorCloudImages';
-import { journaliser, resumerReferences } from './journalDiagnostic';
 
 const API = 'https://api.openai.com/v1';
 export const MODELE_IMAGE_OPENAI_DEFAUT = 'gpt-image-1-mini';
@@ -32,12 +31,17 @@ export async function listerModelesImagesOpenAI(cleApi: string): Promise<Array<{
     .sort((a,b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
 }
 
-/** Les paramètres RunPod (LoRA, seed, negative_prompt, SDXL...) ne sont jamais transmis à OpenAI. */
-export function construireCorpsImageOpenAI(req: RequeteImage, modele: string) {
+/** Seuls les paramètres acceptés par OpenAI sont transmis (ni négatif, ni graine, ni modules, ni pas). */
+/** Dimensions imposées par OpenAI selon le modèle (non réglables). */
+export function tailleImageOpenAI(modele: string, format: RequeteImage['format']): string {
   const versionRecente = /^gpt-image-(?:2(?:\.|-|$))/i.test(modele);
-  const taille = versionRecente
-    ? (req.format === '16:9' ? '1536x864' : '960x1280')
-    : (req.format === '16:9' ? '1536x1024' : '1024x1536');
+  return versionRecente
+    ? (format === '16:9' ? '1536x864' : '960x1280')
+    : (format === '16:9' ? '1536x1024' : '1024x1536');
+}
+
+export function construireCorpsImageOpenAI(req: RequeteImage, modele: string) {
+  const taille = tailleImageOpenAI(modele, req.format);
   return {
     model: modele,
     prompt: req.prompt,
@@ -99,7 +103,6 @@ export function genererImageOpenAI(cleApi: string, modele: string): GenerateurIm
   if (!cleApi.trim()) throw new ErreurImagesIndisponibles('Clé API OpenAI manquante pour les images.');
   if (!estModeleImageOpenAI(modele)) throw new ErreurImagesIndisponibles('Choisis un modèle GPT Image valide.');
   return async (req, signal) => {
-    const debut = Date.now();
     const corps = construireCorpsImageOpenAI(req, modele);
     let nettoyage: (() => void) | undefined;
     try {
@@ -126,13 +129,8 @@ export function genererImageOpenAI(cleApi: string, modele: string): GenerateurIm
       }
       const image = extraireImageReponse(await reponse.json());
       if (!image) throw new ErreurImagesIndisponibles('OpenAI ne renvoie aucune image exploitable.');
-      journaliser('image', { modele, fournisseur: 'openai', format: req.format,
-        references: resumerReferences(req.references), statut: 'ok', dureeMs: Date.now() - debut }, req.storyId);
       return image;
     } catch (erreur) {
-      journaliser('image', { modele, fournisseur: 'openai', format: req.format,
-        statut: 'erreur', dureeMs: Date.now() - debut,
-        raison: erreur instanceof Error ? erreur.message : String(erreur) }, req.storyId);
       if (erreur instanceof ErreurImagesIndisponibles) throw erreur;
       if (signal?.aborted) throw new ErreurImagesIndisponibles('Génération d’image OpenAI annulée.');
       throw new ErreurImagesIndisponibles('Connexion aux images OpenAI impossible : ' + (erreur instanceof Error ? erreur.message : String(erreur)));

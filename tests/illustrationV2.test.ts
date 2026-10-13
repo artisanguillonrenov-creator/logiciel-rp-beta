@@ -8,31 +8,11 @@ import {
   etatVisuelLePlusRecent,
   etatVisuelVide,
   evenementEtabli,
-  ordonnerReferences,
   resoudrePersonnagesVisibles,
-  selectionnerReferencesGenerateur,
-  type ReferenceVisuelle,
   type SceneIllustree,
 } from '../src/engine/visualState';
-import {
-  SECTIONS_PROMPT_IMAGE,
-  appliquerModeRegeneration,
-  consoliderAvecEtatVisuel,
-  construirePromptPortraitSdxl,
-  construirePromptSdxl,
-  normaliserPromptSdxl,
-  modulesPourScene,
-  MODULES_BASE,
-  formaterPromptImage,
-  structureDeRepli,
-  personnageSceneVide,
-} from '../src/engine/visualBible';
-import {
-  analyserReponseDirection,
-  directionDeRepli,
-  nettoyerPromptSdxl,
-  textesNarratifsEtablis,
-} from '../src/engine/directionArtistique';
+import { contratLibre } from '../src/engine/contratVisuel';
+import { textesNarratifsEtablis } from '../src/engine/extracteurVisuel';
 import {
   DIMENSIONS_FORMAT,
   construireCorpsRequeteImage,
@@ -75,7 +55,7 @@ function scene(revision: string, overrides: Partial<SceneIllustree> = {}): Scene
     creeLe: 0,
     profil: 'combat',
     personnagesVisibles: [],
-    structure: structureDeRepli({ profil: 'combat', personnages: [], texteScene: 'Combat.', lieu: 'Taverne' }),
+    contrat: contratLibre('combat', '16:9'),
     regenerations: 0,
     ...overrides,
   };
@@ -184,134 +164,10 @@ test('les personnages visibles sont résolus en joueur, PNJ ou figurant, sans do
   ]);
 });
 
-test('les références priorisent les personnages visibles avant les scènes précédentes', () => {
-  const refs: ReferenceVisuelle[] = [
-    { type: 'scene-avant-derniere', uri: 'data:s2', libelle: 's2' },
-    { type: 'scene-precedente', uri: 'data:s1', libelle: 's1' },
-    { type: 'pnj-secondaire', uri: 'data:sylvana', libelle: 'sylvana' },
-    { type: 'joueur-avatar', uri: 'data:avatar', libelle: 'avatar' },
-    { type: 'pnj-principal', uri: 'data:orsk', libelle: 'orsk' },
-    { type: 'joueur-portrait', uri: 'data:portrait', libelle: 'portrait' },
-    { type: 'pnj-secondaire', uri: 'data:sylvana', libelle: 'doublon' },
-  ];
-  assert.deepEqual(ordonnerReferences(refs, 10).map((r) => r.uri), [
-    'data:portrait', 'data:avatar', 'data:orsk', 'data:sylvana', 'data:s1', 'data:s2',
-  ]);
-  // Limite du fournisseur : ce sont les scènes qui sautent, jamais un visage.
-  assert.deepEqual(ordonnerReferences(refs, 4).map((r) => r.type), [
-    'joueur-portrait', 'joueur-avatar', 'pnj-principal', 'pnj-secondaire',
-  ]);
-});
-
-test('la direction artistique est validée : visibles explicites, noms canoniques, profil', () => {
-  const story = histoire();
-  const sortie = `Voici : {"profil":"combat",
-    "personnagesVisibles":[{"nom":"William","posture":"fente avant","action":"frappe"},{"nom":"Sylvana","expression":"rage","action":"recule"},{"nom":"Garde n°1","action":"accourt"}],
-    "horsCadre":["Capitaine Orsk"],
-    "action":"la lame touche la joue",
-    "decor":{"lieu":"Taverne du Corbeau","premierPlan":"chope renversée"},
-    "camera":{"angle":"contre-plongée"},
-    "changementsVisuels":[{"cible":"personnage","nom":"Sylvana","champ":"blessures","operation":"ajouter","valeur":"coupure","evenement":"La lame de William entaille la joue gauche de Sylvana."}]}`;
-  const direction = analyserReponseDirection(sortie, story);
-  assert.ok(direction);
-  assert.equal(direction.structure.profil, 'combat');
-  assert.deepEqual(direction.visibles.map((v) => v.nom), ['William', 'Sylvana Nocturne', 'Garde n°1']);
-  assert.deepEqual(direction.structure.personnages.map((p) => p.nom), ['William', 'Sylvana Nocturne', 'Garde n°1']);
-  assert.deepEqual(direction.structure.horsCadre, ['Capitaine Orsk']);
-  assert.equal(direction.structure.camera.angle, 'contre-plongée');
-  assert.ok(direction.structure.camera.typePlan, 'les champs caméra manquants viennent du profil');
-  assert.equal(direction.changements.length, 1);
-  // Nom court canonicalisé : l'état visuel et le prompt visent la même entrée.
-  assert.equal(direction.changements[0].nom, 'Sylvana Nocturne');
-
-  const sansProfil = analyserReponseDirection('{"profil":"inconnu","personnagesVisibles":[{"nom":"A"},{"nom":"B"},{"nom":"C"}]}', story);
-  assert.equal(sansProfil?.structure.profil, 'groupe');
-  assert.equal(analyserReponseDirection('pas de json', story), null);
-});
-
-test('le repli local détecte encore les PNJ nommés quand le modèle est indisponible', () => {
-  const direction = directionDeRepli(histoire());
-  assert.equal(direction.parModele, false);
-  assert.deepEqual(direction.visibles.map((v) => v.nom), ['William', 'Sylvana Nocturne']);
-});
-
 test('les messages du joueur ne peuvent pas établir un changement visuel', () => {
   const textes = textesNarratifsEtablis(histoire(), 0);
   assert.equal(textes.some((t) => t.includes('Je dégaine')), false);
   assert.equal(textes.some((t) => t.includes('entaille la joue')), true);
-});
-
-test('le prompt image contient toutes les sections structurées, dans l’ordre', () => {
-  const structure = structureDeRepli({
-    profil: 'combat',
-    personnages: [{ ...personnageSceneVide('William'), tenue: 'manteau', action: 'frappe' }],
-    texteScene: 'La lame entaille la joue.',
-    lieu: 'Taverne',
-  });
-  const prompt = formaterPromptImage(structure, [{ type: 'joueur-portrait', uri: 'data:x', libelle: 'visage de William' }]);
-  let position = -1;
-  for (const section of SECTIONS_PROMPT_IMAGE) {
-    const index = prompt.indexOf(section);
-    assert.ok(index > position, `section ${section} absente ou mal ordonnée`);
-    position = index;
-  }
-  assert.match(prompt, /Tarantino/);
-  assert.match(prompt, /16:9/);
-  assert.match(prompt, /watermark/);
-  assert.match(prompt, /mains aberrantes/);
-  assert.match(prompt, /image de référence 1 : visage de William/);
-});
-
-test('l’état visuel persistant fait autorité sur la proposition du modèle', () => {
-  const story = histoire();
-  const etat = appliquerChangementsVisuels(etatVisuelVide(), [
-    { cible: 'personnage', nom: 'Sylvana Nocturne', champ: 'blessures', operation: 'ajouter', valeur: 'coupure à la joue gauche', evenement: 'La lame de William entaille la joue gauche de Sylvana.' },
-    { cible: 'personnage', nom: 'Sylvana Nocturne', champ: 'tenue', operation: 'definir', valeur: 'robe de soie noire', evenement: 'Un filet de sang coule sur sa peau' },
-  ], textesNarratifsEtablis(story, 0), 2).etat;
-  const structure = structureDeRepli({
-    profil: 'dialogue',
-    personnages: [{ ...personnageSceneVide('Sylvana Nocturne'), tenue: 'armure inventée', blessures: '' }],
-    texteScene: '',
-    lieu: '',
-  });
-  const consolide = consoliderAvecEtatVisuel(structure, etat);
-  assert.equal(consolide.personnages[0].tenue, 'robe de soie noire');
-
-  // Le décor et la lumière persistants priment aussi sur une proposition divergente.
-  const avecDecor = appliquerChangementsVisuels(etat, [
-    { cible: 'decor', champ: 'lieu', operation: 'definir', valeur: 'Taverne du Corbeau', evenement: 'la porte de la taverne claque et reste ouverte' },
-    { cible: 'decor', champ: 'meteo', operation: 'definir', valeur: 'pluie', evenement: 'la porte de la taverne claque et reste ouverte sur la pluie' },
-    { cible: 'decor', champ: 'architecture', operation: 'definir', valeur: 'poutres noircies', evenement: 'la porte de la taverne claque et reste ouverte' },
-  ], textesNarratifsEtablis(story, 0), 2).etat;
-  const divergente = consoliderAvecEtatVisuel({
-    ...structure,
-    decor: { ...structure.decor, lieu: 'Palais de marbre', architecture: 'colonnes dorées' },
-    lumiere: { ...structure.lumiere, meteo: 'grand soleil' },
-  }, avecDecor);
-  assert.equal(divergente.decor.lieu, 'Taverne du Corbeau');
-  assert.equal(divergente.decor.architecture, 'poutres noircies');
-  assert.equal(divergente.lumiere.meteo, 'pluie');
-  assert.match(consolide.personnages[0].blessures, /coupure à la joue gauche/);
-});
-
-test('une régénération ne change que la mise en scène, jamais le canon visuel', () => {
-  const base = consoliderAvecEtatVisuel(structureDeRepli({
-    profil: 'combat',
-    personnages: [{ ...personnageSceneVide('William'), tenue: 'manteau de cuir', blessures: 'arcade ouverte', action: 'frappe' }],
-    texteScene: 'La lame entaille la joue.',
-    lieu: 'Taverne du Corbeau',
-  }), etatVisuelVide());
-  for (const mode of ['regenerer', 'autre-cadrage', 'autre-angle', 'autre-composition'] as const) {
-    const variante = appliquerModeRegeneration(base, mode, 1);
-    assert.deepEqual(variante.personnages, base.personnages, mode);
-    assert.deepEqual(variante.decor, base.decor, mode);
-    assert.equal(variante.action, base.action, mode);
-    assert.deepEqual(variante.lumiere, base.lumiere, mode);
-    assert.equal(variante.profil, base.profil, mode);
-  }
-  assert.notEqual(appliquerModeRegeneration(base, 'autre-cadrage', 1).camera.typePlan, base.camera.typePlan);
-  assert.notEqual(appliquerModeRegeneration(base, 'autre-angle', 1).camera.angle, base.camera.angle);
-  assert.notEqual(appliquerModeRegeneration(base, 'autre-composition', 1).camera.composition, base.camera.composition);
 });
 
 test('la requête Elyndor Cloud demande le format 16:9 et borne les références', () => {
@@ -356,95 +212,3 @@ test('les images et avatars suivent uniquement le fournisseur explicitement sél
   assert.equal(runpod.avatars,runpod.images);
 });
 
-test('la requête porte le prompt court anglais et une régénération ne touche qu’à la caméra', () => {
-  const structure = {
-    ...structureDeRepli({ profil: 'combat', personnages: [personnageSceneVide('William')], texteScene: 'Combat.', lieu: 'Taverne' }),
-    promptSdxl: 'low angle medium shot, 1 man, black leather coat, sword',
-  };
-  const court = construirePromptSdxl(structure) ?? '';
-  assert.match(court, /^elyndor style, Director Quentin Tarantino style, low angle medium shot, 1 man/);
-  assert.match(court, /cinematic film still/);
-  assert.equal(construirePromptSdxl({ ...structure, promptSdxl: undefined }), undefined);
-
-  const angle = appliquerModeRegeneration(structure, 'autre-angle', 1);
-  assert.equal(angle.promptSdxl, structure.promptSdxl);
-  assert.ok(angle.indiceCameraSdxl);
-  assert.ok((construirePromptSdxl(angle) ?? '').startsWith(`elyndor style, Director Quentin Tarantino style, ${angle.indiceCameraSdxl}, low angle medium shot`));
-
-  const corps = construireCorpsRequeteImage({ prompt: 'p', promptCourt: court, references: [], format: '16:9' }, 'lustify-sdxl-v4');
-  assert.equal(corps.prompt_sdxl, court);
-  assert.equal(corps.reference_images, undefined);
-});
-
-test('le serveur reçoit le visage de chaque personnage visible et la scène la plus récente', () => {
-  const refs: ReferenceVisuelle[] = [
-    { type: 'scene-avant-derniere', uri: 'data:s2', libelle: 's2' },
-    { type: 'scene-precedente', uri: 'data:s1', libelle: 's1' },
-    { type: 'pnj-secondaire', uri: 'data:sylvana', libelle: 'sylvana' },
-    { type: 'joueur-avatar', uri: 'data:avatar', libelle: 'avatar' },
-    { type: 'joueur-portrait', uri: 'data:portrait', libelle: 'portrait' },
-  ];
-  assert.deepEqual(selectionnerReferencesGenerateur(refs), [
-    { role: 'personnage', image: 'data:sylvana' },
-    { role: 'personnage', image: 'data:portrait' },
-    { role: 'scene', image: 'data:s1' },
-  ]);
-  assert.deepEqual(selectionnerReferencesGenerateur(refs.slice(0, 2)), [{ role: 'scene', image: 'data:s1' }]);
-  assert.deepEqual(selectionnerReferencesGenerateur([]), []);
-
-  const corps = construireCorpsRequeteImage({
-    prompt: 'p', format: '16:9', references: selectionnerReferencesGenerateur(refs),
-  }, 'lustify-sdxl-v4');
-  assert.deepEqual(corps.reference_images, [
-    { role: 'personnage', image: 'data:sylvana' },
-    { role: 'personnage', image: 'data:portrait' },
-    { role: 'scene', image: 'data:s1' },
-  ]);
-});
-
-test('le prompt anglais rédigé par le modèle narratif est extrait et nettoyé', () => {
-  const direction = analyserReponseDirection(
-    '{"profil":"dialogue","personnagesVisibles":[{"nom":"William"}],"promptSdxl":"medium shot, 1 man, scarred human, black leather coat"}',
-    histoire(),
-  );
-  assert.equal(direction?.structure.promptSdxl, 'medium shot, 1 man, scarred human, black leather coat');
-  assert.equal(nettoyerPromptSdxl('Prompt: "close-up, dark elf woman, white braided hair"\nautre ligne'), 'close-up, dark elf woman, white braided hair');
-  assert.equal(nettoyerPromptSdxl('\n\n'), undefined);
-});
-
-test('les modules du serveur d’images suivent le type de scène', () => {
-  const base = structureDeRepli({ profil: 'dialogue', personnages: [personnageSceneVide('William')], texteScene: 'Discussion.', lieu: 'Taverne' });
-  assert.deepEqual(modulesPourScene(base), MODULES_BASE);
-  const combat = { ...base, profil: 'combat' as const, promptSdxl: 'adult woman fighting a rotting ghoul in a crypt' };
-  const modules = modulesPourScene(combat);
-  assert.equal(modules.tarantino, 0.5);
-  assert.match(construirePromptSdxl({ ...base, promptSdxl: 'two adults talking' }) ?? '', /Director Quentin Tarantino style/);
-  assert.equal(modules.horreur, 0.6);
-  assert.match(construirePromptSdxl(combat) ?? '', /Director Quentin Tarantino style/);
-  const corps = construireCorpsRequeteImage({ prompt: 'p', modules, references: [], format: '16:9' }, 'lustify-sdxl-v4');
-  assert.deepEqual(corps.modules, modules);
-});
-
-test('le prompt d’un avatar s’ouvre sur le déclencheur Elyndor, puis les traits de race', () => {
-  const prompt = construirePromptPortraitSdxl('(52 years old)1.2 human male blacksmith, stern gaze', 'dwarf, short and stocky, braided beard') ?? '';
-  assert.ok(prompt.startsWith('elyndor style, Director Quentin Tarantino style, dwarf, short and stocky, braided beard, (52 years old)1.2 human male blacksmith'));
-  assert.match(prompt, /stern gaze, cinematic portrait/);
-  assert.equal(prompt.match(/elyndor style/g)?.length, 1);
-  assert.ok((construirePromptPortraitSdxl('(30 years old)1.2 human female') ?? '').startsWith('elyndor style, Director Quentin Tarantino style, (30 years old)1.2'));
-  assert.equal(construirePromptPortraitSdxl('  '), undefined);
-  assert.equal(construirePromptPortraitSdxl(undefined, 'dwarf'), undefined);
-});
-
-test('le prompt du narrateur est remis au gabarit : âge (N years old)1.2, jamais sous 20 ans, virgules', () => {
-  assert.equal(normaliserPromptSdxl('2 people, (50 years old)1.1 human male, (30 years old)1.5 dark elf female'),
-    '2 people, (50 years old)1.2 human male, (30 years old)1.2 dark elf female');
-  assert.equal(normaliserPromptSdxl('dark elf woman, 30 years old, ebony skin'), 'dark elf woman, (30 years old)1.2, ebony skin');
-  assert.equal(normaliserPromptSdxl('(45 years old:1.3) orc'), '(45 years old)1.2 orc');
-  assert.equal(normaliserPromptSdxl('(17 years old)1.2 human female'), '(20 years old)1.2 human female');
-  assert.equal(normaliserPromptSdxl('medium shot. (30 years old)1.2 elf, (ebony skin)1.3 in a forge.'), 'medium shot, (30 years old)1.2 elf, (ebony skin)1.3 in a forge');
-  // Une parenthèse plus large n'est pas cassée.
-  assert.equal(normaliserPromptSdxl('(35 years old dark elf)1.3, leather armor'), '(35 years old dark elf)1.3, leather armor');
-  assert.ok((construirePromptSdxl({ ...structureDeRepli({ profil: 'dialogue', personnages: [], texteScene: '', lieu: '' }), promptSdxl: '(30 years old)1.4 elf' }) ?? '')
-    .startsWith('elyndor style, Director Quentin Tarantino style, (30 years old)1.2 elf'));
-  assert.ok((construirePromptPortraitSdxl('40 years old human male') ?? '').startsWith('elyndor style, Director Quentin Tarantino style, (40 years old)1.2 human male'));
-});

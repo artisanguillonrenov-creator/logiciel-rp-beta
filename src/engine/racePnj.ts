@@ -60,13 +60,13 @@ export function detecterRacePnj(titre: string, contenu: string): RacePnj | null 
 }
 
 /**
- * Traits visibles de chaque race, en anglais, ajoutés tels quels au prompt
- * SDXL : le modèle narratif traduisait le canon à sa façon (« elfe noire » →
+ * Traits visibles de chaque race, en anglais, ajoutés tels quels aux mots-clés
+ * de l'image : le modèle narratif traduisait le canon à sa façon (« elfe noire » →
  * « black woman » ou « tan skin »). Elfes Noirs : peau ébène validée par
  * l'autrice (essais du 6 octobre), plus sombre que l'ancien « mate à brun
  * sombre ».
  */
-const TRAITS_SDXL: Record<string, { traits: string; negatif?: string; referenceFiable: boolean; apparence?: string }> = {
+const TRAITS_VISUELS: Record<string, { traits: string; negatif?: string; referenceFiable: boolean; apparence?: string }> = {
   'elfes-noirs': {
     traits: 'dark elf, dark-skinned, ebony skin, very dark skin, silver white hair, long pointed elf ears',
     negatif: 'pale skin, white skin, fair skin, light skin, tan skin, human ears, round ears, afro, black hair',
@@ -90,23 +90,23 @@ const TRAITS_SDXL: Record<string, { traits: string; negatif?: string; referenceF
   humains: { traits: 'human, European features', negatif: 'pointed ears', referenceFiable: true },
 };
 
-export function traitsSdxlRace({ race }: RacePnj): string {
-  return TRAITS_SDXL[race.id]?.traits ?? '';
+export function traitsVisuelsRace({ race }: RacePnj): string {
+  return TRAITS_VISUELS[race.id]?.traits ?? '';
 }
 
-export function negatifSdxlRace({ race }: RacePnj): string {
-  return TRAITS_SDXL[race.id]?.negatif ?? '';
+export function negatifVisuelRace({ race }: RacePnj): string {
+  return TRAITS_VISUELS[race.id]?.negatif ?? '';
 }
 
 /** Faux tant que le portrait prédéfini de la race ne correspond pas au canon visé. */
 export function referenceRaceFiable({ race }: RacePnj): boolean {
-  return TRAITS_SDXL[race.id]?.referenceFiable ?? true;
+  return TRAITS_VISUELS[race.id]?.referenceFiable ?? true;
 }
 
 /** Rappel du canon de la race pour le prompt image. */
 export function canonRace(r: RacePnj): string {
-  const traits = traitsSdxlRace(r);
-  const description = TRAITS_SDXL[r.race.id]?.apparence ?? r.race.description;
+  const traits = traitsVisuelsRace(r);
+  const description = TRAITS_VISUELS[r.race.id]?.apparence ?? r.race.description;
   return `Race (canon Elyndor) : ${r.race.nom} (${r.race.sousTitre}) — ${description}`
-    + (traits ? ` Traits image à reprendre tels quels en anglais dans le prompt : ${traits}.` : '');
+    + (traits ? ` Traits visibles à reprendre tels quels en anglais dans les mots-clés : ${traits}.` : '');
 }

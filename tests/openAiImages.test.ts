@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { genererImageSelonReglages } from '../src/engine/fournisseursImages';
+import { adaptateurSelonReglages } from '../src/engine/fournisseursImages';
 import { calculerCapacites } from '../src/automation/capabilities';
 import { construireCorpsImageOpenAI, estModeleImageOpenAI, listerModelesImagesOpenAI } from '../src/engine/openAiImages';
 import type { RequeteImage } from '../src/engine/elyndorCloudImages';
@@ -15,7 +15,7 @@ const base: AppSettings = {
   fournisseurImages: 'openai', openAiApiKey: 'sk-test',
   modeleImagesOpenAI: 'gpt-image-1-mini', autoriserImagesPayantes: true,
 };
-const req: RequeteImage = { prompt: 'Une cité au crépuscule', promptCourt: 'city',
+const req: RequeteImage = { prompt: 'Une cité au crépuscule',
   negatif: 'flou', modules: { lora: 1 }, steps: 30, guidance: 7,
   references: [], format: '16:9', size: '1344x768', seed: 52 };
 
@@ -55,7 +55,7 @@ test('génération image OpenAI : clé, modèle, URL, réponse PNG base64 et auc
     auth=String((init?.headers as Record<string,string>)?.Authorization);
     return Response.json({data:[{b64_json:'aGVsbG8='}]});
   }) as typeof fetch;
-  const image = await genererImageSelonReglages(base)(req);
+  const image = await adaptateurSelonReglages(base).executer(req);
   assert.equal(url,'https://api.openai.com/v1/images/generations');
   assert.equal(auth,'Bearer sk-test');
   assert.equal(body.model,'gpt-image-1-mini');
@@ -68,9 +68,9 @@ test('génération image OpenAI : clé, modèle, URL, réponse PNG base64 et auc
 test('génération payante interdite par défaut, y compris lorsque la clé existe', async () => {
   assert.equal(calculerCapacites({...base,autoriserImagesPayantes:false}).images,false);
   assert.equal(calculerCapacites(base).images,true);
-  assert.throws(()=>genererImageSelonReglages({...base,autoriserImagesPayantes:false}),/autorise/);
-  assert.throws(()=>genererImageSelonReglages({...base,openAiApiKey:''}),/Clé API OpenAI/);
-  assert.throws(()=>genererImageSelonReglages({...base,modeleImagesOpenAI:'gpt-5.1'}),/modèle GPT Image/);
+  assert.throws(()=>adaptateurSelonReglages({...base,autoriserImagesPayantes:false}),/autorise/);
+  assert.throws(()=>adaptateurSelonReglages({...base,openAiApiKey:''}),/Clé API OpenAI/);
+  assert.throws(()=>adaptateurSelonReglages({...base,modeleImagesOpenAI:'gpt-5.1'}),/modèle GPT Image/);
 });
 
 test('erreur OpenAI explicite : aucun basculement payant vers un autre modèle ou RunPod', async () => {
@@ -79,6 +79,6 @@ test('erreur OpenAI explicite : aucun basculement payant vers un autre modèle o
     appels++;
     return Response.json({error:{message:'Model is not available for this account'}},{status:403});
   }) as typeof fetch;
-  await assert.rejects(genererImageSelonReglages(base)(req),/403.*not available/);
+  await assert.rejects(adaptateurSelonReglages(base).executer(req),/403.*not available/);
   assert.equal(appels,1);
 });
