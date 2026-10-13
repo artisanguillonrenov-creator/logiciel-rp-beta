@@ -214,6 +214,8 @@ export function normaliserReglagesFournisseurs(valeur: AppSettings): AppSettings
     modeleImagesOpenAI: valeur.modeleImagesOpenAI || 'gpt-image-1-mini',
     cloudflareAccountId: valeur.cloudflareAccountId || '',
     modeleImagesHorde: valeur.modeleImagesHorde || '',
+    modeleNarrationCloudflare: valeur.modeleNarrationCloudflare || '@cf/zai-org/glm-4.7-flash',
+    modeleNarrationHorde: valeur.modeleNarrationHorde || '',
     autoriserImagesPayantes: valeur.autoriserImagesPayantes === true,
     fournisseurEmbeddings: valeur.fournisseurEmbeddings || 'desactive',
   };
