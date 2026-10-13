@@ -31,6 +31,8 @@ export interface ResolutionEntites {
   ambigus: AmbiguiteEntite[];
   /** Pourquoi chaque fiche est P0 (diagnostic concepteur). */
   raisons: Map<string, string>;
+  /** Noms reconnus malgré une faute de frappe : écrit → nom canonique. */
+  approches: Array<{ ecrit: string; nom: string }>;
 }
 
 export interface ParametresResolution {
@@ -67,20 +69,29 @@ export function resoudreEntitesScene(p: ParametresResolution): ResolutionEntites
   const ambigus: AmbiguiteEntite[] = [];
 
   const parAlias = new Map<string, ReturnType<typeof extraireAncresDetaillees>>();
-  for (const ancre of extraireAncresDetaillees(courant, p.pool)) {
+  const exactes = extraireAncresDetaillees(courant, p.pool);
+  // Le message du joueur (souvent dicté) peut écorcher un nom : il est aussi
+  // lu avec tolérance aux fautes, pour les seules fiches non citées exactement.
+  const citees = new Set(exactes.map((a) => a.entree.id));
+  const approchees = extraireAncresDetaillees(p.messageJoueur, p.pool, { tolerance: true })
+    .filter((a) => a.approche && !citees.has(a.entree.id));
+  for (const ancre of [...exactes, ...approchees]) {
     parAlias.set(ancre.alias, [...(parAlias.get(ancre.alias) ?? []), ancre]);
   }
+  const raisonNom = (ancre: ReturnType<typeof extraireAncresDetaillees>[number], alias: string) => ancre.approche
+    ? `nom proche : « ${ancre.approche.ecrit} » lu « ${alias} » (faute probable)`
+    : `nom cité : « ${alias} »`;
   for (const [alias, groupe] of parAlias) {
     if (groupe.length === 1) {
       ancresP0.add(groupe[0].entree.id);
-      raisons.set(groupe[0].entree.id, `nom cité : « ${alias} »`);
+      raisons.set(groupe[0].entree.id, raisonNom(groupe[0], alias));
       continue;
     }
     // Homonymes : la ville de la scène départage, sinon on ne tranche pas.
     const locales = p.ville ? groupe.filter((g) => mentionneVille(g.entree, p.ville!)) : [];
     if (locales.length === 1) {
       ancresP0.add(locales[0].entree.id);
-      raisons.set(locales[0].entree.id, `nom cité : « ${alias} » (homonymes départagés par la ville ${p.ville})`);
+      raisons.set(locales[0].entree.id, `${raisonNom(locales[0], alias)} (homonymes départagés par la ville ${p.ville})`);
       ambigus.push({ alias, candidats: groupe.map((g) => g.entree.titre), resolu: locales[0].entree.id });
     } else {
       ambigus.push({ alias, candidats: groupe.map((g) => g.entree.titre) });
@@ -112,5 +123,6 @@ export function resoudreEntitesScene(p: ParametresResolution): ResolutionEntites
     evoquees,
     ambigus,
     raisons,
+    approches: approchees.filter((a) => ancresP0.has(a.entree.id)).map((a) => ({ ecrit: a.approche!.ecrit, nom: a.entree.titre })),
   };
 }

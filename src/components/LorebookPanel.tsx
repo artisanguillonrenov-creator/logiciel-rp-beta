@@ -12,6 +12,7 @@ import { getStoriesIndex, getStory } from '../storage/storage';
 import { couleurs, espacement, polices } from '../theme/theme';
 import Bouton from './Bouton';
 import ReferencesVisuellesFiche from './ReferencesVisuellesFiche';
+import SynonymesRecherche from './SynonymesRecherche';
 import {
   abandonnerBrouillonLore, appliquerLorePublie, analyserImportLore, creerExportLore, creerEtatLore,
   enregistrerFicheLore, ficheOrigine, listerFichesLore, publierBrouillonLore, restaurerRevisionLore,
@@ -435,6 +436,7 @@ export default function LorebookPanel() {
         <View style={{ flex: 1 }}><Text style={styles.nomEntree}>{x.titre}</Text>
           <Text style={styles.aide}>{x.origine} · toucher pour proposer au canon</Text></View>
       </Pressable>)}
+      <SynonymesRecherche/>
       <Text style={styles.titre}>Sauvegardes et historique</Text>
       <Text style={styles.aide}>Export des modifications de cet appareil. Aucun secret, conversation ni contenu original intégral du dépôt.</Text>
       <Bouton titre="Exporter / partager le Lorebook JSON" variante="secondaire"

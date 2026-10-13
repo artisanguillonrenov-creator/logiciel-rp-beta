@@ -1,6 +1,7 @@
 import type { LoreEntry, Message } from '../types';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, preparerRequeteLore, SEUIL_LORE_HYBRIDE, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
-import { ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
+import { ensembleRacinesFrancaises, normaliserTexte, racineFrancaise, termesTexte } from './texteRecherche';
+import { POIDS_SYNONYME, synonymesDe } from './synonymesLexicaux';
 
 // Recherche lexicale locale (reprise de la V13) : repli quand aucun
 // fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
@@ -52,8 +53,16 @@ interface AnalyseElement {
   texte: string;
   comptes: Map<string, number>;
   corps: string;
+  longueur: number;
+  positions: Map<string, number[]>;
   racinesTitre: Set<string>;
 }
+
+// Paramètres BM25 habituels : saturation de la fréquence (k1) et
+// normalisation par la longueur (b).
+const BM25_K1 = 1.2;
+const BM25_B = 0.75;
+const FENETRE_PROXIMITE = 3;
 
 const analysesMemorisees = new WeakMap<object, AnalyseElement>();
 
@@ -68,9 +77,12 @@ export interface OptionsClassement<T> {
 }
 
 /**
- * Score = part des termes de la requête présents (×5) + fréquence amortie
- * + bonus titre + bonus expression exacte + léger bonus de fraîcheur. Les
- * résultats sont ensuite plafonnés en nombre et en caractères.
+ * Score = part pondérée des termes de la requête présents (×5) + BM25
+ * (fréquence saturée, normalisée par la longueur : un mot répété vingt fois ou
+ * un texte très long n'écrasent pas un texte court et précis) + bonus titre +
+ * bonus expression exacte + bonus de proximité + léger bonus de fraîcheur.
+ * Un terme absent dont un synonyme figure compte POIDS_SYNONYME. Les résultats
+ * sont ensuite plafonnés en nombre et en caractères.
  */
 export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexical<T>[] {
   const { items, texteDe, titreDe, dateDe, budget } = options;
@@ -78,9 +90,10 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   if (!termes.length || !items.length || budget.maxResultats <= 0 || budget.maxCaracteres <= 0) return [];
   const expression = normaliserRecherche(options.requete);
   const maintenant = options.maintenant ?? Date.now();
-  const racinesTermes = termes.map(racineSimple);
+  const racinesTermes = termes.map(racineFrancaise);
+  const synonymesTermes = racinesTermes.map(synonymesDe);
   // Expression complète de la requête, en racines, cherchée telle quelle (mots entiers).
-  const expressionRacines = expression.length >= 6 ? ` ${expression.split(' ').map(racineSimple).join(' ')} ` : '';
+  const expressionRacines = expression.length >= 6 ? ` ${expression.split(' ').map(racineFrancaise).join(' ')} ` : '';
 
   // Passe 1 : chaque élément est analysé une fois (mots entiers et racines
   // simples). Un élément inchangé d'un tour à l'autre (événement, fait…) garde
@@ -90,10 +103,18 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
     const texte = texteDe(item);
     const memorise = typeof item === 'object' && item !== null ? analysesMemorisees.get(item as object) : undefined;
     if (memorise && memorise.texte === texte && memorise.titre === titre) return { item, ...memorise };
-    const motsCorps = normaliserRecherche(`${titre} ${texte}`).split(' ').map(racineSimple);
+    const motsCorps = normaliserRecherche(`${titre} ${texte}`).split(' ').map(racineFrancaise);
     const comptes = new Map<string, number>();
-    for (const mot of motsCorps) comptes.set(mot, (comptes.get(mot) ?? 0) + 1);
-    const analyse = { titre, texte, comptes, corps: motsCorps.join(' '), racinesTitre: ensembleRacines(termesRecherche(titre)) };
+    const positions = new Map<string, number[]>();
+    motsCorps.forEach((mot, i) => {
+      comptes.set(mot, (comptes.get(mot) ?? 0) + 1);
+      const liste = positions.get(mot);
+      if (liste) liste.push(i); else positions.set(mot, [i]);
+    });
+    const analyse = {
+      titre, texte, comptes, positions, corps: motsCorps.join(' '), longueur: motsCorps.length,
+      racinesTitre: ensembleRacinesFrancaises(termesRecherche(titre)),
+    };
     if (typeof item === 'object' && item !== null) analysesMemorisees.set(item as object, analyse);
     return { item, ...analyse };
   });
@@ -101,23 +122,41 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   // (« marché », le nom du PNJ du moment) compte peu ; un mot rare de la
   // question du joueur (« clé », « argent ») fait la différence. Sans cela, dans
   // une longue histoire, les mots communs noyaient la question.
-  const poids = racinesTermes.map((racine) => {
-    const df = analyses.reduce((n, a) => n + (a.comptes.has(racine) ? 1 : 0), 0);
+  const occurrences = (comptes: Map<string, number>, i: number): { n: number; synonyme: boolean } => {
+    const n = comptes.get(racinesTermes[i]) ?? 0;
+    if (n > 0) return { n, synonyme: false };
+    let meilleur = 0;
+    for (const s of synonymesTermes[i]) meilleur = Math.max(meilleur, comptes.get(s) ?? 0);
+    return { n: meilleur * POIDS_SYNONYME, synonyme: meilleur > 0 };
+  };
+  const poids = racinesTermes.map((_, i) => {
+    const df = analyses.reduce((n, a) => n + (occurrences(a.comptes, i).n > 0 ? 1 : 0), 0);
     return Math.log(1 + (analyses.length + 1) / (df + 1));
   });
   const poidsTotal = poids.reduce((n, w) => n + w, 0) || 1;
+  const longueurMoyenne = analyses.reduce((n, a) => n + a.longueur, 0) / analyses.length || 1;
 
-  const notes = analyses.map(({ item, texte, comptes, corps, racinesTitre }) => {
+  const notes = analyses.map(({ item, texte, comptes, corps, longueur, positions, racinesTitre }) => {
     let trouves = 0;
-    let frequence = 0;
+    let bm25 = 0;
     let dansTitre = 0;
     racinesTermes.forEach((racine, i) => {
-      const n = comptes.get(racine) ?? 0;
-      if (n > 0) trouves += poids[i];
-      frequence += Math.min(n, 4) * (poids[i] / poidsTotal) * racinesTermes.length;
+      const { n, synonyme } = occurrences(comptes, i);
+      if (n > 0) trouves += synonyme ? POIDS_SYNONYME * poids[i] : poids[i];
+      bm25 += poids[i] * (n * (BM25_K1 + 1)) / (n + BM25_K1 * (1 - BM25_B + BM25_B * longueur / longueurMoyenne));
       if (racinesTitre.has(racine)) dansTitre += 1;
     });
     if (!trouves) return { item, score: 0, extrait: '' };
+    // Proximité : des paires de mots voisins de la requête retrouvées côte à côte.
+    let paires = 0;
+    let proches = 0;
+    for (let i = 0; i + 1 < racinesTermes.length; i++) {
+      const a = positions.get(racinesTermes[i]);
+      const b = positions.get(racinesTermes[i + 1]);
+      if (!a || !b) continue;
+      paires += 1;
+      if (a.some((pa) => b.some((pb) => pb !== pa && Math.abs(pb - pa) <= FENETRE_PROXIMITE))) proches += 1;
+    }
     let fraicheur = 0;
     const date = dateDe?.(item);
     if (date && date > 0) {
@@ -125,9 +164,10 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
       fraicheur = Math.max(0, 0.7 - 0.25 * Math.log10(1 + jours));
     }
     const score = 5 * (trouves / poidsTotal)
-      + 1.2 * Math.log2(1 + frequence)
+      + 4 * (bm25 / (poidsTotal * (BM25_K1 + 1)))
       + 1.8 * dansTitre
       + (expressionRacines && ` ${corps} `.includes(expressionRacines) ? 2.5 : 0)
+      + (paires ? 1.2 * (proches / paires) : 0)
       + fraicheur;
     return { item, score, extrait: extraire(texte, termes, budget.maxCaracteresParResultat) };
   });

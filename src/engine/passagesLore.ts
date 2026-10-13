@@ -6,8 +6,10 @@ import {
   preparerRequeteLore,
   raisonsScoreLore,
   SEUIL_LORE_HYBRIDE,
+  statsCorpusLore,
   type DetailsScoreLore,
   type RequetePreparee,
+  type StatsCorpusLore,
 } from './loreScoring';
 
 /**
@@ -161,6 +163,7 @@ export function construirePassages(entrees: ElyndorEntryChargee[]): PassageLore[
 /** Vide l'index (tests, ou changement de lore publié connu de l'appelant). */
 export function viderIndexPassages(): void {
   passagesParCle.clear();
+  derniereStats = null;
 }
 
 // --- Sélection ---------------------------------------------------------------
@@ -209,6 +212,22 @@ export interface RapportSelectionLore {
   manques: string[];
 }
 
+// Rareté des mots sur l'ensemble des passages (IDF de BM25), calculée une fois
+// par liste de passages : la liste est elle-même mémorisée tant que le lore ne change pas.
+// La liste est reconstruite à chaque tour, mais ses passages (objets mémorisés)
+// changent rarement : la signature compare les objets eux-mêmes, sans recalcul.
+let derniereStats: { passages: PassageLore[]; stats: StatsCorpusLore } | null = null;
+
+function statsDe(passages: PassageLore[]): StatsCorpusLore {
+  const precedente = derniereStats;
+  if (precedente && precedente.passages.length === passages.length && precedente.passages.every((p, i) => p === passages[i])) {
+    return precedente.stats;
+  }
+  const stats = statsCorpusLore(passages);
+  derniereStats = { passages: [...passages], stats };
+  return stats;
+}
+
 function noterPassages(
   passages: PassageLore[],
   requete: RequetePreparee,
@@ -216,10 +235,11 @@ function noterPassages(
   options: OptionsPassages,
   avecBonusConstante: boolean,
 ): Note[] {
+  const stats = statsDe(passages);
   const notes = passages.map((passage): Note => {
     const vecteur = options.vecteursPassages?.[passage.id];
     const similarite = vecteur && vecteurRequete ? similariteCosinus(vecteurRequete, vecteur) : undefined;
-    const details = calculerScoreHybrideLore(passage, requete, similarite);
+    const details = calculerScoreHybrideLore(passage, requete, similarite, stats);
     if (details.score === 0) return { passage, score: 0, details };
     const score = details.score
       + (avecBonusConstante && passage.entreeConstante ? BONUS_ENTREE_CONSTANTE : 0)

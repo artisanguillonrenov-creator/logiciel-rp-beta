@@ -90,3 +90,81 @@ export function compterMot(mots: readonly string[], terme: string): number {
   for (const m of mots) if (m === terme) n += 1;
   return n;
 }
+
+// --- Racines françaises (lexical uniquement) --------------------------------
+
+const MIN_RACINE = 4;
+
+function retirer(mot: string, suffixe: string, remplacement = ''): string | null {
+  if (!mot.endsWith(suffixe)) return null;
+  const base = mot.slice(0, -suffixe.length);
+  return base.length >= MIN_RACINE ? base + remplacement : null;
+}
+
+/**
+ * Racine française légère, inspirée des racinisations « light » (Savoy,
+ * Snowball) : pluriels (chevaux → cheval), féminins (forgeronne → forgeron,
+ * princesse → prince, guerrière → guerrier), terminaisons verbales courantes
+ * (gardait, garder, gardée → gard) et consonne doublée finale (combatt →
+ * combat). Appliquée des deux côtés (requête et lore) : elle ne sert qu'à
+ * rapprocher des formes d'un même mot pour le classement lexical, jamais à
+ * reconnaître un nom propre, qui se compare mot pour mot.
+ */
+export function racineFrancaise(terme: string): string {
+  if (terme.length < 5 || /\d/.test(terme)) return terme;
+  let r = terme;
+  r = retirer(r, 'aux', 'al') ?? (/[sx]$/.test(r) && !r.endsWith('ss') && r.length - 1 >= MIN_RACINE ? r.slice(0, -1) : r);
+  for (const [suffixe, remplacement] of [['euse', 'eur'], ['rice', 'eur'], ['ienne', 'ien'], ['onne', 'on'], ['esse', 'e'], ['ere', 'er']] as const) {
+    const sortie = retirer(r, suffixe, remplacement);
+    if (sortie) { r = sortie; break; }
+  }
+  for (const suffixe of ['aient', 'ait', 'ant', 'ee', 'er', 'ez', 'e']) {
+    const sortie = retirer(r, suffixe);
+    if (sortie) { r = sortie; break; }
+  }
+  // Consonne doublée finale : « combatt » (combattait) rejoint « combat ».
+  if (r.length > MIN_RACINE && /([bcdfgklmnprst])\1$/.test(r)) r = r.slice(0, -1);
+  return r;
+}
+
+/** Ensemble des racines françaises d'une liste de mots. */
+export function ensembleRacinesFrancaises(termes: Iterable<string>): Set<string> {
+  const ensemble = new Set<string>();
+  for (const t of termes) ensemble.add(racineFrancaise(t));
+  return ensemble;
+}
+
+// --- Distance d'édition (tolérance aux fautes sur les noms) ------------------
+
+/**
+ * Distance de Damerau-Levenshtein restreinte (insertion, suppression,
+ * substitution, inversion de deux lettres voisines), arrêtée dès que `max`
+ * est dépassé. Sert uniquement à reconnaître un NOM mal écrit.
+ */
+export function distanceEdition(a: string, b: string, max = 2): number {
+  if (a === b) return 0;
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let avantAvant: number[] = [];
+  let avant = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const courant = [i];
+    let minimumLigne = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cout = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(avant[j] + 1, courant[j - 1] + 1, avant[j - 1] + cout);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, avantAvant[j - 2] + 1);
+      courant.push(v);
+      if (v < minimumLigne) minimumLigne = v;
+    }
+    if (minimumLigne > max) return max + 1;
+    avantAvant = avant;
+    avant = courant;
+  }
+  return avant[b.length];
+}
+
+/** Écart toléré pour un nom : aucune faute sous 5 lettres, 1 jusqu'à 8, 2 au-delà. */
+export function ecartTolere(longueur: number): number {
+  if (longueur < 5) return 0;
+  return longueur <= 8 ? 1 : 2;
+}

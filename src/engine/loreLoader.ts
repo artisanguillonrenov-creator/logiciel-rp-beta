@@ -1,7 +1,7 @@
 import type { LoreEntry } from '../types';
 import { similariteCosinus } from './embeddings';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, type ScopeLore } from './loreScoring';
-import { contientExpression, normaliserTexte, positionExpression } from './texteRecherche';
+import { contientExpression, distanceEdition, ecartTolere, MOTS_VIDES, normaliserTexte, positionExpression } from './texteRecherche';
 
 // Normalisation commune à toute la recherche (texteRecherche.ts).
 const normalise = normaliserTexte;
@@ -295,22 +295,82 @@ export interface AncreDetaillee {
   /** Alias (normalisé) qui a déclenché l'ancre : sert à repérer les homonymes. */
   alias: string;
   position: number;
+  /** Nom reconnu malgré une faute de frappe : ce qui était écrit et l'écart. */
+  approche?: { ecrit: string; distance: number };
 }
 
-/** Ancres canoniques avec l'alias déclencheur ; mêmes règles que extraireAncresCanoniques. */
-export function extraireAncresDetaillees(texteRequete: string, entrees: ElyndorEntryChargee[]): AncreDetaillee[] {
+// Vocabulaire courant du lore (mots de ses textes) : un mot qui en fait partie
+// (« porte ») n'est jamais pris pour une faute de frappe d'un nom (« Porta »).
+const vocabulaireParPool = new WeakMap<object, Set<string>>();
+
+function vocabulaireDe(entrees: ElyndorEntryChargee[]): Set<string> {
+  const connu = vocabulaireParPool.get(entrees);
+  if (connu) return connu;
+  const vocabulaire = new Set<string>(MOTS_VIDES);
+  for (const e of entrees) for (const mot of normaliserTexte(e.contenu).split(' ')) if (mot) vocabulaire.add(mot);
+  vocabulaireParPool.set(entrees, vocabulaire);
+  return vocabulaire;
+}
+
+/**
+ * Nom canonique mal écrit (« Seraphin » pour Séraphine, « Sylvanna ») :
+ * même première lettre, même nombre de mots, écart d'au plus une lettre
+ * (deux au-delà de huit lettres), et au moins un mot écrit qui n'existe pas
+ * dans le vocabulaire du lore. Les noms de moins de cinq lettres ne sont
+ * jamais approchés.
+ */
+function aliasApproche(motsRequete: string[], alias: string, vocabulaire: Set<string>): { ecrit: string; distance: number; position: number } | null {
+  const motsAlias = alias.split(' ');
+  const tolerance = ecartTolere(alias.length);
+  if (!tolerance) return null;
+  let meilleur: { ecrit: string; distance: number; position: number } | null = null;
+  for (let i = 0; i + motsAlias.length <= motsRequete.length; i++) {
+    const fenetre = motsRequete.slice(i, i + motsAlias.length);
+    const ecrit = fenetre.join(' ');
+    if (ecrit[0] !== alias[0] || Math.abs(ecrit.length - alias.length) > tolerance) continue;
+    if (fenetre.every((m) => vocabulaire.has(m))) continue;
+    const distance = distanceEdition(ecrit, alias, tolerance);
+    if (distance > 0 && distance <= tolerance && (!meilleur || distance < meilleur.distance)) {
+      meilleur = { ecrit, distance, position: motsRequete.slice(0, i).join(' ').length + (i ? 1 : 0) };
+    }
+  }
+  return meilleur;
+}
+
+/**
+ * Ancres canoniques avec l'alias déclencheur ; mêmes règles que
+ * extraireAncresCanoniques. Avec `tolerance`, un nom mal écrit est aussi
+ * reconnu (marqué `approche`), seulement pour les fiches non citées exactement.
+ */
+export function extraireAncresDetaillees(
+  texteRequete: string,
+  entrees: ElyndorEntryChargee[],
+  options: { tolerance?: boolean } = {},
+): AncreDetaillee[] {
   const requete = normaliserAncre(texteRequete);
   const notes: AncreDetaillee[] = [];
+  const motsRequete = options.tolerance ? requete.split(' ').filter(Boolean) : [];
+  const vocabulaire = options.tolerance ? vocabulaireDe(entrees) : null;
 
   for (const entree of entrees) {
     if (!estEntreeAncrable(entree)) continue;
     let meilleure: { alias: string; position: number } | null = null;
-    for (const alias of aliasesCanoniques(entree)) {
+    const aliases = aliasesCanoniques(entree);
+    for (const alias of aliases) {
       if (!contientExpressionCanonique(requete, alias)) continue;
       const position = positionExpression(requete, alias);
       if (position >= 0 && (!meilleure || position < meilleure.position)) meilleure = { alias, position };
     }
-    if (meilleure) notes.push({ entree, ...meilleure });
+    if (meilleure) { notes.push({ entree, ...meilleure }); continue; }
+    if (!vocabulaire) continue;
+    let approchee: AncreDetaillee | null = null;
+    for (const alias of aliases) {
+      const trouve = aliasApproche(motsRequete, alias, vocabulaire);
+      if (trouve && (!approchee || trouve.distance < approchee.approche!.distance)) {
+        approchee = { entree, alias, position: trouve.position, approche: { ecrit: trouve.ecrit, distance: trouve.distance } };
+      }
+    }
+    if (approchee) notes.push(approchee);
   }
 
   return notes.sort((a, b) =>
