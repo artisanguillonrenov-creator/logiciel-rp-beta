@@ -10,6 +10,8 @@ import {
   type RequeteImage,
 } from './elyndorCloudImages';
 import { genererImageOpenAI, tailleImageOpenAI } from './openAiImages';
+import { genererImageCloudflare, MODELE_CLOUDFLARE } from './cloudflareImages';
+import { genererImageHorde } from './aiHordeImages';
 import { TAILLES_PORTRAIT, TAILLES_SCENE } from '../concepteur/reglagesVisuels';
 
 /**
@@ -22,7 +24,7 @@ import { TAILLES_PORTRAIT, TAILLES_SCENE } from '../concepteur/reglagesVisuels';
 const ORIGIN = 'https://openrouter.ai/api/v1';
 
 export interface CapacitesGenerateur {
-  fournisseur: 'elyndor-cloud' | 'openai' | 'openrouter' | 'test';
+  fournisseur: 'elyndor-cloud' | 'openai' | 'openrouter' | 'cloudflare' | 'aihorde' | 'test';
   nom: string;
   /** declaree : contrat connu de l'application ; detectee : lue chez le fournisseur ; inconnue : non vérifiée. */
   source: 'declaree' | 'detectee' | 'inconnue';
@@ -89,6 +91,34 @@ export function capacitesOpenAI(modele: string): CapacitesGenerateur {
   };
 }
 
+export function capacitesCloudflare(): CapacitesGenerateur {
+  return {
+    fournisseur: 'cloudflare', nom: `Cloudflare (${MODELE_CLOUDFLARE})`, source: 'declaree',
+    negatif: false, graine: true, pas: false, guidance: true, modules: false, poidsReference: false,
+    references: { supportees: true, max: 4, maxVisages: 4, roles: [] },
+    tailles: { '16:9': TAILLES_SCENE, '3:4': TAILLES_PORTRAIT },
+    remarques: [
+      'Jusqu’à 4 références réduites à moins de 512×512 px ; aucun rôle de référence distinct.',
+      '4 pas imposés par FLUX.2 Klein ; les négatifs et modules ne sont pas transmis.',
+      'Gratuit uniquement dans la limite du quota Workers AI du compte ; aucun repli payant automatique.',
+    ],
+  };
+}
+
+export function capacitesHorde(): CapacitesGenerateur {
+  return {
+    fournisseur: 'aihorde', nom: 'AI Horde (communautaire)', source: 'declaree',
+    negatif: true, graine: true, pas: true, guidance: true, modules: false, poidsReference: false,
+    references: { supportees: false, max: 0, maxVisages: 0, roles: [] },
+    tailles: null,
+    remarques: [
+      'Pas de références d’image garanties : elles sont écartées et tracées par le moteur.',
+      'Génération asynchrone, délais et disponibilité variables selon les workers.',
+      'Le mode anonyme partage les demandes avec la communauté AI Horde.',
+    ],
+  };
+}
+
 /** Capacités lues dans `supported_parameters` d'OpenRouter : seul ce qui est annoncé est promis. */
 export function capacitesOpenRouter(modele: string, prisEnCharge: Record<string, unknown> | string[]): CapacitesGenerateur {
   const cles = new Set(Array.isArray(prisEnCharge) ? prisEnCharge : Object.keys(prisEnCharge));
@@ -149,6 +179,22 @@ export function requeteOpenRouterImage(req: RequeteImage, modele: string, capaci
 export function adaptateurSelonReglages(settings: AppSettings): AdaptateurImage {
   if (settings.fournisseurImages === 'runpod') {
     return { id: 'elyndor-cloud', nom: 'Elyndor Cloud', capacites: async () => capacitesElyndorCloud(), executer: genererImageElyndorCloud };
+  }
+  if (settings.fournisseurImages === 'cloudflare') {
+    if (!settings.cloudflareAccountId?.trim() || !settings.cloudflareApiKey?.trim()) {
+      throw new ErreurImagesIndisponibles('Cloudflare : renseigne ton Account ID et ton jeton API Workers AI.');
+    }
+    return {
+      id: 'cloudflare', nom: 'Cloudflare FLUX.2 Klein',
+      capacites: async () => capacitesCloudflare(),
+      executer: genererImageCloudflare(settings.cloudflareAccountId, settings.cloudflareApiKey),
+    };
+  }
+  if (settings.fournisseurImages === 'aihorde') {
+    return {
+      id: 'aihorde', nom: 'AI Horde', capacites: async () => capacitesHorde(),
+      executer: genererImageHorde(settings.aiHordeApiKey, settings.profilContenu === 'adulte', settings.modeleImagesHorde),
+    };
   }
   if (settings.fournisseurImages === 'openai') {
     if (settings.autoriserImagesPayantes !== true) throw new ErreurImagesIndisponibles('Images OpenAI bloquées : autorise explicitement la génération payante.');
