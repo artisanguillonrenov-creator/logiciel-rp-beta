@@ -198,7 +198,11 @@ export interface ContexteConstruction {
   engagementsEtRelations?: string;
   souvenirs?: string;
   // Blocs de la mémoire narrative (voir memoireNarrative.ts), déjà formatés.
+  // Continuité active (P1) : noyau V12, événements passés, mémoire des PNJ…
   blocsContexte?: string;
+  // Essentiels de la mémoire (P0) : scène actuelle et faits canon pertinents.
+  // Ils passent avant tout le reste du contexte variable.
+  contexteP0?: string;
   // Registre du profil Adulte, juste après les règles immuables.
   registreAdulte?: string;
   // Fiche de scène préparée par l'application (ficheScene.ts), placée en fin
@@ -217,7 +221,88 @@ export interface OptionsPrompt {
   budgetConversation?: number;
 }
 
-export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
+export type NiveauSection = 'fixe' | 'P0' | 'P1' | 'P2';
+
+export interface SectionPrompt {
+  nom: string;
+  niveau: NiveauSection;
+  /** Caractères voulus par la section. */
+  demande: number;
+  /** Caractères réellement envoyés au narrateur. */
+  transmis: number;
+}
+
+/**
+ * Ce qui est réellement parti dans le prompt : les budgets sont en
+ * CARACTÈRES (pas en jetons), mesurés sur le texte final.
+ */
+export interface RapportPrompt {
+  budget: number;
+  longueur: number;
+  /** Parties qui ne se coupent jamais : règles, style, fiche de scène, contrat. */
+  fixe: number;
+  sections: SectionPrompt[];
+  /** Pertes sur du P0 ou du P1 (fiche absente ou raccourcie…) : jamais silencieuses. */
+  manques: string[];
+  avertissements: string[];
+}
+
+const PLANCHER_DESCRIPTION = 500;
+const PLANCHER_DEPART = 300;
+const MIN_ENTREE_RACCOURCIE = 160;
+// Part du reste que chaque section P2 peut prendre (le reste est laissé libre).
+const PART_P2 = { lore: 0.45, souvenirs: 0.15, resume: 0.25, etat: 0.15 } as const;
+
+interface EntreeLoreFormatee {
+  niveau: 'P0' | 'P1' | 'P2';
+  titre: string;
+  bloc: string;
+}
+
+function niveauLore(e: LoreEntry): 'P0' | 'P1' | 'P2' {
+  return e.niveau ?? 'P2';
+}
+
+const RANG_LORE = { P0: 0, P1: 1, P2: 2 } as const;
+
+/**
+ * Le lore est rendu sous un seul titre, ses fiches rangées P0, P1, P2. Chaque
+ * niveau dispose d'un budget : une fiche P0 ou P1 trop longue est raccourcie
+ * (jamais écartée sans trace), une fiche P2 s'efface.
+ */
+function formaterLoreAlloue(
+  entries: LoreEntry[],
+  titre: string,
+  budgets: Record<'P0' | 'P1' | 'P2', number>,
+  manques: string[],
+): { texte: string; transmis: Record<'P0' | 'P1' | 'P2', number> } {
+  const transmis = { P0: 0, P1: 0, P2: 0 };
+  const entrees: EntreeLoreFormatee[] = [...entries]
+    .sort((a, b) => RANG_LORE[niveauLore(a)] - RANG_LORE[niveauLore(b)])
+    .map((e) => ({ niveau: niveauLore(e), titre: e.titre, bloc: `### ${e.titre}\n${tronquer(e.contenu, BUDGET_LORE_PASSAGES)}` }));
+  const blocs: string[] = [];
+  const restant = { ...budgets };
+  for (const entree of entrees) {
+    const n = entree.niveau;
+    const cout = entree.bloc.length + (blocs.length ? 2 : 0);
+    if (cout <= restant[n]) {
+      blocs.push(entree.bloc);
+      restant[n] -= cout;
+      transmis[n] += cout;
+    } else if (n !== 'P2' && restant[n] - (blocs.length ? 2 : 0) >= MIN_ENTREE_RACCOURCIE) {
+      const place = restant[n] - (blocs.length ? 2 : 0);
+      blocs.push(tronquer(entree.bloc, place));
+      transmis[n] += place;
+      restant[n] = 0;
+      manques.push(`lore ${n} « ${entree.titre} » raccourci : budget du prompt`);
+    } else if (n !== 'P2') {
+      manques.push(`lore ${n} « ${entree.titre} » absent : budget du prompt`);
+    }
+  }
+  return { texte: blocs.length ? `\n\n[${titre}]\n${blocs.join('\n\n')}` : '', transmis };
+}
+
+export function construireSystemPromptDetaille(ctx: ContexteConstruction, options: OptionsPrompt = {}): { texte: string; rapport: RapportPrompt } {
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
   // Préfixe identique d'un tour à l'autre : le serveur conserve ces
   // jetons en cache même si les responsabilités natives changent.
@@ -229,13 +314,16 @@ ${ctx.loreCore ?? LORE_CORE}
 ${IDENTITE_NARRATIVE}
 
 ${REGLES_IMMUABLES}`;
-  const entete = `${prefixe}
+  // Personnage du joueur : la description se raccourcit quand le budget manque,
+  // après les essentiels (P0) et la continuité (P1).
+  const persoBloc = (descMax: number, departMax: number) => `
 
 [PERSONNAGE DE {{user}}]
 Nom : ${tronquer(ctx.meta.personnageNom, 180)}
-Description : ${tronquer(ctx.meta.personnageDescription, 3000)}
-Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, 2000)}${formaterContexte(ctx.meta)}
-Const style : ""
+Description : ${tronquer(ctx.meta.personnageDescription, descMax)}
+Point de départ de l'histoire : ${tronquer(ctx.meta.pointDeDepart, departMax)}${formaterContexte(ctx.meta)}
+Const style : ""`;
+  const styleBloc = `
 
 [STYLE & FILTRE SYSTEME]
 ${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_PUBLIC}${ctx.registreAdulte ? `\n\n${ctx.registreAdulte}` : ''}
@@ -263,36 +351,118 @@ ${ctx.directiveEtat ? `\n${ctx.directiveEtat}\n` : ''}${ctx.noteCorrection ? `\n
     : '';
   const rappel = contrat ? RAPPEL_FINAL : '';
   const registre = ctx.registreAdulte ? RAPPEL_REGISTRE_ADULTE : '';
-  const budgetHorsContrat = Math.max(0, budget - contrat.length - rappel.length - registre.length);
-
-  // Les deux moteurs de recherche disposent chacun d'une part fixe : le lore
-  // (passages choisis par passagesLore.ts) et l'histoire (mémoire narrative
-  // puis moments anciens retrouvés). Fenêtre étroite : parts réduites.
-  const partRecherche = Math.min(ctx.budgetLorePassages ?? BUDGET_LORE_PASSAGES, Math.floor(budget * 0.15));
-  const lore = formaterLore(ctx.loreElyndor, ctx.titreLore ?? 'LORE ELYNDOR PERTINENT', partRecherche + 300, partRecherche);
-  const souvenirs = tronquer(ctx.souvenirs ?? '', Math.floor(partRecherche * 0.4));
-  const blocs = ctx.blocsContexte
-    ? `\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n${tronquer(ctx.blocsContexte, Math.max(0, partRecherche - souvenirs.length))}`
-    : '';
-
-  // Résumé, faits et état du monde se partagent ce qui reste après l'en-tête
-  // (Lore Core garanti) et les parts des moteurs de recherche.
   const fiche = ctx.ficheScene ? `\n\n${ctx.ficheScene}` : '';
-  const reste = Math.max(0, budgetHorsContrat - entete.length - fiche.length - lore.length - blocs.length - souvenirs.length);
-  const resume = reste > 200
-    ? `\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n${tronquer(ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.", Math.floor(reste * 0.3))}`
-    : '';
-  const faits = reste > 200 ? `\n\n[FAITS CLÉS ÉTABLIS]\n${formaterFaits(ctx.faits, Math.floor(reste * 0.3))}` : '';
-  const etat = tronquer([ctx.etatMonde, ctx.engagementsEtRelations, ctx.directionNarrative].filter(Boolean).join('\n\n'), Math.floor(reste * 0.3));
+  const fixe = prefixe.length + styleBloc.length + fiche.length + contrat.length + rappel.length + registre.length;
 
-  const milieu = tronquer(
-    `${resume}${faits}${etat ? `\n\n${etat}` : ''}${blocs}${souvenirs}${lore}`,
-    Math.max(0, budgetHorsContrat - entete.length),
-  );
-  // Le contrat V2.1 est placé après le contexte variable, sans invalider
-  // le cache du préfixe fixe ; la mémoire et le lore gardent leur budget.
-  const suite = tronquer(`${entete.slice(prefixe.length)}${milieu}`, Math.max(0, budgetHorsContrat - prefixe.length - fiche.length));
-  return `${prefixe}${suite}${fiche}${contrat}${rappel}${registre}`;
+  const manques: string[] = [];
+  const avertissements: string[] = [];
+
+  // Sections variables, au format final, avant toute coupe.
+  const titreLore = ctx.titreLore ?? 'LORE ELYNDOR PERTINENT';
+  const enteteLore = ctx.loreElyndor.length ? `\n\n[${titreLore}]\n`.length : 0;
+  const loreComplet = formaterLoreAlloue(ctx.loreElyndor, titreLore, { P0: Infinity, P1: Infinity, P2: Infinity }, []);
+  const loreDemande = { ...loreComplet.transmis };
+  const souvenirs = ctx.souvenirs ?? '';
+  const resume = ctx.resume || "L'histoire commence tout juste, aucun résumé pour l'instant.";
+  const faitsTexte = formaterFaits(ctx.faits, Number.MAX_SAFE_INTEGER);
+  const contexteP0 = ctx.contexteP0 ?? '';
+  const blocsP1 = ctx.blocsContexte ?? '';
+  const engagements = ctx.engagementsEtRelations ?? '';
+  const etatMonde = ctx.etatMonde ?? '';
+  const direction = ctx.directionNarrative ?? '';
+
+  // Allocation par priorité : P0, puis P1, puis la description du personnage,
+  // puis P2. Le texte n'est coupé qu'ici, jamais après l'assemblage.
+  const persoPlancher = persoBloc(PLANCHER_DESCRIPTION, PLANCHER_DEPART);
+  const persoPlein = persoBloc(3000, 2000);
+  let restant = Math.max(0, budget - fixe - persoPlancher.length);
+  if (fixe + persoPlancher.length > budget) {
+    avertissements.push(`les parties qui ne se coupent jamais (${fixe} car.) laissent trop peu de place dans ${budget} car. : fiche du personnage réduite au minimum`);
+  }
+  const prendre = (voulu: number): number => {
+    const accorde = Math.max(0, Math.min(voulu, restant));
+    restant -= accorde;
+    return accorde;
+  };
+  const enteteMemoire = '\n\n[MÉMOIRE NARRATIVE PERTINENTE]\n';
+  const aMemoire = !!(contexteP0 || blocsP1);
+  const a = {
+    lore0: prendre(loreDemande.P0 + enteteLore),
+    memoireP0: prendre(contexteP0.length + (aMemoire ? enteteMemoire.length : 0)),
+    lore1: prendre(loreDemande.P1),
+    memoireP1: prendre(blocsP1.length + (contexteP0 && blocsP1 ? 2 : 0)),
+    faits: prendre(faitsTexte.length ? faitsTexte.length + '\n\n[FAITS CLÉS ÉTABLIS]\n'.length : 0),
+    engagements: prendre(engagements.length),
+  };
+  const extensionPerso = prendre(persoPlein.length - persoPlancher.length);
+  const resteP2 = restant;
+  const a2 = {
+    lore2: Math.min(loreDemande.P2, Math.floor(resteP2 * PART_P2.lore)),
+    souvenirs: Math.min(souvenirs.length, Math.floor(resteP2 * PART_P2.souvenirs)),
+    resume: Math.min(resume.length + '\n\n[RÉSUMÉ DE L\'HISTOIRE JUSQU\'ICI]\n'.length, Math.floor(resteP2 * PART_P2.resume)),
+    etat: Math.min(etatMonde.length + direction.length + 4, Math.floor(resteP2 * PART_P2.etat)),
+  };
+
+  // Rendu : même ordre qu'avant (résumé, faits, état, mémoire, souvenirs, lore).
+  const lore = formaterLoreAlloue(ctx.loreElyndor, titreLore, {
+    P0: Math.max(0, a.lore0 - enteteLore),
+    P1: a.lore1,
+    P2: a2.lore2,
+  }, manques);
+  const enteteResume = "\n\n[RÉSUMÉ DE L'HISTOIRE JUSQU'ICI]\n";
+  const resumeTexte = a2.resume > enteteResume.length + 80 ? `${enteteResume}${tronquer(resume, a2.resume - enteteResume.length)}` : '';
+  const enteteFaits = '\n\n[FAITS CLÉS ÉTABLIS]\n';
+  const faitsRendu = a.faits > enteteFaits.length + 40 ? `${enteteFaits}${tronquer(faitsTexte, a.faits - enteteFaits.length)}` : '';
+  if (faitsTexte && faitsRendu.length < Math.min(faitsTexte.length, 400)) manques.push('faits clés établis (P1) absents : budget du prompt');
+  const etatParts = [
+    tronquer(etatMonde, Math.max(0, Math.floor(a2.etat * 0.6))),
+    tronquer(engagements, a.engagements),
+    tronquer(direction, Math.max(0, a2.etat - Math.floor(a2.etat * 0.6))),
+  ].filter(Boolean);
+  if (engagements && tronquer(engagements, a.engagements).length < engagements.length) {
+    manques.push(a.engagements ? 'engagements et relations (P1) raccourcis : budget du prompt' : 'engagements et relations (P1) absents : budget du prompt');
+  }
+  const etat = etatParts.length ? `\n\n${etatParts.join('\n\n')}` : '';
+  const p0Rendu = tronquer(contexteP0, Math.max(0, a.memoireP0 - enteteMemoire.length));
+  const p1Rendu = tronquer(blocsP1, Math.max(0, a.memoireP1 - (contexteP0 && blocsP1 ? 2 : 0)));
+  if (contexteP0 && p0Rendu.length < contexteP0.length) manques.push('mémoire P0 (scène actuelle, faits canon) raccourcie : budget du prompt');
+  if (blocsP1 && p1Rendu.length < blocsP1.length) manques.push('mémoire P1 (événements, PNJ, noyau V12) raccourcie : budget du prompt');
+  const memoire = p0Rendu || p1Rendu ? `${enteteMemoire}${[p0Rendu, p1Rendu].filter(Boolean).join('\n\n')}` : '';
+  const souvenirsRendu = tronquer(souvenirs, a2.souvenirs);
+
+  // Description du personnage : tout ce qui reste de la part qui lui revient.
+  const roomPerso = persoPlancher.length + extensionPerso;
+  const surcout = persoBloc(0, 0).length;
+  const room = Math.max(0, roomPerso - surcout);
+  const longDescription = Math.min(3000, ctx.meta.personnageDescription.length);
+  const longDepart = Math.min(2000, ctx.meta.pointDeDepart.length);
+  // Tout est conservé si ça tient ; sinon la description garde la priorité sur le point de départ.
+  const depart = longDescription + longDepart <= room ? longDepart : Math.min(longDepart, Math.max(PLANCHER_DEPART, Math.floor(room * 0.3)));
+  const perso = persoBloc(Math.min(longDescription, Math.max(PLANCHER_DESCRIPTION, room - depart)), depart);
+
+  const milieu = `${resumeTexte}${faitsRendu}${etat}${memoire}${souvenirsRendu}${lore.texte}`;
+  const texte = `${prefixe}${perso}${styleBloc}${milieu}${fiche}${contrat}${rappel}${registre}`;
+  if (texte.length > budget) avertissements.push(`prompt de ${texte.length} car. pour un budget de ${budget} : seules les parties qui ne se coupent jamais dépassent`);
+
+  const sections: SectionPrompt[] = [
+    { nom: 'règles, style, contrat, fiche de scène', niveau: 'fixe', demande: fixe, transmis: fixe },
+    { nom: 'lore P0 (fiches certaines)', niveau: 'P0', demande: loreDemande.P0, transmis: lore.transmis.P0 },
+    { nom: 'mémoire P0 (scène, faits canon)', niveau: 'P0', demande: contexteP0.length, transmis: p0Rendu.length },
+    { nom: 'lore P1', niveau: 'P1', demande: loreDemande.P1, transmis: lore.transmis.P1 },
+    { nom: 'mémoire P1 (noyau V12, événements, PNJ)', niveau: 'P1', demande: blocsP1.length, transmis: p1Rendu.length },
+    { nom: 'faits clés établis', niveau: 'P1', demande: faitsTexte.length, transmis: faitsRendu.length },
+    { nom: 'engagements et relations', niveau: 'P1', demande: engagements.length, transmis: Math.min(engagements.length, a.engagements) },
+    { nom: 'fiche du personnage', niveau: 'P1', demande: persoPlein.length, transmis: perso.length },
+    { nom: 'lore P2', niveau: 'P2', demande: loreDemande.P2, transmis: lore.transmis.P2 },
+    { nom: 'souvenirs', niveau: 'P2', demande: souvenirs.length, transmis: souvenirsRendu.length },
+    { nom: 'résumé', niveau: 'P2', demande: resume.length, transmis: resumeTexte.length },
+    { nom: 'état du monde et direction', niveau: 'P2', demande: etatMonde.length + direction.length, transmis: tronquer(etatMonde, Math.floor(a2.etat * 0.6)).length + tronquer(direction, a2.etat - Math.floor(a2.etat * 0.6)).length },
+  ];
+  return { texte, rapport: { budget, longueur: texte.length, fixe, sections, manques, avertissements } };
+}
+
+export function construireSystemPrompt(ctx: ContexteConstruction, options: OptionsPrompt = {}): string {
+  return construireSystemPromptDetaille(ctx, options).texte;
 }
 
 export function construireMessages(ctx: ContexteConstruction, options: OptionsPrompt = {}): ChatMessage[] {
