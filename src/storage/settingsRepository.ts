@@ -2,7 +2,7 @@ import type { AppSettings } from '../types';
 import { creerFileSerie } from './serialQueue';
 
 const CLE_REGLAGES = '@rp_beta/settings';
-const CLES_API = ['openRouterApiKey', 'openAiApiKey', 'infermaticApiKey', 'embeddingsApiKey', 'serveurLocalApiKey'] as const;
+const CLES_API = ['openRouterApiKey', 'openAiApiKey', 'infermaticApiKey', 'embeddingsApiKey', 'serveurLocalApiKey', 'cloudflareApiKey', 'aiHordeApiKey'] as const;
 export type ClesApi = Pick<AppSettings, typeof CLES_API[number]>;
 export interface StockageCles {
   lire(): Promise<ClesApi | null>;
@@ -14,12 +14,14 @@ interface StockageReglages {
 }
 
 function separerCles(settings: AppSettings) {
-  const { openRouterApiKey, openAiApiKey, infermaticApiKey, embeddingsApiKey, serveurLocalApiKey, ...publics } = settings;
+  const { openRouterApiKey, openAiApiKey, infermaticApiKey, embeddingsApiKey, serveurLocalApiKey, cloudflareApiKey, aiHordeApiKey, ...publics } = settings;
   // Clé ajoutée après coup : ne l'écrire que si elle existe, pour que les
   // coffres existants relus restent identiques à ce qui y a été rangé.
   const cles: ClesApi = { openRouterApiKey: openRouterApiKey ?? '', infermaticApiKey, embeddingsApiKey };
   if (serveurLocalApiKey !== undefined) cles.serveurLocalApiKey = serveurLocalApiKey;
   if (openAiApiKey !== undefined) cles.openAiApiKey = openAiApiKey;
+  if (cloudflareApiKey !== undefined) cles.cloudflareApiKey = cloudflareApiKey;
+  if (aiHordeApiKey !== undefined) cles.aiHordeApiKey = aiHordeApiKey;
   return { publics, cles };
 }
 
