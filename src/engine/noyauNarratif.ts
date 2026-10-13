@@ -612,6 +612,8 @@ export interface ContexteNoyau {
   texteMonde: string;
   texteSocial: string;
   compteurs: Obj;
+  /** Messages du narrateur dont les événements sont déjà rappelés dans `texte` : pas répétés ailleurs. */
+  idsMessages: string[];
 }
 
 /** Canon structuré et opportunités à injecter pour ce tour. */
@@ -658,7 +660,8 @@ export function construireContexteNoyau(story: HistoireAvecNoyau, messageJoueur:
     ledger: c.ledger.length, canon: c.canon.length, beliefs: c.beliefs.length,
     debts: c.debts.filter((x) => x.status === 'open').length, quarantine: c.quarantine.length,
   };
-  return { texte: lignes.join('\n'), directive: DIRECTIVE_ETAT, texteMonde: texteMonde(story), texteSocial: texteSocial(story, requete), compteurs };
+  const idsMessages = classes.map((x) => x.e.source?.assistantMessageId).filter((id): id is string => typeof id === 'string' && !!id);
+  return { texte: lignes.join('\n'), directive: DIRECTIVE_ETAT, texteMonde: texteMonde(story), texteSocial: texteSocial(story, requete), compteurs, idsMessages };
 }
 
 /**

@@ -9,11 +9,11 @@ import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
 import {
   chargerLoreElyndor,
-  extraireAncresCanoniques,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
   construireMessages,
+  construireMessagesDetaille,
   construireSystemPrompt,
   maxTokensPourLongueur,
   temperaturePourCreativite,
@@ -39,7 +39,8 @@ import { detecterStagnation, formaterDirection, mettreAJourDirecteur } from './s
 import { formaterMonde, mettreAJourMonde } from './worldSimulation';
 import { formaterEngagementsEtRelations, mettreAJourSocial } from './socialDynamics';
 import { rechercherSouvenirsLexical } from './rechercheLexicale';
-import { construirePassages, selectionnerPassages } from './passagesLore';
+import { construirePassages, selectionnerPassagesDetaille, type RapportSelectionLore } from './passagesLore';
+import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
@@ -58,6 +59,7 @@ import { contradictionProbable, corpusCanon, validerRepetitionHeuristique, verif
 import { annulerTour, assurerNoyau, construireContexteNoyau, diagnosticNoyau, extraireEnveloppeEtat, validerTour } from './noyauNarratif';
 import {
   construireBlocsContexte,
+  ecarterDoublons,
   debugBlocsContexte,
   formaterBlocsContexte,
   synchroniserMemoireNarrative,
@@ -199,6 +201,23 @@ interface SelectionLore {
   loreElyndor: LoreEntry[];
   souvenirs: Souvenir[];
   debugLore: DebugLore;
+  rapportLore?: RapportSelectionLore;
+}
+
+const MAX_LIGNES_RAPPORT = 8;
+
+/** Lignes du diagnostic concepteur : ce qui est retenu, rejeté, manquant, et pourquoi. */
+function lignesRapportLore(rapport: RapportSelectionLore, resolution: ResolutionEntites, durees: { resolutionMs: number; indexMs: number; classementMs: number }): string[] {
+  const lignes = [
+    `durées : résolution des entités ${durees.resolutionMs} ms · index des passages ${durees.indexMs} ms · classement ${durees.classementMs} ms`,
+    `lore : ${rapport.passagesAnalyses} passages analysés, ${rapport.retenus.length} fiches retenues, ${rapport.utilise}/${rapport.budget} caractères (budget en caractères, pas en jetons)`,
+    ...rapport.retenus.slice(0, MAX_LIGNES_RAPPORT).map((r) => `[${r.niveau}] ${formaterDebug(r.titre, r.score)} — ${r.raison}${r.raccourci ? ' (raccourcie)' : ''} · ${r.caracteres} car.`),
+    ...rapport.rejetes.slice(0, 4).map((r) => `rejetée : ${formaterDebug(r.titre, r.score)} — ${r.cause === 'budget' ? 'budget épuisé' : 'quota par fiche atteint'}`),
+    ...rapport.manques.map((m) => `MANQUE CANON : ${m}`),
+    ...resolution.ambigus.map((a) => `ambiguïté « ${a.alias} » : ${a.candidats.join(' | ')}${a.resolu ? ' (tranchée par la ville)' : ' (non tranchée, aucune ancre)'}`),
+  ];
+  if (resolution.evoquees.size) lignes.push(`${resolution.evoquees.size} fiche(s) seulement évoquée(s) par le résumé ou les faits : pas d'ancre`);
+  return lignes;
 }
 
 
@@ -229,15 +248,28 @@ export async function calculerSelectionLore(
 
   // Moteur de recherche du lore : tous les passages de toutes les entrées
   // sont notés, seuls les meilleurs partent au narrateur (BUDGET_LORE_PASSAGES).
+  const debutIndex = Date.now();
   const passagesLore = construirePassages(poolElyndor);
+  const dureeIndexMs = Date.now() - debutIndex;
   const preparation = preparerTour(story, messageJoueur);
   const requetesLore = construireRequetesLore(story, messageJoueur, appSettings, preparation);
-  // Fiches du lieu visé (Guilde des Aventuriers, Maîtresses de Guilde…) :
-  // traitées comme des noms cités, leur meilleur passage remonte d'office.
-  const ancresLore = new Set([
-    ...extraireAncresCanoniques(`${requetesLore.message}\n${requetesLore.scene}`, poolElyndor).map((e) => e.id),
-    ...poolElyndor.filter((e) => preparation.intention.fiches.some((f) => e.titre.includes(f))).map((e) => e.id),
-  ]);
+  // Entités de la scène : seuls les noms cités dans le message, la ville, la
+  // destination ou la dernière réponse sont certains (P0). Un nom présent
+  // seulement dans le résumé ou les faits d'un récit passé n'est qu'évoqué.
+  const derniereReponse = [...story.messages].reverse().find((m) => m.role === 'assistant')?.content;
+  const debutResolution = Date.now();
+  const resolution = resoudreEntitesScene({
+    pool: poolElyndor,
+    messageJoueur,
+    ville: preparation.ville,
+    lieuActuel: story.scene?.lieu || undefined,
+    destination: preparation.intention.lieu?.libelle,
+    fichesIntention: preparation.intention.fiches,
+    derniereReponse,
+    memoire: [story.memoire.resume, ...story.memoire.faits.map((f) => f.texte)],
+    presents: story.scene?.presents ?? [],
+  });
+  const dureeResolutionMs = Date.now() - debutResolution;
 
   // La frontière entre contexte direct et recherche historique n'est plus
   // un nombre fixe de messages. Elle dépend du budget réel de conversation
@@ -261,9 +293,11 @@ export async function calculerSelectionLore(
   // lorsqu'aucun fournisseur n'est configuré que lorsqu'un endpoint
   // d'embeddings configuré refuse ou échoue pendant l'appel.
   const selectionLexicale = (raison: string, statut: 'ok' | 'repli' = 'repli'): SelectionLore => {
-    const loreElyndor = selectionnerPassages(passagesLore, requetesLore.scene, {
+    const debutClassement = Date.now();
+    const { entrees: loreElyndor, rapport } = selectionnerPassagesDetaille(passagesLore, requetesLore.scene, {
       requeteMessage: requetesLore.message,
-      ancres: ancresLore,
+      ancres: resolution.ancresP0,
+      raisonsAncres: resolution.raisons,
       aleatoire: optionsLoreElyndor?.aleatoire,
       budget: reglagesAtelier?.budgetLorePassages,
     });
@@ -280,14 +314,16 @@ export async function calculerSelectionLore(
         `${messagesAnciens.length} messages anciens consultables`,
         `${loreElyndor.length} entrées lore retenues`,
         `${souvenirs.length} souvenirs retenus`,
+        ...lignesRapportLore(rapport, resolution, { resolutionMs: dureeResolutionMs, indexMs: dureeIndexMs, classementMs: Date.now() - debutClassement }),
       ],
     );
     return {
       loreElyndor,
       souvenirs,
+      rapportLore: rapport,
       debugLore: {
         metamoteurs: [],
-        loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+        loreElyndor: loreElyndor.map((e) => `[${e.niveau ?? 'P2'}] ${formaterDebug(e.titre, e.score)}`),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
     };
@@ -306,12 +342,14 @@ export async function calculerSelectionLore(
       embedderMessagesAnciens(messagesAnciens, appSettings),
     ]);
 
-    const loreElyndor = selectionnerPassages(passagesLore, requetesLore.scene, {
+    const debutClassementSemantique = Date.now();
+    const { entrees: loreElyndor, rapport } = selectionnerPassagesDetaille(passagesLore, requetesLore.scene, {
       vecteurRequete: vecteurScene ?? vecteurRequete,
       requeteMessage: requetesLore.message,
       vecteurMessage,
       vecteursPassages: vecteursElyndor,
-      ancres: ancresLore,
+      ancres: resolution.ancresP0,
+      raisonsAncres: resolution.raisons,
       aleatoire: optionsLoreElyndor?.aleatoire,
       budget: reglagesAtelier?.budgetLorePassages,
     });
@@ -329,16 +367,17 @@ export async function calculerSelectionLore(
         `${messagesAnciens.length} messages anciens consultables`,
         `${loreElyndor.length} entrées lore retenues`,
         `${souvenirs.length} souvenirs retenus`,
-        ...loreElyndor.slice(0, 8).map((e) => `lore → ${formaterDebug(e.titre, e.score)}`),
+        ...lignesRapportLore(rapport, resolution, { resolutionMs: dureeResolutionMs, indexMs: dureeIndexMs, classementMs: Date.now() - debutClassementSemantique }),
       ],
     );
 
     return {
       loreElyndor,
       souvenirs,
+      rapportLore: rapport,
       debugLore: {
         metamoteurs: [],
-        loreElyndor: loreElyndor.map((e) => formaterDebug(e.titre, e.score)),
+        loreElyndor: loreElyndor.map((e) => `[${e.niveau ?? 'P2'}] ${formaterDebug(e.titre, e.score)}`),
         souvenirs: formaterSouvenirsDebug(souvenirs),
       },
     };
@@ -409,6 +448,12 @@ export function construireCtxBase(
   const messagesRecents = profilAdulte
     ? story.messages
     : story.messages.filter((m) => texteCompatibleAvecProfil(m.content, profil));
+  // Un échange n'est rappelé qu'une fois (voir ecarterDoublons).
+  const { blocsUtiles, souvenirsUtiles, doublonsEcartes } = ecarterDoublons({
+    blocs: blocs.blocs,
+    idsNoyau: new Set(noyau?.idsMessages ?? []),
+    souvenirs: selection.souvenirs,
+  });
   const directionNarrative = formaterDirection(
     story.directeur,
     detecterStagnation(story.directeur, story.messages.length),
@@ -430,8 +475,10 @@ export function construireCtxBase(
     directionNarrative: filtrer(directionNarrative),
     etatMonde: filtrer([formaterMonde(story.monde), noyau?.texteMonde].filter(Boolean).join('\n\n')),
     engagementsEtRelations: filtrer([formaterEngagementsEtRelations(story.social), noyau?.texteSocial].filter(Boolean).join('\n\n')),
-    souvenirs: filtrer(formaterSouvenirs(selection.souvenirs, nomPersonnage)),
-    blocsContexte: filtrer([noyau?.texte, formaterBlocsContexte(blocs.blocs)].filter(Boolean).join('\n\n')),
+    souvenirs: filtrer(formaterSouvenirs(souvenirsUtiles, nomPersonnage)),
+    contexteP0: filtrer(formaterBlocsContexte(blocsUtiles.filter((b) => b.niveau === 'P0'))),
+    blocsContexte: filtrer([noyau?.texte, formaterBlocsContexte(blocsUtiles.filter((b) => b.niveau !== 'P0'), false)].filter(Boolean).join('\n\n')),
+    doublonsEcartes,
     directiveEtat: noyau?.directive,
     // Étapes 1 à 4 de la logique de réponse : fiche préparée par l'application.
     ficheScene: avecNoyau ? filtrer(preparerTour(story, messageJoueur).fiche) : undefined,
@@ -454,7 +501,10 @@ export async function construireContexteNarrateurPourIllustration(story: StorySt
   const storyCourante = assurerNoyau(story, evenements);
   const reglagesAtelier = await parametresDeLaSession(appSettings);
   const selection = await calculerSelectionLore(storyCourante, messageJoueur, appSettings, undefined, reglagesAtelier);
-  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  // Les événements déjà rappelés par le noyau V12 ne sont pas choisis une seconde fois.
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements, {
+    exclureMessageIds: new Set(construireContexteNoyau(storyCourante as Parameters<typeof construireContexteNoyau>[0], messageJoueur).idsMessages),
+  });
   const ctx = construireCtxBase(storyCourante, messageJoueur, appSettings, selection, blocs, true, reglagesAtelier);
   // Pas de bloc d'état machine : la réponse attendue est la direction artistique.
   return construireSystemPrompt(
@@ -576,7 +626,10 @@ async function genererTourInterne(
   ajouterEtapeDiagnostic('Méta-moteurs V2.1 — contrat narratif', 'contexte', 'ok', 0, undefined,
     [`${contrat.contributions.filter((m) => m.actif).length}/15 responsabilités mobilisées`, ...debugLore.metamoteurs]);
   const debutContexte = Date.now();
-  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements);
+  // Les événements déjà rappelés par le noyau V12 ne sont pas choisis une seconde fois.
+  const blocs = construireBlocsContexte(storyCourante, messageJoueur, evenements, {
+    exclureMessageIds: new Set(construireContexteNoyau(storyCourante as Parameters<typeof construireContexteNoyau>[0], messageJoueur).idsMessages),
+  });
   const ctxBase = construireCtxBase(storyCourante, messageJoueur, appSettings, { loreElyndor, souvenirs }, blocs, true, reglagesAtelier);
   ajouterEtapeDiagnostic(
     'Construire contexte du tour',
@@ -584,7 +637,14 @@ async function genererTourInterne(
     'ok',
     Date.now() - debutContexte,
     undefined,
-    [`${blocs.blocs.length} blocs mémoire retenus`, `${blocs.totalCaracteres} caractères mémoire narrative`],
+    [
+      `${blocs.blocs.length} blocs mémoire retenus`,
+      `${blocs.totalCaracteres} caractères mémoire narrative`,
+      ...blocs.blocs.map((b) => `[${b.niveau}] ${b.type} · ${b.source}`),
+      ...blocs.rejetes.slice(0, 6).map((r) => `rejeté : ${r.type} ${r.id} [${r.niveau}] — ${r.cause === 'budget' ? 'budget épuisé' : r.cause === 'doublon' ? 'doublon' : 'déjà fourni par une autre source'}`),
+      ...blocs.manques.map((m) => `MANQUE : ${m}`),
+      `${evenements.filter((e) => e.lieuSource === 'inconnu').length}/${evenements.length} événements au lieu inconnu (jamais déduit du lieu actuel)`,
+    ],
   );
 
   const modelePourAppel = modeleOverridePourFournisseur(
@@ -607,18 +667,24 @@ async function genererTourInterne(
   const budgetPrompt = moteurEtroit ? BUDGET_SYSTEM_LOCAL : BUDGET_SYSTEM_DISTANT;
   const budgetConversation = moteurEtroit ? BUDGET_CONVERSATION_LOCAL : BUDGET_CONVERSATION_DISTANT;
   const ctxNarration = { ...ctxBase, directiveEtat: undefined };
-  const messagesNarrateur = construireMessages(ctxNarration, {
+  const { messages: messagesNarrateur, rapport: rapportPrompt } = construireMessagesDetaille(ctxNarration, {
     budgetSysteme: budgetPrompt, budgetConversation,
   });
   const tailleSysteme = messagesNarrateur.find(m => m.role === 'system')?.content?.length ?? 0;
   const tailleHistorique = messagesNarrateur.filter(m => m.role !== 'system')
     .reduce((total, m) => total + (m.content?.length ?? 0), 0);
-  ajouterEtapeDiagnostic('Budget de contexte effectivement construit', 'contexte', 'ok', 0, undefined, [
+  const perdu = rapportPrompt.manques.length > 0;
+  ajouterEtapeDiagnostic('Budget de contexte effectivement construit', 'contexte', perdu ? 'repli' : 'ok', 0,
+    perdu ? 'Une partie du contexte essentiel (P0/P1) n\'a pas pu être transmise en entier.' : undefined, [
     `Prompt système : ${tailleSysteme} caractères`,
     `Historique envoyé : ${tailleHistorique} caractères`,
     `Messages envoyés : ${messagesNarrateur.length}`,
     `Limites de préparation : système ${budgetPrompt}, historique ${budgetConversation} caractères`,
     'Les caractères ne sont PAS les tokens réels du modèle.',
+    ...rapportPrompt.sections.filter((x) => x.demande > 0).map((x) => `${x.niveau} · ${x.nom} : ${x.transmis}/${x.demande} car. transmis`),
+    ...rapportPrompt.manques.map((m) => `MANQUE : ${m}`),
+    ...rapportPrompt.avertissements.map((m) => `ATTENTION : ${m}`),
+    ...(ctxBase.doublonsEcartes ? [`${ctxBase.doublonsEcartes} rappel(s) en double écarté(s) (même échange déjà fourni par une autre source)`] : []),
   ]);
 
   commencerMesureTokens();

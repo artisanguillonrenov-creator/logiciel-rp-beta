@@ -1,5 +1,6 @@
 import type { LoreEntry, Message } from '../types';
-import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, termesSignificatifsLore, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
+import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, preparerRequeteLore, SEUIL_LORE_HYBRIDE, type EntreeLoreScorable, type ScopeLore } from './loreScoring';
+import { ensembleRacines, normaliserTexte, racineSimple, termesTexte } from './texteRecherche';
 
 // Recherche lexicale locale (reprise de la V13) : repli quand aucun
 // fournisseur d'embeddings n'est disponible — typiquement un narrateur sur
@@ -21,55 +22,40 @@ export interface ResultatLexical<T> {
 export const BUDGET_LORE: BudgetRecherche = { maxResultats: MAX_LORE_CONTEXTUEL, maxCaracteres: 3600, maxCaracteresParResultat: 520 };
 export const BUDGET_HISTORIQUE: BudgetRecherche = { maxResultats: 3, maxCaracteres: 1500, maxCaracteresParResultat: 520 };
 
-const MOTS_VIDES = new Set([
-  'a', 'ai', 'au', 'aux', 'avec', 'ce', 'ces', 'dans', 'de', 'des', 'du', 'elle', 'en', 'et', 'eux', 'il', 'ils', 'je', 'la',
-  'le', 'les', 'leur', 'lui', 'ma', 'mais', 'me', 'mes', 'moi', 'mon', 'ne', 'nos', 'notre', 'nous', 'on', 'ou', 'par', 'pas',
-  'pour', 'qu', 'que', 'qui', 'sa', 'se', 'ses', 'son', 'sur', 'ta', 'te', 'tes', 'toi', 'ton', 'tu', 'un', 'une', 'vos', 'votre',
-  'vous', 'y', 'the', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'it',
-  'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they',
-]);
-
-export function normaliserRecherche(texte: string): string {
-  return texte
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9'-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-export function termesRecherche(texte: string): string[] {
-  const vus = new Set<string>();
-  const termes: string[] = [];
-  for (const brut of normaliserRecherche(texte).split(' ')) {
-    const terme = brut.replace(/^[-']+|[-']+$/g, '');
-    if (terme.length < 2 || MOTS_VIDES.has(terme) || vus.has(terme)) continue;
-    vus.add(terme);
-    termes.push(terme);
-  }
-  return termes;
-}
-
-function occurrences(texte: string, terme: string): number {
-  let n = 0;
-  for (let i = texte.indexOf(terme); i >= 0; i = texte.indexOf(terme, i + terme.length)) n += 1;
-  return n;
-}
+/** Anciennes API, conservées : une seule normalisation dans texteRecherche.ts. */
+export const normaliserRecherche = normaliserTexte;
+export const termesRecherche = termesTexte;
 
 // Extrait centré sur la première occurrence d'un terme, plutôt que le début
 // d'une fiche de lore qui parle peut-être d'autre chose.
+function echapper(terme: string): string {
+  return terme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function extraire(texte: string, termes: string[], max: number): string {
   if (texte.length <= max) return texte.trim();
-  const normalise = normaliserRecherche(texte);
+  // Position du premier mot cherché, aux frontières de mots, dans le texte
+  // d'origine (retirer les accents ne change pas sa longueur). Pas de
+  // lookbehind : tous les moteurs JS de l'app ne le gèrent pas.
+  const simple = texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   let premier = -1;
   for (const terme of termes) {
-    const i = normalise.indexOf(terme);
-    if (i >= 0 && (premier < 0 || i < premier)) premier = i;
+    const m = new RegExp(`(^|[^a-z0-9])${echapper(terme)}(?![a-z0-9])`).exec(simple);
+    if (m && (premier < 0 || m.index + m[1].length < premier)) premier = m.index + m[1].length;
   }
   const depart = Math.min(premier < 0 ? 0 : Math.max(0, premier - Math.floor(max * 0.35)), Math.max(0, texte.length - max));
   return `${depart > 0 ? '…' : ''}${texte.slice(depart, depart + max).trim()}${depart + max < texte.length ? '…' : ''}`;
 }
+
+interface AnalyseElement {
+  titre: string;
+  texte: string;
+  comptes: Map<string, number>;
+  corps: string;
+  racinesTitre: Set<string>;
+}
+
+const analysesMemorisees = new WeakMap<object, AnalyseElement>();
 
 export interface OptionsClassement<T> {
   requete: string;
@@ -92,21 +78,45 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   if (!termes.length || !items.length || budget.maxResultats <= 0 || budget.maxCaracteres <= 0) return [];
   const expression = normaliserRecherche(options.requete);
   const maintenant = options.maintenant ?? Date.now();
+  const racinesTermes = termes.map(racineSimple);
+  // Expression complète de la requête, en racines, cherchée telle quelle (mots entiers).
+  const expressionRacines = expression.length >= 6 ? ` ${expression.split(' ').map(racineSimple).join(' ')} ` : '';
 
-  const notes = items.map((item) => {
+  // Passe 1 : chaque élément est analysé une fois (mots entiers et racines
+  // simples). Un élément inchangé d'un tour à l'autre (événement, fait…) garde
+  // son analyse : elle ne se refait que si son texte ou son titre a changé.
+  const analyses = items.map((item) => {
     const titre = titreDe?.(item) ?? '';
     const texte = texteDe(item);
-    const titreNormalise = normaliserRecherche(titre);
-    const corps = normaliserRecherche(`${titre} ${texte}`);
+    const memorise = typeof item === 'object' && item !== null ? analysesMemorisees.get(item as object) : undefined;
+    if (memorise && memorise.texte === texte && memorise.titre === titre) return { item, ...memorise };
+    const motsCorps = normaliserRecherche(`${titre} ${texte}`).split(' ').map(racineSimple);
+    const comptes = new Map<string, number>();
+    for (const mot of motsCorps) comptes.set(mot, (comptes.get(mot) ?? 0) + 1);
+    const analyse = { titre, texte, comptes, corps: motsCorps.join(' '), racinesTitre: ensembleRacines(termesRecherche(titre)) };
+    if (typeof item === 'object' && item !== null) analysesMemorisees.set(item as object, analyse);
+    return { item, ...analyse };
+  });
+  // Poids de rareté (IDF) : un mot présent dans presque tous les éléments
+  // (« marché », le nom du PNJ du moment) compte peu ; un mot rare de la
+  // question du joueur (« clé », « argent ») fait la différence. Sans cela, dans
+  // une longue histoire, les mots communs noyaient la question.
+  const poids = racinesTermes.map((racine) => {
+    const df = analyses.reduce((n, a) => n + (a.comptes.has(racine) ? 1 : 0), 0);
+    return Math.log(1 + (analyses.length + 1) / (df + 1));
+  });
+  const poidsTotal = poids.reduce((n, w) => n + w, 0) || 1;
+
+  const notes = analyses.map(({ item, texte, comptes, corps, racinesTitre }) => {
     let trouves = 0;
     let frequence = 0;
     let dansTitre = 0;
-    for (const terme of termes) {
-      const n = occurrences(corps, terme);
-      if (n > 0) trouves += 1;
-      frequence += Math.min(n, 4);
-      if (titreNormalise.includes(terme)) dansTitre += 1;
-    }
+    racinesTermes.forEach((racine, i) => {
+      const n = comptes.get(racine) ?? 0;
+      if (n > 0) trouves += poids[i];
+      frequence += Math.min(n, 4) * (poids[i] / poidsTotal) * racinesTermes.length;
+      if (racinesTitre.has(racine)) dansTitre += 1;
+    });
     if (!trouves) return { item, score: 0, extrait: '' };
     let fraicheur = 0;
     const date = dateDe?.(item);
@@ -114,10 +124,10 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
       const jours = Math.max(0, (maintenant - date) / 86_400_000);
       fraicheur = Math.max(0, 0.7 - 0.25 * Math.log10(1 + jours));
     }
-    const score = 5 * (trouves / termes.length)
+    const score = 5 * (trouves / poidsTotal)
       + 1.2 * Math.log2(1 + frequence)
       + 1.8 * dansTitre
-      + (expression.length >= 6 && corps.includes(expression) ? 2.5 : 0)
+      + (expressionRacines && ` ${corps} `.includes(expressionRacines) ? 2.5 : 0)
       + fraicheur;
     return { item, score, extrait: extraire(texte, termes, budget.maxCaracteresParResultat) };
   });
@@ -135,9 +145,13 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   return retenus;
 }
 
-/** Fiches de lore classées avec le même score hybride que le mode embeddings. */
+/**
+ * Fiches de lore classées avec le même score hybride que le mode embeddings.
+ * @deprecated Aucun appelant de production : le jeu passe par passagesLore.ts
+ * (passages, ancres P0, rapport). Conservée pour ses tests et l'interface du lorebook.
+ */
 export function rechercherLoreLexical(entrees: LoreEntry[], requete: string): LoreEntry[] {
-  const termes = termesSignificatifsLore(requete);
+  const termes = preparerRequeteLore(requete).termes;
   const toujoursActives: LoreEntry[] = [];
   const candidats: { item: LoreEntry; score: number; extrait: string; priority: number }[] = [];
 

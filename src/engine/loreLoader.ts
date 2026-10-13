@@ -1,13 +1,10 @@
 import type { LoreEntry } from '../types';
 import { similariteCosinus } from './embeddings';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, type ScopeLore } from './loreScoring';
+import { contientExpression, normaliserTexte, positionExpression } from './texteRecherche';
 
-function normalise(texte: string): string {
-  return texte
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // retire les accents
-}
+// Normalisation commune à toute la recherche (texteRecherche.ts).
+const normalise = normaliserTexte;
 
 // --- Métamoteurs (format RISU) -----------------------------------------
 
@@ -250,10 +247,7 @@ function sujetCanoniqueTitre(titre: string): string {
 }
 
 function normaliserAncre(texte: string): string {
-  return normalise(texte)
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normaliserTexte(texte);
 }
 
 function estEntreeAncrable(entree: ElyndorEntryChargee): boolean {
@@ -276,7 +270,7 @@ function estEntreeAncrable(entree: ElyndorEntryChargee): boolean {
 
 function contientExpressionCanonique(requeteNormalisee: string, aliasNormalise: string): boolean {
   if (aliasNormalise.length < 3) return false;
-  return ` ${requeteNormalisee} `.includes(` ${aliasNormalise} `);
+  return contientExpression(requeteNormalisee, aliasNormalise);
 }
 
 function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
@@ -291,9 +285,39 @@ function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
   for (const cle of [...(entree.primaryKeys ?? []), ...(entree.secondaryKeys ?? [])]) {
     const alias = normaliserAncre(cle);
     if (!alias || alias.length < 3) continue;
-    if (alias.includes(sujet) || sujet.includes(alias)) aliases.add(alias);
+    if (contientExpression(alias, sujet) || contientExpression(sujet, alias)) aliases.add(alias);
   }
   return [...aliases];
+}
+
+export interface AncreDetaillee {
+  entree: ElyndorEntryChargee;
+  /** Alias (normalisé) qui a déclenché l'ancre : sert à repérer les homonymes. */
+  alias: string;
+  position: number;
+}
+
+/** Ancres canoniques avec l'alias déclencheur ; mêmes règles que extraireAncresCanoniques. */
+export function extraireAncresDetaillees(texteRequete: string, entrees: ElyndorEntryChargee[]): AncreDetaillee[] {
+  const requete = normaliserAncre(texteRequete);
+  const notes: AncreDetaillee[] = [];
+
+  for (const entree of entrees) {
+    if (!estEntreeAncrable(entree)) continue;
+    let meilleure: { alias: string; position: number } | null = null;
+    for (const alias of aliasesCanoniques(entree)) {
+      if (!contientExpressionCanonique(requete, alias)) continue;
+      const position = positionExpression(requete, alias);
+      if (position >= 0 && (!meilleure || position < meilleure.position)) meilleure = { alias, position };
+    }
+    if (meilleure) notes.push({ entree, ...meilleure });
+  }
+
+  return notes.sort((a, b) =>
+    a.position - b.position
+    || a.entree.priority - b.entree.priority
+    || a.entree.titre.localeCompare(b.entree.titre),
+  );
 }
 
 /**
@@ -306,28 +330,7 @@ export function extraireAncresCanoniques(
   texteRequete: string,
   entrees: ElyndorEntryChargee[],
 ): LoreEntry[] {
-  const requete = normaliserAncre(texteRequete);
-  const notes: { entree: ElyndorEntryChargee; position: number }[] = [];
-
-  for (const entree of entrees) {
-    if (!estEntreeAncrable(entree)) continue;
-    let meilleurePosition = Number.POSITIVE_INFINITY;
-    for (const alias of aliasesCanoniques(entree)) {
-      if (!contientExpressionCanonique(requete, alias)) continue;
-      const position = requete.indexOf(alias);
-      if (position >= 0) meilleurePosition = Math.min(meilleurePosition, position);
-    }
-    if (!Number.isFinite(meilleurePosition)) continue;
-    notes.push({ entree, position: meilleurePosition });
-  }
-
-  notes.sort((a, b) =>
-    a.position - b.position
-    || a.entree.priority - b.entree.priority
-    || a.entree.titre.localeCompare(b.entree.titre),
-  );
-
-  return notes.map(({ entree }) => ({
+  return extraireAncresDetaillees(texteRequete, entrees).map(({ entree }) => ({
     id: entree.id,
     titre: entree.titre,
     contenu: entree.contenu,
