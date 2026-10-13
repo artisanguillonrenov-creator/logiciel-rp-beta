@@ -290,6 +290,36 @@ function aliasesCanoniques(entree: ElyndorEntryChargee): string[] {
   return [...aliases];
 }
 
+export interface AncreDetaillee {
+  entree: ElyndorEntryChargee;
+  /** Alias (normalisé) qui a déclenché l'ancre : sert à repérer les homonymes. */
+  alias: string;
+  position: number;
+}
+
+/** Ancres canoniques avec l'alias déclencheur ; mêmes règles que extraireAncresCanoniques. */
+export function extraireAncresDetaillees(texteRequete: string, entrees: ElyndorEntryChargee[]): AncreDetaillee[] {
+  const requete = normaliserAncre(texteRequete);
+  const notes: AncreDetaillee[] = [];
+
+  for (const entree of entrees) {
+    if (!estEntreeAncrable(entree)) continue;
+    let meilleure: { alias: string; position: number } | null = null;
+    for (const alias of aliasesCanoniques(entree)) {
+      if (!contientExpressionCanonique(requete, alias)) continue;
+      const position = positionExpression(requete, alias);
+      if (position >= 0 && (!meilleure || position < meilleure.position)) meilleure = { alias, position };
+    }
+    if (meilleure) notes.push({ entree, ...meilleure });
+  }
+
+  return notes.sort((a, b) =>
+    a.position - b.position
+    || a.entree.priority - b.entree.priority
+    || a.entree.titre.localeCompare(b.entree.titre),
+  );
+}
+
 /**
  * V3 étape 11 — ancres canoniques.
  * Un nom explicite force sa fiche statique même si embedding/lexical restent
@@ -300,28 +330,7 @@ export function extraireAncresCanoniques(
   texteRequete: string,
   entrees: ElyndorEntryChargee[],
 ): LoreEntry[] {
-  const requete = normaliserAncre(texteRequete);
-  const notes: { entree: ElyndorEntryChargee; position: number }[] = [];
-
-  for (const entree of entrees) {
-    if (!estEntreeAncrable(entree)) continue;
-    let meilleurePosition = Number.POSITIVE_INFINITY;
-    for (const alias of aliasesCanoniques(entree)) {
-      if (!contientExpressionCanonique(requete, alias)) continue;
-      const position = positionExpression(requete, alias);
-      if (position >= 0) meilleurePosition = Math.min(meilleurePosition, position);
-    }
-    if (!Number.isFinite(meilleurePosition)) continue;
-    notes.push({ entree, position: meilleurePosition });
-  }
-
-  notes.sort((a, b) =>
-    a.position - b.position
-    || a.entree.priority - b.entree.priority
-    || a.entree.titre.localeCompare(b.entree.titre),
-  );
-
-  return notes.map(({ entree }) => ({
+  return extraireAncresDetaillees(texteRequete, entrees).map(({ entree }) => ({
     id: entree.id,
     titre: entree.titre,
     contenu: entree.contenu,

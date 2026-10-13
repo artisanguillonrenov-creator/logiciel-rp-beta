@@ -504,4 +504,10 @@ export interface LoreEntry {
   // Similarité cosinus avec la requête, quand l'entrée vient de la
   // sélection sémantique (absente pour les entrées toujours actives).
   score?: number;
+  // Priorité de récupération (src/engine/passagesLore.ts) : P0 = essentiel
+  // canonique de la scène, P1 = continuité active, P2 = enrichissement.
+  // Absente = traitée comme P2. Jamais affichée au joueur.
+  niveau?: 'P0' | 'P1' | 'P2';
+  // Pourquoi cette fiche a été retenue (diagnostic concepteur).
+  raison?: string;
 }
