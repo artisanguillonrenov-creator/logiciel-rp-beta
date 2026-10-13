@@ -72,14 +72,22 @@ export function resoudreEntitesScene(p: ParametresResolution): ResolutionEntites
   const exactes = extraireAncresDetaillees(courant, p.pool);
   // Le message du joueur (souvent dicté) peut écorcher un nom : il est aussi
   // lu avec tolérance aux fautes, pour les seules fiches non citées exactement.
+  // Un passage qui nomme EXACTEMENT une fiche n'est jamais relu comme la faute
+  // d'un autre nom (« Sylvana » bien écrit n'évoque pas aussi « Sylvanna »).
   const citees = new Set(exactes.map((a) => a.entree.id));
+  const aliasExacts = exactes.map((a) => a.alias);
   const approchees = extraireAncresDetaillees(p.messageJoueur, p.pool, { tolerance: true })
-    .filter((a) => a.approche && !citees.has(a.entree.id));
-  for (const ancre of [...exactes, ...approchees]) {
-    parAlias.set(ancre.alias, [...(parAlias.get(ancre.alias) ?? []), ancre]);
+    .filter((a) => a.approche && !citees.has(a.entree.id)
+      && !aliasExacts.some((alias) => contientExpression(alias, a.approche!.ecrit) || contientExpression(a.approche!.ecrit, alias)));
+  // Les noms approchés sont regroupés par ce qui est ÉCRIT : deux fiches proches
+  // du même mot mal écrit forment une ambiguïté, départagée par la ville ou non tranchée.
+  for (const ancre of exactes) parAlias.set(ancre.alias, [...(parAlias.get(ancre.alias) ?? []), ancre]);
+  for (const ancre of approchees) {
+    const cle = `~${ancre.approche!.ecrit}`;
+    parAlias.set(cle, [...(parAlias.get(cle) ?? []), ancre]);
   }
   const raisonNom = (ancre: ReturnType<typeof extraireAncresDetaillees>[number], alias: string) => ancre.approche
-    ? `nom proche : « ${ancre.approche.ecrit} » lu « ${alias} » (faute probable)`
+    ? `nom proche : « ${ancre.approche.ecrit} » lu « ${ancre.alias} » (faute probable)`
     : `nom cité : « ${alias} »`;
   for (const [alias, groupe] of parAlias) {
     if (groupe.length === 1) {
@@ -92,9 +100,9 @@ export function resoudreEntitesScene(p: ParametresResolution): ResolutionEntites
     if (locales.length === 1) {
       ancresP0.add(locales[0].entree.id);
       raisons.set(locales[0].entree.id, `${raisonNom(locales[0], alias)} (homonymes départagés par la ville ${p.ville})`);
-      ambigus.push({ alias, candidats: groupe.map((g) => g.entree.titre), resolu: locales[0].entree.id });
+      ambigus.push({ alias: alias.replace(/^~/, ''), candidats: groupe.map((g) => g.entree.titre), resolu: locales[0].entree.id });
     } else {
-      ambigus.push({ alias, candidats: groupe.map((g) => g.entree.titre) });
+      ambigus.push({ alias: alias.replace(/^~/, ''), candidats: groupe.map((g) => g.entree.titre) });
     }
   }
 

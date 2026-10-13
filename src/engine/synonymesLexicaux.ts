@@ -41,6 +41,12 @@ const MAX_TERMES_GROUPE = 12;
 
 let personnalises: string[][] = [];
 let index: Map<string, Set<string>> | null = null;
+let version = 0;
+
+/** Change à chaque nouvelle liste de synonymes : invalide les requêtes déjà préparées. */
+export function versionSynonymes(): number {
+  return version;
+}
 
 /** Valide une liste de groupes saisie par l'utilisateur (une ligne = un groupe). */
 export function validerGroupesSynonymes(valeur: unknown): string[][] {
@@ -68,6 +74,7 @@ export function ecrireGroupesSynonymes(groupes: readonly (readonly string[])[]):
 export function definirSynonymesPersonnalises(groupes: readonly (readonly string[])[]): void {
   personnalises = groupes.map((g) => [...g]);
   index = null;
+  version += 1;
 }
 
 /** Une racine = un mot d'un seul tenant ; les expressions de plusieurs mots sont ignorées ici. */

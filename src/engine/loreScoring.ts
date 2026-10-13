@@ -1,5 +1,5 @@
 import { contientExpression, ensembleRacinesFrancaises, normaliserTexte, racineFrancaise, termesTexte } from './texteRecherche';
-import { POIDS_SYNONYME, synonymesDe } from './synonymesLexicaux';
+import { POIDS_SYNONYME, synonymesDe, versionSynonymes } from './synonymesLexicaux';
 
 export type ScopeLore = 'GLOBAL' | 'CONTINENT' | 'REGION' | 'CITY' | 'FACTION' | 'CHARACTER' | 'SCENE';
 
@@ -44,9 +44,15 @@ export interface StatsCorpusLore {
 }
 
 const requetesRecentes = new Map<string, RequetePreparee>();
+let versionRequetes = versionSynonymes();
 
 export function preparerRequeteLore(requete: string | RequetePreparee): RequetePreparee {
   if (typeof requete !== 'string') return requete;
+  // De nouveaux synonymes s'appliquent dès la requête suivante, même identique.
+  if (versionRequetes !== versionSynonymes()) {
+    requetesRecentes.clear();
+    versionRequetes = versionSynonymes();
+  }
   const connue = requetesRecentes.get(requete);
   if (connue) return connue;
   const termes = termesTexte(requete);

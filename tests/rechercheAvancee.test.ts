@@ -143,3 +143,36 @@ test('proximité : des mots côte à côte valent plus que des mots éparpillés
   const r = classerLexical({ requete: 'guilde des aventuriers', items: [{ t: eparpilles.contenu }, { t: colles.contenu }], texteDe: (i) => i.t, budget });
   assert.equal(r[0].item.t, colles.contenu);
 });
+
+test('un nom bien écrit n’évoque jamais aussi un nom voisin ; deux noms proches d’une même faute restent ambigus', () => {
+  const pool = [
+    fiche('syl', '[PNJ] Sylvana', { primaryKeys: ['Sylvana'], contenu: 'Elfe noire, rôdeuse.' }),
+    fiche('syl2', '[PNJ] Sylvanna', { primaryKeys: ['Sylvanna'], contenu: 'Humaine, marchande.' }),
+  ];
+  const exacte = resoudreEntitesScene({ pool, messageJoueur: 'Je parle à Sylvana', fichesIntention: [], memoire: [], presents: [] });
+  assert.deepEqual([...exacte.ancresP0], ['syl']);
+  // « Sylvanaa » est à une lettre des deux : aucune ancre devinée, ambiguïté signalée.
+  const faute = resoudreEntitesScene({ pool, messageJoueur: 'Je parle à Sylvanaa', fichesIntention: [], memoire: [], presents: [] });
+  assert.equal(faute.ancresP0.size, 0);
+  assert.deepEqual(faute.ambigus.map((a) => a.alias), ['sylvanaa']);
+});
+
+test('de nouveaux synonymes s’appliquent dès la requête suivante, même identique', () => {
+  try {
+    const fichePlanque = { titre: '[LIEU] Cave', contenu: 'Une planque sous la boulangerie.' };
+    assert.equal(calculerScoreHybrideLore(fichePlanque, 'ma tanière secrète').synonymes, 0);
+    definirSynonymesPersonnalises([['tanière', 'planque']]);
+    assert.equal(calculerScoreHybrideLore(fichePlanque, 'ma tanière secrète').synonymes, 1);
+  } finally {
+    definirSynonymesPersonnalises([]);
+  }
+});
+
+test('dans la mémoire, un synonyme pèse exactement 0,7 fois le mot exact', () => {
+  // Requête courte (pas de bonus d'expression exacte) et textes de même longueur.
+  const items = [{ t: 'Un soldat du port.' }, { t: 'Un garde du port.' }];
+  const r = classerLexical({ requete: 'garde', items, texteDe: (i) => i.t, budget });
+  const exact = r.find((x) => x.item.t.includes('garde'))!;
+  const synonyme = r.find((x) => x.item.t.includes('soldat'))!;
+  assert.ok(Math.abs(synonyme.score / exact.score - 0.7) < 1e-9, `${synonyme.score / exact.score}`);
+});

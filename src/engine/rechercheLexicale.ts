@@ -122,12 +122,14 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
   // (« marché », le nom du PNJ du moment) compte peu ; un mot rare de la
   // question du joueur (« clé », « argent ») fait la différence. Sans cela, dans
   // une longue histoire, les mots communs noyaient la question.
+  // Nombre brut d'occurrences du terme, ou à défaut de son meilleur synonyme
+  // (signalé) : le facteur POIDS_SYNONYME est appliqué une seule fois, au score.
   const occurrences = (comptes: Map<string, number>, i: number): { n: number; synonyme: boolean } => {
     const n = comptes.get(racinesTermes[i]) ?? 0;
     if (n > 0) return { n, synonyme: false };
     let meilleur = 0;
     for (const s of synonymesTermes[i]) meilleur = Math.max(meilleur, comptes.get(s) ?? 0);
-    return { n: meilleur * POIDS_SYNONYME, synonyme: meilleur > 0 };
+    return { n: meilleur, synonyme: meilleur > 0 };
   };
   const poids = racinesTermes.map((_, i) => {
     const df = analyses.reduce((n, a) => n + (occurrences(a.comptes, i).n > 0 ? 1 : 0), 0);
@@ -142,8 +144,9 @@ export function classerLexical<T>(options: OptionsClassement<T>): ResultatLexica
     let dansTitre = 0;
     racinesTermes.forEach((racine, i) => {
       const { n, synonyme } = occurrences(comptes, i);
-      if (n > 0) trouves += synonyme ? POIDS_SYNONYME * poids[i] : poids[i];
-      bm25 += poids[i] * (n * (BM25_K1 + 1)) / (n + BM25_K1 * (1 - BM25_B + BM25_B * longueur / longueurMoyenne));
+      const facteur = synonyme ? POIDS_SYNONYME : 1;
+      if (n > 0) trouves += facteur * poids[i];
+      bm25 += facteur * poids[i] * (n * (BM25_K1 + 1)) / (n + BM25_K1 * (1 - BM25_B + BM25_B * longueur / longueurMoyenne));
       if (racinesTitre.has(racine)) dansTitre += 1;
     });
     if (!trouves) return { item, score: 0, extrait: '' };
