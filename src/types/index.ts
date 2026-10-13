@@ -421,10 +421,16 @@ export interface AppSettings {
   /** Modèle Codex accessible par abonnement (vide = défaut du compte). */
   chatgptModel?: string;
   /** Services indépendants, sélectionnés dans les réglages utilisateur. */
-  fournisseurImages?: 'desactive' | 'runpod' | 'openrouter' | 'openai';
+  fournisseurImages?: 'desactive' | 'runpod' | 'openrouter' | 'openai' | 'cloudflare' | 'aihorde';
   modeleImages?: string;
   /** Modèle image OpenAI indépendant du modèle textuel et du modèle image OpenRouter. */
   modeleImagesOpenAI?: string;
+  /** Compte Cloudflare et jeton BYOK (jeton chiffré dans SecureStore). */
+  cloudflareAccountId?: string;
+  cloudflareApiKey?: string;
+  /** AI Horde : clé facultative ; sans clé, mode communautaire anonyme. */
+  aiHordeApiKey?: string;
+  modeleImagesHorde?: string;
   /** Aucun appel de génération image facturable sans opt-in explicite. */
   autoriserImagesPayantes?: boolean;
   /** Aucun service embeddings distants ne doit démarrer si non choisi. */
