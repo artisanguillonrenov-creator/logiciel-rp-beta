@@ -8,7 +8,9 @@ import {
   listerModelesNarrationHorde,
   promptNarrationHorde,
 } from '../src/engine/fournisseursNarrationGratuits';
-import { resoudreRouteTexte } from '../src/engine/fournisseursRuntime';
+import { resoudreRouteTexte, activerReglagesFournisseurs } from '../src/engine/fournisseursRuntime';
+import { appellerModele } from '../src/engine/elyndorCloudClient';
+import { genererTexteHorde } from '../src/engine/fournisseursNarrationGratuits';
 import { normaliserReglagesFournisseurs } from '../src/engine/elyndorCloud';
 
 const BASE: AppSettings = { openRouterApiKey: 'cle-or', model: 'openrouter/free', moteurInference: 'openrouter',
@@ -91,8 +93,6 @@ test('le catalogue Horde affiche uniquement les modèles texte servis par un wor
 });
 
 test('le client Elyndor envoie les messages au modèle Cloudflare choisi, sans démarrer Runpod', async () => {
-  const { activerReglagesFournisseurs } = await import('../src/engine/fournisseursRuntime');
-  const { appellerModele } = await import('../src/engine/elyndorCloudClient');
   const original = globalThis.fetch;
   const captured: Array<{url:string;init:RequestInit}> = [];
   const compte = 'f'.repeat(32);
@@ -130,7 +130,6 @@ test('le client Elyndor envoie les messages au modèle Cloudflare choisi, sans d
 });
 
 test('une demande AI Horde annulée libère sa tâche sans produire de narration', async () => {
-  const { genererTexteHorde } = await import('../src/engine/fournisseursNarrationGratuits');
   const appels: Array<{url:string;method?:string}> = [];
   const lecteur = (async (url: string | URL | Request, init?: RequestInit) => {
     appels.push({ url:String(url), method:init?.method });
