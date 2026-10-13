@@ -100,7 +100,7 @@ export function capacitesCloudflare(): CapacitesGenerateur {
     remarques: [
       'Jusqu’à 4 références réduites à moins de 512×512 px ; aucun rôle de référence distinct.',
       '4 pas imposés par FLUX.2 Klein ; les négatifs et modules ne sont pas transmis.',
-      'Gratuit uniquement dans la limite du quota Workers AI du compte ; aucun repli payant automatique.',
+      'Quota gratuit limité ; au-delà, la facturation dépend du plan Cloudflare. Aucun autre fournisseur activé automatiquement.',
     ],
   };
 }
