@@ -3,7 +3,7 @@ import test from 'node:test';
 import { State } from '../src/prax/core/engine';
 import { comprendre } from '../src/engine/praxNarrateur/comprehension';
 import { construireMonde, faitsInitiaux } from '../src/engine/praxNarrateur/monde';
-import { rendreOuverture, rendreTour } from '../src/engine/praxNarrateur/rendu';
+import { lignesCoulisses, rendreOuverture, rendreTour } from '../src/engine/praxNarrateur/rendu';
 import type { DescriptionScene, EvenementTour } from '../src/engine/praxNarrateur/types';
 import { insert } from '../src/prax/core/types';
 import { deserializeState, serializeState } from '../src/prax/core/persist';
@@ -440,4 +440,23 @@ test('une pensée privée de PNJ ne devient pas une observation du joueur', () =
   };
   const rendu = rendreTour({ evenements:[mefiance], presentsApres:[], tour:8, variante:0 });
   assert.equal(rendu, '', 'le statut intérieur appartient à la simulation, pas au récit subjectif');
+});
+
+
+test('le diagnostic expose uniquement les compétences narratives effectivement utilisées', () => {
+  const trace: string[] = [];
+  const e: EvenementTour = {
+    acteur:'margaux', acteurNom:'Margaux', genre:'refuserDemande',
+    libelle:'Margaux refuse', cible:'joueur', cibleNom:'Arwen',
+    temoins:['joueur'],
+  };
+  rendreTour({ evenements:[e], presentsApres:[], tour:3, variante:0, acquisNarratifs:trace });
+  assert.ok(trace.length > 0);
+  assert.ok(trace.some(x=>x.includes('G4-voix-stable')));
+  const rapport = {
+    version:1 as const, tour:3, ville:'Paris', lieu:'taverne', presents:['Margaux'],
+    joueur:{message:'Demande',compris:true},
+    evenements:[e], relations:[], coulisses:[], acquisNarratifs:trace,
+  };
+  assert.ok(lignesCoulisses(rapport).some(line=>line.includes('Savoir narratif utilisé')));
 });
