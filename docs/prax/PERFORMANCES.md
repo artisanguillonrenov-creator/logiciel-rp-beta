@@ -11,7 +11,20 @@ Même monde, mêmes réglages et même sortie des deux côtés. Pour le
 TypeScript, le temps comprend en plus la relecture de la trace de référence
 et la comparaison ligne à ligne : c'est un léger désavantage.
 
-<!-- TABLEAU -->
+| Monde | Rust | TypeScript (Node) | Rapport |
+|---|---|---|---|
+| feud, intrigue, play, audience | 4 à 8 ms | 10 à 20 ms | ≈ 2 à 3 |
+| bar | 59 ms | 190 ms | ≈ 3,2 |
+| **village** (6 personnages) | **9,1 s** | **23,3 s** | **≈ 2,6** |
+
+Dans les deux langages, la sortie est identique à la trace de référence.
+Le monde vampire à l'échelle réelle (1 154 tours, 9 233 tours de
+personnage) se joue en 8,1 s en TypeScript.
+
+**Ce que cela veut dire pour le jeu :** dans le village, un personnage met
+environ 1 s à décider sous Node, contre 0,4 s en Rust. Les petits mondes
+décident instantanément. Sur téléphone, Hermes sera plus lent que Node.
+C'est la principale question à trancher avant l'intégration (voir § 5).
 
 Le village concentre l'essentiel du coût. Six personnages y planifient en
 anticipant les réactions des autres, et l'état du monde est le plus gros
