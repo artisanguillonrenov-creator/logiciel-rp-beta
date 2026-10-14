@@ -70,7 +70,7 @@ export type IntentionDeParole =
   | 'informer' | 'demander' | 'contreOffre';
 
 export type RegistreParole = 'sobre' | 'chaleureux' | 'reserve' | 'tranchant';
-export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte';
+export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte' | 'negation' | 'eventualite';
 
 export interface SensDeParole {
   /** Action de parole décidée par les pratiques Prax, jamais par ce réalisateur. */
@@ -85,8 +85,10 @@ export interface SensDeParole {
   motif?: string;
   /** Nouvelle offre décidée en amont ; ce savoir-faire ne négocie pas. */
   proposition?: { montant: number; monnaie: string };
-  /** Registre explicitement attesté si disponible (sinon signature stable). */
+  /** Registre étayé par une relation ou un trait du moteur, sinon signature stable. */
   registre?: RegistreParole;
+  /** Sources épistémiques : un récit entendu ne devient pas un fait direct. */
+  statut?: Extract<StatutEnonce, 'direct' | 'hypothese' | 'citation' | 'rapporte'>;
 }
 
 export interface ExpressionPrax {
@@ -96,12 +98,19 @@ export interface ExpressionPrax {
   version: typeof ACQUIS_EXPRESSION_V1;
 }
 
-/** La grammaire ne doit jamais transformer une citation ou hypothèse en action. */
+/** 
+ * Évalue seulement la modalité explicite de l'énoncé du joueur ; ce n'est pas
+ * un analyseur universel. Les formes ambiguës restent des paroles non exécutées
+ * plutôt que des attaques ou transactions automatiques.
+ */
 export function statutEnonce(message: string): StatutEnonce {
-  const s = message.trim().toLocaleLowerCase('fr');
-  if (/^(si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b)/u.test(s)) return 'hypothese';
-  if (/^(?:citation\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
-  if (/^(?:on m.a dit|j.ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que)\b/u.test(s)) return 'rapporte';
+  const s = message.trim().toLocaleLowerCase('fr').replace(/[’]/gu, "'");
+  if (/^(?:si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b|[àa] supposer que\b|admettons que\b)/u.test(s)) return 'hypothese';
+  if (/^(?:citation\s*:|je cite\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
+  if (/^(?:on m'a dit|j'ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que|j'ai entendu que|quelqu'un dit que)\b/u.test(s)) return 'rapporte';
+  if (/\b(?:je|nous|on)\s+n['e]?\s*(?:le |la |les |l'|te |vous |y |en )?(?:[a-zéèêàâôùûîï]+\s+)?pas\b/u.test(s)
+      || /^(?:je|nous|on)\s+(?:ne|n')\s*(?:veux|peux|vais|souhaite)\s+pas\b/u.test(s)) return 'negation';
+  if (/^(?:je|nous|on)\s+(?:pourrais|pourrions|pourrait|voudrais|voudrions|devrais|devrions|envisage|envisageons|imagine|imagines)\b/u.test(s)) return 'eventualite';
   return 'direct';
 }
 
