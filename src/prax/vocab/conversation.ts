@@ -67,7 +67,10 @@ export const ACQUIS_EXPRESSION_V1 = 'prax-expression-fr-v1';
 export type IntentionDeParole =
   | 'accueillir' | 'ecouter' | 'eluder' | 'refuser' | 'ceder'
   | 'resister' | 'rendreInsulte' | 'refuserExcuses' | 'pardonner'
-  | 'informer' | 'demander' | 'contreOffre';
+  | 'informer' | 'demander' | 'contreOffre'
+  | 'remercier' | 'rassurer' | 'ignorerSujet' | 'presser'
+  | 'perdrePatience' | 'renvoyer' | 'proposer'
+  | 'maintenirPrix' | 'consentirRabais' | 'conclure';
 
 export type RegistreParole = 'sobre' | 'chaleureux' | 'reserve' | 'tranchant';
 export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte' | 'negation' | 'eventualite';
@@ -276,6 +279,37 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
       break;
     case 'pardonner':
       noyau = choisir(['J’accepte tes excuses', 'Nous pouvons en rester là', 'Je te pardonne'], 'pardon');
+      break;
+    case 'remercier':
+      noyau = choisir(['Je te remercie', 'Merci pour ton aide', 'Merci'], 'remerciement');
+      break;
+    case 'rassurer':
+      noyau = choisir(['Tu n’as rien à craindre de moi', 'Il n’y a rien à pardonner', 'Ne t’inquiète pas'], 'rassurer');
+      break;
+    case 'ignorerSujet':
+      noyau = choisir(['Je n’ai aucune information', 'Je ne sais rien', 'Je ne peux pas te renseigner'], 'ignorance')
+        + (sujet ? ' ' + sujetAvecDe(sujet) : ' à ce propos');
+      break;
+    case 'presser':
+      noyau = choisir(['Dis-moi précisément ce que tu veux', 'Vas-tu en venir au fait', 'Peux-tu préciser ta demande'], 'precision');
+      break;
+    case 'perdrePatience':
+      noyau = choisir(['Je ne peux pas attendre davantage', 'Dis clairement ce que tu souhaites', 'Reviens avec une demande précise'], 'impatience');
+      break;
+    case 'renvoyer':
+      noyau = choisir(['Je ne peux pas répondre à cette demande', 'Adresse-toi plutôt à quelqu’un de compétent', 'Ce n’est pas moi qui peux te renseigner'], 'redirection');
+      break;
+    case 'proposer':
+      noyau = choisir(['Je peux étudier une proposition', 'Nous pouvons discuter des conditions', 'Il reste à convenir des modalités'], 'proposition');
+      break;
+    case 'maintenirPrix':
+      noyau = choisir(['Je maintiens mon prix', 'Le prix ne change pas', 'Je ne réduirai pas mon prix'], 'prix-maintenu');
+      break;
+    case 'consentirRabais':
+      noyau = choisir(['J’accepte de réduire le prix', 'Je consens à une remise', 'Nous pouvons revoir le prix à la baisse'], 'rabais');
+      break;
+    case 'conclure':
+      noyau = choisir(['Marché conclu', 'Notre accord est scellé', 'Nous avons un accord'], 'conclusion');
       break;
     case 'informer':
       if (!fait) return null;
