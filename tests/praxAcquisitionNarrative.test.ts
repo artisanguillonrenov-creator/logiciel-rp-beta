@@ -197,6 +197,6 @@ test('rapporter ou supposer un fait préserve sa modalité, pas sa vérité', ()
   const hypothese = exprimerParole({ intention: 'informer', locuteur: 'alix', fait: 'Borin est parti', statut: 'hypothese' });
   const citation = exprimerParole({ intention: 'informer', locuteur: 'alix', fait: 'Borin est parti', statut: 'citation' });
   assert.match(rapporte?.texte ?? '', /Il se dit que borin est parti/i);
-  assert.match(hypothese?.texte ?? '', /Est-il possible que borin est parti/i);
+  assert.match(hypothese?.texte ?? '', /Hypothèse : Borin est parti/);
   assert.match(citation?.texte ?? '', /« Borin est parti »/);
 });
