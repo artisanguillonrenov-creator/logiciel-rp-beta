@@ -21,7 +21,9 @@ Ce n'est pas un moteur de dialogue indépendant ni un LLM entraîné.
 5. Une distinction basique entre discours direct, citation, hypothèse et
    parole rapportée empêche de prendre certains énoncés non factuels pour une
    attaque, un vol ou un achat réalisé.
-6. Le narrateur test utilise cette composition native pour huit réactions
+6. Quelques formes grammaticales (présent français et groupe nominal) sont
+   désormais produites nativement par Prax, avec refus des flexions non couvertes.
+7. Le narrateur test utilise cette composition native pour huit réactions
    verbales : écoute aimable, rebuffade, esquive, cession, résistance, retour
    d'insulte, rejet d'excuses et pardon. Toutes les autres réponses restent
    gérées par l'existant.
@@ -51,7 +53,7 @@ sont déjà maîtrisés.
 
 La V1 ne remplace pas un LLM narratif. Elle ne comprend pas librement le
 français, ne couvre que certains actes de dialogue et possède une grammaire
-combinatoire limitée. La présence de formules lexicales courtes n'est pas
+combinatoire limitée (présent et accord du groupe nominal seulement). La présence de formules lexicales courtes n'est pas
 l'équivalent d'une improvisation générale. Les descriptions visuelles,
 les voix individuelles fondées sur la personnalité réelle du monde, le contrôle
 stylistique longue durée et la réalisation grammaticale complète restent à
@@ -64,7 +66,8 @@ Aucune licence de source tierce n'a été incorporée.
 
 - Tests `tests/praxAcquisitionNarrative.test.ts` :
   modalité du discours, montant invariant, abstention, générativité de base,
-  variations stables, absence de mutation de monde, reprise après sauvegarde.
+  variations stables, absence de mutation de monde, reprise après sauvegarde,
+  conjugaison et accords sur des mots nouveaux.
 - Test complet : `npm test` et `npx tsc --noEmit` en CI de PR.
 - Mesures Android : **non effectuées** ; ne pas annoncer de gains sur appareil.
 - Comparaison stylistique à un LLM : **non effectuée**.
