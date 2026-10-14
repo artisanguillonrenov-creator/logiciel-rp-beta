@@ -11,6 +11,8 @@ import {
   ACQUIS_EXPRESSION_V1,
   exprimerParole,
   conjuguerPresentPrax,
+  conjuguerImparfaitPrax,
+  conjuguerPasseComposePrax,
   accorderAdjectifPrax,
   groupeNominalPrax,
   registreStable,
@@ -260,4 +262,22 @@ test('l’historique de la partie évite une répétition sans seconde mémoire'
   assert.ok(autre.acquis.includes('G6-anti-repetition-contextuelle'));
   const stable = exprimerParole(sens, 1, ['Margaux : « ' + base.texte + ' »']);
   assert.deepEqual(stable, autre);
+});
+
+
+test('les faits passés emploient la morphologie native avec l’aspect demandé', () => {
+  assert.equal(conjuguerImparfaitPrax('être', 'je'), 'étais');
+  assert.equal(conjuguerImparfaitPrax('manger', 'nous'), 'mangions');
+  assert.equal(conjuguerImparfaitPrax('manger', 'il'), 'mangeait');
+  assert.equal(conjuguerImparfaitPrax('placer', 'je'), 'plaçais');
+  assert.equal(conjuguerImparfaitPrax('placer', 'vous'), 'placiez');
+  assert.equal(conjuguerImparfaitPrax('aller', 'ils'), 'allaient');
+  assert.equal(conjuguerPasseComposePrax('voler', 'il'), 'a volé');
+  assert.equal(conjuguerPasseComposePrax('attaquer', 'il'), 'a attaqué');
+  assert.equal(conjuguerPasseComposePrax('venir', 'elle' as never), null);
+  assert.equal(conjuguerPasseComposePrax('venir', 'il'), null, 'genre inconnu : abstention');
+  assert.equal(conjuguerPasseComposePrax('venir', 'il', { genre: 'feminin' }), 'est venue');
+  assert.equal(conjuguerPasseComposePrax('venir', 'ils', { genre: 'feminin' }), 'sont venues');
+  assert.equal(conjuguerPasseComposePrax('sortir', 'il'), null, 'auxiliaire transitif ou intransitif ambigu');
+  assert.equal(conjuguerPasseComposePrax('sortir', 'il', { auxiliaire: 'avoir' }), 'a sorti');
 });
