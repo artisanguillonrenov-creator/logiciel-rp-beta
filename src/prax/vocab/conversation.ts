@@ -261,6 +261,10 @@ export function accorderAdjectifPrax(
     gentil: ['gentil', 'gentille', 'gentils', 'gentilles'],
     roux: ['roux', 'rousse', 'roux', 'rousses'],
     meilleur: ['meilleur', 'meilleure', 'meilleurs', 'meilleures'],
+    bas: ['bas', 'basse', 'bas', 'basses'],
+    fier: ['fier', 'fière', 'fiers', 'fières'],
+    cher: ['cher', 'chère', 'chers', 'chères'],
+    net: ['net', 'nette', 'nets', 'nettes'],
   };
   const idx = (nombre === 'pluriel' ? 2 : 0) + (genre === 'feminin' ? 1 : 0);
   if (irreguliers[mot]) return irreguliers[mot][idx];
@@ -268,7 +272,7 @@ export function accorderAdjectifPrax(
   let base = mot;
   if (genre === 'feminin') {
     if (mot.endsWith('e')) base = mot;
-    else if (/^(?:petit|grand|vert|fort|haut|bas|court|lent|chaud|froid|clair|noir|bleu|poli|joli|ravi|vrai|cher|fier|dur|pur)$/u.test(mot)) base = mot + 'e';
+    else if (/^(?:petit|grand|vert|fort|haut|court|lent|chaud|froid|clair|noir|bleu|poli|joli|ravi|vrai|dur|pur)$/u.test(mot)) base = mot + 'e';
     else if (/(ant|ent|é|i|u)$/u.test(mot)) base = mot + 'e';
     else return null;
   }
