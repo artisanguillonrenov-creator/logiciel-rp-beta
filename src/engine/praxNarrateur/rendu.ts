@@ -281,7 +281,7 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'complimenter':
       return [`Tu complimentes ${c}.`];
     case 'menacer':
-      return [choisir([`Tu menaces ${c}.`, `Tu t’avances vers ${c}, la menace dans la voix.`], cle)];
+      return [choisir([`Tu menaces ${c}.`, `Tu adresses une menace à ${c}.`], cle)];
     case 'insulter':
     case 'rendreInsulte':
       return [`Tu insultes ${c}.`];
@@ -307,7 +307,8 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
       return lignes;
     }
     case 'attendre':
-      return [choisir(['Tu observes les lieux en silence.', 'Tu attends la suite.'], cle)];
+      // Attendre n'autorise pas Prax à faire regarder ou marcher le joueur.
+      return [choisir(['Tu attends.', 'Un moment s’écoule sans nouvelle action de ta part.'], cle)];
     default:
       return [e.libelle];
   }
@@ -350,6 +351,9 @@ export function rendreTour(d: DonneesRendu): string {
       paragraphes.push(lignes.join(' '));
       return;
     }
+    // Une méfiance interne ne constitue pas une expression visible :
+    // on attend une parole, une réaction ou un événement observable de Prax.
+    if (e.genre === 'se_mefier') return;
     // Narration subjective : une action entre deux PNJ absents du champ
     // perceptif du joueur ne devient jamais un fait directement raconté.
     // Le moteur social enregistre toujours l'action : on ne modifie pas
