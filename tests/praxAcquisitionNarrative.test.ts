@@ -356,3 +356,18 @@ test('réordonner le cadre ne déplace jamais un acteur ou ne change jamais le m
   assert.match(a?.texte ?? '', /47 pièces de cuivre/);
   assert.match(b?.texte ?? '', /47 pièces de cuivre/);
 });
+
+
+test('la syntaxe variable ne modifie pas les noms propres', () => {
+  const result = composerPropositionPrax({
+    sujet:'Borin', personne:'il', verbe:'partir', temps:'present', lieu:'vers les collines',
+  }, 1);
+  assert.equal(result?.texte, 'Vers les collines, Borin part.');
+});
+
+test('les verbes à h aspiré ne reçoivent pas une élision non autorisée', () => {
+  const phrase = composerPropositionPrax({
+    sujet: 'Borin', personne: 'il', verbe:'hacher', complement:'des légumes', mode:'negation',
+  });
+  assert.equal(phrase?.texte, 'Borin ne hache pas des légumes.');
+});
