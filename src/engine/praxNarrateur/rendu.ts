@@ -245,8 +245,8 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
         const modalite = statutEnonce(texte);
         const intro = modalite === 'hypothese' ? 'Tu évoques une hypothèse'
           : modalite === 'rapporte' ? 'Tu rapportes des propos'
-          : modalite === 'negation' ? 'Tu précises ton refus'
-          : modalite === 'citation' ? 'Tu cites des paroles'
+           : modalite === 'negation' ? 'Tu précises'
+          : modalite === 'citation' ? 'Tu prononces ces mots'
           : 'Tu prends la parole';
         const dit = modalite === 'citation' && /^[«“"]/.test(texte) ? texte : `« ${texte} »`;
         return [`${intro} ${aNom(c)} : ${dit}`];
