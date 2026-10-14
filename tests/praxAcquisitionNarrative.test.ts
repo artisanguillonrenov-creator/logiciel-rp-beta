@@ -371,3 +371,17 @@ test('les verbes à h aspiré ne reçoivent pas une élision non autorisée', ()
   });
   assert.equal(phrase?.texte, 'Borin ne hache pas des légumes.');
 });
+
+
+test('la rectification ne rejoue pas l’acte corrigé', () => {
+  const phrase = 'Non, je voulais dire que je frappais à la porte';
+  assert.equal(statutEnonce(phrase), 'rectification');
+  const ev: EvenementTour = {
+    acteur: 'joueur', acteurNom: 'Arwen', cible: 'margaux', cibleNom: 'Margaux',
+    genre: 'converser', libelle: 'Arwen rectifie', precision: phrase, temoins: ['margaux'],
+  };
+  const texte = rendreTour({ evenements: [ev], presentsApres: [], variante: 1, tour: 7 });
+  assert.match(texte, /Tu rectifies tes propos/);
+  assert.match(texte, /frappais à la porte/);
+  assert.doesNotMatch(texte, /Tu attaques/);
+});
