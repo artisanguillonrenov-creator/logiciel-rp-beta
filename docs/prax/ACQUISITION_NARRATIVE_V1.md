@@ -24,7 +24,7 @@ Ce n'est pas un moteur de dialogue indépendant ni un LLM entraîné.
 6. Des formes grammaticales (présent français, groupes nominaux, accords
    adjectivaux courants) sont produites nativement, avec abstention lorsque
    la flexion ne peut être assurée.
-7. Le narrateur expérimental utilise désormais dix-huit intentions de parole
+7. Le narrateur expérimental utilise désormais dix-neuf types d'événements rendus par des intentions natives
    composées nativement. Les actions sociales continuent d'être décidées par
    le moteur Prax.
 8. Les voix dialoguées consultent les relations que Prax vient de calculer
@@ -34,7 +34,13 @@ Ce n'est pas un moteur de dialogue indépendant ni un LLM entraîné.
    deviennent pas des témoignages oculaires inventés.
 10. L'historique déjà sauvegardé dans l'application sert à éviter les
     répliques strictement répétées, sans nouvelle mémoire.
-11. La parole hypothétique, citée ou rapportée du joueur est conservée
+11. La trace des compétences réellement utilisées est jointe au compte rendu
+    Prax du tour et peut être consultée dans les diagnostics du concepteur.
+12. Le passé composé et l'imparfait sont réalisés dans un sous-ensemble
+    contrôlé : le générateur refuse les formes dont il ignore l'accord.
+13. Les observations hors du champ perceptif du joueur, les états mentaux
+    privés et les succès d'attaque non attestés ne sont plus inventés.
+14. La parole hypothétique, citée, rectificative ou rapportée du joueur est conservée
     textuellement dans la narration, sans réaliser l'action citée.
 
 
@@ -48,7 +54,7 @@ de donner l'illusion d'un apprentissage neuronal par lecture d'un fichier.
 |---|---|---|
 | G1 Français | Présent, imparfait, passé composé contrôlé, accords nominaux/adjectivaux partiels, élision, propositions composées | Analyse syntaxique générale, exceptions complètes, pronominalisation, subjonctif |
 | G2 Pragmatique | Distinctions direct/cité/rapporté/hypothétique/négatif/rectificatif, provenance, questions simples | Ironie, inférences complexes, sous-entendus non explicites |
-| G3 Conversation | 18 actes de parole composés dans le vocabulaire natif, continuité et interactions déjà présentes dans le moteur social | Négociation verbale libre, conversation de groupe ouverte |
+| G3 Conversation | 19 types de rendus dialogués composés dans le vocabulaire natif, continuité et interactions déjà présentes dans le moteur social | Négociation verbale libre, conversation de groupe ouverte |
 | G4 Voix | Variation par locuteur, registre modulé par les relations existantes | Voix littéraire profonde, variation individualisée du lexique, tutoiement/vouvoiement complet |
 | G5 Mise en scène | Préservation des faits, cadrage selon ce qui est perceptible, pas d'invention de gestes, détails de scène vérifiés | Dramaturgie longue, transitions et focalisation stylistique évolutive |
 | G6 Variation | Ordre circonstanciel et choix composés, évitement de répétitions selon l'historique existant | Paraphrases ouvertes, images littéraires originales |
@@ -99,15 +105,27 @@ Aucune licence de source tierce n'a été incorporée.
 
 ## Vérification
 
-- Tests `tests/praxAcquisitionNarrative.test.ts` :
+- Tests `tests/praxAcquisitionNarrative.test.ts` et
+  `tests/praxNarrateur.test.ts` :
   modalité du discours, montant invariant, abstention, générativité de base,
   variations stables, absence de mutation de monde, reprise après sauvegarde,
   conjugaison et accords sur des mots nouveaux.
 - Workflow ciblé `prax-acquisition-narrative.yml` : compile les tests,
-  exécute seulement le lot ajouté, vérifie le TypeScript général, exporte le
-  web ; il isole ce lot des six tests historiques connus défaillants.
+  exécute le lot narratif historique **et** celui ajouté, vérifie le
+  TypeScript général et exporte le web. Il isole les six tests historiques
+  défaillants d'autres fonctionnalités du narrateur.
 - Le workflow général `npm test` échoue encore sur six tests préexistants
   (`deltaEtatSepare` et `narrateurConcepteur`).
 - Mesures Android : **non effectuées** ; ne pas annoncer de gains sur appareil.
 - Comparaison stylistique à un LLM : **non effectuée**.
 - Aucune fusion automatique, aucune migration de sauvegarde.
+
+## Condition réelle de clôture
+
+Les résultats de la suite dédiée constituent une preuve de fonctionnement du
+**palier symbolique** implémenté, pas une mesure de qualité équivalente à un
+modèle de langage. Le benchmark sur les 54 cas aveugles et 16 scènes multitours,
+la couverture exhaustive des 77 principes et les mesures sur Android restent
+non démontrés. Les exemples du dossier ne sont pas importés comme répliques
+préfabriquées : cela contredirait l'objectif de généralisation. Les correctifs
+suivants devront rester dans le code natif de Prax, sans service externe.
