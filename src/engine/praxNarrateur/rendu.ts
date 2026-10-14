@@ -8,7 +8,7 @@
  * régénération change seulement la formulation).
  */
 import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
-import { conjuguerPasseComposePrax, exprimerParole, statutEnonce, type IntentionDeParole } from '../../prax/vocab/conversation';
+import { composerPropositionPrax, exprimerParole, statutEnonce, type IntentionDeParole } from '../../prax/vocab/conversation';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
 import { ID_JOUEUR } from './types';
@@ -380,8 +380,15 @@ export function rendreTour(d: DonneesRendu): string {
     }
     if (e.genre === 'raconter' && e.rapporte) {
       const infinitif: Record<string, string> = { voler: 'voler', attaquer: 'attaquer', menacer: 'menacer' };
-      const temps = conjuguerPasseComposePrax(infinitif[e.rapporte.genre] ?? '', 'il');
-      const fait = `${e.rapporte.auteurNom} ${temps ?? 'a agi contre'} ${e.rapporte.victimeNom}`;
+      const evenement = composerPropositionPrax({
+        sujet: e.rapporte.auteurNom,
+        personne: 'il',
+        verbe: infinitif[e.rapporte.genre] ?? '',
+        temps: 'passeCompose',
+        complement: e.rapporte.victimeNom,
+      });
+      if (!evenement) return;
+      const fait = evenement.texte;
       const rapporte = exprimerParole({
         intention: 'informer',
         locuteur: e.acteur,
