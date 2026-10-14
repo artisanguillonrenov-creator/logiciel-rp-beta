@@ -255,8 +255,12 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
         ? [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)]
         : [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
     }
-    case 'demander':
-      return [choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle)];
+    case 'demander': {
+      const debut = choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle);
+      if (!e.precision?.trim()) return [debut];
+      const cite = e.precision.trim();
+      return [debut, cite.startsWith('«') ? cite : `« ${cite} »`];
+    }
     case 'marchander':
       return [choisir([`Tu tentes de faire baisser le prix.`, `Tu marchandes avec ${c}.`], cle)];
     case 'payerPrix':
@@ -272,7 +276,9 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
       return [`Tu insultes ${c}.`];
     case 'attaquer':
     case 'riposter':
-      return [choisir([`Tu frappes ${c}.`, `Tu te jettes sur ${c}.`], cle), 'Le coup porte.'];
+      // L'exécution d'une intention offensive ne prouve pas une blessure ;
+      // le moteur doit attester séparément l'impact.
+      return [choisir([`Tu attaques ${c}.`, `Tu portes un coup en direction de ${c}.`], cle)];
     case 'voler':
       return [`Tu tentes de voler ${c}.`];
     case 'aider':
