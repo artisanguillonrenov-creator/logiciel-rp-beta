@@ -347,7 +347,8 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     lieuJoueur = lieuDe(st, ID_JOUEUR) ?? lieuJoueur;
     phasePnj({ st, desc, lieuJoueur }, profondeur, evenements, coulisses);
     st.roundBoundary();
-    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur });
+    const derniersTextes = story.messages.filter((m) => m.role === 'assistant').slice(-4).map((m) => m.content);
+    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur, derniersTextes });
   } else {
     effacerSaisie(st);
     texte = rendreIncompris(compris.motif ?? 'Je n’ai pas compris.', presentsDuJoueur(st, desc));
