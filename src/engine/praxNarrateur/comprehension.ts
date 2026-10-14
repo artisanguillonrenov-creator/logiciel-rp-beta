@@ -117,7 +117,12 @@ export function cibleDuMessage(texteNormalise: string, st: State, desc: Descript
   if (nommee) return nommee;
   const presents = presentsDuJoueur(st, desc);
   if (dernierInterlocuteur && presents.some((p) => p.id === dernierInterlocuteur)) return dernierInterlocuteur;
-  return presents[0]?.id;
+  if (presents.length === 1) return presents[0].id;
+  // Face à plusieurs inconnus, le premier dans une liste n'est pas
+  // automatiquement le destinataire de la parole. Le rôle d'accueil est un
+  // indice diégétique uniquement s'il désigne une seule personne.
+  const accueil = presents.filter((p) => ['receptionniste', 'taverniere', 'passeuse', 'forgeronne'].includes(p.role));
+  return accueil.length === 1 ? accueil[0].id : undefined;
 }
 
 function chercherAction(st: State, gabarit: string, liaisons: Record<string, string>): GroundedAction | null {
