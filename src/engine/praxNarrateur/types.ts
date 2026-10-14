@@ -8,6 +8,7 @@
  * - un RENDU brut en français, affiché tel quel pendant les essais.
  */
 import type { RolePnj } from './sujets';
+import type { RegistreParole } from '../../prax/vocab/conversation';
 
 export const ID_JOUEUR = 'joueur';
 export const LIEU_AILLEURS = 'ailleurs';
@@ -90,6 +91,8 @@ export interface EvenementTour {
   acteurNom: string;
   /** Rôle du PNJ acteur (pour les répliques d'accueil). */
   roleActeur?: string;
+  /** Expression issue des relations Prax effectivement connues. */
+  registreParole?: RegistreParole;
   genre: GenreAction;
   /** Libellé Prax rendu avec les noms (« Margaux répond à toi au sujet de… »). */
   libelle: string;
@@ -139,4 +142,6 @@ export interface CompteRenduTour {
   evenements: EvenementTour[];
   relations: ChangementRelation[];
   coulisses: CoulisseActeur[];
+  /** Compétences réellement utilisées à ce tour, et non simples règles listées. */
+  acquisNarratifs?: string[];
 }

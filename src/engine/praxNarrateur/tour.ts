@@ -144,6 +144,24 @@ function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string
   if (cible !== undefined) {
     e.cible = cible;
     e.cibleNom = nomDe(desc, cible);
+    // La voix n'est pas distribuée au hasard : on exploite d'abord les
+    // attitudes réellement décidées par Prax pour ce couple d'interlocuteurs.
+    if (acteur !== ID_JOUEUR && cible !== acteur) {
+      const score = (axe: Axe): number | undefined => {
+        const valeur = st.dbChildKeys(`${acteur}.relationship.${cible}.${axe}.score`)[0];
+        if (valeur === undefined) return undefined;
+        const n = Number(valeur);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const hostilite = score('hostilite');
+      const peur = score('peur');
+      const affection = score('affection');
+      const confiance = score('confiance');
+      if (hostilite !== undefined && hostilite >= 10) e.registreParole = 'tranchant';
+      else if ((peur !== undefined && peur >= 20) || (confiance !== undefined && confiance <= -10)) e.registreParole = 'reserve';
+      else if (affection !== undefined && affection >= 10) e.registreParole = 'chaleureux';
+      else if (hostilite !== undefined || peur !== undefined || affection !== undefined || confiance !== undefined) e.registreParole = 'sobre';
+    }
   }
   if (sujet !== undefined) {
     e.sujet = sujet;
@@ -311,6 +329,7 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
   const compris = comprendre(messageJoueur, st, desc, ctx.lieuJoueur, { lieuDestination: ctx.lieuDestination, dernierInterlocuteur: ancien?.dernierInterlocuteur });
   const evenements: EvenementTour[] = [];
   const coulisses: CoulisseActeur[] = [];
+  const acquisNarratifs: string[] = [];
   let texte: string;
   let volRemarque: boolean | undefined;
   let lieuJoueur = ctx.lieuJoueur;
@@ -329,7 +348,8 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     lieuJoueur = lieuDe(st, ID_JOUEUR) ?? lieuJoueur;
     phasePnj({ st, desc, lieuJoueur }, profondeur, evenements, coulisses);
     st.roundBoundary();
-    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur });
+    const derniersTextes = story.messages.filter((m) => m.role === 'assistant').slice(-4).map((m) => m.content);
+    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur, derniersTextes, acquisNarratifs });
   } else {
     effacerSaisie(st);
     texte = rendreIncompris(compris.motif ?? 'Je n’ai pas compris.', presentsDuJoueur(st, desc));
@@ -355,6 +375,7 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     evenements,
     relations: changements,
     coulisses,
+    acquisNarratifs,
   };
 
   const fin = maintenant();
@@ -427,7 +448,7 @@ export function ouvrirAvecPrax(story: StoryState, opts: OptionsTourPrax = {}): S
   ctx.st.roundBoundary();
   const presents = presentsDuJoueur(ctx.st, ctx.desc);
   const suite = evenements.length ? rendreTour({ evenements, presentsApres: presents, variante: opts.variante ?? 0, tour: 0 }) : '';
-  const texte = rendreOuverture(lieuNom(ctx.desc, ctx.lieuJoueur), ctx.desc.ville, presents, suite);
+  const texte = rendreOuverture(lieuNom(ctx.desc, ctx.lieuJoueur), ctx.desc.ville, presents, suite, story.meta.contexte?.ambiance ?? '');
   const fin = maintenant();
   const compteRendu: CompteRenduTour = {
     version: 1,

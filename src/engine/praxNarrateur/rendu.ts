@@ -8,6 +8,7 @@
  * régénération change seulement la formulation).
  */
 import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
+import { composerPropositionPrax, exprimerParole, statutEnonce, type IntentionDeParole } from '../../prax/vocab/conversation';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
 import { ID_JOUEUR } from './types';
@@ -96,6 +97,16 @@ export function avecA(nom: string): string {
   if (/^(la |l’|l')/i.test(nom)) return `à ${nom}`;
   return /^(comptoir|palais|march|quartier|port)/i.test(nom) ? `au ${nom}` : `à ${nom}`;
 }
+
+// Les attitudes verbales sont des actions de langage. Sans action Prax
+// distincte, une réponse ne prouve ni sourire, ni recul, ni posture du corps.
+const ACTIONS_DE_PAROLE_SEULES: ReadonlySet<EvenementTour['genre']> = new Set([
+  'accueillir', 'repondreAimable', 'rabrouer', 'repondre',
+  'eluder', 'ignorerSujet', 'remercier', 'ceder', 'tenirTete', 'insulter',
+  'rendreInsulte', 'menacer', 'implorer', 'accuser', 'pardonner', 'rassurer',
+  'refuserExcuses', 'presser', 'perdrePatience', 'proposer', 'refuserDemande',
+  'renvoyer', 'consentirRabais', 'maintenirPrix', 'conclure',
+]);
 
 const ACCUEIL_PAR_ROLE: Record<string, string[]> = {
   receptionniste: [
@@ -235,11 +246,32 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'saluer':
       return [choisir([`Tu salues ${c}.`, `Tu adresses un salut ${aNom(c)}.`], cle)];
     case 'converser':
-      return [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)];
-    case 'relancer':
-      return [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
-    case 'demander':
-      return [choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle)];
+    case 'relancer': {
+      // Prax a enregistré un acte de PAROLE, jamais l'exécution d'une action
+      // citée. Le contenu du joueur est conservé au lieu d'être résumé ou
+      // transformé en une action imaginaire.
+      if (e.precision) {
+        const texte = e.precision.trim();
+        const modalite = statutEnonce(texte);
+        const intro = modalite === 'hypothese' ? 'Tu évoques une hypothèse'
+          : modalite === 'rapporte' ? 'Tu rapportes des propos'
+           : modalite === 'negation' ? 'Tu précises'
+          : modalite === 'citation' ? 'Tu prononces ces mots'
+          : modalite === 'rectification' ? 'Tu rectifies tes propos'
+          : 'Tu prends la parole';
+        const dit = modalite === 'citation' && /^[«“"]/.test(texte) ? texte : `« ${texte} »`;
+        return [`${intro} ${aNom(c)} : ${dit}`];
+      }
+      return e.genre === 'converser'
+        ? [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)]
+        : [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
+    }
+    case 'demander': {
+      const debut = choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle);
+      if (!e.precision?.trim()) return [debut];
+      const cite = e.precision.trim();
+      return [debut, cite.startsWith('«') ? cite : `« ${cite} »`];
+    }
     case 'marchander':
       return [choisir([`Tu tentes de faire baisser le prix.`, `Tu marchandes avec ${c}.`], cle)];
     case 'payerPrix':
@@ -249,13 +281,15 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'complimenter':
       return [`Tu complimentes ${c}.`];
     case 'menacer':
-      return [choisir([`Tu menaces ${c}.`, `Tu t’avances vers ${c}, la menace dans la voix.`], cle)];
+      return [choisir([`Tu menaces ${c}.`, `Tu adresses une menace à ${c}.`], cle)];
     case 'insulter':
     case 'rendreInsulte':
       return [`Tu insultes ${c}.`];
     case 'attaquer':
     case 'riposter':
-      return [choisir([`Tu frappes ${c}.`, `Tu te jettes sur ${c}.`], cle), 'Le coup porte.'];
+      // L'exécution d'une intention offensive ne prouve pas une blessure ;
+      // le moteur doit attester séparément l'impact.
+      return [choisir([`Tu attaques ${c}.`, `Tu portes un coup en direction de ${c}.`], cle)];
     case 'voler':
       return [`Tu tentes de voler ${c}.`];
     case 'aider':
@@ -273,7 +307,8 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
       return lignes;
     }
     case 'attendre':
-      return [choisir(['Tu observes les lieux en silence.', 'Tu attends la suite.'], cle)];
+      // Attendre n'autorise pas Prax à faire regarder ou marcher le joueur.
+      return [choisir(['Tu attends.', 'Un moment s’écoule sans nouvelle action de ta part.'], cle)];
     default:
       return [e.libelle];
   }
@@ -301,6 +336,10 @@ export interface DonneesRendu {
   tour: number;
   /** Message du joueur, pour choisir la réplique la plus pertinente. */
   message?: string;
+  /** Réponses existantes de la même partie ; ce n'est pas une nouvelle mémoire. */
+  derniersTextes?: readonly string[];
+  /** Accumule uniquement les compétences effectivement employées. */
+  acquisNarratifs?: string[];
 }
 
 /** Le texte du message du narrateur Prax. */
@@ -314,9 +353,88 @@ export function rendreTour(d: DonneesRendu): string {
       paragraphes.push(lignes.join(' '));
       return;
     }
+    // Une méfiance interne ne constitue pas une expression visible :
+    // on attend une parole, une réaction ou un événement observable de Prax.
+    if (e.genre === 'se_mefier') return;
+    // Narration subjective : une action entre deux PNJ absents du champ
+    // perceptif du joueur ne devient jamais un fait directement raconté.
+    // Le moteur social enregistre toujours l'action : on ne modifie pas
+    // l'histoire, seulement les informations autorisées à l'affichage.
+    if (e.cible !== ID_JOUEUR && !e.temoins.includes(ID_JOUEUR)) return;
     const gabarit = RENDU_PNJ[e.genre];
     const lignes = (gabarit ? gabarit(e, cle, d.message ?? '') : [e.libelle]).map(majuscule);
-    // La narration et la réplique sur des lignes séparées (format de l'interface).
+    // Prax compose lui-même l'expression d'une décision déjà prise : les règles
+    // de son vocabulaire natif ne créent ni nouvelles actions ni nouveaux faits.
+    const intentionsNatives: Partial<Record<EvenementTour['genre'], IntentionDeParole>> = {
+      repondreAimable: 'ecouter',
+      rabrouer: 'refuser',
+      eluder: 'eluder',
+      ceder: 'ceder',
+      tenirTete: 'resister',
+      rendreInsulte: 'rendreInsulte',
+      refuserExcuses: 'refuserExcuses',
+      pardonner: 'pardonner',
+      remercier: 'remercier',
+      rassurer: 'rassurer',
+      ignorerSujet: 'ignorerSujet',
+      presser: 'presser',
+      perdrePatience: 'perdrePatience',
+      renvoyer: 'renvoyer',
+      refuserDemande: 'refuser',
+      proposer: 'proposer',
+      maintenirPrix: 'maintenirPrix',
+      consentirRabais: 'consentirRabais',
+      conclure: 'conclure',
+    };
+    const intention = intentionsNatives[e.genre];
+    if (intention) {
+      const acquis = exprimerParole({
+        intention,
+        locuteur: e.acteur,
+        sujet: e.sujetNom,
+        registre: e.registreParole,
+      }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
+      if (acquis) {
+        d.acquisNarratifs?.push(`${e.acteur}:${acquis.acquis.join(',')}`);
+        // Les anciens gestes génériques ne sont pas attestés dans l'état
+        // Prax (« recule », « croise les bras »). Une simple parole ne doit
+        // pas créer de déplacement ou de fait physique non joué.
+        paragraphes.push(`${majuscule(e.acteurNom)} : « ${acquis.texte} »`);
+        return;
+      }
+    }
+    if (e.genre === 'raconter' && e.rapporte) {
+      const infinitif: Record<string, string> = { voler: 'voler', attaquer: 'attaquer', menacer: 'menacer' };
+      const evenement = composerPropositionPrax({
+        sujet: e.rapporte.auteurNom,
+        personne: 'il',
+        verbe: infinitif[e.rapporte.genre] ?? '',
+        temps: 'passeCompose',
+        complement: e.rapporte.victimeNom,
+      });
+      if (!evenement) return;
+      const fait = evenement.texte;
+      const rapporte = exprimerParole({
+        intention: 'informer',
+        locuteur: e.acteur,
+        fait,
+        statut: 'rapporte',
+        registre: e.registreParole,
+      }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
+      if (rapporte) {
+        d.acquisNarratifs?.push(`${e.acteur}:G1-passe-compose,G2-provenance-rapportee`);
+        paragraphes.push(`${majuscule(e.acteurNom)} : « ${rapporte.texte} »`);
+        return;
+      }
+    }
+    if (ACTIONS_DE_PAROLE_SEULES.has(e.genre)) {
+      const repliques = lignes.filter((l) => l.includes(' : « '));
+      if (repliques.length) {
+        paragraphes.push(repliques.join('\n'));
+        return;
+      }
+    }
+    // Les actions physiques effectives gardent leur narration.
     paragraphes.push(lignes.join('\n'));
   });
   if (!d.evenements.some((e) => e.acteur !== ID_JOUEUR) && d.presentsApres.length > 0) {
@@ -336,10 +454,13 @@ export function rendreIncompris(motif: string, presents: PnjDescription[]): stri
 }
 
 /** Texte de la scène d'ouverture. */
-export function rendreOuverture(lieuNom: string, ville: string, presents: PnjDescription[], suite: string): string {
+export function rendreOuverture(lieuNom: string, ville: string, presents: PnjDescription[], suite: string, ambiance = ''): string {
   const intro = `Tu te trouves ${avecA(lieuNom)}${lieuNom.includes(ville) ? '' : ` ${deNom(ville)}`}.`;
   const qui = presents.length === 0 ? 'Il n’y a personne autour de toi.' : phrasePresents(presents);
-  return [`${intro} ${qui}`, suite].filter((t) => t.trim().length > 0).join('\n\n');
+  // L'atmosphère ne vient que d'une description déjà validée par la partie.
+  // Inventer une pluie, une odeur ou un geste relèverait du monde, pas du style.
+  const detailsVerifies = ambiance.trim();
+  return [`${intro} ${qui}`, detailsVerifies, suite].filter((t) => t.trim().length > 0).join('\n\n');
 }
 
 /** Résumé des coulisses pour le diagnostic concepteur. */
@@ -351,5 +472,6 @@ export function lignesCoulisses(cr: CompteRenduTour): string[] {
     for (const o of c.options) lignes.push(`   ${o.note.toFixed(2)}  ${o.libelle}`);
   }
   for (const r of cr.relations) lignes.push(`Relation ${r.pnj} → toi : ${r.axe} ${r.avant} → ${r.apres}`);
+  for (const competence of cr.acquisNarratifs ?? []) lignes.push(`Savoir narratif utilisé : ${competence}`);
   return lignes;
 }

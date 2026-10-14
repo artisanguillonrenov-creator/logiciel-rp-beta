@@ -7,6 +7,7 @@
  * ne correspond, on le dit au lieu de deviner.
  */
 import type { State } from '../../prax/core/engine';
+import { statutEnonce } from '../../prax/vocab/conversation';
 import type { GroundedAction } from '../../prax/core/perform';
 import { SaisieActe, comprendreActe, reconnaitreActe, reglementEnAttente } from './bibliotheque';
 import { normaliser } from './description';
@@ -149,6 +150,17 @@ export function comprendre(
 ): Comprehension {
   // Apostrophes et guillemets deviennent des espaces : « t’aider » se lit « t aider ».
   const texte = normaliser(message).replace(/[«»"“”’']/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Une citation, une hypothèse ou un témoignage est une parole, pas la
+  // réalisation d'une action matérielle. La mention « je le frappe »
+  // ne doit jamais provoquer un combat quand elle n'est que citée.
+  if (statutEnonce(message) !== 'direct') {
+    const cible = cibleDuMessage(texte, st, desc, opts.dernierInterlocuteur);
+    const dejaParle = cible ? st.dbHas(`parle.${ID_JOUEUR}.${cible}`) : false;
+    const genre = dejaParle ? 'relancer' : 'converser';
+    const action = cible ? chercherAction(st, GABARIT[genre] as string, { Cible: cible }) : null;
+    return { genre: action ? genre : null, action, cible, precision: message, motif: action ? undefined : 'Aucun interlocuteur disponible pour cette parole.' };
+  }
 
   if (opts.lieuDestination && opts.lieuDestination !== lieuJoueur) {
     const action = chercherAction(st, GABARIT.se_rendre as string, { Lieu: opts.lieuDestination });
