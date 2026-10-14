@@ -430,3 +430,14 @@ test('l’oralité ne matérialise pas de postures inventées', () => {
   assert.match(sortie, /Nerys : « /);
   assert.doesNotMatch(sortie, /pointe un doigt|se gratte le menton|hoche la tête/);
 });
+
+
+test('une pensée privée de PNJ ne devient pas une observation du joueur', () => {
+  const mefiance: EvenementTour = {
+    acteur:'margaux', acteurNom:'Margaux', genre:'se_mefier',
+    libelle:'Margaux se méfie du joueur', cible:'joueur',
+    cibleNom:'Arwen', temoins:['joueur'],
+  };
+  const rendu = rendreTour({ evenements:[mefiance], presentsApres:[], tour:8, variante:0 });
+  assert.equal(rendu, '', 'le statut intérieur appartient à la simulation, pas au récit subjectif');
+});
