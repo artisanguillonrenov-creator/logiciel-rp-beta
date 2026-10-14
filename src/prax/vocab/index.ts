@@ -19,3 +19,7 @@ export * as reactions from './reactions';
 export * as repute from './repute';
 export * as rumor from './rumor';
 export * as witness from './witness';
+
+export * as intimacy from './intimacy';
+
+export * as intimacyComplete from './intimacyComplete';
