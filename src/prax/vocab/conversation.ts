@@ -114,6 +114,7 @@ export function statutEnonce(message: string): StatutEnonce {
   if (/^(?:ne\s+|n')/u.test(s) || /^je refuse de\b/u.test(s)) return 'negation';
   if (/\b(?:je|nous|on)\s+n['e]?\s*(?:le |la |les |l'|te |vous |y |en )?(?:[a-zéèêàâôùûîï]+\s+)?pas\b/u.test(s)
       || /^(?:je|nous|on)\s+(?:ne|n')\s*(?:veux|peux|vais|souhaite)\s+pas\b/u.test(s)) return 'negation';
+  if (/^j'(?:aimerais|envisage|imaginais|espère|esperais)\b/u.test(s)) return 'eventualite';
   if (/^(?:je|nous|on)\s+(?:pourrais|pourrions|pourrait|voudrais|voudrions|devrais|devrions|envisage|envisageons|imagine|imagines|pensais|promets de)\b/u.test(s)) return 'eventualite';
   return 'direct';
 }
