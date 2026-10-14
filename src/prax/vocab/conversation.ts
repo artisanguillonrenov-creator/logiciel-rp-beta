@@ -232,8 +232,50 @@ export function groupeNominalPrax(
   }
   if (nombre === 'pluriel') return (article === 'defini' ? 'les ' : 'des ') + forme;
   if (article === 'indefini') return (genre === 'masculin' ? 'un ' : 'une ') + forme;
-  if (!hAspire && /^[aeiouyéèêàâîïôûùœ]/iu.test(mot)) return 'l’' + forme;
+  if (!hAspire && /^[haeiouyéèêàâîïôûùœ]/iu.test(mot)) return 'l’' + forme;
   return (genre === 'masculin' ? 'le ' : 'la ') + forme;
+}
+
+/**
+ * Accords adjectivaux fiables : paradigmes courants et règles régulières
+ * limitées. Les formes insuffisamment connues ne sont PAS improvisées.
+ * Le genre et le nombre sont des faits fournis par le monde.
+ */
+export function accorderAdjectifPrax(
+  lemme: string,
+  genre: 'masculin' | 'feminin',
+  nombre: 'singulier' | 'pluriel',
+): string | null {
+  const mot = lemme.trim().toLocaleLowerCase('fr');
+  if (!/^[\p{L}]+$/u.test(mot)) return null;
+  const irreguliers: Record<string, [string, string, string, string]> = {
+    beau: ['beau', 'belle', 'beaux', 'belles'],
+    nouveau: ['nouveau', 'nouvelle', 'nouveaux', 'nouvelles'],
+    vieux: ['vieux', 'vieille', 'vieux', 'vieilles'],
+    fou: ['fou', 'folle', 'fous', 'folles'],
+    mou: ['mou', 'molle', 'mous', 'molles'],
+    doux: ['doux', 'douce', 'doux', 'douces'],
+    blanc: ['blanc', 'blanche', 'blancs', 'blanches'],
+    frais: ['frais', 'fraîche', 'frais', 'fraîches'],
+    long: ['long', 'longue', 'longs', 'longues'],
+    gentil: ['gentil', 'gentille', 'gentils', 'gentilles'],
+    roux: ['roux', 'rousse', 'roux', 'rousses'],
+    meilleur: ['meilleur', 'meilleure', 'meilleurs', 'meilleures'],
+  };
+  const idx = (nombre === 'pluriel' ? 2 : 0) + (genre === 'feminin' ? 1 : 0);
+  if (irreguliers[mot]) return irreguliers[mot][idx];
+  // Cas où une transformation régulière est sûre.
+  let base = mot;
+  if (genre === 'feminin') {
+    if (mot.endsWith('e')) base = mot;
+    else if (/^(?:petit|grand|vert|fort|haut|bas|court|lent|chaud|froid|clair|noir|bleu|poli|joli|ravi|vrai|cher|fier|dur|pur)$/u.test(mot)) base = mot + 'e';
+    else if (/(ant|ent|é|i|u)$/u.test(mot)) base = mot + 'e';
+    else return null;
+  }
+  if (nombre === 'singulier') return base;
+  if (/[sx]$/u.test(base)) return base;
+  if (genre === 'masculin' && /(royal|loyal|égal|normal)$/u.test(base)) return base.slice(0, -2) + 'aux';
+  return base + 's';
 }
 
 /**
