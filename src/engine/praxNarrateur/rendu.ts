@@ -101,7 +101,7 @@ export function avecA(nom: string): string {
 // Les attitudes verbales sont des actions de langage. Sans action Prax
 // distincte, une réponse ne prouve ni sourire, ni recul, ni posture du corps.
 const ACTIONS_DE_PAROLE_SEULES: ReadonlySet<EvenementTour['genre']> = new Set([
-  'accueillir', 'rendreSalut', 'repondreAimable', 'rabrouer', 'repondre',
+  'accueillir', 'repondreAimable', 'rabrouer', 'repondre',
   'eluder', 'ignorerSujet', 'remercier', 'ceder', 'tenirTete', 'insulter',
   'rendreInsulte', 'menacer', 'implorer', 'accuser', 'pardonner', 'rassurer',
   'refuserExcuses', 'presser', 'perdrePatience', 'proposer', 'refuserDemande',
