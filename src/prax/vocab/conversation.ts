@@ -281,7 +281,7 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
       noyau = choisir(['J’accepte tes excuses', 'Nous pouvons en rester là', 'Je te pardonne'], 'pardon');
       break;
     case 'remercier':
-      noyau = choisir(['Je te remercie', 'Merci pour ton aide', 'Merci'], 'remerciement');
+      noyau = choisir(['Je te remercie', 'Je t’en suis reconnaissant', 'Merci'], 'remerciement');
       break;
     case 'rassurer':
       noyau = choisir(['Tu n’as rien à craindre de moi', 'Il n’y a rien à pardonner', 'Ne t’inquiète pas'], 'rassurer');
@@ -291,7 +291,7 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
         + (sujet ? ' ' + sujetAvecDe(sujet) : ' à ce propos');
       break;
     case 'presser':
-      noyau = choisir(['Dis-moi précisément ce que tu veux', 'Vas-tu en venir au fait', 'Peux-tu préciser ta demande'], 'precision');
+      noyau = choisir(['Dis-moi précisément ce que tu veux', 'Vas-tu en venir au fait ?', 'Peux-tu préciser ta demande ?'], 'precision');
       break;
     case 'perdrePatience':
       noyau = choisir(['Je ne peux pas attendre davantage', 'Dis clairement ce que tu souhaites', 'Reviens avec une demande précise'], 'impatience');
@@ -300,7 +300,7 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
       noyau = choisir(['Je ne peux pas répondre à cette demande', 'Adresse-toi plutôt à quelqu’un de compétent', 'Ce n’est pas moi qui peux te renseigner'], 'redirection');
       break;
     case 'proposer':
-      noyau = choisir(['Je peux étudier une proposition', 'Nous pouvons discuter des conditions', 'Il reste à convenir des modalités'], 'proposition');
+      noyau = choisir(['Je peux te faire une proposition', 'Parlons des conditions', 'Voici ce que je propose'], 'proposition');
       break;
     case 'maintenirPrix':
       noyau = choisir(['Je maintiens mon prix', 'Le prix ne change pas', 'Je ne réduirai pas mon prix'], 'prix-maintenu');
