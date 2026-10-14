@@ -247,6 +247,7 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
           : modalite === 'rapporte' ? 'Tu rapportes des propos'
            : modalite === 'negation' ? 'Tu précises'
           : modalite === 'citation' ? 'Tu prononces ces mots'
+          : modalite === 'rectification' ? 'Tu rectifies tes propos'
           : 'Tu prends la parole';
         const dit = modalite === 'citation' && /^[«“"]/.test(texte) ? texte : `« ${texte} »`;
         return [`${intro} ${aNom(c)} : ${dit}`];
