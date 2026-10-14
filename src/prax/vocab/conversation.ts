@@ -127,20 +127,30 @@ export function composerPropositionPrax(p: PropositionPrax, variante = 0): Propo
 
   // Seuls les rôles sémantiques et le mode donnés décident ce qui est affirmé.
   const negative = mode === 'negation';
-  const elider = /^[aeiouyhàâäéèêëîïôöùûü]/iu.test(groupeVerbal);
+  // Un h aspiré interdit l'élision ; sans lexique certain, mieux vaut
+  // conserver « ne » que fabriquer « n’hache ».
+  const elider = /^[aeiouyàâäéèêëîïôöùûü]/iu.test(groupeVerbal)
+    || /^habit(?:e|es|ons|ez|ent)/iu.test(groupeVerbal);
   const verbeAvecNegation = negative
     ? (elider ? 'n’' : 'ne ') + groupeVerbal + ' pas'
     : groupeVerbal;
   // « Je ai » n'existe pas : l'élision ne modifie ni la personne ni les faits.
   const pronomJe = p.sujet === undefined && p.personne === 'je';
-  const sujetEcrit = pronomJe && /^[aeiouyhàâäéèêëîïôöùûü]/iu.test(verbeAvecNegation)
+  const sujetEcrit = pronomJe && (/^[aeiouyàâäéèêëîïôöùûü]/iu.test(verbeAvecNegation)
+    || /^habit(?:e|es|ons|ez|ent)/iu.test(verbeAvecNegation))
     ? 'j’' : sujet;
   const jointure = sujetEcrit === 'j’' ? '' : ' ';
   const clause = sujetEcrit + jointure + verbeAvecNegation
     + (complement ? ' ' + complement : '');
   const circonstance = lieu ? ' ' + lieu : '';
   const reordonner = Boolean(lieu && variante % 2 === 1);
-  const complete = reordonner ? lieu + ', ' + premiereLettreMinusculePrax(clause) : clause + circonstance;
+  // En tête déplacée, les articles et pronoms deviennent minuscules mais
+  // « Borin », « Alix » et les autres noms propres restent inchangés.
+  const nominalCommun = /^(?:le|la|les|un|une|l[’'])\s*/iu.test(sujet)
+    || p.sujet === undefined;
+  const complete = reordonner
+    ? lieu + ', ' + (nominalCommun ? premiereLettreMinusculePrax(clause) : clause)
+    : clause + circonstance;
   let texte: string;
   switch (mode) {
     case 'question':
