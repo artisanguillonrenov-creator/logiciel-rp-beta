@@ -100,7 +100,8 @@ function parseJson(text: string): Jv {
     if (m === null) return fail('valeur attendue');
     i += m[0].length;
     const n = Number(m[0]);
-    return m[2] === undefined && m[3] === undefined && Number.isSafeInteger(n) ? { int: n } : { float: n };
+    // serde_json lit `-0` comme un flottant : ce n'est pas un entier du schéma.
+    return m[2] === undefined && m[3] === undefined && m[0] !== '-0' && Number.isSafeInteger(n) ? { int: n } : { float: n };
   };
   const str = (): string => {
     let j = i + 1;
@@ -113,13 +114,27 @@ function parseJson(text: string): Jv {
         const e = text[j + 1];
         const map: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
         if (e === 'u') {
-          out += String.fromCharCode(parseInt(text.slice(j + 2, j + 6), 16));
+          const hex = (k: number): number => {
+            const h = text.slice(k, k + 4);
+            if (!/^[0-9a-fA-F]{4}$/.test(h)) fail('échappement \\u invalide');
+            return parseInt(h, 16);
+          };
+          const cu = hex(j + 2);
           j += 6;
+          if (cu >= 0xd800 && cu <= 0xdbff) {
+            if (text[j] !== '\\' || text[j + 1] !== 'u') fail('demi-substitut isolé');
+            const lo = hex(j + 2);
+            if (lo < 0xdc00 || lo > 0xdfff) fail('demi-substitut isolé');
+            out += String.fromCharCode(cu, lo);
+            j += 6;
+          } else if (cu >= 0xdc00 && cu <= 0xdfff) fail('demi-substitut isolé');
+          else out += String.fromCharCode(cu);
         } else if (e in map) {
           out += map[e];
           j += 2;
         } else fail('échappement invalide');
       } else {
+        if (ch < ' ') fail('caractère de contrôle brut dans une chaîne');
         out += ch;
         j++;
       }
@@ -302,10 +317,11 @@ function decodeWant(v: Jv): Want {
 
 function decodeCastMember(v: Jv): CastMember {
   if (!isObj(v)) throw new Error('CastMember: expected an object');
+  const name = reqStr(v, 'name', 'CastMember');
   const p = opt(v, 'playable');
   if (p !== undefined && typeof p !== 'boolean') throw new Error('CastMember: "playable" is not a boolean');
   return {
-    name: reqStr(v, 'name', 'CastMember'),
+    name,
     playable: p === true,
     desires: optList(v, 'desires', 'CastMember', decodeWant),
     traits: optList(v, 'traits', 'CastMember', (x) => {

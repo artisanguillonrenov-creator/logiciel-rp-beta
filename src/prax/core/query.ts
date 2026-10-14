@@ -11,7 +11,7 @@
  *
  * Reprend `prax-core/src/query.rs` (Prax, BSD-3-Clause).
  */
-import { Bindings, Db, SetVal, Val, bindingsEq, ground, unifiable, unifyInto, valToString } from './db';
+import { Bindings, Db, SetVal, Val, bindingsKey, ground, unifiable, unifyInto, valToString } from './db';
 import { worldErrors } from './errors';
 import { segmentNamesChecked, tokenize } from './path';
 import { checkedInt, isVariableName } from './util';
@@ -354,13 +354,16 @@ function evalCond(db: Db, cond: Cond, b: Bindings, out: Bindings[], memo: SubqMe
       return;
     }
     case 'or': {
-      const local: Bindings[] = [];
+      const seen = new Set<string>();
       for (const clause of cond.clauses) {
         for (const r of query(db, clause, b)) {
-          if (!local.some((x) => bindingsEq(x, r))) local.push(r);
+          const k = bindingsKey(r);
+          if (!seen.has(k)) {
+            seen.add(k);
+            out.push(r);
+          }
         }
       }
-      for (const x of local) out.push(x);
       return;
     }
     case 'absent':

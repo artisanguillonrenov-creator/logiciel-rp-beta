@@ -63,6 +63,24 @@ export function bindingsEq(a: Bindings, b: Bindings): boolean {
   return true;
 }
 
+/**
+ * Clé canonique d'une liaison (ordre des noms) : deux liaisons ont la même clé
+ * ssi `bindingsEq`. Sert aux dédoublonnages en O(n) au lieu de O(n²).
+ */
+export function bindingsKey(b: Bindings): string {
+  const ks = [...b.keys()].sort();
+  let out = '';
+  for (const k of ks) {
+    const v = b.get(k) as Val;
+    out += k + '\u0001';
+    if (typeof v === 'string') out += 's' + v;
+    else if (typeof v === 'number') out += 'n' + v;
+    else out += 'S' + JSON.stringify(v.rows);
+    out += '\u0002';
+  }
+  return out;
+}
+
 /** Nœud du trie : exclusif ?, affirmé ?, enfants triés par nom. */
 export interface DbNode {
   readonly excl: boolean;
@@ -234,6 +252,64 @@ function meetNode(node: DbNode, head: CompiledPath, i: number): DbNode | null {
   }
   if (excl && keys.length > 1) return null;
   return mkNode(excl, asserted, keys, kids);
+}
+
+/**
+ * Variante « transitoire » de `metOne` pour la boucle de fermeture : les nœuds
+ * créés pendant UNE fermeture portent le jeton `tok` et sont modifiés sur place
+ * lors des rencontres suivantes ; tout nœud venu d'ailleurs est copié d'abord.
+ * Le résultat est structurellement identique à celui de `metOne` (seule la
+ * quantité de copies change). `null` = ⊥ (le modèle partiel est alors jeté).
+ */
+export function metOneTransient(db: Db, head: CompiledPath, tok: object): Db | null {
+  const root = own(db, tok);
+  const seg = head.segs[0];
+  const i = kidIndex(root.keys, seg);
+  if (i >= 0) {
+    const c = meetNodeTransient(root.kids[i], head, 0, tok);
+    if (c === null) return null;
+    (root.kids as DbNode[])[i] = c;
+  } else {
+    const at = -i - 1;
+    (root.keys as string[]).splice(at, 0, seg);
+    (root.kids as DbNode[]).splice(at, 0, headSubchain(head, 0));
+  }
+  return root;
+}
+
+interface TransientNode {
+  excl: boolean;
+  asserted: boolean;
+  keys: string[];
+  kids: DbNode[];
+  tok?: object;
+}
+
+function own(n: DbNode, tok: object): DbNode {
+  if ((n as TransientNode).tok === tok) return n;
+  const m: TransientNode = { excl: n.excl, asserted: n.asserted, keys: n.keys.slice(), kids: n.kids.slice(), tok };
+  return m as DbNode;
+}
+
+function meetNodeTransient(node: DbNode, head: CompiledPath, i: number, tok: object): DbNode | null {
+  const m = own(node, tok) as unknown as TransientNode;
+  m.excl = m.excl || isExclAfter(head, i);
+  if (i + 1 === head.segs.length) m.asserted = true;
+  else {
+    const seg1 = head.segs[i + 1];
+    const j = kidIndex(m.keys, seg1);
+    if (j >= 0) {
+      const c = meetNodeTransient(m.kids[j], head, i + 1, tok);
+      if (c === null) return null;
+      m.kids[j] = c;
+    } else {
+      const at = -j - 1;
+      m.keys.splice(at, 0, seg1);
+      m.kids.splice(at, 0, headSubchain(head, i + 1));
+    }
+  }
+  if (m.excl && m.keys.length > 1) return null;
+  return m as unknown as DbNode;
 }
 
 // ---- retrait ---------------------------------------------------------------

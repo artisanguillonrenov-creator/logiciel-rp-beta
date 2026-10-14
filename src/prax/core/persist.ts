@@ -103,6 +103,53 @@ function isObject(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null && !Array.isArray(x);
 }
 
+// Validation des types, aussi stricte que la désérialisation serde du Rust :
+// tout champ mal typé est un « malformed save », jamais une valeur devinée.
+function isInt(x: unknown): x is number {
+  return typeof x === 'number' && Number.isSafeInteger(x);
+}
+
+function isStrArray(x: unknown): x is string[] {
+  return Array.isArray(x) && x.every((s) => typeof s === 'string');
+}
+
+function malformed(what: string): never {
+  throw worldErrors.persistFormat(`malformed save: ${what}`);
+}
+
+function checkValRepr(x: unknown): void {
+  if (!isObject(x) || Object.keys(x).length !== 1) malformed('une valeur liée est illisible');
+  if ('Sym' in x) {
+    if (typeof x.Sym !== 'string') malformed('une valeur liée est illisible');
+  } else if ('Num' in x) {
+    if (!isInt(x.Num)) malformed('une valeur liée est illisible');
+  } else if ('Set' in x) {
+    if (!Array.isArray(x.Set) || !x.Set.every(isStrArray)) malformed('une valeur liée est illisible');
+  } else malformed('une valeur liée est illisible');
+}
+
+function checkIntentRepr(name: string, x: unknown): void {
+  const bad = (): never => malformed(`intention de ${JSON.stringify(name)} mal formée`);
+  if (!isObject(x)) bad();
+  const r = x as Record<string, unknown>;
+  if (!isStrArray(r.bearing) || !isStrArray(r.live_desires)) bad();
+  if (!Array.isArray(r.satisfaction) || !r.satisfaction.every((n) => isInt(n) && n >= 0)) bad();
+  if (!Array.isArray(r.known_motives) || !r.known_motives.every((p) => isStrArray(p) && p.length === 2)) bad();
+  if (r.act === null || r.act === undefined) return;
+  if (!isObject(r.act)) bad();
+  const a = r.act as Record<string, unknown>;
+  for (const k of ['practice_id', 'instance_id', 'action_id', 'label']) if (typeof a[k] !== 'string') bad();
+  if (!Array.isArray(a.bindings)) bad();
+  for (const pair of a.bindings as unknown[]) {
+    if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string') bad();
+    checkValRepr((pair as unknown[])[1]);
+  }
+}
+
+function checkIntMap(field: string, x: Record<string, unknown>): void {
+  for (const [k, v] of Object.entries(x)) if (!isInt(v)) malformed(`${field}[${JSON.stringify(k)}] n’est pas un entier`);
+}
+
 /**
  * Recharge une sauvegarde sur `world` (un monde frais du même type). Bruyant
  * sur une entrée mal formée, une autre version de format, ou une échéance qui
@@ -120,6 +167,12 @@ export function deserializeState(text: string, world: State): State {
   const doc = value as unknown as SaveDoc;
   if (typeof doc.cursor !== 'number' || !isObject(doc.dues) || !isObject(doc.expiries) || !isObject(doc.intentions) || !Array.isArray(doc.facts))
     throw worldErrors.persistFormat('malformed save: champ requis manquant ou mal typé');
+  if (!isInt(doc.cursor) || doc.cursor < -2147483648 || doc.cursor > 2147483647) malformed('cursor n’est pas un entier 32 bits');
+  const seed: unknown = (value as Record<string, unknown>).rng_seed;
+  if (seed !== undefined && seed !== null && !isInt(seed)) malformed('rng_seed n’est pas un entier');
+  checkIntMap('dues', doc.dues);
+  checkIntMap('expiries', doc.expiries);
+  for (const name of Object.keys(doc.intentions)) checkIntentRepr(name, doc.intentions[name]);
   const declared = new Set(world.scheduleSrc().map((r) => r.name));
   for (const name of Object.keys(doc.dues)) if (!declared.has(name)) throw worldErrors.persistFormat(`unknown schedule rule ${JSON.stringify(name)} (not declared in the reloaded world)`);
 
@@ -133,7 +186,7 @@ export function deserializeState(text: string, world: State): State {
       throw worldErrors.persistFormat(`malformed save: malformed fact line ${JSON.stringify(line)}: ${String(e)}`);
     }
   }
-  const expiries: Array<[string, number]> = Object.entries(doc.expiries).map(([k, v]) => [k, Number(v)]);
+  const expiries: Array<[string, number]> = Object.entries(doc.expiries).map(([k, v]) => [k, v]);
   for (const [k] of expiries) {
     try {
       tokenize(k);
@@ -143,8 +196,8 @@ export function deserializeState(text: string, world: State): State {
   }
   st.setLoadedRuntime({
     cursor: doc.cursor,
-    rngSeed: typeof doc.rng_seed === 'number' ? doc.rng_seed : null,
-    dues: new Map(Object.entries(doc.dues).map(([k, v]) => [k, Number(v)])),
+    rngSeed: isInt(seed) ? seed : null,
+    dues: new Map(Object.entries(doc.dues)),
     expiries,
     db,
   });
@@ -152,7 +205,7 @@ export function deserializeState(text: string, world: State): State {
   for (const name of Object.keys(doc.intentions)) {
     const r = doc.intentions[name];
     let act: GroundedAction | null = null;
-    if (r.act !== null) {
+    if (r.act !== null && r.act !== undefined) {
       const b: Bindings = new Map();
       for (const [k, v] of r.act.bindings) b.set(k, unreprVal(v));
       act = { practiceId: r.act.practice_id, instanceId: r.act.instance_id, actionId: r.act.action_id, bindings: b, label: r.act.label };

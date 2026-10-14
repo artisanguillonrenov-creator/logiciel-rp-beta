@@ -10,7 +10,7 @@
  * correction DIV-1 : les règles à corps « riches » (Exists/Absent/Not/Or/
  * Subquery/Count) sont réévaluées sur le modèle entier à chaque tour.
  */
-import { Bindings, Db, bindingsEq, emptyDb, groundTokens, insert, metOne, child } from './db';
+import { Bindings, Db, bindingsKey, emptyDb, groundTokens, insert, metOne, metOneTransient, child } from './db';
 import { CompiledPath, isExclAfter, renderPath, tokenize } from './path';
 import { Cond, Condition, compileCondition, query, readAnchors } from './query';
 import { mayUnifySyms } from './relevanceCore';
@@ -130,8 +130,9 @@ function run(rules: readonly CompiledRule[], model0: Db, delta0: Db, deltaFacts0
     );
     let nextDelta = emptyDb();
     let cur: Db = model;
+    const tok = {};
     for (const { name, g } of named) {
-      const m = metOne(cur, g);
+      const m = metOneTransient(cur, g, tok);
       if (m === null) return new Contradiction(name);
       cur = m;
       nextDelta = insert(nextDelta, g);
@@ -144,10 +145,17 @@ function run(rules: readonly CompiledRule[], model0: Db, delta0: Db, deltaFacts0
 
 function ruleBindings(rule: CompiledRule, model: Db, delta: Db): Bindings[] {
   if (rule.kind.k === 'full') return query(model, rule.body, new Map());
+  const positions = rule.kind.positions;
+  if (positions.length === 1) return joinAt(rule.body, positions[0], model, delta);
   const out: Bindings[] = [];
-  for (const i of rule.kind.positions) {
+  const seen = new Set<string>();
+  for (const i of positions) {
     for (const b of joinAt(rule.body, i, model, delta)) {
-      if (!out.some((x) => bindingsEq(x, b))) out.push(b);
+      const k = bindingsKey(b);
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(b);
+      }
     }
   }
   return out;
