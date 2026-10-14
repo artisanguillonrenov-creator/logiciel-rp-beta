@@ -3,7 +3,7 @@ import test from 'node:test';
 import { State } from '../src/prax/core/engine';
 import { comprendre } from '../src/engine/praxNarrateur/comprehension';
 import { construireMonde, faitsInitiaux } from '../src/engine/praxNarrateur/monde';
-import { rendreTour } from '../src/engine/praxNarrateur/rendu';
+import { rendreOuverture, rendreTour } from '../src/engine/praxNarrateur/rendu';
 import type { DescriptionScene, EvenementTour } from '../src/engine/praxNarrateur/types';
 import { insert } from '../src/prax/core/types';
 import { deserializeState, serializeState } from '../src/prax/core/persist';
@@ -384,4 +384,13 @@ test('la rectification ne rejoue pas l’acte corrigé', () => {
   assert.match(texte, /Tu rectifies tes propos/);
   assert.match(texte, /frappais à la porte/);
   assert.doesNotMatch(texte, /Tu attaques/);
+});
+
+
+test('l’ouverture emprunte son ambiance aux faits de la partie sans ajouter des éléments fictifs', () => {
+  const scene = rendreOuverture('la taverne', 'Paris', [], '', 'Une fumée bleue flotte devant la cheminée.');
+  assert.match(scene, /Une fumée bleue flotte devant la cheminée/);
+  assert.doesNotMatch(scene, /orage|pluie|éclairs|sang|foule/i);
+  const neutre = rendreOuverture('la taverne', 'Paris', [], '');
+  assert.doesNotMatch(neutre, /fumée|pluie|orage/i);
 });
