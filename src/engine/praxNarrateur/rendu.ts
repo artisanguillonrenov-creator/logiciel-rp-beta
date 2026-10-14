@@ -380,6 +380,7 @@ export function rendreTour(d: DonneesRendu): string {
       presser: 'presser',
       perdrePatience: 'perdrePatience',
       renvoyer: 'renvoyer',
+      refuserDemande: 'refuser',
       proposer: 'proposer',
       maintenirPrix: 'maintenirPrix',
       consentirRabais: 'consentirRabais',
