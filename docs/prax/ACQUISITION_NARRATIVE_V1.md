@@ -18,15 +18,24 @@ Ce n'est pas un moteur de dialogue indépendant ni un LLM entraîné.
 4. Les connaissances linguistiques sont des **définitions versionnées dans le
    code Prax** ; leur disponibilité n'est pas liée à une partie ou une mémoire
    parallèle. Les sauvegardes conservent uniquement le monde et ses événements.
-5. Une distinction basique entre discours direct, citation, hypothèse et
-   parole rapportée empêche de prendre certains énoncés non factuels pour une
-   attaque, un vol ou un achat réalisé.
-6. Quelques formes grammaticales (présent français et groupe nominal) sont
-   désormais produites nativement par Prax, avec refus des flexions non couvertes.
-7. Le narrateur test utilise cette composition native pour huit réactions
-   verbales : écoute aimable, rebuffade, esquive, cession, résistance, retour
-   d'insulte, rejet d'excuses et pardon. Toutes les autres réponses restent
-   gérées par l'existant.
+5. Une distinction entre discours direct, citation, hypothèse, négation,
+   éventualité et parole rapportée évite d'exécuter automatiquement les
+   actions simplement mentionnées par le joueur.
+6. Des formes grammaticales (présent français, groupes nominaux, accords
+   adjectivaux courants) sont produites nativement, avec abstention lorsque
+   la flexion ne peut être assurée.
+7. Le narrateur expérimental utilise désormais dix-huit intentions de parole
+   composées nativement. Les actions sociales continuent d'être décidées par
+   le moteur Prax.
+8. Les voix dialoguées consultent les relations que Prax vient de calculer
+   (hostilité, peur, affection, confiance), sans calculer une nouvelle
+   personnalité parallèle.
+9. Les actes de parole ne fabriquent plus de gestes fictifs ; les rumeurs ne
+   deviennent pas des témoignages oculaires inventés.
+10. L'historique déjà sauvegardé dans l'application sert à éviter les
+    répliques strictement répétées, sans nouvelle mémoire.
+11. La parole hypothétique, citée ou rapportée du joueur est conservée
+    textuellement dans la narration, sans réaliser l'action citée.
 
 ## G0 : ce que nous pouvons réellement affirmer
 
@@ -53,7 +62,7 @@ sont déjà maîtrisés.
 
 La V1 ne remplace pas un LLM narratif. Elle ne comprend pas librement le
 français, ne couvre que certains actes de dialogue et possède une grammaire
-combinatoire limitée (présent et accord du groupe nominal seulement). La présence de formules lexicales courtes n'est pas
+combinatoire limitée (présent, noms, adjectifs et quelques actes de parole). La présence de formules lexicales courtes n'est pas
 l'équivalent d'une improvisation générale. Les descriptions visuelles,
 les voix individuelles fondées sur la personnalité réelle du monde, le contrôle
 stylistique longue durée et la réalisation grammaticale complète restent à
@@ -68,7 +77,11 @@ Aucune licence de source tierce n'a été incorporée.
   modalité du discours, montant invariant, abstention, générativité de base,
   variations stables, absence de mutation de monde, reprise après sauvegarde,
   conjugaison et accords sur des mots nouveaux.
-- Test complet : `npm test` et `npx tsc --noEmit` en CI de PR.
+- Workflow ciblé `prax-acquisition-narrative.yml` : compile les tests,
+  exécute seulement le lot ajouté, vérifie le TypeScript général, exporte le
+  web ; il isole ce lot des six tests historiques connus défaillants.
+- Le workflow général `npm test` échoue encore sur six tests préexistants
+  (`deltaEtatSepare` et `narrateurConcepteur`).
 - Mesures Android : **non effectuées** ; ne pas annoncer de gains sur appareil.
 - Comparaison stylistique à un LLM : **non effectuée**.
 - Aucune fusion automatique, aucune migration de sauvegarde.
