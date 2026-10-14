@@ -21,8 +21,8 @@ jobs:
       - run: npm ci
       - name: Compiler tous les tests
         run: npx tsc -p tsconfig.test.json
-      - name: Tests de l'acquisition native Prax
-        run: node --test .test-dist/tests/praxAcquisitionNarrative.test.js
+      - name: Tests narratifs Prax (historiques et nouveaux)
+        run: node --test .test-dist/tests/praxNarrateur.test.js .test-dist/tests/praxAcquisitionNarrative.test.js
       - name: Verification TypeScript de l'application
         run: npx tsc --noEmit
       - name: Export web
