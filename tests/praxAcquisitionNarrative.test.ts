@@ -418,3 +418,15 @@ test('la négation compose correctement les temps composés sans déplacer les f
   });
   assert.equal(sujetJe?.texte, 'Je n’ai pas eu les clés.');
 });
+
+
+test('l’oralité ne matérialise pas de postures inventées', () => {
+  const e: EvenementTour = {
+    acteur:'nerys', acteurNom:'Nerys', genre:'accuser',
+    libelle:'Nerys accuse Borin', cible:'joueur', cibleNom:'Arwen',
+    temoins:['joueur'],
+  };
+  const sortie = rendreTour({ evenements:[e], presentsApres:[], variante:0, tour:10 });
+  assert.match(sortie, /Nerys : « /);
+  assert.doesNotMatch(sortie, /pointe un doigt|se gratte le menton|hoche la tête/);
+});
