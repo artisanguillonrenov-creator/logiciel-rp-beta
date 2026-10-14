@@ -48,6 +48,14 @@ function checkGuards(scr: Script): void {
     for (let i = 0; i + 1 < names.length; i++) if (names[i] === names[i + 1]) throw worldErrors.duplicateJunctionName(s.id, names[i]);
   }
   for (const s of scr.scenes) for (const j of s.junctions) if (j.after !== null && j.after < 1) throw worldErrors.zeroDelayJunction(s.id, j.name, j.after);
+  // Durcissement propre au portage : une scène de départ ou de destination
+  // inconnue (faute de frappe) laisserait la partie sans temps fort ni
+  // transition possible. L'original l'accepte en silence ; ici, c'est bruyant.
+  const declarees = new Set(scr.scenes.map((s) => s.id));
+  if (!declarees.has(scr.start)) throw worldErrors.unknownScene('the start', scr.start);
+  for (const s of scr.scenes)
+    for (const j of s.junctions)
+      if (j.to !== null && !declarees.has(j.to)) throw worldErrors.unknownScene(`scene ${JSON.stringify(s.id)}'s junction ${JSON.stringify(j.name)}`, j.to);
   for (const [site, sents] of authoredSentenceSites(scr)) {
     for (const s of sents) {
       const head = segmentNamesChecked(s)[0];

@@ -320,6 +320,16 @@ test('persist_spec.rs : échéances et expirations peuplées survivent ; les éc
   assert.deepEqual(r.expiriesRendered(), populated.expiriesRendered());
 });
 
+// Adaptation TS (revue Codex de la PR) : une sauvegarde qui omet l'échéance d'une
+// règle déclarée ne doit pas désactiver cette règle en silence.
+test('persist (adaptation TS) : une règle déclarée absente de la sauvegarde garde l’échéance du monde frais', () => {
+  const doc = JSON.parse(serializeState(beatWorld())) as Record<string, unknown>;
+  doc.dues = {};
+  const r = deserializeState(JSON.stringify(doc), beatWorld());
+  assert.deepEqual(r.scheduleDues(), beatWorld().scheduleDues());
+  assert.ok(r.scheduleDues().has('beat'));
+});
+
 // R: persist_spec.rs a_due_naming_an_undeclared_rule_is_a_loud_error
 // H: PersistSpec.hs "a due naming a rule the reloaded world does not declare is a loud error"
 test('persist_spec.rs : une échéance qui nomme une règle non déclarée est un refus bruyant', () => {

@@ -420,6 +420,14 @@ test('schedule_rule_spec.rs : une période nulle est refusée', () => {
   assert.throws(() => new State().setSchedule([scheduleRule('x', 0, [[[m('flag.a')], [insert('marked.a')]]])]), isWE('NonPositivePeriod'));
 });
 
+// Adaptation TS (revue Codex de la PR) : en Rust, la période est un entier typé ;
+// en TypeScript, NaN, Infinity ou une fraction passeraient la garde `< 1`.
+test('schedule (adaptation TS) : une période non entière ou non finie est refusée', () => {
+  for (const p of [Number.NaN, Number.POSITIVE_INFINITY, 1.5, -2]) {
+    assert.throws(() => new State().setSchedule([scheduleRule('x', p, [[[m('flag.a')], [insert('marked.a')]]])]), isWE('NonPositivePeriod'), String(p));
+  }
+});
+
 // ===== gathering =====
 // H: ScheduleRuleSpec.hs "gathering (open fires; the fact expires -- no close rule)"
 

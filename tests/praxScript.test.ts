@@ -141,6 +141,15 @@ test('script.rs : scriptPlayer prend le premier membre jouable et est bruyant sa
 });
 
 // R: script.rs the_sketch_combinators_append_rather_than_replace
+// Adaptation TS (revue Codex de la PR) : une scène de départ ou de destination
+// inconnue bloquerait la partie sans temps fort ni transition ; c'est refusé.
+test('compile (adaptation TS) : une référence à une scène non déclarée est refusée', () => {
+  const unknown = (e: unknown) => e instanceof WorldError && e.kind === 'UnknownScene';
+  assert.throws(() => compile(script('nulle-part', [player('p')], [scene('s')])), unknown);
+  assert.throws(() => compile(script('s', [player('p')], [scene('s', { junctions: [goto('vers', 's3', [])] })])), unknown);
+  assert.doesNotThrow(() => compile(script('s', [player('p')], [scene('s', { junctions: [goto('vers', 's2', [])] }), scene('s2')])));
+});
+
 test('script.rs : les combinateurs de croquis AJOUTENT au lieu de remplacer', () => {
   const c = withTraits(withTraits(concernedWith(wanting(member('x'), [want([], 1)]), [['favor', 10]]), ['a']), ['b']);
   assert.equal(c.desires.length, 2, "the plain want AND the concern's want");

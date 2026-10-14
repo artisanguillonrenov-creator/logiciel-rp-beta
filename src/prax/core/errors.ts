@@ -24,6 +24,7 @@ export type WorldErrorKind =
   | 'NotASinglePathSegment'
   | 'DuplicateJunctionName'
   | 'ZeroDelayJunction'
+  | 'UnknownScene'
   | 'ReservedFamilyAuthored'
   | 'NoPlayableCastMember'
   | 'PatternVariables'
@@ -58,7 +59,7 @@ export const worldErrors = {
   multiSegmentCharacterName: (name: string) =>
     new WorldError('MultiSegmentCharacterName', `Le nom d’un personnage doit être un seul segment : ${JSON.stringify(name)}`, { name }),
   nonPositivePeriod: (name: string) =>
-    new WorldError('NonPositivePeriod', `La règle de calendrier ${JSON.stringify(name)} doit avoir une période positive`, { name }),
+    new WorldError('NonPositivePeriod', `La règle de calendrier ${JSON.stringify(name)} doit avoir une période entière positive`, { name }),
   reservedVarClash: (context: string, v: string, extra: string) =>
     new WorldError('ReservedVarClash', `Prax ${context} : un fragment écrit ${JSON.stringify(v)} — l’espace de noms Prax est réservé au moteur${extra}`, { context, var: v, extra }),
   seedOutOfDomain: (seed: number, lo: number, hi: number) =>
@@ -73,6 +74,8 @@ export const worldErrors = {
     new WorldError('NotASinglePathSegment', `Prax ${context} : ${JSON.stringify(name)} doit être un seul segment non vide (sans « . » ni « ! »)`, { context, name }),
   duplicateJunctionName: (scene: string, junction: string) =>
     new WorldError('DuplicateJunctionName', `Scène ${JSON.stringify(scene)} : deux jonctions nommées ${JSON.stringify(junction)}`, { scene, junction }),
+  unknownScene: (site: string, scene: string) =>
+    new WorldError('UnknownScene', `Script : ${site} renvoie à la scène ${JSON.stringify(scene)}, qui n’est pas déclarée`, { site, scene }),
   zeroDelayJunction: (scene: string, junction: string, delay: number) =>
     new WorldError('ZeroDelayJunction', `Scène ${JSON.stringify(scene)}, jonction ${JSON.stringify(junction)} : un délai de ${delay} — une jonction minutée demande au moins un tour`, { scene, junction, delay }),
   reservedFamilyAuthored: (site: string, sentence: string, family: string) =>

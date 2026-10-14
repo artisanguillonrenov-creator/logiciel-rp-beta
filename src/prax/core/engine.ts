@@ -176,7 +176,8 @@ export class State {
   addScheduleRules(rules: readonly ScheduleRule[]): void {
     for (const r of rules) {
       if (segmentNamesChecked(r.name).length !== 1) throw worldErrors.multiSegmentRuleName(r.name);
-      if (r.period < 1) throw worldErrors.nonPositivePeriod(r.name);
+      // Entier positif sûr : NaN ferait tirer la règle à chaque tour, Infinity jamais.
+      if (!Number.isSafeInteger(r.period) || r.period < 1) throw worldErrors.nonPositivePeriod(r.name);
     }
     const existing = new Set(this.defs.schedule.map((r) => r.name));
     const seen = new Set<string>();
@@ -472,7 +473,12 @@ export class State {
   setLoadedRuntime(fields: { cursor: number; rngSeed: number | null; dues: Map<string, number>; expiries: Array<[string, number]>; db: Db }): void {
     this.rt.cursor = fields.cursor;
     this.rt.rngSeed = fields.rngSeed;
-    this.rt.scheduleDues = new Map(fields.dues);
+    // Une règle déclarée absente de la sauvegarde (sauvegarde tronquée, monde
+    // qui a gagné une règle) garde l'échéance du monde frais au lieu d'être
+    // désactivée en silence.
+    const dues = new Map(this.rt.scheduleDues);
+    for (const [k, v] of fields.dues) dues.set(k, v);
+    this.rt.scheduleDues = dues;
     this.rt.expiries = new Map(fields.expiries.map(([s, due]) => [renderPath(tokenize(s)), { path: tokenize(s), due }]));
     this.rt.db = fields.db;
     reclose(this.defs.compiled, this.rt);
