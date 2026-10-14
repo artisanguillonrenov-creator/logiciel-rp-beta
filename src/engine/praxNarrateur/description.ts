@@ -106,7 +106,10 @@ export function ajouterLieu(desc: DescriptionScene, lieu: LieuConnu | undefined,
   const pris = new Set(pnj.map((p) => p.id));
   const officiels = lieu ? rolesDeLaVille(ROLES_CANON, desc.ville, lieu.roles).filter((r) => r.role !== 'souverain' || lieu.type === 'palais') : [];
   for (const r of officiels) {
-    if (pnj.some((p) => normaliser(p.nom) === normaliser(r.nom))) continue;
+    const connu = pnj.findIndex((p) => normaliser(p.nom) === normaliser(r.nom));
+    // Connu seulement de nom (relation relevée par l'application, lieu inconnu) : il est à son poste.
+    if (connu >= 0 && pnj[connu].lieu === LIEU_AILLEURS) pnj[connu] = { ...pnj[connu], lieu: lieuId, role: r.role, libelleRole: libelleRoleCanon(r) };
+    if (connu >= 0) continue;
     const id = idUnique(slug(prenomRole(r)), pris);
     pris.add(id);
     pnj.push({ id, nom: r.nom, role: r.role, libelleRole: libelleRoleCanon(r), lieu: lieuId, faction: FACTION_DES_ROLES[r.role], sujets: sujetsConnus(r.role, desc.ville) });

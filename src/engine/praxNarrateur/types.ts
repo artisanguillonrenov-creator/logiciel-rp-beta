@@ -68,7 +68,9 @@ export type GenreAction =
   | 'relancer' | 'presser' | 'perdrePatience'
   | 'demander' | 'proposer' | 'refuserDemande' | 'renvoyer' | 'marchander' | 'consentirRabais' | 'maintenirPrix' | 'payerPrix' | 'conclure'
   /** Une action de la bibliothèque universelle (le détail est dans `acte`). */
-  | 'acte';
+  | 'acte'
+  /** Un acte de la vie intime adulte (le détail est dans `intime`). */
+  | 'intime';
 
 /** Ce que raconte une action de la bibliothèque universelle (bibliotheque.ts). */
 export interface ActeEvenement {
@@ -106,6 +108,8 @@ export interface EvenementTour {
   precision?: string;
   /** Pour une action de la bibliothèque universelle. */
   acte?: ActeEvenement;
+  /** Pour un acte intime : la phase (proposer, accepter, refuser…) et la portée, sans aucun détail. */
+  intime?: { phase: string; label: string };
   /** Pour un récit rapporté : de qui parle la rumeur, et quel acte. */
   rapporte?: { genre: GenreAction; auteurNom: string; victimeNom: string };
   lieu?: string;

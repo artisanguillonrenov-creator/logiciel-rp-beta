@@ -8,6 +8,7 @@
  * régénération change seulement la formulation).
  */
 import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
+import { renduIntimeJoueur, renduIntimePnj, type PhaseIntime } from './intime';
 import { composerPropositionPrax, exprimerParole, statutEnonce, type IntentionDeParole } from '../../prax/vocab/conversation';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
@@ -224,6 +225,8 @@ const RENDU_PNJ: Partial<Record<EvenementTour['genre'], Gabarit>> = {
   },
 };
 
+RENDU_PNJ.intime = (e) => (e.intime ? renduIntimePnj({ phase: e.intime.phase as PhaseIntime, label: e.intime.label }, e.acteurNom) : [e.libelle]);
+
 RENDU_PNJ.acte = (e, cle) => {
   const r = renduActePnj(e, cle, choisir);
   return r.replique ? [r.narration, replique(e, r.replique)] : [r.narration];
@@ -243,6 +246,8 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
   switch (e.genre) {
     case 'acte':
       return renduActeJoueur(e);
+    case 'intime':
+      return e.intime ? [renduIntimeJoueur({ phase: e.intime.phase as PhaseIntime, label: e.intime.label }, c)] : [e.libelle];
     case 'saluer':
       return [choisir([`Tu salues ${c}.`, `Tu adresses un salut ${aNom(c)}.`], cle)];
     case 'converser':

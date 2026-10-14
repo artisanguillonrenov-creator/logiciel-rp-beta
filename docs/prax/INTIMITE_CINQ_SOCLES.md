@@ -37,3 +37,57 @@ Concepts examinés : Prax BSD-3, Heartmorrow Unlicense, BRING Apache-2.
 - adultNarrativeWants génère des utilités natives pour les personnages (à ajouter lors de la construction des Character avant setCharacters).
 - Le retrait peut être raconté uniquement quand un fait d'événement de retrait existe, jamais parce qu'un accord est simplement absent.
 - La fin de grossesse n'est pas acceptée si aucune grossesse n'est établie.
+
+## Intégration au narrateur Prax (`src/engine/praxNarrateur/intime.ts`)
+
+Les portées intimes (les 9 de base et les 30 du catalogue étendu) sont désormais jouées par le narrateur Prax.
+
+- **Une seule source de vérité.** Les conditions d'éligibilité sont fournies par le narrateur
+  (`EligibiliteAdulte`, paramètre des pratiques), au lieu des faits `praxAdult.person.*` :
+  - même lieu (`at.X`) ;
+  - majorité établie (`majeur.X`) ;
+  - ni captif, ni aux arrêts, ni immobilisé (`statut.X.*`) ;
+  - pas de peur entre les deux (jauge `peur` ≥ 20 : un accord sous la contrainte n'en est pas un).
+- **Majorité.**
+  - Le joueur est majeur.
+  - Un PNJ est majeur s'il a un rôle officiel ou un métier d'adulte, ou si son nom le dit pour un simple
+    habitant (« une femme », « un marin »).
+  - Un captif ou un nom qui évoque l'enfance n'est jamais majeur. Un simple prénom ne suffit pas.
+- **Réglages.** Le profil de contenu de l'appareil (`adulte`) et le curseur romance de l'histoire fixent
+  les portées permises (`praxAdult.permis.*`, reposées à chaque tour) :
+
+  | Romance | Portées permises |
+  |---|---|
+  | aucun (ou profil grand public) | aucune |
+  | faible | tendresse, soin, discussions |
+  | modéré | + sensuel, intimité |
+  | élevé | + le reste |
+
+- **Initiative.** Seul le joueur propose et commence. Un PNJ répond (accepte, refuse), retire son accord ou
+  met fin, mais ne prend jamais l'initiative. Le planificateur reste ainsi rapide (environ 100 ms par tour).
+- **Décision du PNJ** (motivations `intime-*`) :
+  - il accepte si son affection et sa confiance envers le joueur atteignent le seuil de la portée, sans
+    hostilité (< 10), sans peur (< 20) et sans préférence *dislike* :
+
+    | Nature de la portée | Affection | Confiance |
+    |---|---|---|
+    | discussion | 0 | 0 |
+    | tendresse, soin | 10 | 0 |
+    | sensuel, intimité | 20 | 10 |
+    | sexuel | 25 | 15 |
+
+  - sinon, il refuse ;
+  - il retire son accord si l'hostilité ou la peur montent.
+- **Retrait et départ.** « Stop », « je ne veux plus » : le joueur retire son accord et tout s'arrête.
+  Partir lève les propositions, accords et refus en cours. Une hypothèse (« si je t'embrassais ? ») reste
+  une parole.
+- **Récit.** Il dit seulement qui propose, accepte, refuse, commence, termine ou retire son accord, avec
+  un fondu (« Le détail vous appartient »). Il ne contient aucune description.
+- **Correction annexe.** Les approches sociales modifient désormais les jauges du narrateur
+  (`confiance`, `affection`) et non `trust` / `warmth`.
+- **Non branchés au narrateur** :
+  - la physiologie (fertilité, grossesse) ;
+  - les approches sociales, que la bibliothèque couvre déjà ;
+  - les préférences, l'orientation et l'intérêt romantique, faute de source (fiche de personnage) qui
+    les pose. Une préférence *dislike* posée par `setAdultPreference` empêche déjà d'accepter.
+- **Tests** : `tests/praxIntimeNarrateur.test.ts` (7 tests).

@@ -15,8 +15,8 @@ import { Action, Outcome, Practice, Want, action, del, insert, practice, want } 
 import { adjustScore, coreFns } from './coreModel';
 import {
  INTIMATE_SCOPES, installNativeAdultPractices, invalidateAgreements,
- placeAdult, setAdultRestriction,
- type IntimateScope,
+ nativeAdultPractices, placeAdult, setAdultRestriction, eligibiliteParDefaut,
+ type EligibiliteAdulte, type IntimateScope,
 } from './intimacy';
 
 const path=(...parts:string[]):string=>['praxAdult',...parts].join('.');
@@ -84,23 +84,23 @@ const eligible:readonly Condition[]=[
 const accepted=(a:string,b:string,s:string)=>[matches(agree(a,b,s)),matches(agree(b,a,s))];
 
 /** Socle II : mêmes garanties que les 9 portées initiales, pour chaque acte nouveau. */
-function scopeActions(scope:ExtendedScope,label:string):Action[]{
+function scopeActions(scope:ExtendedScope,label:string,elig:EligibiliteAdulte=eligibiliteParDefaut):Action[]{
  const mine=agree('Actor','Other',scope),theirs=agree('Other','Actor',scope);
  const myOffer=offer('Actor','Other',scope),theirOffer=offer('Other','Actor',scope);
  const mineActive=active('Actor','Other',scope),theirActive=active('Other','Actor',scope);
  const bounds=[not_(boundary('Actor',scope)),not_(boundary('Other',scope))];
  return [
   action('[Actor]: proposer '+label+' à [Other]',
-   [...eligible,...bounds,not_(myOffer),not_(mine),not_(refusal('Other','Actor',scope))],
+   [...elig(scope,'proposer'),...bounds,not_(myOffer),not_(mine),not_(refusal('Other','Actor',scope))],
    [insert(myOffer),insert(mine)]),
   action('[Actor]: accepter '+label+' proposé par [Other]',
-   [...eligible,...bounds,matches(theirOffer),not_(mine)],
+   [matches(theirOffer),...elig(scope,'accepter'),...bounds,not_(mine)],
    [insert(mine),del(theirOffer)]),
   action('[Actor]: refuser '+label+' proposé par [Other]',
    [matches(theirOffer),neq('Actor','Other')],
    [del(theirOffer),del(mine),del(theirs),insert(refusal('Actor','Other',scope))]),
   action('[Actor]: commencer '+label+' avec [Other]',
-   [...eligible,...bounds,...accepted('Actor','Other',scope),not_(mineActive),not_(theirActive)],
+   [...elig(scope,'commencer'),...bounds,...accepted('Actor','Other',scope),not_(mineActive),not_(theirActive)],
    [insert(mineActive),insert(theirActive)]),
   action('[Actor]: terminer '+label+' avec [Other]',
    [matches(mineActive),neq('Actor','Other')],
@@ -115,26 +115,26 @@ function scopeActions(scope:ExtendedScope,label:string):Action[]{
 
 /** Socle IV : la demande sociale est distincte de la réponse. */
 export const SOCIAL_APPROACHES=[
- {id:'flirt',label:'flirter',effect:'warmth',delta:2},
+ {id:'flirt',label:'flirter',effect:'affection',delta:2},
  {id:'compliment',label:'complimenter',effect:'respect',delta:2},
- {id:'confide',label:'se confier',effect:'trust',delta:3},
- {id:'ask_date',label:'inviter à un rendez-vous',effect:'warmth',delta:3},
- {id:'discuss_feelings',label:'parler de ses sentiments',effect:'trust',delta:3},
- {id:'discuss_health',label:'parler de santé intime',effect:'trust',delta:3},
- {id:'request_exclusivity',label:'proposer l’exclusivité',effect:'trust',delta:2},
+ {id:'confide',label:'se confier',effect:'confiance',delta:3},
+ {id:'ask_date',label:'inviter à un rendez-vous',effect:'affection',delta:3},
+ {id:'discuss_feelings',label:'parler de ses sentiments',effect:'confiance',delta:3},
+ {id:'discuss_health',label:'parler de santé intime',effect:'confiance',delta:3},
+ {id:'request_exclusivity',label:'proposer l’exclusivité',effect:'confiance',delta:2},
  {id:'offer_apology',label:'présenter des excuses',effect:'respect',delta:2},
- {id:'share_secret',label:'confier un secret',effect:'trust',delta:3},
- {id:'reassure',label:'rassurer',effect:'warmth',delta:2},
- {id:'discuss_family',label:'parler de projet familial',effect:'trust',delta:2},
+ {id:'share_secret',label:'confier un secret',effect:'confiance',delta:3},
+ {id:'reassure',label:'rassurer',effect:'affection',delta:2},
+ {id:'discuss_family',label:'parler de projet familial',effect:'confiance',delta:2},
  {id:'ask_preferences',label:'demander ses préférences',effect:'respect',delta:2},
  {id:'ask_boundaries',label:'demander ses limites',effect:'respect',delta:3},
  {id:'discuss_culture',label:'discuter des normes culturelles',effect:'respect',delta:2},
- {id:'propose_reconciliation',label:'proposer de se réconcilier',effect:'warmth',delta:2},
- {id:'request_privacy',label:'demander de la discrétion',effect:'trust',delta:2},
+ {id:'propose_reconciliation',label:'proposer de se réconcilier',effect:'affection',delta:2},
+ {id:'request_privacy',label:'demander de la discrétion',effect:'confiance',delta:2},
  {id:'discuss_protection',label:'proposer une discussion sur la protection',effect:'respect',delta:2},
- {id:'ask_commitment',label:'proposer un engagement',effect:'trust',delta:2},
+ {id:'ask_commitment',label:'proposer un engagement',effect:'confiance',delta:2},
  {id:'discuss_breakup',label:'discuter de la séparation',effect:'respect',delta:1},
- {id:'discuss_parenthood',label:'parler de parentalité',effect:'trust',delta:2},
+ {id:'discuss_parenthood',label:'parler de parentalité',effect:'confiance',delta:2},
 ] as const;
 export type SocialApproach=(typeof SOCIAL_APPROACHES)[number]['id'];
 function socialActions():Action[]{
@@ -161,13 +161,23 @@ function socialPractice():Practice{
   roles:['World'], actions:socialActions(),
  });
 }
-function advancedPractice():Practice{
+function advancedPractice(elig:EligibiliteAdulte=eligibiliteParDefaut):Practice{
  return practice('praxAdultExpanded',{
   name:'Actions intimes supplémentaires',
   roles:['World'],
-  actions:ADULT_ACTION_CATALOGUE.flatMap(x=>scopeActions(x.id,x.label)),
+  actions:ADULT_ACTION_CATALOGUE.flatMap(x=>scopeActions(x.id,x.label,elig)),
  });
 }
+
+/** Les deux pratiques des portées intimes (socles I et II), avec l'éligibilité du monde hôte. */
+export function adultScopePractices(elig:EligibiliteAdulte):Practice[]{
+ return [...nativeAdultPractices(elig),advancedPractice(elig)];
+}
+
+/** Nature de chaque portée (affection, soin, sensuel, intimité, sexuel, discussion). */
+export const ADULT_SCOPE_KIND:Readonly<Record<string,string>>=Object.fromEntries([
+ ...INTIMATE_SCOPES.map(s=>[s.id,s.kind]),...ADULT_ACTION_CATALOGUE.map(s=>[s.id,s.type]),
+]);
 
 /** Socles I-IV sont des pratiques et faits du State natif, pas une extension autonome. */
 export function installCompleteAdultWorld(st:State):void{

@@ -4,7 +4,7 @@
  * Catégories techniques non graphiques; le planificateur Prax décide.
  */
 import { State } from '../core/engine';
-import { matches, neq, not_ } from '../core/query';
+import { Condition, matches, neq, not_ } from '../core/query';
 import { Action, Practice, action, del, insert, practice } from '../core/types';
 
 export const INTIMATE_SCOPES = [
@@ -25,6 +25,14 @@ const agree=(a:string,b:string,s:string)=>p('agree',a,b,s);
 const active=(a:string,b:string,s:string)=>p('active',a,b,s);
 const record=(a:string,b:string,s:string)=>p('history',a,b,s);
 const deny=(a:string,b:string,s:string)=>p('refusal',a,b,s);
+/**
+ * Conditions d'éligibilité de deux personnes [Actor] et [Other] pour une portée.
+ * Par défaut, les faits `praxAdult.person.*` du module ; un monde qui tient déjà
+ * le lieu, l'âge et les statuts (le narrateur Prax) fournit les siennes, pour
+ * qu'il n'existe qu'une seule source de vérité.
+ */
+export type PhaseAdulte='proposer'|'accepter'|'commencer';
+export type EligibiliteAdulte=(scope:string,phase:PhaseAdulte)=>Condition[];
 const eligible=[
  matches(p('person','Actor','adult')),matches(p('person','Other','adult')),
  neq('Actor','Other'),
@@ -33,23 +41,24 @@ const eligible=[
  not_(p('person','Actor','captive')),not_(p('person','Other','captive')),
  not_(p('duress','Actor','Other')),not_(p('duress','Other','Actor')),
 ];
-function nativeActions(scope: IntimateScope, label:string):Action[]{
+export const eligibiliteParDefaut:EligibiliteAdulte=()=>eligible;
+function nativeActions(scope: IntimateScope, label:string, elig:EligibiliteAdulte=eligibiliteParDefaut):Action[]{
  const a=agree('Actor','Other',scope),b=agree('Other','Actor',scope);
  const o=offer('Actor','Other',scope),otherOffer=offer('Other','Actor',scope);
  const running=active('Actor','Other',scope),reverse=active('Other','Actor',scope);
  const bounds=[not_(p('person','Actor','forbid',scope)),not_(p('person','Other','forbid',scope))];
  return [
   action('[Actor]: proposer '+label+' à [Other]',
-   [...eligible,...bounds,not_(o),not_(a),not_(deny('Other','Actor',scope))],
+   [...elig(scope,'proposer'),...bounds,not_(o),not_(a),not_(deny('Other','Actor',scope))],
    [insert(o),insert(a)]),
   action('[Actor]: accepter '+label+' proposé par [Other]',
-   [...eligible,...bounds,matches(otherOffer),not_(a)],
+   [matches(otherOffer),...elig(scope,'accepter'),...bounds,not_(a)],
    [insert(a),del(otherOffer)]),
   action('[Actor]: refuser '+label+' proposé par [Other]',
    [matches(otherOffer),neq('Actor','Other')],
    [del(otherOffer),del(a),del(b),insert(deny('Actor','Other',scope))]),
   action('[Actor]: commencer '+label+' avec [Other]',
-   [...eligible,...bounds,matches(a),matches(b),not_(running),not_(reverse)],
+   [...elig(scope,'commencer'),...bounds,matches(a),matches(b),not_(running),not_(reverse)],
    [insert(running),insert(reverse)]),
   action('[Actor]: terminer '+label+' avec [Other]',
    [matches(running),neq('Actor','Other')],
@@ -61,15 +70,15 @@ function nativeActions(scope: IntimateScope, label:string):Action[]{
     insert(p('withdrawal','Actor','Other',scope))]),
  ];
 }
-export function nativeAdultPractices():Practice[]{
+export function nativeAdultPractices(elig:EligibiliteAdulte=eligibiliteParDefaut):Practice[]{
  return [practice('praxAdultInteractions',{
   name:'Interactions adultes autonomes',
   roles:['World'],
-  actions:INTIMATE_SCOPES.flatMap(s=>nativeActions(s.id,s.label))
+  actions:INTIMATE_SCOPES.flatMap(s=>nativeActions(s.id,s.label,elig))
  })];
 }
-export function installNativeAdultPractices(st:State):void{
- if(!st.defs.practices.has('praxAdultInteractions'))st.definePractices(nativeAdultPractices());
+export function installNativeAdultPractices(st:State,elig:EligibiliteAdulte=eligibiliteParDefaut):void{
+ if(!st.defs.practices.has('praxAdultInteractions'))st.definePractices(nativeAdultPractices(elig));
  if(!st.dbHas('practice.praxAdultInteractions.world'))st.performOutcome(insert('practice.praxAdultInteractions.world'));
 }
 function validateName(id:string):void{

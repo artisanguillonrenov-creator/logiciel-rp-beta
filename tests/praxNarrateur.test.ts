@@ -8,6 +8,7 @@ import { comprendre } from '../src/engine/praxNarrateur/comprehension';
 import { construireDescription, slug } from '../src/engine/praxNarrateur/description';
 import { construireMonde, faitsInitiaux, graineDe, lireRelation } from '../src/engine/praxNarrateur/monde';
 import { jouerTourPrax, ouvrirAvecPrax, regenererTourPrax } from '../src/engine/praxNarrateur/tour';
+import { faitsIntimes } from '../src/engine/praxNarrateur/intime';
 import { ID_JOUEUR } from '../src/engine/praxNarrateur/types';
 import type { AppSettings, StoryState } from '../src/types';
 
@@ -101,6 +102,8 @@ test('le monde d’Elyndor et toute la bibliothèque universelle passent le vér
   // Toutes les actions du catalogue installées, plus ce que le narrateur pose en jeu (saisie, garde, compétence).
   for (const e of CATALOGUE) for (const o of faitsActe(e)) st.performOutcome(o);
   for (const f of ['saisie.montant!10', 'saisie.objet!chandelle', 'saisie.valeur!10', 'saisie.plancher!5', `role.${desc.pnj[0].id}.garde`, `competence.${ID_JOUEUR}.forge`]) st.performOutcome(insert(f));
+  // Les portées intimes, permises au niveau le plus large (le narrateur les pose à chaque tour selon les réglages).
+  for (const o of faitsIntimes('complet')) st.performOutcome(o);
   const erreurs = typeCheck(st);
   assert.deepEqual(erreurs.map(decrireErreur), []);
 });

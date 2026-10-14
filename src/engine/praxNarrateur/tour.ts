@@ -13,11 +13,13 @@
 import type { State } from '../../prax/core/engine';
 import type { GroundedAction } from '../../prax/core/perform';
 import { deserializeState, serializeState } from '../../prax/core/persist';
+import { insert } from '../../prax/core/types';
 import type { DiagnosticTour, Message, RelationPersonnage, StoryState } from '../../types';
 import { comprendre, presentsDuJoueur } from './comprehension';
 import { ajouterLieu, construireDescription, destinationDuMessage } from './description';
 import { AXES, Axe, ValeursRelation, construireMonde, faitsDeMiseANiveau, faitsInitiaux, graineDe, lieuDe, lireRelation } from './monde';
 import { effacerSaisie, infoActe } from './bibliotheque';
+import { NiveauIntime, faitsIntimes, infoIntime, leverAccordsDuJoueur } from './intime';
 import { lignesCoulisses, nomCourt, rendreIncompris, rendreOuverture, rendreTour } from './rendu';
 import { sujetPrax } from './sujets';
 import {
@@ -93,6 +95,8 @@ export interface OptionsTourPrax {
   profondeur?: number;
   /** Change seulement la formulation (régénération). */
   variante?: number;
+  /** Niveau d'intimité permis (profil de contenu et curseur romance) ; « aucun » par défaut. */
+  intime?: NiveauIntime;
   maintenant?: () => number;
 }
 
@@ -126,10 +130,11 @@ function temoinsDe(st: State, acteur: string, desc: DescriptionScene): string[] 
 /** L'événement d'une action qui VIENT d'être jouée (l'état est lu après coup pour les actes de la bibliothèque). */
 function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string[], st: State): EvenementTour {
   const acte = GENRE_PAR_GABARIT[ga.actionId] ? undefined : infoActe(ga, st);
-  const genre = GENRE_PAR_GABARIT[ga.actionId] ?? (acte ? 'acte' : 'attendre');
+  const intime = GENRE_PAR_GABARIT[ga.actionId] || acte ? undefined : infoIntime(ga.actionId);
+  const genre = GENRE_PAR_GABARIT[ga.actionId] ?? (acte ? 'acte' : intime ? 'intime' : 'attendre');
   const acteur = lier(ga, 'Actor') ?? '';
   const pnj = desc.pnj.find((p) => p.id === acteur);
-  const cible = lier(ga, 'Cible') ?? lier(ga, 'Hearer') ?? lier(ga, 'Voleur') ?? lier(ga, 'Agresseur') ?? lier(ga, 'X');
+  const cible = lier(ga, 'Cible') ?? lier(ga, 'Other') ?? lier(ga, 'Hearer') ?? lier(ga, 'Voleur') ?? lier(ga, 'Agresseur') ?? lier(ga, 'X');
   const sujet = lier(ga, 'Sujet');
   const lieu = lier(ga, 'Lieu');
   const e: EvenementTour = {
@@ -141,6 +146,7 @@ function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string
     temoins,
   };
   if (acte) e.acte = acte;
+  if (intime) e.intime = intime;
   if (cible !== undefined) {
     e.cible = cible;
     e.cibleNom = nomDe(desc, cible);
@@ -215,7 +221,7 @@ function lireToutesRelations(st: State, desc: DescriptionScene): Map<string, Rec
 }
 
 /** Monde + faits pour la partie, à partir de l'état Prax sauvegardé s'il existe. */
-function preparer(story: StoryState, message: string | null): Contexte & { lieuDestination?: string; ancien?: EtatPraxHistoire } {
+function preparer(story: StoryState, message: string | null, intime: NiveauIntime = 'aucun'): Contexte & { lieuDestination?: string; ancien?: EtatPraxHistoire } {
   const ancien = story.prax?.version === 1 ? story.prax : undefined;
   let { desc, lieuJoueur } = construireDescription(story, ancien?.description, ancien?.lieuJoueur);
   let lieuDestination: string | undefined;
@@ -236,12 +242,16 @@ function preparer(story: StoryState, message: string | null): Contexte & { lieuD
     const nouveauxLieux = new Set(desc.lieux.map((l) => l.id).filter((id) => !anciensLieux.has(id)));
     for (const o of faitsInitiaux(desc, null, nouveauxPnj, nouveauxLieux, relations)) st.performOutcome(o);
     for (const o of faitsDeMiseANiveau(st, desc)) st.performOutcome(o);
+    // Un personnage dont on ignorait le lieu et que la description vient de placer (à son poste officiel).
+    for (const p of desc.pnj) if (p.lieu !== LIEU_AILLEURS && st.dbHas(`at.${p.id}!${LIEU_AILLEURS}`)) st.performOutcome(insert(`at.${p.id}!${p.lieu}`));
   } else {
     st = monde;
     // Prax reprend une partie jouée par le narrateur IA : les présents ont déjà rencontré le joueur.
     const dejaRencontres = new Set(story.messages.some((m) => m.role === 'user') ? desc.pnj.filter((p) => p.lieu === lieuJoueur).map((p) => p.id) : []);
     for (const o of faitsInitiaux(desc, lieuJoueur, new Set(desc.pnj.map((p) => p.id)), new Set(desc.lieux.map((l) => l.id)), relations, dejaRencontres)) st.performOutcome(o);
   }
+  // Ce que les réglages permettent, reposé à chaque tour (ils peuvent changer entre deux tours).
+  for (const o of faitsIntimes(intime)) st.performOutcome(o);
   return { st, desc, lieuJoueur, lieuDestination, ancien };
 }
 
@@ -320,13 +330,13 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
   const debut = maintenant();
   const profondeur = opts.profondeur ?? PROFONDEUR_PAR_DEFAUT;
   const variante = opts.variante ?? 0;
-  const ctx = preparer(story, messageJoueur);
+  const ctx = preparer(story, messageJoueur, opts.intime);
   const { st, ancien } = ctx;
   const desc = ctx.desc;
   const tour = (ancien?.tours ?? 0) + 1;
   const avant = lireToutesRelations(st, desc);
 
-  const compris = comprendre(messageJoueur, st, desc, ctx.lieuJoueur, { lieuDestination: ctx.lieuDestination, dernierInterlocuteur: ancien?.dernierInterlocuteur });
+  const compris = comprendre(messageJoueur, st, desc, ctx.lieuJoueur, { lieuDestination: ctx.lieuDestination, dernierInterlocuteur: ancien?.dernierInterlocuteur, intime: opts.intime });
   const evenements: EvenementTour[] = [];
   const coulisses: CoulisseActeur[] = [];
   const acquisNarratifs: string[] = [];
@@ -345,7 +355,10 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     if (compris.affichage) evenement.genre = compris.affichage;
     evenements.push(evenement);
     if (compris.genre === 'voler' && compris.cible) volRemarque = st.dbHas(`${compris.cible}.believes.vole.${ID_JOUEUR}.${compris.cible}.seen`);
+    const lieuAvant = lieuJoueur;
     lieuJoueur = lieuDe(st, ID_JOUEUR) ?? lieuJoueur;
+    // Partir lève les propositions et accords intimes en cours : rien ne se reprend sans nouvel accord.
+    if (lieuJoueur !== lieuAvant) leverAccordsDuJoueur(st);
     phasePnj({ st, desc, lieuJoueur }, profondeur, evenements, coulisses);
     st.roundBoundary();
     const derniersTextes = story.messages.filter((m) => m.role === 'assistant').slice(-4).map((m) => m.content);

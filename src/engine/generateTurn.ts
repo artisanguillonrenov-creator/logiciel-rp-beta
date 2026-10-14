@@ -929,7 +929,7 @@ export async function genererTour(
   reponseAId?: string,
 ): Promise<ResultatTour> {
   // Narrateur Prax (test) : le moteur de décision local remplace le modèle IA.
-  if (narrateurPraxActif(appSettings)) return genererTourPrax(story, messageJoueur);
+  if (narrateurPraxActif(appSettings)) return genererTourPrax(story, messageJoueur, appSettings);
   commencerDiagnosticTour(undefined, story.meta.id);
   try {
     const resultat = await genererTourInterne(story, appSettings, messageJoueur, reponseAId);
@@ -958,7 +958,7 @@ export async function genererTour(
 }
 
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
-  if (narrateurPraxActif(appSettings)) return regenererAvecPrax(story);
+  if (narrateurPraxActif(appSettings)) return regenererAvecPrax(story, appSettings);
   const rafraichie = await rafraichirEtatDeriveAvantTour(story);
   // Le tour régénéré ne doit pas laisser ses événements dans le noyau.
   const storyCourante = annulerTour(rafraichie, rafraichie.messages.at(-1)?.id ?? '');

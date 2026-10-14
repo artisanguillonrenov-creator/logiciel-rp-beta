@@ -12,6 +12,7 @@ import type { GroundedAction } from '../../prax/core/perform';
 import { SaisieActe, comprendreActe, reconnaitreActe, reglementEnAttente } from './bibliotheque';
 import { normaliser } from './description';
 import { estVendeur } from './monde';
+import { NiveauIntime, comprendreIntime } from './intime';
 import { sujetsCites } from './sujets';
 import { DescriptionScene, GenreAction, ID_JOUEUR } from './types';
 
@@ -151,7 +152,7 @@ export function comprendre(
   st: State,
   desc: DescriptionScene,
   lieuJoueur: string,
-  opts: { lieuDestination?: string; dernierInterlocuteur?: string } = {},
+  opts: { lieuDestination?: string; dernierInterlocuteur?: string; intime?: NiveauIntime } = {},
 ): Comprehension {
   // Apostrophes et guillemets deviennent des espaces : « t’aider » se lit « t aider ».
   const texte = normaliser(message).replace(/[«»"“”’']/g, ' ').replace(/\s+/g, ' ').trim();
@@ -185,6 +186,10 @@ export function comprendre(
     const action = chercherAction(st, GABARIT.se_rendre as string, { Lieu: opts.lieuDestination });
     return action ? { genre: 'se_rendre', action, lieu: opts.lieuDestination } : { genre: null, action: null, motif: 'Ce lieu n’est pas accessible d’ici.' };
   }
+  // La vie intime : seulement avec l'accord de l'autre, décidé par Prax, et dans les limites des réglages.
+  const intime = comprendreIntime(texte, st, desc, cibleDuMessage(texte, st, desc, opts.dernierInterlocuteur), opts.intime ?? 'aucun');
+  if (intime) return { genre: intime.action ? 'intime' : null, action: intime.action, cible: intime.cible || undefined, motif: intime.motif };
+
   const reconnu = reconnaitreActe(message);
   // « J'attends », « continue »… sauf quand la bibliothèque reconnaît un acte plus précis (« j'observe la salle »).
   if (texte.length === 0 || (ATTENTE.test(texte) && (!reconnu || reconnu.entree.equivalentPrax === 'attendre'))) {

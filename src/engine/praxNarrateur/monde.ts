@@ -20,6 +20,7 @@ import { State } from '../../prax/core/engine';
 import { Condition, absent, cmp, matches, neq, not_ } from '../../prax/core/query';
 import { SEED_BOUNDS, draw } from '../../prax/core/rng';
 import { segment } from '../../prax/bibliotheque/catalogue';
+import { INSTANCES_INTIMES, majeurEtabli, motivationsIntimes, pratiquesIntimes } from './intime';
 import { actionsFamilles, fonctionsFamilles, motivationsFamilles } from '../../prax/bibliotheque/familles';
 import { Action, Character, Desire, Outcome, Practice, action, character, del, desire, holds, insert, insertFor, practice, want } from '../../prax/core/types';
 import { adjustScore, coreFns } from '../../prax/vocab/coreModel';
@@ -413,9 +414,9 @@ export function graineDe(texte: string): number {
 /** Le monde Prax (règles et distribution) pour une description de scène, sans faits. */
 export function construireMonde(desc: DescriptionScene, graine: number): State {
   const st = new State();
-  st.definePractices([praxis(), practice(PRATIQUE_SPECTATEUR, { name: 'Le joueur (jamais prédit)', roles: [], actions: [] })]);
+  st.definePractices([praxis(), practice(PRATIQUE_SPECTATEUR, { name: 'Le joueur (jamais prédit)', roles: [], actions: [] }), ...pratiquesIntimes()]);
   st.defineFunctions([...coreFns(), ...fonctionsFamilles()]);
-  const desirs = [...motivations(), ...motivationsFamilles()];
+  const desirs = [...motivations(), ...motivationsFamilles(), ...motivationsIntimes()];
   const noms = desirs.map((x) => x.name);
   const pnj: Character[] = desc.pnj.map((p) => noms.reduce((c, n) => holds(c, n), character(p.id)));
   // Le joueur décide seul : le planificateur ne lui prête aucun choix (et n'en explore aucun).
@@ -450,7 +451,8 @@ export function faitsInitiaux(
   for (const id of dejaRencontres) out.push(insert(`accueilli.${id}.${ID_JOUEUR}`), insert(`salue.${id}.${ID_JOUEUR}`), insert(`salue.${ID_JOUEUR}.${id}`));
   if (lieuJoueur !== null) {
     out.push(insert('practice.elyndor.monde'), insert(`personnage.${ID_JOUEUR}`), insert(`estjoueur.${ID_JOUEUR}`), insert(`at.${ID_JOUEUR}!${lieuJoueur}`));
-    out.push(insert(`role.${ID_JOUEUR}.tous`), insert(`bourse.${ID_JOUEUR}!${BOURSE_JOUEUR}`));
+    out.push(insert(`role.${ID_JOUEUR}.tous`), insert(`bourse.${ID_JOUEUR}!${BOURSE_JOUEUR}`), insert(`majeur.${ID_JOUEUR}`));
+    for (const i of INSTANCES_INTIMES) out.push(insert(i));
     for (const s of SUJETS) out.push(insert(`sujet.${s.id}`));
     for (const r of ROLES_ACCUEIL) out.push(insert(`fonction.${r}.accueil`));
     for (const r of ROLES_VENDEURS) out.push(insert(`fonction.${r}.vendeur`));
@@ -476,6 +478,7 @@ export function faitsInitiaux(
     out.push(insert(`personnage.${p.id}`), insert(`pnj.${p.id}`), insert(`at.${p.id}!${p.lieu}`), insert(`role.${p.id}.${p.role}`), insert(`role.${p.id}.tous`));
     out.push(insert(`bourse.${p.id}!${BOURSE_PAR_ROLE[p.role] ?? BOURSE_PAR_DEFAUT}`));
     if (p.role === 'captif') out.push(insert(`statut.${p.id}.captif`));
+    if (majeurEtabli(p)) out.push(insert(`majeur.${p.id}`));
     for (const s of p.sujets) out.push(insert(`sait.${p.id}.${s}`));
     const versJoueur = relationsJoueur.get(p.id) ?? {};
     for (const axe of AXES) out.push(insert(`${p.id}.relationship.${ID_JOUEUR}.${axe}.score!${Math.round((versJoueur[axe] ?? 0) * 10)}`));
@@ -502,10 +505,13 @@ export function faitsDeMiseANiveau(st: State, desc: DescriptionScene): Outcome[]
   for (const r of ROLES_VENDEURS) if (!st.dbHas(`fonction.${r}.vendeur`)) out.push(insert(`fonction.${r}.vendeur`));
   if (!st.dbHas(`role.${ID_JOUEUR}.tous`)) out.push(insert(`role.${ID_JOUEUR}.tous`));
   if (!st.dbHas(`bourse.${ID_JOUEUR}`)) out.push(insert(`bourse.${ID_JOUEUR}!${BOURSE_JOUEUR}`));
+  if (!st.dbHas(`majeur.${ID_JOUEUR}`)) out.push(insert(`majeur.${ID_JOUEUR}`));
+  for (const i of INSTANCES_INTIMES) if (!st.dbHas(i)) out.push(insert(i));
   for (const p of desc.pnj) {
     if (!st.dbHas(`pnj.${p.id}`)) continue;
     if (!st.dbHas(`role.${p.id}.tous`)) out.push(insert(`role.${p.id}.tous`));
     if (!st.dbHas(`bourse.${p.id}`)) out.push(insert(`bourse.${p.id}!${BOURSE_PAR_ROLE[p.role] ?? BOURSE_PAR_DEFAUT}`));
+    if (!st.dbHas(`majeur.${p.id}`) && majeurEtabli(p)) out.push(insert(`majeur.${p.id}`));
   }
   return out;
 }
