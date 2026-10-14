@@ -279,7 +279,22 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
       break;
     case 'informer':
       if (!fait) return null;
-      noyau = fait;
+      if (sens.statut === 'rapporte') {
+        // Le personnage ne peut pas s'attribuer un témoignage visuel qu'il
+        // n'a pas fait. Le rapport reste explicitement un rapport.
+        noyau = 'Il se dit que ' + fait.charAt(0).toLocaleLowerCase('fr') + fait.slice(1);
+        savoirs.push('G2-provenance-rapportee');
+      } else if (sens.statut === 'citation') {
+        noyau = '« ' + fait + ' »';
+        savoirs.push('G2-citation-attribuee');
+      } else if (sens.statut === 'hypothese') {
+        // Ne pas naturaliser une supposition : la forme interrogative
+        // marque la modalité sans inventer la vérité du contenu.
+        noyau = 'Est-il possible que ' + fait.charAt(0).toLocaleLowerCase('fr') + fait.slice(1) + ' ?';
+        savoirs.push('G2-hypothese');
+      } else {
+        noyau = fait;
+      }
       savoirs.push('G2-fait-attribue');
       break;
     case 'demander':
