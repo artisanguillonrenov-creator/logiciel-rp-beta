@@ -446,7 +446,7 @@ export function ouvrirAvecPrax(story: StoryState, opts: OptionsTourPrax = {}): S
   ctx.st.roundBoundary();
   const presents = presentsDuJoueur(ctx.st, ctx.desc);
   const suite = evenements.length ? rendreTour({ evenements, presentsApres: presents, variante: opts.variante ?? 0, tour: 0 }) : '';
-  const texte = rendreOuverture(lieuNom(ctx.desc, ctx.lieuJoueur), ctx.desc.ville, presents, suite);
+  const texte = rendreOuverture(lieuNom(ctx.desc, ctx.lieuJoueur), ctx.desc.ville, presents, suite, story.meta.contexte?.ambiance ?? '');
   const fin = maintenant();
   const compteRendu: CompteRenduTour = {
     version: 1,
