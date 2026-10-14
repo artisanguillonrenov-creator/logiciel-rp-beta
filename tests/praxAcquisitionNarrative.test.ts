@@ -200,3 +200,37 @@ test('rapporter ou supposer un fait préserve sa modalité, pas sa vérité', ()
   assert.match(hypothese?.texte ?? '', /Hypothèse : Borin est parti/);
   assert.match(citation?.texte ?? '', /« Borin est parti »/);
 });
+
+
+test('le rendu conserve les paroles hypothétiques du joueur plutôt que les exécuter', () => {
+  const base: EvenementTour = {
+    acteur: 'joueur',
+    acteurNom: 'Arwen',
+    genre: 'converser',
+    libelle: 'Arwen parle à Margaux',
+    cible: 'margaux',
+    cibleNom: 'Margaux',
+    temoins: ['margaux'],
+    precision: 'Si je frappais le garde, que se passerait-il ?',
+  };
+  const rendu = rendreTour({ evenements: [base], presentsApres: [], tour: 1, variante: 0 });
+  assert.match(rendu, /Tu évoques une hypothèse à Margaux/);
+  assert.match(rendu, /Si je frappais le garde/);
+  assert.doesNotMatch(rendu, /Tu frappes le garde/);
+});
+
+test('les formulations de parole ne capitalisent pas au milieu d’une phrase', () => {
+  const formats = ['chaleureux', 'reserve', 'tranchant'] as const;
+  for (const registre of formats) for (let i = 0; i < 64; i++) {
+    const phrase = exprimerParole({ locuteur: 'margaux', intention: 'ecouter', registre }, i)?.texte ?? '';
+    assert.doesNotMatch(phrase, /,\s+[A-ZÀÉÈ]\p{Ll}/u, 'on ne commence pas une proposition interne avec une majuscule');
+  }
+});
+
+test('les intentions inconnues ou informations manquantes ne sont jamais comblées', () => {
+  assert.equal(exprimerParole({ locuteur: 'alix', intention: 'informer', fait: '' }), null);
+  assert.equal(exprimerParole({ locuteur: 'alix', intention: 'demander', sujet: '' }), null);
+  assert.equal(statutEnonce("J'aimerais frapper le garde"), 'eventualite');
+  assert.equal(statutEnonce("Je n'attaque pas le garde"), 'negation');
+  assert.equal(statutEnonce('Je lui dis que je le frappe'), 'rapporte');
+});
