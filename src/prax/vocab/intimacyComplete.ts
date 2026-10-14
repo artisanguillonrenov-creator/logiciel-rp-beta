@@ -11,10 +11,11 @@
 import { State } from '../core/engine';
 import { Condition, matches, neq, not_ } from '../core/query';
 import { draw } from '../core/rng';
-import { Action, Outcome, Practice, action, del, insert, practice } from '../core/types';
+import { Action, Outcome, Practice, Want, action, del, insert, practice, want } from '../core/types';
 import { adjustScore, coreFns } from './coreModel';
 import {
  INTIMATE_SCOPES, installNativeAdultPractices, invalidateAgreements,
+ placeAdult, setAdultRestriction,
  type IntimateScope,
 } from './intimacy';
 
@@ -107,7 +108,8 @@ function scopeActions(scope:ExtendedScope,label:string):Action[]{
     insert(history('Actor','Other',scope)),insert(history('Other','Actor',scope))]),
   action('[Actor]: retirer son accord pour '+label+' avec [Other]',
    [matches(mine),neq('Actor','Other')],
-   [del(mine),del(theirs),del(myOffer),del(theirOffer),del(mineActive),del(theirActive)]),
+   [del(mine),del(theirs),del(myOffer),del(theirOffer),del(mineActive),del(theirActive),
+    insert(path('withdrawal','Actor','Other',scope))]),
  ];
 }
 
@@ -195,6 +197,43 @@ export function invalidateAllAdultAgreements(st:State,person:string):void{
    }
  }
 }
+
+/**
+ * Entrées d'état de confiance : ces variantes remplacent les utilitaires
+ * d'origine lors de l'installation complète, pour invalider TOUTES les portées.
+ */
+export function placeAdultComplete(st:State,who:string,where:string):void{
+ placeAdult(st,who,where);
+ invalidateAllAdultAgreements(st,who);
+}
+export function setAdultRestrictionComplete(
+ st:State,who:string,restriction:'incapacitated'|'captive',enabled:boolean,
+):void{
+ setAdultRestriction(st,who,restriction,enabled);
+ if(enabled)invalidateAllAdultAgreements(st,who);
+}
+/** Une situation coercitive ne peut valoir consentement. */
+export function setAdultDuress(
+ st:State,a:string,b:string,enabled:boolean,
+):void{
+ valid(a);valid(b);if(a===b)throw new Error('Participants identiques');
+ const k=path('duress',a,b);
+ st.performOutcome(enabled?insert(k):del(k));
+ if(enabled){invalidateAllAdultAgreements(st,a);invalidateAllAdultAgreements(st,b);}
+}
+/**
+ * À inclure parmi les wants du Character du PNJ AVANT setCharacters.
+ * Prax planifie alors avec ses propres utilités (pas de contrôle du narrateur).
+ */
+export function adultNarrativeWants(
+ who:string,other:string,scopes:readonly AnyScope[],utility:number,
+):Want[]{
+ valid(who);valid(other);
+ if(who===other||!Number.isFinite(utility)||utility<=0)throw new Error('Motivation invalide');
+ for(const scope of scopes)if(!ALL_ADULT_SCOPES.includes(scope))throw new Error('Portée inconnue');
+ return scopes.map(scope=>want([matches(history(who,other,scope))],utility));
+}
+
 /** Un choix unilatéral canonique, jamais imposé par le narrateur. */
 export function setAdultPreference(
  st:State,who:string,scope:AnyScope,preference:'like'|'dislike'|'neutral',
@@ -290,6 +329,7 @@ export function setCanonicalPregnancyStage(
  valid(who);
  const key=path('biology',who,'pregnancyStage');
  if(stage==='ended'){
+  if(!st.dbHas(path('biology',who,'pregnant')))throw new Error('Aucune grossesse à terminer');
   st.performOutcome(del(path('biology',who,'pregnant')));
   st.performOutcome(insert(key+'!ended'));
   return;
@@ -320,7 +360,7 @@ export function renderValidatedAdultEvent(st:State,e:AdultNarratedEvent):string{
   case 'refuse':proven=st.dbHas(refusal(actor,other,scope));break;
   case 'begin':proven=st.dbHas(active(actor,other,scope));break;
   case 'end':proven=st.dbHas(history(actor,other,scope));break;
-  case 'withdraw':proven=!st.dbHas(agree(actor,other,scope))&&!st.dbHas(active(actor,other,scope));break;
+  case 'withdraw':proven=st.dbHas(path('withdrawal',actor,other,scope));break;
  }
  if(!proven)throw new Error('Événement non établi par Prax');
  const label=ALL_ADULT_LABELS[scope];

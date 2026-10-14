@@ -57,7 +57,8 @@ function nativeActions(scope: IntimateScope, label:string):Action[]{
     insert(record('Actor','Other',scope)),insert(record('Other','Actor',scope))]),
   action('[Actor]: retirer son accord pour '+label+' avec [Other]',
    [matches(a),neq('Actor','Other')],
-   [del(a),del(b),del(o),del(otherOffer),del(running),del(reverse)]),
+   [del(a),del(b),del(o),del(otherOffer),del(running),del(reverse),
+    insert(p('withdrawal','Actor','Other',scope))]),
  ];
 }
 export function nativeAdultPractices():Practice[]{

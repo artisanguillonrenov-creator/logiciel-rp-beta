@@ -30,3 +30,10 @@
 ## Attribution et réutilisation
 Code original sous MIT. Aucune copie de code de Lilith's Throne (licence restrictive), AIF (GPL), Sexbound (GPL) ou LifePlay (AGPL).
 Concepts examinés : Prax BSD-3, Heartmorrow Unlicense, BRING Apache-2.
+
+## Durcissements
+
+- placeAdultComplete et setAdultRestrictionComplete invalident aussi les 30 nouvelles portées. setAdultDuress retire tous les accords en cas de contrainte.
+- adultNarrativeWants génère des utilités natives pour les personnages (à ajouter lors de la construction des Character avant setCharacters).
+- Le retrait peut être raconté uniquement quand un fait d'événement de retrait existe, jamais parce qu'un accord est simplement absent.
+- La fin de grossesse n'est pas acceptée si aucune grossesse n'est établie.

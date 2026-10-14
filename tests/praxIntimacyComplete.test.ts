@@ -9,7 +9,8 @@ import {
  setCanonicalFertility,recordMutualProtection,resolveFictionalConception,
  setCanonicalPregnancyStage,setRomanticInterest,setLocalePrivacy,
  recordActualWitness,renderValidatedAdultEvent,classifyFrenchAdultIntent,
- invalidateAllAdultAgreements,
+ invalidateAllAdultAgreements,placeAdultComplete,setAdultRestrictionComplete,setAdultDuress,
+ adultNarrativeWants,
 } from '../src/prax/vocab/intimacyComplete';
 function world():State{
  const st=new State();installCompleteAdultWorld(st);
@@ -109,4 +110,32 @@ test('invalidation transversale, confidentialité sans rumeur automatique',()=>{
 test('une personne dont la majorité est inconnue ne peut participer',()=>{
  const st=world();placeAdult(st,'carol','inn');
  assert.equal(st.possibleActions('alice').some(x=>x.label.includes(' à carol')),false);
+});
+
+test('retrait : la narration exige un événement, pas une absence d’accord',()=>{
+ const st=world();
+ assert.throws(()=>renderValidatedAdultEvent(st,{actor:'alice',other:'bob',scope:'kiss',phase:'withdraw'}));
+ run(st,'alice','proposer un baiser à bob');
+ run(st,'alice','retirer son accord pour un baiser avec bob');
+ assert.match(renderValidatedAdultEvent(st,{actor:'alice',other:'bob',scope:'kiss',phase:'withdraw'}),/met fin/);
+});
+test('les transitions complètes invalident aussi les pratiques supplémentaires',()=>{
+ const st=world();
+ run(st,'alice','proposer une danse intime à bob');
+ placeAdultComplete(st,'alice','courtyard');
+ assert.ok(!st.dbHas('praxAdult.agree.alice.bob.slow_dance'));
+ placeAdultComplete(st,'alice','inn');
+ run(st,'alice','proposer se blottir ensemble à bob');
+ setAdultRestrictionComplete(st,'bob','incapacitated',true);
+ assert.ok(!st.dbHas('praxAdult.agree.alice.bob.cuddle'));
+});
+test('contrainte ajoutée suspend les accords et les motivations sont natives',()=>{
+ const st=world();
+ run(st,'alice','proposer une danse intime à bob');
+ setAdultDuress(st,'alice','bob',true);
+ assert.ok(!st.dbHas('praxAdult.agree.alice.bob.slow_dance'));
+ assert.ok(!st.possibleActions('alice').some(x=>x.label.includes('proposer une danse intime à bob')));
+ const wants=adultNarrativeWants('bob','alice',['kiss','cuddle'],5);
+ assert.equal(wants.length,2);
+ assert.throws(()=>adultNarrativeWants('bob','alice',['kiss'],-1));
 });
