@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { State } from '../src/prax/core/engine';
+import { comprendre } from '../src/engine/praxNarrateur/comprehension';
+import { construireMonde, faitsInitiaux } from '../src/engine/praxNarrateur/monde';
+import { rendreTour } from '../src/engine/praxNarrateur/rendu';
+import type { DescriptionScene, EvenementTour } from '../src/engine/praxNarrateur/types';
 import { insert } from '../src/prax/core/types';
 import { deserializeState, serializeState } from '../src/prax/core/persist';
 import {
@@ -89,5 +93,110 @@ test('grammaire native : présent conjugué et formes hors couverture refusées'
   assert.equal(conjuguerPresentPrax('aller', 'je'), 'vais');
   assert.equal(conjuguerPresentPrax('avoir', 'ils'), 'ont');
   assert.equal(conjuguerPresentPrax('venir', 'il'), 'vient');
-  assert.equal(conjuguerPresentPrax('placer', 'nous'), null, 'conjugaison exigeant une modification orthographique non prise en charge');
+  assert.equal(conjuguerPresentPrax('placer', 'nous'), 'plaçons');
+  assert.equal(conjuguerPresentPrax('manger', 'nous'), 'mangeons');
+  assert.equal(conjuguerPresentPrax('dire', 'vous'), 'dites');
+  assert.equal(conjuguerPresentPrax('prendre', 'ils'), 'prennent');
+  assert.equal(conjuguerPresentPrax('recevoir', 'je'), 'reçois');
+  assert.equal(conjuguerPresentPrax('jeter', 'je'), null, 'verbe non pris en charge');
+});
+
+
+test('une rumeur reste rapportée sans prétention de témoignage oculaire', () => {
+  const evenement: EvenementTour = {
+    acteur: 'alix',
+    acteurNom: 'Alix',
+    genre: 'raconter',
+    libelle: 'Alix rapporte un événement',
+    cible: 'joueur',
+    cibleNom: 'le joueur',
+    rapporte: { genre: 'voler', auteurNom: 'Borin', victimeNom: 'Léa' },
+    temoins: [],
+  };
+  const texte = rendreTour({ evenements: [evenement], presentsApres: [], tour: 2, variante: 0 });
+  assert.match(texte, /Il se dit que Borin a volé Léa/);
+  assert.doesNotMatch(texte, /Je l.ai vu/);
+});
+
+test('les répliques natives ne créent aucun geste ou mouvement non attesté', () => {
+  const e: EvenementTour = {
+    acteur: 'alix',
+    acteurNom: 'Alix',
+    genre: 'ceder',
+    libelle: 'Alix cède',
+    cible: 'joueur',
+    cibleNom: 'le joueur',
+    registreParole: 'reserve',
+    temoins: [],
+  };
+  const texte = rendreTour({ evenements: [e], presentsApres: [], tour: 1, variante: 0 });
+  assert.match(texte, /^Alix : « /);
+  assert.doesNotMatch(texte, /recule|lève les mains|croise les bras/);
+});
+
+test('un ton fondé sur les relations est prioritaire sur la signature arbitraire', () => {
+  const e: EvenementTour = {
+    acteur: 'alix',
+    acteurNom: 'Alix',
+    genre: 'tenirTete',
+    libelle: 'Alix tient tête',
+    cible: 'joueur',
+    cibleNom: 'le joueur',
+    registreParole: 'tranchant',
+    temoins: [],
+  };
+  const texte = rendreTour({ evenements: [e], presentsApres: [], tour: 3, variante: 2 });
+  const attendu = exprimerParole({ intention: 'resister', locuteur: 'alix', registre: 'tranchant' }, 5);
+  assert.ok(attendu);
+  assert.ok(texte.includes(attendu.texte));
+});
+
+test('Prax protège la simulation des négations et citations sans réciter de listes', () => {
+  const desc: DescriptionScene = {
+    version: 1,
+    ville: 'Paris',
+    joueurNom: 'Arwen',
+    lieux: [{ id: 'rues', nom: 'les rues' }],
+    pnj: [{ id: 'margaux', nom: 'Margaux', role: 'habitant', lieu: 'rues', sujets: [] }],
+  };
+  const st = construireMonde(desc, 123);
+  for (const o of faitsInitiaux(desc, 'rues', new Set(['margaux']), new Set(['rues']), new Map())) st.performOutcome(o);
+  const before = serializeState(st);
+  const messages = [
+    'Si je frappe Margaux, que se passera-t-il ?',
+    '« Je frappe Margaux. »',
+    'Je ne frappe pas Margaux',
+    'Je refuse de frapper Margaux',
+    'Ne frappe pas Margaux',
+    'Je pourrais frapper Margaux',
+    'Je raconte que je frappe Margaux',
+  ];
+  for (const message of messages) {
+    assert.notEqual(statutEnonce(message), 'direct', message);
+    const compris = comprendre(message, st, desc, 'rues', { dernierInterlocuteur: 'margaux' });
+    assert.notEqual(compris.genre, 'attaquer', message);
+  }
+  assert.equal(serializeState(st), before, 'les énoncés étudiés ne modifient pas la simulation');
+});
+
+test('les nouveaux actes natifs varient, sans engager une transaction absente', () => {
+  for (const intention of [
+    'remercier', 'rassurer', 'ignorerSujet', 'presser', 'perdrePatience',
+    'renvoyer', 'proposer', 'maintenirPrix', 'consentirRabais', 'conclure',
+  ] as const) {
+    const a = exprimerParole({ intention, locuteur: 'alix', sujet: 'la Porte Astra' }, 0);
+    const b = exprimerParole({ intention, locuteur: 'alix', sujet: 'la Porte Astra' }, 1);
+    assert.ok(a && b, intention);
+    assert.equal(a.version, ACQUIS_EXPRESSION_V1);
+    assert.doesNotMatch(a.texte, /\b\d+ (?:or|argent|cuivre)\b/, 'aucun prix sans décision de Prax');
+  }
+});
+
+test('rapporter ou supposer un fait préserve sa modalité, pas sa vérité', () => {
+  const rapporte = exprimerParole({ intention: 'informer', locuteur: 'alix', fait: 'Borin est parti', statut: 'rapporte' });
+  const hypothese = exprimerParole({ intention: 'informer', locuteur: 'alix', fait: 'Borin est parti', statut: 'hypothese' });
+  const citation = exprimerParole({ intention: 'informer', locuteur: 'alix', fait: 'Borin est parti', statut: 'citation' });
+  assert.match(rapporte?.texte ?? '', /Il se dit que borin est parti/i);
+  assert.match(hypothese?.texte ?? '', /Est-il possible que borin est parti/i);
+  assert.match(citation?.texte ?? '', /« Borin est parti »/);
 });
