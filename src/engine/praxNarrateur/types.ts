@@ -142,4 +142,6 @@ export interface CompteRenduTour {
   evenements: EvenementTour[];
   relations: ChangementRelation[];
   coulisses: CoulisseActeur[];
+  /** Compétences réellement utilisées à ce tour, et non simples règles listées. */
+  acquisNarratifs?: string[];
 }
