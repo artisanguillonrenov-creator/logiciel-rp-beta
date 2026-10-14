@@ -144,6 +144,24 @@ function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string
   if (cible !== undefined) {
     e.cible = cible;
     e.cibleNom = nomDe(desc, cible);
+    // La voix n'est pas distribuée au hasard : on exploite d'abord les
+    // attitudes réellement décidées par Prax pour ce couple d'interlocuteurs.
+    if (acteur !== ID_JOUEUR && cible !== acteur) {
+      const score = (axe: Axe): number | undefined => {
+        const valeur = st.dbChildKeys(`${acteur}.relationship.${cible}.${axe}.score`)[0];
+        if (valeur === undefined) return undefined;
+        const n = Number(valeur);
+        return Number.isFinite(n) ? n : undefined;
+      };
+      const hostilite = score('hostilite');
+      const peur = score('peur');
+      const affection = score('affection');
+      const confiance = score('confiance');
+      if (hostilite !== undefined && hostilite >= 10) e.registreParole = 'tranchant';
+      else if ((peur !== undefined && peur >= 20) || (confiance !== undefined && confiance <= -10)) e.registreParole = 'reserve';
+      else if (affection !== undefined && affection >= 10) e.registreParole = 'chaleureux';
+      else if (hostilite !== undefined || peur !== undefined || affection !== undefined || confiance !== undefined) e.registreParole = 'sobre';
+    }
   }
   if (sujet !== undefined) {
     e.sujet = sujet;
