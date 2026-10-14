@@ -329,6 +329,7 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
   const compris = comprendre(messageJoueur, st, desc, ctx.lieuJoueur, { lieuDestination: ctx.lieuDestination, dernierInterlocuteur: ancien?.dernierInterlocuteur });
   const evenements: EvenementTour[] = [];
   const coulisses: CoulisseActeur[] = [];
+  const acquisNarratifs: string[] = [];
   let texte: string;
   let volRemarque: boolean | undefined;
   let lieuJoueur = ctx.lieuJoueur;
@@ -348,7 +349,7 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     phasePnj({ st, desc, lieuJoueur }, profondeur, evenements, coulisses);
     st.roundBoundary();
     const derniersTextes = story.messages.filter((m) => m.role === 'assistant').slice(-4).map((m) => m.content);
-    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur, derniersTextes });
+    texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur, derniersTextes, acquisNarratifs });
   } else {
     effacerSaisie(st);
     texte = rendreIncompris(compris.motif ?? 'Je n’ai pas compris.', presentsDuJoueur(st, desc));
@@ -374,6 +375,7 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
     evenements,
     relations: changements,
     coulisses,
+    acquisNarratifs,
   };
 
   const fin = maintenant();
