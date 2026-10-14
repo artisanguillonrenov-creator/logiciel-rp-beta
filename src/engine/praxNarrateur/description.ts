@@ -98,7 +98,7 @@ export function idLieu(lieu: LieuConnu | undefined, nom: string): string {
 }
 
 /** Ajoute un lieu (et ses occupants officiels ou génériques) à la description. */
-export function ajouterLieu(desc: DescriptionScene, lieu: LieuConnu | undefined, nom: string): { desc: DescriptionScene; lieuId: string } {
+export function ajouterLieu(desc: DescriptionScene, lieu: LieuConnu | undefined, nom: string, opts: { sansFigurants?: boolean } = {}): { desc: DescriptionScene; lieuId: string } {
   const lieuId = idLieu(lieu, nom);
   if (desc.lieux.some((l) => l.id === lieuId)) return { desc, lieuId };
   const lieux: LieuDescription[] = [...desc.lieux, { id: lieuId, nom: nomDeLieu(lieu, nom), type: lieu?.type }];
@@ -111,7 +111,7 @@ export function ajouterLieu(desc: DescriptionScene, lieu: LieuConnu | undefined,
     pris.add(id);
     pnj.push({ id, nom: r.nom, role: r.role, libelleRole: libelleRoleCanon(r), lieu: lieuId, faction: FACTION_DES_ROLES[r.role], sujets: sujetsConnus(r.role, desc.ville) });
   }
-  if (officiels.length === 0) {
+  if (officiels.length === 0 && !opts.sansFigurants) {
     for (const g of GENERIQUES[lieu?.type ?? 'rues'] ?? GENERIQUES.rues) {
       if (pnj.some((p) => normaliser(p.nom) === normaliser(g.nom))) continue;
       const id = idUnique(slug(g.nom), pris);
@@ -120,6 +120,27 @@ export function ajouterLieu(desc: DescriptionScene, lieu: LieuConnu | undefined,
     }
   }
   return { desc: { ...desc, lieux, pnj }, lieuId };
+}
+
+/** Rôle générique déduit du nom donné par le narrateur (« le marchand », « une garde »…). */
+const ROLES_PAR_MOT: Array<{ motif: RegExp; role: RolePnj }> = [
+  { motif: /\b(captif|captive|esclave|prisonnier|prisonniere|otage)s?\b/, role: 'captif' },
+  { motif: /\b(marchand|marchande|negociant|negociante|commercant|commercante|vendeur|vendeuse|commissaire|priseur|priseuse|boutiquier|boutiquiere|colporteur)s?\b/, role: 'marchand' },
+  { motif: /\b(garde|soldat|soldate|sentinelle|milicien|milicienne|guet|gardien|gardienne|capitaine|sergent)s?\b/, role: 'garde' },
+  { motif: /\b(taverniere?|aubergiste|serveuse|serveur)s?\b/, role: 'taverniere' },
+  { motif: /\b(forgeronn?e?|armuriere?)s?\b/, role: 'forgeronne' },
+  { motif: /\b(mage|magicien|magicienne|sorciere?|enchanteur|enchanteresse)s?\b/, role: 'mage' },
+  { motif: /\b(voleur|voleuse|receleur|receleuse|assassin|contrebandier|contrebandiere)s?\b/, role: 'ombre' },
+];
+
+export function roleDepuisNom(nom: string): RolePnj | undefined {
+  const n = normaliser(nom);
+  return ROLES_PAR_MOT.find((r) => r.motif.test(n))?.role;
+}
+
+/** « Le marchand » → « le marchand » : l'article reste en minuscule dans le récit. */
+export function nomAffiche(nom: string): string {
+  return nom.replace(/^(Le|La|Les|L’|L'|Un|Une)(?=[\s’'])/, (a) => a.toLowerCase());
 }
 
 /** Rôle d'un PNJ cité par son nom : celui du lore s'il est un personnage officiel de la ville. */
@@ -134,12 +155,16 @@ function ajouterPnjConnu(desc: DescriptionScene, nom: string, lieuId: string, fa
   const existant = desc.pnj.find((p) => normaliser(p.nom) === normaliser(propre));
   if (existant) return desc;
   const canon = roleCanonDe(propre, desc.ville);
-  const role: RolePnj = canon?.role ?? 'habitant';
+  const role: RolePnj = canon?.role ?? roleDepuisNom(propre) ?? 'habitant';
+  // « la tavernière » relevée par le narrateur est la tavernière officielle déjà là.
+  if (!canon && desc.pnj.some((p) => p.role === role && p.lieu === lieuId && p.libelleRole && ['taverniere', 'forgeronne', 'receptionniste', 'maitresse_guilde', 'passeuse'].includes(role))) return desc;
   const pris = new Set(desc.pnj.map((p) => p.id));
-  const id = idUnique(slug(canon ? prenomRole(canon) : propre.split(' ')[0]), pris);
+  // Identifiant tiré du premier mot porteur de sens (pas d'un article).
+  const motUtile = propre.split(/[\s’']+/).find((m) => !/^(le|la|les|l|un|une|des|du|de)$/i.test(m)) ?? propre;
+  const id = idUnique(slug(canon ? prenomRole(canon) : motUtile), pris);
   const p: PnjDescription = {
     id,
-    nom: canon?.nom ?? propre,
+    nom: canon?.nom ?? nomAffiche(propre),
     role,
     libelleRole: canon ? libelleRoleCanon(canon) : undefined,
     lieu: lieuId,
@@ -175,7 +200,9 @@ export function construireDescription(story: StoryState, precedente?: Descriptio
   if (lieuJoueur === undefined) {
     const nomLieu = scene.lieu || story.meta.contexte.lieu || '';
     const connu = lieuDepuisTexte(nomLieu, story.meta.pointDeDepart, story.meta.contexte.objectifs);
-    const r = ajouterLieu(desc, connu, connu?.libelle ?? (nomLieu || `les rues de ${ville}`));
+    // Une scène déjà jouée par le narrateur IA garde ses personnages : pas de figurants ajoutés.
+    const sansFigurants = scene.presents.length > 0;
+    const r = ajouterLieu(desc, connu, connu?.libelle ?? (nomLieu || `les rues de ${ville}`), { sansFigurants });
     desc = r.desc;
     lieuJoueur = r.lieuId;
   }

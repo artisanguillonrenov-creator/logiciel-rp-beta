@@ -16,7 +16,8 @@ import { deserializeState, serializeState } from '../../prax/core/persist';
 import type { DiagnosticTour, Message, RelationPersonnage, StoryState } from '../../types';
 import { comprendre, presentsDuJoueur } from './comprehension';
 import { ajouterLieu, construireDescription, destinationDuMessage } from './description';
-import { AXES, Axe, ValeursRelation, construireMonde, faitsInitiaux, graineDe, lieuDe, lireRelation } from './monde';
+import { AXES, Axe, ValeursRelation, construireMonde, faitsDeMiseANiveau, faitsInitiaux, graineDe, lieuDe, lireRelation } from './monde';
+import { effacerSaisie, infoActe } from './bibliotheque';
 import { lignesCoulisses, nomCourt, rendreIncompris, rendreOuverture, rendreTour } from './rendu';
 import { sujetPrax } from './sujets';
 import {
@@ -72,6 +73,18 @@ const GENRE_PAR_GABARIT: Record<string, GenreAction> = {
   '[Actor] raconte à [Hearer] que [Voleur] a volé [Victime]': 'raconter',
   '[Actor] raconte à [Hearer] que [Agresseur] a attaqué [Victime]': 'raconter',
   '[Actor] raconte à [Hearer] que [Auteur] a menacé [Victime]': 'raconter',
+  '[Actor] relance [Cible]': 'relancer',
+  '[Actor] presse [Cible] d’en venir au fait': 'presser',
+  '[Actor] perd patience avec [Cible]': 'perdrePatience',
+  '[Actor] adresse une demande à [Cible]': 'demander',
+  '[Actor] propose de satisfaire la demande de [Cible]': 'proposer',
+  '[Actor] refuse la demande de [Cible]': 'refuserDemande',
+  '[Actor] renvoie [Cible] vers un marchand': 'renvoyer',
+  '[Actor] marchande avec [Cible]': 'marchander',
+  '[Actor] consent un rabais à [Cible]': 'consentirRabais',
+  '[Actor] maintient son prix devant [Cible]': 'maintenirPrix',
+  '[Actor] paie [Cible] le prix convenu': 'payerPrix',
+  '[Actor] conclut le marché avec [Cible]': 'conclure',
   '[Actor] se rend à [Lieu]': 'se_rendre',
   [ATTENDRE]: 'attendre',
 };
@@ -110,8 +123,10 @@ function temoinsDe(st: State, acteur: string, desc: DescriptionScene): string[] 
   return [ID_JOUEUR, ...desc.pnj.map((p) => p.id)].filter((id) => id !== acteur && lieuDe(st, id) === ici);
 }
 
-function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string[]): EvenementTour {
-  const genre = GENRE_PAR_GABARIT[ga.actionId] ?? 'attendre';
+/** L'événement d'une action qui VIENT d'être jouée (l'état est lu après coup pour les actes de la bibliothèque). */
+function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string[], st: State): EvenementTour {
+  const acte = GENRE_PAR_GABARIT[ga.actionId] ? undefined : infoActe(ga, st);
+  const genre = GENRE_PAR_GABARIT[ga.actionId] ?? (acte ? 'acte' : 'attendre');
   const acteur = lier(ga, 'Actor') ?? '';
   const pnj = desc.pnj.find((p) => p.id === acteur);
   const cible = lier(ga, 'Cible') ?? lier(ga, 'Hearer') ?? lier(ga, 'Voleur') ?? lier(ga, 'Agresseur') ?? lier(ga, 'X');
@@ -125,6 +140,7 @@ function evenementDe(ga: GroundedAction, desc: DescriptionScene, temoins: string
     libelle: rendreLibelle(ga, desc),
     temoins,
   };
+  if (acte) e.acte = acte;
   if (cible !== undefined) {
     e.cible = cible;
     e.cibleNom = nomDe(desc, cible);
@@ -201,9 +217,12 @@ function preparer(story: StoryState, message: string | null): Contexte & { lieuD
     const nouveauxPnj = new Set(desc.pnj.map((p) => p.id).filter((id) => !anciensPnj.has(id)));
     const nouveauxLieux = new Set(desc.lieux.map((l) => l.id).filter((id) => !anciensLieux.has(id)));
     for (const o of faitsInitiaux(desc, null, nouveauxPnj, nouveauxLieux, relations)) st.performOutcome(o);
+    for (const o of faitsDeMiseANiveau(st, desc)) st.performOutcome(o);
   } else {
     st = monde;
-    for (const o of faitsInitiaux(desc, lieuJoueur, new Set(desc.pnj.map((p) => p.id)), new Set(desc.lieux.map((l) => l.id)), relations)) st.performOutcome(o);
+    // Prax reprend une partie jouée par le narrateur IA : les présents ont déjà rencontré le joueur.
+    const dejaRencontres = new Set(story.messages.some((m) => m.role === 'user') ? desc.pnj.filter((p) => p.lieu === lieuJoueur).map((p) => p.id) : []);
+    for (const o of faitsInitiaux(desc, lieuJoueur, new Set(desc.pnj.map((p) => p.id)), new Set(desc.lieux.map((l) => l.id)), relations, dejaRencontres)) st.performOutcome(o);
   }
   return { st, desc, lieuJoueur, lieuDestination, ancien };
 }
@@ -232,7 +251,7 @@ function phasePnj(ctx: Contexte, profondeur: number, evenements: EvenementTour[]
     if (!agit) continue;
     const temoins = temoinsDe(st, p.id, desc);
     st.performAction(meilleure[0]);
-    evenements.push(evenementDe(meilleure[0], desc, temoins));
+    evenements.push(evenementDe(meilleure[0], desc, temoins, st));
   }
 }
 
@@ -299,13 +318,20 @@ export function jouerTourPrax(story: StoryState, messageJoueur: string, opts: Op
   if (compris.action) {
     const temoins = temoinsDe(st, ID_JOUEUR, desc);
     st.performAction(compris.action);
-    evenements.push(evenementDe(compris.action, desc, temoins));
+    // Ce que le joueur avait annoncé (montant, objet) ne sert qu'à son action.
+    effacerSaisie(st);
+    const evenement = evenementDe(compris.action, desc, temoins, st);
+    if (evenement.acte && compris.acte?.objet) evenement.acte.objetAffiche = compris.acte.objet.affiche;
+    if (compris.precision) evenement.precision = compris.precision;
+    if (compris.affichage) evenement.genre = compris.affichage;
+    evenements.push(evenement);
     if (compris.genre === 'voler' && compris.cible) volRemarque = st.dbHas(`${compris.cible}.believes.vole.${ID_JOUEUR}.${compris.cible}.seen`);
     lieuJoueur = lieuDe(st, ID_JOUEUR) ?? lieuJoueur;
     phasePnj({ st, desc, lieuJoueur }, profondeur, evenements, coulisses);
     st.roundBoundary();
     texte = rendreTour({ evenements, presentsApres: presentsDuJoueur(st, desc), volRemarque, variante, tour, message: messageJoueur });
   } else {
+    effacerSaisie(st);
     texte = rendreIncompris(compris.motif ?? 'Je n’ai pas compris.', presentsDuJoueur(st, desc));
   }
 

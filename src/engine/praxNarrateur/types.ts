@@ -63,7 +63,27 @@ export type GenreAction =
   | 'menacer' | 'ceder' | 'tenirTete' | 'insulter' | 'rendreInsulte' | 'attaquer' | 'riposter'
   | 'implorer' | 'fuir' | 'voler' | 'accuser' | 'aider' | 'rendreService' | 'payer'
   | 's_excuser' | 'pardonner' | 'rassurer' | 'refuserExcuses' | 's_interposer' | 'se_mefier'
-  | 'raconter' | 'se_rendre' | 'attendre';
+  | 'raconter' | 'se_rendre' | 'attendre'
+  | 'relancer' | 'presser' | 'perdrePatience'
+  | 'demander' | 'proposer' | 'refuserDemande' | 'renvoyer' | 'marchander' | 'consentirRabais' | 'maintenirPrix' | 'payerPrix' | 'conclure'
+  /** Une action de la bibliothèque universelle (le détail est dans `acte`). */
+  | 'acte';
+
+/** Ce que raconte une action de la bibliothèque universelle (bibliotheque.ts). */
+export interface ActeEvenement {
+  /** Ce qui s'est passé : offre, accorde, refuse, contreOffre, tentative… */
+  issue: string;
+  /** Identifiant de l'action du catalogue (« commerce.acheter »). */
+  id?: string;
+  libelle?: string;
+  /** Montant en cuivres. */
+  montant?: number;
+  objet?: string;
+  /** L'objet tel que le joueur l'a nommé (« la vieille lanterne »). */
+  objetAffiche?: string;
+  /** Pour une tentative : le dé a-t-il souri ? */
+  reussi?: boolean;
+}
 
 export interface EvenementTour {
   acteur: string;
@@ -79,6 +99,10 @@ export interface EvenementTour {
   victimeNom?: string;
   sujet?: string;
   sujetNom?: string;
+  /** Pour une demande : le texte du joueur, que Prax ne sait pas analyser (transmis tel quel au futur modèle IA). */
+  precision?: string;
+  /** Pour une action de la bibliothèque universelle. */
+  acte?: ActeEvenement;
   /** Pour un récit rapporté : de qui parle la rumeur, et quel acte. */
   rapporte?: { genre: GenreAction; auteurNom: string; victimeNom: string };
   lieu?: string;

@@ -11,7 +11,7 @@
 import type { TypeRole } from '../rolesCanon';
 
 /** Rôle d'un PNJ dans le monde de Prax : un rôle fixé par le lore, ou un rôle générique. */
-export type RolePnj = TypeRole | 'marchand' | 'mage' | 'ombre' | 'garde' | 'habitant';
+export type RolePnj = TypeRole | 'marchand' | 'mage' | 'ombre' | 'garde' | 'captif' | 'habitant';
 
 export interface SujetPrax {
   id: string;

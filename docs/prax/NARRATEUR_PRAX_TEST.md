@@ -121,6 +121,7 @@ déterministe : les mêmes messages produisent les mêmes décisions. « Régén
   - `rendu.ts` : texte en français ;
   - `tour.ts` : déroulé d'un tour ;
   - `sujets.ts` : sujets et répliques ;
+  - `bibliotheque.ts` : la bibliothèque universelle d'actions (voir `BIBLIOTHEQUE_UNIVERSELLE.md`) ;
   - `index.ts` : branchements avec l'application.
 - Branchements :
   - `generateTurn.ts` : tour et régénération ;
@@ -129,4 +130,4 @@ déterministe : les mêmes messages produisent les mêmes décisions. « Régén
   - `ConversationScreen.tsx` : contrôles de clé, panneau concepteur ;
   - `FournisseursPanel.tsx` : option dans les Réglages ;
   - `narrativeRoutines.ts` : mises à jour IA coupées en arrière-plan.
-- Tests : `tests/praxNarrateur.test.ts`.
+- Tests : `tests/praxNarrateur.test.ts`, `tests/praxBibliotheque.test.ts`.

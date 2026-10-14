@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { CATALOGUE, faitsActe } from '../src/prax/bibliotheque/catalogue';
 import { typeCheck, describe as decrireErreur } from '../src/prax/core/typecheck';
+import { insert } from '../src/prax/core/types';
 import { genererTourPrax, narrateurPraxActif, regenererAvecPrax } from '../src/engine/praxNarrateur';
 import { comprendre } from '../src/engine/praxNarrateur/comprehension';
 import { construireDescription, slug } from '../src/engine/praxNarrateur/description';
@@ -74,7 +76,7 @@ test('une partie déjà commencée reprend les présents et les relations relev�
   const odette = desc.pnj.find((p) => p.nom === 'Odette Vinchamps');
   assert.ok(odette, 'Odette est reconnue comme la tavernière officielle de Paris');
   assert.equal(odette!.role, 'taverniere');
-  assert.ok(desc.pnj.some((p) => p.nom === 'Un ivrogne' && p.role === 'habitant'));
+  assert.ok(desc.pnj.some((p) => p.nom === 'un ivrogne' && p.role === 'habitant'));
 });
 
 test('sans ville citée, la scène se place dans la capitale de la race du personnage', () => {
@@ -94,8 +96,11 @@ test('les identifiants Prax sont des segments sûrs', () => {
 
 // ---- le monde ---------------------------------------------------------------------
 
-test('le monde d’Elyndor passe le vérificateur statique de Prax', () => {
-  const { st } = mondePret(partie());
+test('le monde d’Elyndor et toute la bibliothèque universelle passent le vérificateur statique de Prax', () => {
+  const { st, desc } = mondePret(partie());
+  // Toutes les actions du catalogue installées, plus ce que le narrateur pose en jeu (saisie, garde, compétence).
+  for (const e of CATALOGUE) for (const o of faitsActe(e)) st.performOutcome(o);
+  for (const f of ['saisie.montant!10', 'saisie.objet!chandelle', 'saisie.valeur!10', 'saisie.plancher!5', `role.${desc.pnj[0].id}.garde`, `competence.${ID_JOUEUR}.forge`]) st.performOutcome(insert(f));
   const erreurs = typeCheck(st);
   assert.deepEqual(erreurs.map(decrireErreur), []);
 });
@@ -234,6 +239,76 @@ test('les jauges de l’application amorcent l’attitude des PNJ : une taverni�
   assert.equal(lireRelation(st, 'odette', 'confiance'), -20);
   // Et la jauge relue dans la partie après le tour reste celle de départ.
   assert.equal(s.social.relations.find((r) => r.nom === 'Odette Vinchamps')?.confiance, -2);
+});
+
+// ---- partie déjà commencée, commerce, relances ------------------------------------------
+
+/** Une partie jouée par le narrateur IA au Marché aux esclaves, puis passée à Prax. */
+function partieMarche(presents: string[]): StoryState {
+  const base = partie();
+  return partie({
+    meta: { ...base.meta, pointDeDepart: 'Enchère publique', contexte: { ...base.meta.contexte, lieu: 'Marchés aux esclaves' } },
+    messages: [
+      { id: 'u0', role: 'user', content: 'Je m’approche de l’estrade.', timestamp: 0 },
+      { id: 'a0', role: 'assistant', content: 'Le marchand recule d’un pas.', timestamp: 1 },
+    ],
+    scene: { ville: 'Paris', lieu: 'Marchés aux esclaves', presents, majMessageIndex: 2 },
+  });
+}
+
+test('une partie reprise garde les personnages relevés par l’application, sans figurants', () => {
+  const { desc } = construireDescription(partieMarche(['Le marchand', 'La noble captive']));
+  assert.deepEqual(desc.pnj.map((p) => [p.nom, p.role]), [['le marchand', 'marchand'], ['la noble captive', 'captif']]);
+  // Sans présents connus, le lieu reçoit sa distribution générique.
+  assert.ok(construireDescription(partieMarche([])).desc.pnj.some((p) => p.nom === 'Gaspard Morvan'));
+});
+
+test('demander, marchander, payer : le vendeur présent répond et l’affaire se conclut', () => {
+  const demande = 'Je cherche une guerrière elfe noire qui a l’air d’avoir 50 ans. Est-ce que vous avez ça ?';
+  let s = jouer(partieMarche(['Le marchand', 'La noble captive']), [demande]);
+  const cr = s.messages[s.messages.length - 1].praxCompteRendu!;
+  assert.equal(cr.evenements[0].genre, 'demander');
+  assert.equal(cr.evenements[0].cible, 'marchand');
+  assert.equal(cr.evenements[0].precision, demande, 'la demande exacte est transmise pour le futur modèle IA');
+  assert.ok(cr.evenements.some((e) => e.acteur === 'marchand' && e.genre === 'proposer'));
+  assert.match(dernier(s), /^Tu (exposes ta demande|fais part de ce que tu cherches) au marchand\./);
+  assert.match(dernier(s), /\nLe marchand : « /);
+  assert.ok(!/accueille|Approche\. Ici/.test(dernier(s)), 'pas d’accueil : la partie était déjà commencée');
+
+  s = jouer(s, ['C’est trop cher']);
+  const cr2 = s.messages[s.messages.length - 1].praxCompteRendu!;
+  assert.equal(cr2.evenements[0].genre, 'marchander');
+  assert.ok(cr2.evenements.some((e) => e.acteur === 'marchand' && (e.genre === 'maintenirPrix' || e.genre === 'consentirRabais')));
+
+  s = jouer(s, ['Bon, je paie']);
+  const cr3 = s.messages[s.messages.length - 1].praxCompteRendu!;
+  assert.equal(cr3.evenements[0].genre, 'payerPrix');
+  assert.ok(cr3.evenements.some((e) => e.acteur === 'marchand' && e.genre === 'conclure'));
+  assert.match(dernier(s), /Tu paies le marchand le prix convenu\./);
+});
+
+test('demander à quelqu’un qui ne vend rien : il renvoie vers un marchand', () => {
+  const base = partie();
+  const story = partie({ meta: { ...base.meta, contexte: { ...base.meta.contexte, lieu: 'les rues de Paris' }, pointDeDepart: 'Une ruelle' }, scene: { ville: 'Paris', lieu: 'une ruelle', presents: ['Mathis'], majMessageIndex: 0 } });
+  const s = jouer(ouvrirAvecPrax(story, { maintenant: fixe }), ['Mathis, je cherche une monture rapide']);
+  const cr = s.messages[s.messages.length - 1].praxCompteRendu!;
+  assert.equal(cr.evenements[0].genre, 'demander');
+  assert.ok(cr.evenements.some((e) => e.acteur === 'mathis' && e.genre === 'renvoyer'), JSON.stringify(cr.evenements.map((e) => e.genre)));
+});
+
+test('parler sans rien demander deux fois de suite : l’interlocuteur presse d’en venir au fait', () => {
+  let s = jouer(ouvrirAvecPrax(partie(), { maintenant: fixe }), ['Il fait beau aujourd’hui']);
+  assert.equal(s.messages[s.messages.length - 1].praxCompteRendu!.evenements[0].genre, 'converser');
+  s = jouer(s, ['Ah oui, vraiment.']);
+  const cr = s.messages[s.messages.length - 1].praxCompteRendu!;
+  assert.equal(cr.evenements[0].genre, 'relancer');
+  assert.ok(cr.evenements.some((e) => e.acteur === 'margaux' && e.genre === 'presser'));
+  assert.notEqual(s.messages[s.messages.length - 1].content, s.messages[s.messages.length - 3].content);
+});
+
+test('« merci » sans service rendu se raconte comme un remerciement', () => {
+  const s = jouer(ouvrirAvecPrax(partie(), { maintenant: fixe }), ['Merci beaucoup']);
+  assert.match(dernier(s), /^Tu remercies Margaux\./);
 });
 
 // ---- branchement dans l'application -----------------------------------------------------

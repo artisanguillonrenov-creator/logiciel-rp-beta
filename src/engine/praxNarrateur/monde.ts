@@ -19,6 +19,8 @@
 import { State } from '../../prax/core/engine';
 import { Condition, absent, cmp, matches, neq, not_ } from '../../prax/core/query';
 import { SEED_BOUNDS, draw } from '../../prax/core/rng';
+import { segment } from '../../prax/bibliotheque/catalogue';
+import { actionsFamilles, fonctionsFamilles, motivationsFamilles } from '../../prax/bibliotheque/familles';
 import { Action, Character, Desire, Outcome, Practice, action, character, del, desire, holds, insert, insertFor, practice, want } from '../../prax/core/types';
 import { adjustScore, coreFns } from '../../prax/vocab/coreModel';
 import { obligedClose } from '../../prax/vocab/deontic';
@@ -27,13 +29,16 @@ import { standing } from '../../prax/vocab/repute';
 import { gossip } from '../../prax/vocab/rumor';
 import { CoPresence, observable, saw, witnessed } from '../../prax/vocab/witness';
 import { SUJETS } from './sujets';
-import { DescriptionScene, ID_JOUEUR, LIEU_AILLEURS } from './types';
+import { DescriptionScene, ID_JOUEUR, LIEU_AILLEURS, LieuDescription } from './types';
 
 export const AXES = ['confiance', 'respect', 'peur', 'affection', 'hostilite'] as const;
 export type Axe = (typeof AXES)[number];
 
 /** Les rôles qui accueillent spontanément un visiteur. */
 const ROLES_ACCUEIL = new Set(['receptionniste', 'taverniere', 'forgeronne', 'passeuse', 'marchand']);
+
+/** Les rôles qui vendent quelque chose (marchandise, chambre, réparation, passage). */
+const ROLES_VENDEURS = new Set(['marchand', 'taverniere', 'forgeronne', 'passeuse']);
 
 const together: CoPresence = [matches('at.Actor!P'), matches('at.Witness!P')];
 
@@ -46,6 +51,31 @@ function score(a: string, b: string, axe: Axe, op: 'lt' | 'lte' | 'gt' | 'gte', 
 }
 
 const joueurSeul: Condition = matches('estjoueur.Actor');
+
+/** Le rôle de `qui` remplit une fonction (accueil, vendeur) : table `fonction.<rôle>.<fonction>`, posée à chaque partie. */
+function fonction(qui: string, f: 'accueil' | 'vendeur'): Condition[] {
+  return [matches(`role.${qui}.Rf`), matches(`fonction.Rf.${f}`)];
+}
+
+/** Le personnage du joueur n'est jamais prédit par le planificateur : il est lié à cette pratique vide. */
+export const PRATIQUE_SPECTATEUR = 'spectateur';
+
+/** Bourses de départ (en cuivres ; 1 or = 10 argent = 100 cuivre). */
+const BOURSE_JOUEUR = 500;
+const BOURSE_PAR_ROLE: Record<string, number> = { marchand: 5000, taverniere: 2000, forgeronne: 2000, passeuse: 1000, maitresse_guilde: 3000, receptionniste: 300, souverain: 100000, noble: 10000, captif: 0 };
+const BOURSE_PAR_DEFAUT = 100;
+
+/** Objets courants posés au sol à la création d'un lieu, selon son type (le joueur peut les prendre, les examiner…). */
+const OBJETS_PAR_TYPE: Record<string, string[]> = {
+  taverne: ['chope', 'chandelle', 'tabouret', 'pichet'],
+  auberge: ['chope', 'chandelle', 'tabouret', 'pichet'],
+  forge: ['marteau', 'tenailles', 'enclume', 'seau'],
+  guilde: ['registre', 'plume', 'tableau', 'chandelle'],
+  marche: ['panier', 'caisse', 'corde', 'sac'],
+  temple: ['cierge', 'encensoir', 'livre de prieres'],
+  port: ['corde', 'caisse', 'filet', 'lanterne'],
+};
+const OBJETS_PAR_DEFAUT = ['chandelle', 'caisse'];
 
 // ---- actions --------------------------------------------------------------------
 
@@ -61,15 +91,30 @@ function actions(): Action[] {
       insert('salue.Actor.Cible'),
       insertFor(1, 'courtois.Actor.Cible'),
     ]),
-    action('[Actor] accueille [Cible]', [...ici('Actor', 'Cible'), matches('role.Actor.accueil'), matches('estjoueur.Cible'), not_('accueilli.Actor.Cible')], [
+    // On n'accueille pas quelqu'un qui attend déjà une réponse de nous.
+    action('[Actor] accueille [Cible]', [...ici('Actor', 'Cible'), ...fonction('Actor', 'accueil'), matches('estjoueur.Cible'), not_('accueilli.Actor.Cible'), not_('attente.Actor.Cible')], [
       insert('accueilli.Actor.Cible'),
       insert('salue.Actor.Cible'),
     ]),
   ];
 
   const parole: Action[] = [
-    action('[Actor] engage la conversation avec [Cible]', [joueurSeul, ...ici('Actor', 'Cible'), matches('pnj.Cible')], [
+    action('[Actor] engage la conversation avec [Cible]', [joueurSeul, ...ici('Actor', 'Cible'), matches('pnj.Cible'), not_('parle.Actor.Cible')], [
       insert('attente.Cible.Actor.parole'),
+      insert('parle.Actor.Cible'),
+    ]),
+    // Parler encore sans rien demander de précis : l'interlocuteur attend qu'on en vienne au fait.
+    action('[Actor] relance [Cible]', [joueurSeul, ...ici('Actor', 'Cible'), matches('pnj.Cible'), matches('parle.Actor.Cible')], [
+      insert('attente.Cible.Actor.relance'),
+    ]),
+    action('[Actor] presse [Cible] d’en venir au fait', [matches('attente.Actor.Cible.relance')], [
+      del('attente.Actor.Cible.relance'),
+      insertFor(1, 'presse.Actor.Cible'),
+    ]),
+    action('[Actor] perd patience avec [Cible]', [matches('attente.Actor.Cible.relance')], [
+      del('attente.Actor.Cible.relance'),
+      insertFor(1, 'impatient.Actor.Cible'),
+      adjustScore('Actor', 'Cible', 'affection', -2, 'bavardage'),
     ]),
     action('[Actor] répond aimablement à [Cible]', [matches('attente.Actor.Cible.parole')], [
       del('attente.Actor.Cible.parole'),
@@ -78,6 +123,7 @@ function actions(): Action[] {
     action('[Actor] rabroue [Cible]', [matches('attente.Actor.Cible.parole')], [del('attente.Actor.Cible.parole'), insertFor(1, 'rabroue.Actor.Cible')]),
     action('[Actor] interroge [Cible] sur [Sujet]', [joueurSeul, ...ici('Actor', 'Cible'), matches('pnj.Cible'), matches('sujet.Sujet')], [
       insert('attente.Cible.Actor.question.Sujet'),
+      del('parle.Actor.Cible'),
     ]),
     action('[Actor] répond à [Cible] au sujet de [Sujet]', [matches('attente.Actor.Cible.question.Sujet'), matches('sait.Actor.Sujet')], [
       del('attente.Actor.Cible.question.Sujet'),
@@ -166,7 +212,7 @@ function actions(): Action[] {
       ]),
     ),
     action('[Actor] implore [Cible] d’arrêter', [matches('attente.Actor.Cible.attaque')], [del('attente.Actor.Cible.attaque'), insertFor(1, 'implore.Actor.Cible')]),
-    action('[Actor] s’enfuit', [matches('pnj.Actor'), matches('at.Actor!P'), neq('P', LIEU_AILLEURS)], [insert(`at.Actor!${LIEU_AILLEURS}`), del('attente.Actor')]),
+    action('[Actor] s’enfuit', [matches('pnj.Actor'), not_('role.Actor.captif'), matches('at.Actor!P'), neq('P', LIEU_AILLEURS)], [insert(`at.Actor!${LIEU_AILLEURS}`), del('attente.Actor')]),
     action(
       '[Actor] s’interpose entre [Agresseur] et [Victime]',
       [saw('Actor', 'attaque.Agresseur.Victime'), ...ici('Actor', 'Agresseur'), matches('at.Victime!P'), neq('Victime', 'Actor'), not_('interpose.Actor.Agresseur')],
@@ -220,6 +266,46 @@ function actions(): Action[] {
     action('[Actor] refuse les excuses de [Cible]', [matches('attente.Actor.Cible.excuses')], [del('attente.Actor.Cible.excuses'), insertFor(1, 'refuse.Actor.Cible')]),
   ];
 
+  // Commerce : une demande (le détail reste le texte du joueur), un prix, un marchandage, un paiement.
+  const commerce: Action[] = [
+    action('[Actor] adresse une demande à [Cible]', [joueurSeul, ...ici('Actor', 'Cible'), matches('pnj.Cible')], [
+      insert('attente.Cible.Actor.demande'),
+      del('parle.Actor.Cible'),
+    ]),
+    action('[Actor] propose de satisfaire la demande de [Cible]', [matches('attente.Actor.Cible.demande'), ...fonction('Actor', 'vendeur')], [
+      del('attente.Actor.Cible.demande'),
+      insert('prix.Actor.Cible'),
+      insertFor(1, 'propose.Actor.Cible'),
+    ]),
+    action('[Actor] refuse la demande de [Cible]', [matches('attente.Actor.Cible.demande')], [
+      del('attente.Actor.Cible.demande'),
+      insertFor(1, 'refusdemande.Actor.Cible'),
+    ]),
+    action('[Actor] renvoie [Cible] vers un marchand', [matches('attente.Actor.Cible.demande'), absent(fonction('Actor', 'vendeur'))], [
+      del('attente.Actor.Cible.demande'),
+      insertFor(1, 'renvoie.Actor.Cible'),
+    ]),
+    action('[Actor] marchande avec [Cible]', [joueurSeul, ...ici('Actor', 'Cible'), matches('prix.Cible.Actor')], [insert('attente.Cible.Actor.marchandage')]),
+    action('[Actor] consent un rabais à [Cible]', [matches('attente.Actor.Cible.marchandage')], [
+      del('attente.Actor.Cible.marchandage'),
+      insertFor(1, 'rabais.Actor.Cible'),
+    ]),
+    action('[Actor] maintient son prix devant [Cible]', [matches('attente.Actor.Cible.marchandage')], [
+      del('attente.Actor.Cible.marchandage'),
+      insertFor(1, 'ferme.Actor.Cible'),
+    ]),
+    action('[Actor] paie [Cible] le prix convenu', [joueurSeul, ...ici('Actor', 'Cible'), matches('prix.Cible.Actor')], [
+      del('prix.Cible.Actor'),
+      insert('attente.Cible.Actor.paiement'),
+    ]),
+    action('[Actor] conclut le marché avec [Cible]', [matches('attente.Actor.Cible.paiement')], [
+      del('attente.Actor.Cible.paiement'),
+      insert('vendu.Actor.Cible'),
+      insertFor(1, 'conclu.Actor.Cible'),
+      adjustScore('Actor', 'Cible', 'confiance', 5, 'affaire'),
+    ]),
+  ];
+
   const nouvelles: Action[] = [
     gossip(together, [], 'vole.Voleur.Victime', '[Actor] raconte à [Hearer] que [Voleur] a volé [Victime]'),
     gossip(together, [], 'attaque.Agresseur.Victime', '[Actor] raconte à [Hearer] que [Agresseur] a attaqué [Victime]'),
@@ -231,7 +317,7 @@ function actions(): Action[] {
     action('[Actor] (attend)', [matches('personnage.Actor')]),
   ];
 
-  return [...salut, ...parole, ...hostilite, ...larcin, ...bienfaits, ...nouvelles, ...mouvement];
+  return [...salut, ...parole, ...hostilite, ...larcin, ...bienfaits, ...commerce, ...nouvelles, ...mouvement];
 }
 
 // ---- motivations ------------------------------------------------------------------
@@ -254,6 +340,21 @@ function motivations(): Desire[] {
     d('franchise', [matches('ignore.Owner.X.S')], 1),
     // Gratitude.
     d('merci-en-suspens', [matches('attente.Owner.X.merci')], -1),
+    // Bavardage sans objet.
+    d('relance-en-suspens', [matches('attente.Owner.X.relance')], -2),
+    d('patience', [matches('presse.Owner.X'), ...score('Owner', 'X', 'hostilite', 'lt', 20, 'H')], 1),
+    d('agacement', [matches('impatient.Owner.X'), ...score('Owner', 'X', 'hostilite', 'gte', 20, 'H')], 2),
+    // Commerce : un vendeur fait affaire avec qui ne lui est pas hostile ; les autres renvoient vers un marchand.
+    d('demande-en-suspens', [matches('attente.Owner.X.demande')], -2),
+    d('commerce', [matches('propose.Owner.X'), ...score('Owner', 'X', 'hostilite', 'lt', 20, 'H'), ...score('Owner', 'X', 'confiance', 'gte', -10, 'C')], 3),
+    d('pas-mon-affaire', [matches('renvoie.Owner.X')], 1),
+    d('refus-hostile', [matches('refusdemande.Owner.X'), ...score('Owner', 'X', 'hostilite', 'gte', 20, 'H')], 3),
+    d('refus-mefiant', [matches('refusdemande.Owner.X'), ...score('Owner', 'X', 'confiance', 'lt', -10, 'C')], 3),
+    d('marchandage-en-suspens', [matches('attente.Owner.X.marchandage')], -1),
+    d('rabais-coute', [matches('rabais.Owner.X')], -1),
+    d('rabais-ami', [matches('rabais.Owner.X'), ...score('Owner', 'X', 'affection', 'gte', 10, 'Af')], 2),
+    d('paiement-en-suspens', [matches('attente.Owner.X.paiement')], -3),
+    d('affaire-conclue', [matches('conclu.Owner.X')], 4),
     d('reconnaissance', [matches('remercie.Owner.X'), ...score('Owner', 'X', 'hostilite', 'lt', 20, 'H')], 1),
     d('dette-morale', [matches('doit.Owner.X')], -1),
     d('mepris', [matches('snobe.Owner.X'), ...score('Owner', 'X', 'hostilite', 'gte', 20, 'H')], 2),
@@ -295,7 +396,8 @@ function motivations(): Desire[] {
 }
 
 function praxis(): Practice {
-  return practice('elyndor', { name: 'Une scène d’Elyndor', roles: ['Monde'], actions: actions() });
+  const bibliotheque = actionsFamilles({ copresence: together, ici });
+  return practice('elyndor', { name: 'Une scène d’Elyndor', roles: ['Monde'], actions: [...actions(), ...bibliotheque] });
 }
 
 // ---- construction -------------------------------------------------------------------
@@ -311,13 +413,16 @@ export function graineDe(texte: string): number {
 /** Le monde Prax (règles et distribution) pour une description de scène, sans faits. */
 export function construireMonde(desc: DescriptionScene, graine: number): State {
   const st = new State();
-  st.definePractices([praxis()]);
-  st.defineFunctions(coreFns());
-  const desirs = motivations();
+  st.definePractices([praxis(), practice(PRATIQUE_SPECTATEUR, { name: 'Le joueur (jamais prédit)', roles: [], actions: [] })]);
+  st.defineFunctions([...coreFns(), ...fonctionsFamilles()]);
+  const desirs = [...motivations(), ...motivationsFamilles()];
   const noms = desirs.map((x) => x.name);
   const pnj: Character[] = desc.pnj.map((p) => noms.reduce((c, n) => holds(c, n), character(p.id)));
-  st.setCharacters([character(ID_JOUEUR), ...pnj]);
-  st.setAxioms(obligedClose([standing('vole.T.V', 'voleur'), standing('attaque.T.V', 'dangereux'), standing('menace.T.V', 'menacant')]));
+  // Le joueur décide seul : le planificateur ne lui prête aucun choix (et n'en explore aucun).
+  st.setCharacters([character(ID_JOUEUR, { boundTo: PRATIQUE_SPECTATEUR }), ...pnj]);
+  st.setAxioms(
+    obligedClose([standing('vole.T.V', 'voleur'), standing('attaque.T.V', 'dangereux'), standing('menace.T.V', 'menacant'), standing('delit.T.A', 'hors_la_loi')]),
+  );
   st.setDesires(desirs);
   st.seedDie(graine);
   // On ne prédit que les personnages présents dans le même lieu.
@@ -338,17 +443,39 @@ export function faitsInitiaux(
   nouveauxPnj: ReadonlySet<string>,
   nouveauxLieux: ReadonlySet<string>,
   relationsJoueur: ReadonlyMap<string, ValeursRelation>,
+  dejaRencontres: ReadonlySet<string> = new Set(),
 ): Outcome[] {
   const out: Outcome[] = [];
+  // Partie déjà commencée avec le narrateur IA : ceux qui sont là ont déjà fait connaissance.
+  for (const id of dejaRencontres) out.push(insert(`accueilli.${id}.${ID_JOUEUR}`), insert(`salue.${id}.${ID_JOUEUR}`), insert(`salue.${ID_JOUEUR}.${id}`));
   if (lieuJoueur !== null) {
     out.push(insert('practice.elyndor.monde'), insert(`personnage.${ID_JOUEUR}`), insert(`estjoueur.${ID_JOUEUR}`), insert(`at.${ID_JOUEUR}!${lieuJoueur}`));
+    out.push(insert(`role.${ID_JOUEUR}.tous`), insert(`bourse.${ID_JOUEUR}!${BOURSE_JOUEUR}`));
     for (const s of SUJETS) out.push(insert(`sujet.${s.id}`));
+    for (const r of ROLES_ACCUEIL) out.push(insert(`fonction.${r}.accueil`));
+    for (const r of ROLES_VENDEURS) out.push(insert(`fonction.${r}.vendeur`));
   }
-  for (const l of desc.lieux) if (nouveauxLieux.has(l.id) && l.id !== LIEU_AILLEURS) out.push(insert(`lieu.${l.id}`));
+  for (const l of desc.lieux) {
+    if (!nouveauxLieux.has(l.id) || l.id === LIEU_AILLEURS) continue;
+    out.push(insert(`lieu.${l.id}`));
+    const type = typeDeLieu(l);
+    if (type) out.push(insert(`typelieu.${l.id}.${type}`));
+    for (const o of OBJETS_PAR_TYPE[type ?? ''] ?? OBJETS_PAR_DEFAUT) {
+      const id = segment(o);
+      out.push(insert(`objet.${id}`), insert(`sol.${l.id}.${id}`));
+    }
+  }
+  // Les objets d'un lieu appartiennent à qui y tient commerce ou y accueille (les prendre est un larcin).
+  for (const l of desc.lieux) {
+    if (!nouveauxLieux.has(l.id)) continue;
+    const tenancier = desc.pnj.find((p) => p.lieu === l.id && ROLES_ACCUEIL.has(p.role));
+    if (tenancier) for (const o of OBJETS_PAR_TYPE[typeDeLieu(l) ?? ''] ?? OBJETS_PAR_DEFAUT) out.push(insert(`proprio.${segment(o)}.${tenancier.id}`));
+  }
   for (const p of desc.pnj) {
     if (!nouveauxPnj.has(p.id)) continue;
-    out.push(insert(`personnage.${p.id}`), insert(`pnj.${p.id}`), insert(`at.${p.id}!${p.lieu}`), insert(`role.${p.id}.${p.role}`));
-    if (ROLES_ACCUEIL.has(p.role)) out.push(insert(`role.${p.id}.accueil`));
+    out.push(insert(`personnage.${p.id}`), insert(`pnj.${p.id}`), insert(`at.${p.id}!${p.lieu}`), insert(`role.${p.id}.${p.role}`), insert(`role.${p.id}.tous`));
+    out.push(insert(`bourse.${p.id}!${BOURSE_PAR_ROLE[p.role] ?? BOURSE_PAR_DEFAUT}`));
+    if (p.role === 'captif') out.push(insert(`statut.${p.id}.captif`));
     for (const s of p.sujets) out.push(insert(`sait.${p.id}.${s}`));
     const versJoueur = relationsJoueur.get(p.id) ?? {};
     for (const axe of AXES) out.push(insert(`${p.id}.relationship.${ID_JOUEUR}.${axe}.score!${Math.round((versJoueur[axe] ?? 0) * 10)}`));
@@ -363,6 +490,35 @@ export function faitsInitiaux(
     }
   }
   return out;
+}
+
+/**
+ * Faits ajoutés depuis les premières parties Prax (tables des rôles, bourses, « tous ») : posés à la reprise
+ * d'une sauvegarde qui ne les a pas encore. Sans effet sur une partie à jour.
+ */
+export function faitsDeMiseANiveau(st: State, desc: DescriptionScene): Outcome[] {
+  const out: Outcome[] = [];
+  for (const r of ROLES_ACCUEIL) if (!st.dbHas(`fonction.${r}.accueil`)) out.push(insert(`fonction.${r}.accueil`));
+  for (const r of ROLES_VENDEURS) if (!st.dbHas(`fonction.${r}.vendeur`)) out.push(insert(`fonction.${r}.vendeur`));
+  if (!st.dbHas(`role.${ID_JOUEUR}.tous`)) out.push(insert(`role.${ID_JOUEUR}.tous`));
+  if (!st.dbHas(`bourse.${ID_JOUEUR}`)) out.push(insert(`bourse.${ID_JOUEUR}!${BOURSE_JOUEUR}`));
+  for (const p of desc.pnj) {
+    if (!st.dbHas(`pnj.${p.id}`)) continue;
+    if (!st.dbHas(`role.${p.id}.tous`)) out.push(insert(`role.${p.id}.tous`));
+    if (!st.dbHas(`bourse.${p.id}`)) out.push(insert(`bourse.${p.id}!${BOURSE_PAR_ROLE[p.role] ?? BOURSE_PAR_DEFAUT}`));
+  }
+  return out;
+}
+
+/** Le type d'un lieu (taverne, forge…) : celui que donne l'application, sinon déduit de son nom. */
+export function typeDeLieu(l: LieuDescription): string | undefined {
+  const t = segment(`${l.type ?? ''} ${l.nom}`);
+  return ['taverne', 'auberge', 'forge', 'guilde', 'marche', 'temple', 'port', 'palais', 'tribunal', 'atelier'].find((k) => t.includes(k));
+}
+
+/** Un PNJ fait-il commerce (marchand, tavernière, forgeronne, passeuse) ? */
+export function estVendeur(role: string): boolean {
+  return ROLES_VENDEURS.has(role);
 }
 
 /** Lieu actuel d'un personnage dans l'état Prax. */

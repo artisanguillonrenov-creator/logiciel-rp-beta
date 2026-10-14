@@ -8,7 +8,9 @@
  */
 import type { State } from '../../prax/core/engine';
 import type { GroundedAction } from '../../prax/core/perform';
+import { SaisieActe, comprendreActe, reconnaitreActe, reglementEnAttente } from './bibliotheque';
 import { normaliser } from './description';
+import { estVendeur } from './monde';
 import { sujetsCites } from './sujets';
 import { DescriptionScene, GenreAction, ID_JOUEUR } from './types';
 
@@ -28,12 +30,19 @@ export const GABARIT: Partial<Record<GenreAction, string>> = {
   payer: '[Actor] offre de l’argent à [Cible]',
   s_excuser: '[Actor] présente ses excuses à [Cible]',
   remercier: '[Actor] remercie [Cible]',
+  relancer: '[Actor] relance [Cible]',
+  demander: '[Actor] adresse une demande à [Cible]',
+  marchander: '[Actor] marchande avec [Cible]',
+  payerPrix: '[Actor] paie [Cible] le prix convenu',
   se_rendre: '[Actor] se rend à [Lieu]',
   attendre: '[Actor] (attend)',
 };
 
 /** Genres d'action qui exigent un interlocuteur présent. */
-const AVEC_CIBLE = new Set<GenreAction>(['saluer', 'converser', 'interroger', 'complimenter', 'menacer', 'insulter', 'attaquer', 'voler', 'aider', 'payer', 's_excuser', 'remercier']);
+const AVEC_CIBLE = new Set<GenreAction>(['saluer', 'converser', 'relancer', 'interroger', 'complimenter', 'menacer', 'insulter', 'attaquer', 'voler', 'aider', 'payer', 'payerPrix', 's_excuser', 'remercier', 'demander', 'marchander']);
+
+/** Genres pour lesquels, sans interlocuteur nommé, on se tourne vers un vendeur présent. */
+const COMMERCE = new Set<GenreAction>(['demander', 'marchander', 'payer', 'payerPrix']);
 
 // L'ordre compte : la première règle reconnue l'emporte.
 const REGLES: Array<{ genre: GenreAction; motif: RegExp }> = [
@@ -44,6 +53,8 @@ const REGLES: Array<{ genre: GenreAction; motif: RegExp }> = [
   { genre: 'payer', motif: /\b(pai(e|s)|pay(e|er)|soudoi\w*|pot[- ]de[- ]vin|(donne|tend|glisse|offre)\w* .{0,30}(pieces?|or|argent|cuivres?|bourse))/ },
   { genre: 's_excuser', motif: /\b(je (te|vous) (demande|presente) (pardon|mes excuses)|desole\w*|excuse[- ]moi\b(?! ?,? (ou|est-ce|sais))|mes excuses|pardonne[- ]moi)/ },
   { genre: 'aider', motif: /\b(je (peux|pourrais) (t|vous) aider|(t|vous) aider|coup de main|besoin d.aide|je (t|vous) aide)/ },
+  { genre: 'marchander', motif: /\b(marchand(e|er|ons)\b|negoci\w*|trop cher|baiss\w* (le|ton|votre|ce) prix|rabais|ristourne|(faire|fais|faites) un (effort|prix)|moins cher)/ },
+  { genre: 'demander', motif: /\b(je (cherche|recherche|veux|voudrais|souhaite|souhaiterais|aimerais|desire)|est ce que (tu as|vous avez|tu aurais|vous auriez|tu vends|vous vendez)|(tu as|vous avez|t as|tu aurais|vous auriez) .{0,80}\?|il me faut|j ai besoin|achet\w*|achat|a vendre|combien (pour|coute|vaut|tu veux|vous voulez))/ },
   { genre: 'remercier', motif: /\b(merci|je (te|vous) remercie)\b/ },
   { genre: 'complimenter', motif: /\b(compliment\w*|felicit\w*|bravo|magnifique|ravissant\w*|charmant\w*|superbe|tres belle|tres beau|impressionnant\w*)/ },
   { genre: 'saluer', motif: /\b(bonjour|bonsoir|salut|salue\w*|je (te|vous) salue|enchante\w*|bien le bonjour)\b/ },
@@ -60,7 +71,23 @@ export interface Comprehension {
   lieu?: string;
   /** Pourquoi rien n'a été retenu (pour le message de repli). */
   motif?: string;
+  /** Texte de la demande, transmis tel quel (Prax n'en analyse pas le détail). */
+  precision?: string;
+  /** Comment raconter l'action du joueur quand elle diffère de l'action jouée (« merci » sans service rendu). */
+  affichage?: GenreAction;
+  /** Action de la bibliothèque universelle reconnue (montant, objet annoncés). */
+  acte?: SaisieActe;
 }
+
+/** Genres du narrateur qu'une expression de la bibliothèque ne détrône que si elle est très précise (3 mots ou plus). */
+const FORTS = new Set<GenreAction>(['attaquer', 'voler', 'menacer', 'insulter', 's_excuser', 'aider']);
+
+/** Action du narrateur que désigne `equivalentPrax` dans le catalogue. */
+const EQUIVALENTS: Record<string, GenreAction> = {
+  saluer: 'saluer', converser: 'converser', complimenter: 'complimenter', remercier: 'remercier', menacer: 'menacer', insulter: 'insulter',
+  attaquer: 'attaquer', voler: 'voler', aider: 'aider', payer: 'payer', s_excuser: 's_excuser', attendre: 'attendre', demander: 'demander', marchander: 'marchander',
+  interroger: 'interroger',
+};
 
 /** Les PNJ dans le même lieu que le joueur, d'après l'état du moteur. */
 export function presentsDuJoueur(st: State, desc: DescriptionScene): DescriptionScene['pnj'] {
@@ -68,11 +95,11 @@ export function presentsDuJoueur(st: State, desc: DescriptionScene): Description
   return desc.pnj.filter((p) => ici !== undefined && st.dbHas(`at.${p.id}!${ici}`));
 }
 
-/** Le PNJ présent que vise le message : cité par son nom ou son rôle, sinon le dernier interlocuteur. */
-export function cibleDuMessage(texteNormalise: string, st: State, desc: DescriptionScene, dernierInterlocuteur?: string): string | undefined {
+/** Le PNJ présent que le message nomme (prénom, nom ou rôle), s'il y en a un. */
+export function cibleNommee(texteNormalise: string, st: State, desc: DescriptionScene): string | undefined {
   const presents = presentsDuJoueur(st, desc);
   for (const p of presents) {
-    const mots = normaliser(p.nom).split(/[\s'’-]+/).filter((m) => m.length >= 3 && !/^(maitre|maitresse|roi|reine|grande?|sir|dame)$/.test(m));
+    const mots = normaliser(p.nom).split(/[\s'’-]+/).filter((m) => m.length >= 3 && !/^(maitre|maitresse|roi|reine|grande?|sir|dame|les|une|des)$/.test(m));
     if (mots.some((m) => new RegExp(`\\b${m}\\b`).test(texteNormalise))) return p.id;
   }
   for (const p of presents) {
@@ -80,6 +107,14 @@ export function cibleDuMessage(texteNormalise: string, st: State, desc: Descript
     const motCle = role.split(/\s+/)[0];
     if (motCle && motCle.length >= 4 && texteNormalise.includes(motCle)) return p.id;
   }
+  return undefined;
+}
+
+/** Le PNJ présent que vise le message : nommé, sinon le dernier interlocuteur, sinon le premier présent. */
+export function cibleDuMessage(texteNormalise: string, st: State, desc: DescriptionScene, dernierInterlocuteur?: string): string | undefined {
+  const nommee = cibleNommee(texteNormalise, st, desc);
+  if (nommee) return nommee;
+  const presents = presentsDuJoueur(st, desc);
   if (dernierInterlocuteur && presents.some((p) => p.id === dernierInterlocuteur)) return dernierInterlocuteur;
   return presents[0]?.id;
 }
@@ -90,6 +125,15 @@ function chercherAction(st: State, gabarit: string, liaisons: Record<string, str
     if (Object.entries(liaisons).every(([k, v]) => ga.bindings.get(k) === v)) return ga;
   }
   return null;
+}
+
+/** Interlocuteur d'une affaire : celui avec qui un prix est en cours, sinon la cible si elle vend, sinon un vendeur présent. */
+function cibleCommerce(st: State, desc: DescriptionScene, cible: string | undefined): string | undefined {
+  const presents = presentsDuJoueur(st, desc);
+  const enCours = presents.find((p) => st.dbHas(`prix.${p.id}.${ID_JOUEUR}`) || st.dbHas(`contre.${p.id}.${ID_JOUEUR}`));
+  const vendeur = presents.find((p) => estVendeur(p.role));
+  const roleCible = desc.pnj.find((p) => p.id === cible)?.role;
+  return enCours?.id ?? (cible && roleCible && estVendeur(roleCible) ? cible : vendeur?.id ?? cible);
 }
 
 /**
@@ -110,19 +154,53 @@ export function comprendre(
     const action = chercherAction(st, GABARIT.se_rendre as string, { Lieu: opts.lieuDestination });
     return action ? { genre: 'se_rendre', action, lieu: opts.lieuDestination } : { genre: null, action: null, motif: 'Ce lieu n’est pas accessible d’ici.' };
   }
-  if (texte.length === 0 || ATTENTE.test(texte)) {
+  const reconnu = reconnaitreActe(message);
+  // « J'attends », « continue »… sauf quand la bibliothèque reconnaît un acte plus précis (« j'observe la salle »).
+  if (texte.length === 0 || (ATTENTE.test(texte) && (!reconnu || reconnu.entree.equivalentPrax === 'attendre'))) {
     return { genre: 'attendre', action: chercherAction(st, GABARIT.attendre as string, {}) };
   }
 
-  const cible = cibleDuMessage(texte, st, desc, opts.dernierInterlocuteur);
+  let cible = cibleDuMessage(texte, st, desc, opts.dernierInterlocuteur);
   const sujets = sujetsCites(message);
   let genre: GenreAction | null = REGLES.find((r) => r.motif.test(texte))?.genre ?? null;
-  // Une question sur un sujet connu l'emporte sur une simple formule de politesse.
-  const politesse = genre === null || genre === 'saluer' || genre === 'remercier' || genre === 's_excuser' || genre === 'complimenter';
-  if (sujets.length > 0 && politesse && (QUESTION.test(texte) || genre === null)) genre = 'interroger';
-  // Réplique sans action reconnue : on engage la conversation.
+  // Payer ce qui est dû (prestation convenue, amende) passe avant tout le reste.
+  if (genre === 'payer') {
+    const reglement = reglementEnAttente(st, message, cibleNommee(texte, st, desc));
+    if (reglement) return { genre: 'acte', action: reglement, cible: String(reglement.bindings.get('Cible') ?? '') || undefined };
+  }
+
+  // La bibliothèque universelle : une expression du catalogue, plus précise que les motifs du narrateur.
+  if (reconnu) {
+    const eq = reconnu.entree.equivalentPrax;
+    if (eq) {
+      if (genre === null && EQUIVALENTS[eq] && (eq !== 'interroger' || sujets.length > 0)) genre = EQUIVALENTS[eq];
+    } else {
+      const questionSujet = sujets.length > 0 && QUESTION.test(texte) && reconnu.entree.famille !== 'transaction';
+      const prioritaire = genre === null || (!questionSujet && (FORTS.has(genre) ? reconnu.mots >= 3 : reconnu.mots >= 2 || genre === 'saluer' || genre === 'complimenter'));
+      if (prioritaire) {
+        const nommee = cibleNommee(texte, st, desc);
+        const parDefaut = reconnu.entree.famille === 'transaction' && !nommee ? cibleCommerce(st, desc, cible) : cible;
+        const r = comprendreActe(reconnu, message, st, desc, presentsDuJoueur(st, desc), nommee, parDefaut);
+        if (r) return { genre: 'acte', action: r.action, cible: r.cible, motif: r.motif, acte: r.saisie };
+      }
+    }
+  }
+
+  // Une question sur un sujet connu l'emporte sur une politesse ou une demande vague
+  // (« je cherche un contrat » interroge sur la Guilde).
+  const politesse = genre === null || genre === 'saluer' || genre === 'remercier' || genre === 's_excuser' || genre === 'complimenter' || genre === 'demander';
+  if (sujets.length > 0 && politesse && (QUESTION.test(texte) || genre === null || genre === 'demander')) genre = 'interroger';
+  // Réplique sans action reconnue : on engage la conversation, ou on relance si c'est déjà fait.
   if (genre === null && /[a-z]/.test(texte)) genre = 'converser';
   if (genre === null) return { genre: null, action: null, motif: 'Prax n’a reconnu aucune action dans ce message.' };
+
+  // Commerce sans interlocuteur nommé : on s'adresse au vendeur présent, s'il y en a un.
+  if (COMMERCE.has(genre) && !cibleNommee(texte, st, desc)) cible = cibleCommerce(st, desc, cible);
+  if (genre === 'converser' && cible && st.dbHas(`parle.${ID_JOUEUR}.${cible}`)) genre = 'relancer';
+  // Payer après une proposition : c'est régler le prix convenu.
+  if (genre === 'payer' && cible && st.dbHas(`prix.${cible}.${ID_JOUEUR}`)) genre = 'payerPrix';
+  // Marchander sans prix proposé : c'est encore une demande.
+  if (genre === 'marchander' && cible && !st.dbHas(`prix.${cible}.${ID_JOUEUR}`)) genre = 'demander';
 
   // Répondre à une insulte ou une attaque en attente.
   if (genre === 'insulter' && cible && st.dbHas(`attente.${ID_JOUEUR}.${cible}.insulte`)) genre = 'rendreInsulte';
@@ -134,13 +212,14 @@ export function comprendre(
     // Parmi les sujets cités, d'abord celui que l'interlocuteur connaît.
     if (genre === 'interroger') liaisons.Sujet = sujets.find((x) => st.dbHas(`sait.${cible}.${x}`)) ?? sujets[0];
     const action = chercherAction(st, GABARIT[genre] as string, liaisons);
-    if (!action && genre === 'remercier') {
+    if (!action && (genre === 'remercier' || genre === 'saluer')) {
       // Rien à remercier en attente : c'est une simple réplique.
-      const conv = chercherAction(st, GABARIT.converser as string, { Cible: cible });
-      return { genre: conv ? 'converser' : null, action: conv, cible };
+      const parle = st.dbHas(`parle.${ID_JOUEUR}.${cible}`);
+      const conv = chercherAction(st, (parle ? GABARIT.relancer : GABARIT.converser) as string, { Cible: cible });
+      return { genre: conv ? (parle ? 'relancer' : 'converser') : null, action: conv, cible, affichage: conv ? genre : undefined };
     }
     if (!action) return { genre, action: null, cible, motif: 'Cette action n’est pas possible pour l’instant.' };
-    return { genre, action, cible, sujet: liaisons.Sujet };
+    return { genre, action, cible, sujet: liaisons.Sujet, precision: genre === 'demander' ? message.trim() : undefined };
   }
   return { genre: null, action: null, motif: 'Prax n’a reconnu aucune action dans ce message.' };
 }

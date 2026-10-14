@@ -7,6 +7,7 @@
  * variantes, choisies de façon déterministe (même tour, même texte ; une
  * régénération change seulement la formulation).
  */
+import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
 import { ID_JOUEUR } from './types';
@@ -23,13 +24,25 @@ export function choisir<T>(options: readonly T[], cle: string): T {
 
 /** Nom d'usage : sans titre (« Maître Osman » → « Osman »). */
 export function nomCourt(nom: string): string {
+  // Un nom avec article (« le marchand », « la noble captive ») se garde entier.
+  if (/^(le|la|les|l’|l'|un|une)[\s’']/i.test(nom)) return nom.replace(/^\S+/, (a) => a.toLowerCase());
   const mots = nom.split(/\s+/).filter((m) => !/^(ma[iî]tre(sse)?|roi|reine|imp[ée]ratrice|empereur|warchief|alpha|grande?|chamane|sultan[e]?|ancien|matriarche|reine-m[èe]re|roi-forgeron|chef|sir|dame)$/i.test(m));
   return mots[0] ?? nom;
 }
 
 /** « de Margaux », « d’Odette ». */
 export function deNom(nom: string): string {
+  if (/^le /i.test(nom)) return `du ${nom.slice(3)}`;
+  if (/^les /i.test(nom)) return `des ${nom.slice(4)}`;
+  if (/^(la |l’|l'|un |une )/i.test(nom)) return `de ${nom}`;
   return /^[aeiouyhéèêâîôû]/i.test(nom) ? `d’${nom}` : `de ${nom}`;
+}
+
+/** « à Margaux », « au marchand », « aux gardes », « à la captive ». */
+export function aNom(nom: string): string {
+  if (/^le /i.test(nom)) return `au ${nom.slice(3)}`;
+  if (/^les /i.test(nom)) return `aux ${nom.slice(4)}`;
+  return `à ${nom}`;
 }
 
 /** « A », « A et B », « A, B et C ». */
@@ -106,7 +119,7 @@ const RENDU_PNJ: Partial<Record<EvenementTour['genre'], Gabarit>> = {
   rendreSalut: (e, cle) =>
     versJoueur(e)
       ? [choisir([`${e.acteurNom} te rend ton salut.`, `${e.acteurNom} te salue à son tour.`], cle), replique(e, choisir(['Bonjour.', 'Le bonjour à toi.', 'Salut.'], cle + 'l'))]
-      : [`${e.acteurNom} rend son salut à ${e.cibleNom}.`],
+      : [`${e.acteurNom} rend son salut ${aNom(e.cibleNom ?? '')}.`],
   repondreAimable: (e, cle) => [
     choisir([`${e.acteurNom} t’écoute avec attention.`, `${e.acteurNom} se tourne vers toi.`], cle),
     replique(e, choisir(['Je t’écoute. Que puis-je faire pour toi ?', 'Oui ? Parle, je t’écoute.', 'Bien sûr. Dis-moi.'], cle + 'l')),
@@ -159,19 +172,50 @@ const RENDU_PNJ: Partial<Record<EvenementTour['genre'], Gabarit>> = {
   ],
   se_mefier: (e, cle) => [versJoueur(e) ? choisir([`${e.acteurNom} te jette un regard méfiant.`, `${e.acteurNom} garde désormais un œil sur toi.`], cle) : `${e.acteurNom} se méfie de ${e.cibleNom}.`],
   rendreService: (e, cle) => [
-    versJoueur(e) ? `${e.acteurNom} te rend service à son tour.` : `${e.acteurNom} rend service à ${e.cibleNom}.`,
+    versJoueur(e) ? `${e.acteurNom} te rend service à son tour.` : `${e.acteurNom} rend service ${aNom(e.cibleNom ?? '')}.`,
     replique(e, choisir(['Je n’oublie pas ce que tu as fait pour moi.', 'Une faveur en vaut une autre.'], cle)),
   ],
   pardonner: (e, cle) => [replique(e, choisir(['C’est oublié.', 'Bien. N’en parlons plus.'], cle))],
   rassurer: (e, cle) => [replique(e, choisir(['Des excuses ? Tu ne m’as rien fait.', 'Il n’y a rien à pardonner.'], cle))],
   refuserExcuses: (e, cle) => [`${e.acteurNom} croise les bras.`, replique(e, choisir(['Tes excuses, garde-les.', 'Trop tard pour ça.'], cle))],
+  presser: (e, cle) => [
+    choisir([`${e.acteurNom} croise les bras.`, `${e.acteurNom} hausse un sourcil.`], cle),
+    replique(e, choisir(['Viens-en au fait : que veux-tu exactement ?', 'Je t’écoute, mais sois plus clair.', 'Et donc ? Qu’est-ce que tu veux ?'], cle + 'l')),
+  ],
+  perdrePatience: (e, cle) => [`${majuscule(e.acteurNom)} soupire bruyamment.`, replique(e, choisir(['Tu me fais perdre mon temps.', 'Reviens quand tu sauras ce que tu veux.'], cle + 'l'))],
+  proposer: (e, cle) => [
+    choisir([`${e.acteurNom} te jauge un instant.`, `${e.acteurNom} se gratte le menton.`, `Un éclat d’intérêt passe dans le regard ${deNom(e.acteurNom)}.`], cle),
+    replique(e, choisir(['Ça peut se trouver. Reste à parler du prix.', 'Je dois avoir ce qu’il te faut. Mais ça se paie.', 'Je vois ce que tu cherches. Ça ne sera pas donné.'], cle + 'l')),
+  ],
+  refuserDemande: (e, cle) => [
+    choisir([`${e.acteurNom} secoue la tête.`, `${e.acteurNom} te tourne à moitié le dos.`], cle),
+    replique(e, choisir(['Je n’ai rien de tel pour toi.', 'Pas pour toi.', 'Cherche ailleurs.'], cle + 'l')),
+  ],
+  renvoyer: (e, cle) => [
+    choisir([`${e.acteurNom} hausse les épaules.`, `${e.acteurNom} fait un geste vague.`], cle),
+    replique(e, choisir(['Ce n’est pas à moi qu’il faut demander ça. Vois plutôt un marchand.', 'Je ne vends rien, moi. Adresse-toi à qui fait commerce ici.'], cle + 'l')),
+  ],
+  consentirRabais: (e, cle) => [`${majuscule(e.acteurNom)} fait mine de réfléchir.`, replique(e, choisir(['Bon… pour toi, je peux faire un effort.', 'D’accord. Je baisse un peu, mais pas plus.'], cle + 'l'))],
+  maintenirPrix: (e, cle) => [
+    choisir([`${e.acteurNom} ne cille pas.`, `${e.acteurNom} croise les bras.`], cle),
+    replique(e, choisir(['Mon prix est mon prix.', 'C’est à prendre ou à laisser.'], cle + 'l')),
+  ],
+  conclure: (e, cle) => [
+    choisir([`${e.acteurNom} empoche les pièces.`, `${e.acteurNom} compte les pièces avant de les faire disparaître.`], cle),
+    replique(e, choisir(['Marché conclu.', 'Affaire faite. Ce fut un plaisir.'], cle + 'l')),
+  ],
   raconter: (e, cle) => {
     const r = e.rapporte;
     const fait = r ? `${r.auteurNom} ${{ voler: 'a volé', attaquer: 'a attaqué', menacer: 'a menacé' }[r.genre as 'voler' | 'attaquer' | 'menacer'] ?? 'a agi contre'} ${r.victimeNom}` : 'il s’est passé quelque chose';
     return versJoueur(e)
       ? [`${e.acteurNom} se penche vers toi.`, replique(e, `${majuscule(fait)}. Je te le dis, c’est tout.`)]
-      : [choisir([`${e.acteurNom} glisse quelques mots à ${e.cibleNom}.`, `${e.acteurNom} prend ${e.cibleNom} à part.`], cle), replique(e, `${majuscule(fait)}. Je l’ai vu.`)];
+      : [choisir([`${e.acteurNom} glisse quelques mots ${aNom(e.cibleNom ?? '')}.`, `${e.acteurNom} prend ${e.cibleNom} à part.`], cle), replique(e, `${majuscule(fait)}. Je l’ai vu.`)];
   },
+};
+
+RENDU_PNJ.acte = (e, cle) => {
+  const r = renduActePnj(e, cle, choisir);
+  return r.replique ? [r.narration, replique(e, r.replique)] : [r.narration];
 };
 
 function versJoueur(e: EvenementTour): boolean {
@@ -186,10 +230,20 @@ function replique(e: EvenementTour, texte: string): string {
 function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescription[]): string[] {
   const c = e.cibleNom ?? '';
   switch (e.genre) {
+    case 'acte':
+      return renduActeJoueur(e);
     case 'saluer':
-      return [choisir([`Tu salues ${c}.`, `Tu adresses un salut à ${c}.`], cle)];
+      return [choisir([`Tu salues ${c}.`, `Tu adresses un salut ${aNom(c)}.`], cle)];
     case 'converser':
-      return [choisir([`Tu t’adresses à ${c}.`, `Tu engages la conversation avec ${c}.`], cle)];
+      return [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)];
+    case 'relancer':
+      return [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
+    case 'demander':
+      return [choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle)];
+    case 'marchander':
+      return [choisir([`Tu tentes de faire baisser le prix.`, `Tu marchandes avec ${c}.`], cle)];
+    case 'payerPrix':
+      return [`Tu paies ${c} le prix convenu.`];
     case 'interroger':
       return [`Tu interroges ${c} au sujet ${avecDe(e.sujetNom ?? 'cela')}.`];
     case 'complimenter':
@@ -205,11 +259,11 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'voler':
       return [`Tu tentes de voler ${c}.`];
     case 'aider':
-      return [`Tu proposes ton aide à ${c}.`];
+      return [`Tu proposes ton aide ${aNom(c)}.`];
     case 'payer':
-      return [`Tu glisses quelques pièces à ${c}.`];
+      return [`Tu glisses quelques pièces ${aNom(c)}.`];
     case 's_excuser':
-      return [`Tu présentes tes excuses à ${c}.`];
+      return [`Tu présentes tes excuses ${aNom(c)}.`];
     case 'remercier':
       return [`Tu remercies ${c}.`];
     case 'se_rendre': {
@@ -234,7 +288,7 @@ export function phrasePresents(presents: PnjDescription[]): string {
     else if (i === pieces.length - 1) texte += ` et ${piece}`;
     else texte += texte.endsWith(',') ? ` ${piece}` : `, ${piece}`;
   });
-  return `${texte} ${presents.length > 1 ? 'sont là.' : 'est là.'}`;
+  return majuscule(`${texte} ${presents.length > 1 ? 'sont là.' : 'est là.'}`);
 }
 
 export interface DonneesRendu {
@@ -261,7 +315,7 @@ export function rendreTour(d: DonneesRendu): string {
       return;
     }
     const gabarit = RENDU_PNJ[e.genre];
-    const lignes = gabarit ? gabarit(e, cle, d.message ?? '') : [e.libelle];
+    const lignes = (gabarit ? gabarit(e, cle, d.message ?? '') : [e.libelle]).map(majuscule);
     // La narration et la réplique sur des lignes séparées (format de l'interface).
     paragraphes.push(lignes.join('\n'));
   });
@@ -276,7 +330,7 @@ export function rendreIncompris(motif: string, presents: PnjDescription[]): stri
   const qui = presents.length ? `Présents : ${presents.map((p) => nomCourt(p.nom)).join(', ')}.` : 'Il n’y a personne ici.';
   return [
     `(Narrateur Prax) ${motif}`,
-    'Pour l’instant, Prax sait : saluer quelqu’un, lui parler, l’interroger sur un sujet (la Guilde des Aventuriers, les Voiles, les Portes Astra, la garde, une capitale…), le complimenter, l’aider, le payer, s’excuser, le menacer, l’insulter, l’attaquer, le voler, ou te rendre dans un lieu (taverne, forge, guilde, Porte Astra…). Écris « continue » pour laisser les autres agir.',
+    `Pour l’instant, Prax sait : saluer quelqu’un, lui parler, l’interroger sur un sujet (la Guilde des Aventuriers, les Voiles, les Portes Astra, la garde, une capitale…), le complimenter, l’aider, le payer, s’excuser, le menacer, l’insulter, l’attaquer, le voler, ou te rendre dans un lieu (taverne, forge, guilde, Porte Astra…) ; et, avec la bibliothèque universelle : ${exemplesBibliotheque()} Écris « continue » pour laisser les autres agir.`,
     qui,
   ].join('\n\n');
 }
