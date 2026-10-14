@@ -318,6 +318,8 @@ export interface DonneesRendu {
   tour: number;
   /** Message du joueur, pour choisir la réplique la plus pertinente. */
   message?: string;
+  /** Réponses existantes de la même partie ; ce n'est pas une nouvelle mémoire. */
+  derniersTextes?: readonly string[];
 }
 
 /** Le texte du message du narrateur Prax. */
@@ -362,7 +364,7 @@ export function rendreTour(d: DonneesRendu): string {
         locuteur: e.acteur,
         sujet: e.sujetNom,
         registre: e.registreParole,
-      }, d.variante + d.tour + i);
+      }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
       if (acquis) {
         // Les anciens gestes génériques ne sont pas attestés dans l'état
         // Prax (« recule », « croise les bras »). Une simple parole ne doit
@@ -380,7 +382,7 @@ export function rendreTour(d: DonneesRendu): string {
         fait,
         statut: 'rapporte',
         registre: e.registreParole,
-      }, d.variante + d.tour + i);
+      }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
       if (rapporte) {
         paragraphes.push(`${majuscule(e.acteurNom)} : « ${rapporte.texte} »`);
         return;
