@@ -37,6 +37,32 @@ Ce n'est pas un moteur de dialogue indépendant ni un LLM entraîné.
 11. La parole hypothétique, citée ou rapportée du joueur est conservée
     textuellement dans la narration, sans réaliser l'action citée.
 
+
+## Couverture de l'entraînement préparé (état vérifiable)
+
+Le dossier préparé comprend **77 principes G1-G7**, **144 cas guidés** et
+**60 exercices grammaticaux**. Sa fonction est de guider l'acquisition, et non
+de donner l'illusion d'un apprentissage neuronal par lecture d'un fichier.
+
+| Phase | Connaissances intégrées au cœur de Prax | Lacunes persistantes |
+|---|---|---|
+| G1 Français | Présent, imparfait, passé composé contrôlé, accords nominaux/adjectivaux partiels, élision, propositions composées | Analyse syntaxique générale, exceptions complètes, pronominalisation, subjonctif |
+| G2 Pragmatique | Distinctions direct/cité/rapporté/hypothétique/négatif/rectificatif, provenance, questions simples | Ironie, inférences complexes, sous-entendus non explicites |
+| G3 Conversation | 18 actes de parole composés dans le vocabulaire natif, continuité et interactions déjà présentes dans le moteur social | Négociation verbale libre, conversation de groupe ouverte |
+| G4 Voix | Variation par locuteur, registre modulé par les relations existantes | Voix littéraire profonde, variation individualisée du lexique, tutoiement/vouvoiement complet |
+| G5 Mise en scène | Préservation des faits, cadrage selon ce qui est perceptible, pas d'invention de gestes, détails de scène vérifiés | Dramaturgie longue, transitions et focalisation stylistique évolutive |
+| G6 Variation | Ordre circonstanciel et choix composés, évitement de répétitions selon l'historique existant | Paraphrases ouvertes, images littéraires originales |
+| G7 Vérification | Tests de causalité, chiffres, noms, citations, faux actes, sauvegarde et couverture historique | Benchmark humain, mesures Android, comparaison LLM et scènes aveugles complètes |
+
+Cette table **n'atteste pas** que les 77 principes ou 144 cas sont tous
+assimilés. Un critère de réussite n'est acquis que si un test dédié vérifie
+la généralisation au-delà des exemples.
+
+La branche demeure une intégration expérimentale, non fusionnée. Le workflow
+dédié couvre les anciens tests Prax et les nouveaux, les types TypeScript
+ainsi que l'export web. Le workflow général peut rester rouge sur les six
+tests historiques liés aux contrôles de longueur du narrateur non Prax.
+
 ## G0 : ce que nous pouvons réellement affirmer
 
 Prax **n'apprend pas automatiquement un corpus** : pas de fine-tuning, pas
