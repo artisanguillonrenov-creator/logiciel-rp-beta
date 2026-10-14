@@ -165,6 +165,23 @@ const IRREGULIERS: Readonly<Record<string, readonly string[]>> = {
   vouloir: ['veux', 'veux', 'veut', 'voulons', 'voulez', 'veulent'],
   devoir: ['dois', 'dois', 'doit', 'devons', 'devez', 'doivent'],
   venir: ['viens', 'viens', 'vient', 'venons', 'venez', 'viennent'],
+  dire: ['dis', 'dis', 'dit', 'disons', 'dites', 'disent'],
+  savoir: ['sais', 'sais', 'sait', 'savons', 'savez', 'savent'],
+  voir: ['vois', 'vois', 'voit', 'voyons', 'voyez', 'voient'],
+  croire: ['crois', 'crois', 'croit', 'croyons', 'croyez', 'croient'],
+  prendre: ['prends', 'prends', 'prend', 'prenons', 'prenez', 'prennent'],
+  comprendre: ['comprends', 'comprends', 'comprend', 'comprenons', 'comprenez', 'comprennent'],
+  mettre: ['mets', 'mets', 'met', 'mettons', 'mettez', 'mettent'],
+  écrire: ['écris', 'écris', 'écrit', 'écrivons', 'écrivez', 'écrivent'],
+  lire: ['lis', 'lis', 'lit', 'lisons', 'lisez', 'lisent'],
+  boire: ['bois', 'bois', 'boit', 'buvons', 'buvez', 'boivent'],
+  partir: ['pars', 'pars', 'part', 'partons', 'partez', 'partent'],
+  sortir: ['sors', 'sors', 'sort', 'sortons', 'sortez', 'sortent'],
+  dormir: ['dors', 'dors', 'dort', 'dormons', 'dormez', 'dorment'],
+  ouvrir: ['ouvre', 'ouvres', 'ouvre', 'ouvrons', 'ouvrez', 'ouvrent'],
+  offrir: ['offre', 'offres', 'offre', 'offrons', 'offrez', 'offrent'],
+  recevoir: ['reçois', 'reçois', 'reçoit', 'recevons', 'recevez', 'reçoivent'],
+
 };
 const SECOND_GROUPE = new Set(['finir', 'choisir', 'grandir', 'réussir', 'rougir', 'vieillir']);
 
@@ -179,8 +196,10 @@ export function conjuguerPresentPrax(infinitif: string, personne: PersonneFr): s
     const base = verbe.slice(0, -2);
     return base + ['is', 'is', 'it', 'issons', 'issez', 'issent'][i];
   }
-  if (verbe.endsWith('er') && !/(ger|cer|yer|eler|eter|éger|écer)$/u.test(verbe)) {
+  if (verbe.endsWith('er') && !/(yer|eler|eter|éger|écer)$/u.test(verbe)) {
     const base = verbe.slice(0, -2);
+    if (i === 3 && verbe.endsWith('ger')) return base + 'eons';
+    if (i === 3 && verbe.endsWith('cer')) return base.slice(0, -1) + 'çons';
     return base + ['e', 'es', 'e', 'ons', 'ez', 'ent'][i];
   }
   return null;
@@ -198,7 +217,7 @@ export function groupeNominalPrax(
   if (!/^[\p{L}]+(?:[-’'][\p{L}]+)*$/u.test(mot)) return null;
   let forme = mot;
   if (nombre === 'pluriel') {
-    const irreguliers: Record<string, string> = { cheval: 'chevaux', travail: 'travaux', oeil: 'yeux', œil: 'yeux', bijou: 'bijoux' };
+    const irreguliers: Record<string, string> = { cheval: 'chevaux', travail: 'travaux', oeil: 'yeux', œil: 'yeux', bijou: 'bijoux', chou: 'choux', genou: 'genoux', caillou: 'cailloux', hibou: 'hiboux', joujou: 'joujoux', pou: 'poux', pneu: 'pneus', bleu: 'bleus' };
     const cle = mot.toLocaleLowerCase('fr');
     if (irreguliers[cle]) forme = irreguliers[cle];
     else if (/(eau|au|eu)$/iu.test(mot)) forme += 'x';
