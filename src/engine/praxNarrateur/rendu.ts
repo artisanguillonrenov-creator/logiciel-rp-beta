@@ -328,6 +328,16 @@ export function rendreTour(d: DonneesRendu): string {
       rendreInsulte: 'rendreInsulte',
       refuserExcuses: 'refuserExcuses',
       pardonner: 'pardonner',
+      remercier: 'remercier',
+      rassurer: 'rassurer',
+      ignorerSujet: 'ignorerSujet',
+      presser: 'presser',
+      perdrePatience: 'perdrePatience',
+      renvoyer: 'renvoyer',
+      proposer: 'proposer',
+      maintenirPrix: 'maintenirPrix',
+      consentirRabais: 'consentirRabais',
+      conclure: 'conclure',
     };
     const intention = intentionsNatives[e.genre];
     if (intention) {
