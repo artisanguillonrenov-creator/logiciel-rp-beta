@@ -110,10 +110,11 @@ export function statutEnonce(message: string): StatutEnonce {
   const s = message.trim().toLocaleLowerCase('fr').replace(/[’]/gu, "'");
   if (/^(?:si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b|[àa] supposer que\b|admettons que\b)/u.test(s)) return 'hypothese';
   if (/^(?:citation\s*:|je cite\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
-  if (/^(?:on m'a dit|j'ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que|j'ai entendu que|quelqu'un dit que)\b/u.test(s)) return 'rapporte';
+  if (/^(?:on m'a dit|j'ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que|j'ai entendu que|quelqu'un dit que|je dis que|je raconte que|je lui dis que|je lis que)\b/u.test(s)) return 'rapporte';
+  if (/^(?:ne\s+|n')/u.test(s) || /^je refuse de\b/u.test(s)) return 'negation';
   if (/\b(?:je|nous|on)\s+n['e]?\s*(?:le |la |les |l'|te |vous |y |en )?(?:[a-zéèêàâôùûîï]+\s+)?pas\b/u.test(s)
       || /^(?:je|nous|on)\s+(?:ne|n')\s*(?:veux|peux|vais|souhaite)\s+pas\b/u.test(s)) return 'negation';
-  if (/^(?:je|nous|on)\s+(?:pourrais|pourrions|pourrait|voudrais|voudrions|devrais|devrions|envisage|envisageons|imagine|imagines)\b/u.test(s)) return 'eventualite';
+  if (/^(?:je|nous|on)\s+(?:pourrais|pourrions|pourrait|voudrais|voudrions|devrais|devrions|envisage|envisageons|imagine|imagines|pensais|promets de)\b/u.test(s)) return 'eventualite';
   return 'direct';
 }
 
