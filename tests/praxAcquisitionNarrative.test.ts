@@ -281,3 +281,35 @@ test('les faits passés emploient la morphologie native avec l’aspect demandé
   assert.equal(conjuguerPasseComposePrax('sortir', 'il'), null, 'auxiliaire transitif ou intransitif ambigu');
   assert.equal(conjuguerPasseComposePrax('sortir', 'il', { auxiliaire: 'avoir' }), 'a sorti');
 });
+
+
+test('aucune omniscience: Prax ne révèle pas au joueur une parole hors de sa perception', () => {
+  const evenement: EvenementTour = {
+    acteur: 'borin',
+    acteurNom: 'Borin',
+    genre: 'menacer',
+    libelle: 'Borin menace Alix',
+    cible: 'alix',
+    cibleNom: 'Alix',
+    temoins: ['alix', 'nerys'],
+  };
+  const invisible = rendreTour({evenements: [evenement], presentsApres: [], tour: 5, variante: 0});
+  assert.equal(invisible, '');
+  const visible = rendreTour({evenements: [{...evenement, temoins: ['joueur', 'alix']}], presentsApres: [], tour: 5, variante: 0});
+  assert.match(visible, /Borin/);
+});
+
+test('une parole citée par un personnage reste une parole, pas un vol ou une attaque', () => {
+  const cas = [
+    'Je raconte « Je vole les pièces »',
+    'Je dis que je lui vole la bourse',
+    'Elle affirme « Je vais le frapper »',
+    'Je refuse de voler la bourse',
+    'Je ne veux pas attaquer',
+    'Peut-être que je le frappe',
+    'Dans le cas où je le frappe',
+  ];
+  for (const enonce of cas) {
+    assert.notEqual(statutEnonce(enonce), 'direct', enonce);
+  }
+});
