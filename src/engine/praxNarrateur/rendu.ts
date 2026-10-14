@@ -471,5 +471,6 @@ export function lignesCoulisses(cr: CompteRenduTour): string[] {
     for (const o of c.options) lignes.push(`   ${o.note.toFixed(2)}  ${o.libelle}`);
   }
   for (const r of cr.relations) lignes.push(`Relation ${r.pnj} → toi : ${r.axe} ${r.avant} → ${r.apres}`);
+  for (const competence of cr.acquisNarratifs ?? []) lignes.push(`Savoir narratif utilisé : ${competence}`);
   return lignes;
 }
