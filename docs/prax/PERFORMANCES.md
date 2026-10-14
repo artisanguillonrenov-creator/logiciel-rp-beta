@@ -88,7 +88,7 @@ moteur simple et une mémoire bornée.
 
 | Commande | Contenu | Durée |
 |---|---|---|
-| `npm test` (partie Prax) | <!-- NB_DEFAUT --> | <!-- T_DEFAUT --> |
-| `PRAX_LONG=1` | ajoute les longues trajectoires du village (≈ 100 pas libres et ≈ 105 pas après le vol), le réveil v37, la règle de faim et 3 longues parties de référence | <!-- T_LONG --> |
-| `PRAX_REAL_SCALE=1` | ajoute le monde vampire à l'échelle réelle | inclus ci-dessus |
+| `npm test` (partie Prax) | 1 027 tests, dont 133 des 136 parties de référence intégrées | ≈ 40 s (4 cœurs) |
+| `PRAX_LONG=1` | ajoute les longues trajectoires du village (≈ 100 pas libres et ≈ 105 pas après le vol), le réveil v37, la règle de faim et 3 longues parties de référence (19 tests) | ≈ 7 min (4 cœurs), avec la ligne suivante |
+| `PRAX_REAL_SCALE=1` | ajoute le monde vampire à l'échelle réelle (1 test) | ≈ 10 s |
 | `npm run prax:conformance -- --prax <dépôt Prax>` | les 3 142 parties de référence | ≈ 2 min 30 s |

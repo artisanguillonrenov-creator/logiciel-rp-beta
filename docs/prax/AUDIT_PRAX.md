@@ -200,7 +200,10 @@ dépôt Prax>`.
 
 ## 6. Performances
 
-Voir `docs/prax/PERFORMANCES.md`.
+Sur une partie de 24 tours, notre moteur est environ 2,6 fois plus lent que le
+Rust de référence sous Node : 23,3 s contre 9,1 s pour le village, le monde
+le plus lourd. Les petits mondes décident instantanément. Détails et pistes :
+`docs/prax/PERFORMANCES.md`.
 
 ## 7. Pistes pour la suite (non faites ici, à la demande)
 
