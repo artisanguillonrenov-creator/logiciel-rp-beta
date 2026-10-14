@@ -21,7 +21,7 @@ test('le savoir conversationnel est bien une compétence du vocabulaire Prax', (
 test('des sujets nouveaux sont composés et non cherchés dans une banque de répliques', () => {
   for (const sujet of ['les lanternes de corail', 'le traité de Nérival', 'la porte des pluies']) {
     const phrase = exprimerParole({ locuteur: 'pierre', intention: 'eluder', sujet, registre: 'sobre' }, 1);
-    assert.ok(phrase?.texte.includes(sujet.replace(/^les /, 'des ').replace(/^le /, 'du ').replace(/^la /, 'de la ')), phrase?.texte);
+    assert.ok(phrase?.texte.includes(sujet.replace(/^les /, 'des ').replace(/^le /, 'du ').replace(/^la /, 'de la ')), phrase?.texte ?? 'phrase absente');
   }
 });
 
@@ -34,7 +34,7 @@ test('une information absente n’est pas inventée par une compétence narrativ
 test('un montant proposé en amont reste strictement intact, même après variation', () => {
   for (let i = 0; i < 28; i++) {
     const result = exprimerParole({ locuteur: 'lys', intention: 'contreOffre', proposition: { montant: 47, monnaie: 'pièces de cuivre' } }, i);
-    assert.ok(result?.texte.includes('47 pièces de cuivre'), result?.texte);
+    assert.ok(result?.texte.includes('47 pièces de cuivre'), result?.texte ?? 'montant absent');
     assert.equal(result?.texte.includes('48 pièces'), false);
     assert.ok(result?.acquis.includes('G2-montant-invariant'));
   }
