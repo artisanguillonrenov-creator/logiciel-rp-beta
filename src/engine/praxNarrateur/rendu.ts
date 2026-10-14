@@ -338,6 +338,8 @@ export interface DonneesRendu {
   message?: string;
   /** Réponses existantes de la même partie ; ce n'est pas une nouvelle mémoire. */
   derniersTextes?: readonly string[];
+  /** Accumule uniquement les compétences effectivement employées. */
+  acquisNarratifs?: string[];
 }
 
 /** Le texte du message du narrateur Prax. */
@@ -392,6 +394,7 @@ export function rendreTour(d: DonneesRendu): string {
         registre: e.registreParole,
       }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
       if (acquis) {
+        d.acquisNarratifs?.push(`${e.acteur}:${acquis.acquis.join(',')}`);
         // Les anciens gestes génériques ne sont pas attestés dans l'état
         // Prax (« recule », « croise les bras »). Une simple parole ne doit
         // pas créer de déplacement ou de fait physique non joué.
@@ -418,6 +421,7 @@ export function rendreTour(d: DonneesRendu): string {
         registre: e.registreParole,
       }, d.variante + d.tour + i, [...(d.derniersTextes ?? []), ...paragraphes]);
       if (rapporte) {
+        d.acquisNarratifs?.push(`${e.acteur}:G1-passe-compose,G2-provenance-rapportee`);
         paragraphes.push(`${majuscule(e.acteurNom)} : « ${rapporte.texte} »`);
         return;
       }
