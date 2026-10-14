@@ -428,10 +428,13 @@ export function rendreIncompris(motif: string, presents: PnjDescription[]): stri
 }
 
 /** Texte de la scène d'ouverture. */
-export function rendreOuverture(lieuNom: string, ville: string, presents: PnjDescription[], suite: string): string {
+export function rendreOuverture(lieuNom: string, ville: string, presents: PnjDescription[], suite: string, ambiance = ''): string {
   const intro = `Tu te trouves ${avecA(lieuNom)}${lieuNom.includes(ville) ? '' : ` ${deNom(ville)}`}.`;
   const qui = presents.length === 0 ? 'Il n’y a personne autour de toi.' : phrasePresents(presents);
-  return [`${intro} ${qui}`, suite].filter((t) => t.trim().length > 0).join('\n\n');
+  // L'atmosphère ne vient que d'une description déjà validée par la partie.
+  // Inventer une pluie, une odeur ou un geste relèverait du monde, pas du style.
+  const detailsVerifies = ambiance.trim();
+  return [`${intro} ${qui}`, detailsVerifies, suite].filter((t) => t.trim().length > 0).join('\n\n');
 }
 
 /** Résumé des coulisses pour le diagnostic concepteur. */
