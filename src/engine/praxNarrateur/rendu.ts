@@ -333,6 +333,11 @@ export function rendreTour(d: DonneesRendu): string {
       paragraphes.push(lignes.join(' '));
       return;
     }
+    // Narration subjective : une action entre deux PNJ absents du champ
+    // perceptif du joueur ne devient jamais un fait directement raconté.
+    // Le moteur social enregistre toujours l'action : on ne modifie pas
+    // l'histoire, seulement les informations autorisées à l'affichage.
+    if (e.cible !== ID_JOUEUR && !e.temoins.includes(ID_JOUEUR)) return;
     const gabarit = RENDU_PNJ[e.genre];
     const lignes = (gabarit ? gabarit(e, cle, d.message ?? '') : [e.libelle]).map(majuscule);
     // Prax compose lui-même l'expression d'une décision déjà prise : les règles
