@@ -188,7 +188,7 @@ export type IntentionDeParole =
   | 'maintenirPrix' | 'consentirRabais' | 'conclure';
 
 export type RegistreParole = 'sobre' | 'chaleureux' | 'reserve' | 'tranchant';
-export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte' | 'negation' | 'eventualite';
+export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte' | 'negation' | 'eventualite' | 'rectification';
 
 export interface SensDeParole {
   /** Action de parole décidée par les pratiques Prax, jamais par ce réalisateur. */
@@ -223,6 +223,7 @@ export interface ExpressionPrax {
  */
 export function statutEnonce(message: string): StatutEnonce {
   const s = message.trim().toLocaleLowerCase('fr').replace(/[’]/gu, "'");
+  if (/^(?:(?:non[,.:]?\s*)?(?:je voulais dire|je veux dire|je voulais parler de|je me suis mal exprim[eé]|je corrige|je rectifie)|ce n.est pas ce que je voulais dire)\b/u.test(s)) return 'rectification';
   if (/^(?:si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b|[àa] supposer que\b|admettons que\b)/u.test(s)) return 'hypothese';
   if (/^(?:citation\s*:|je cite\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
   // Citation enchâssée ou récit d'une parole : l'énoncé garde son statut
