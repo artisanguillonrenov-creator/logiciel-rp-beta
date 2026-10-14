@@ -110,6 +110,12 @@ export function statutEnonce(message: string): StatutEnonce {
   const s = message.trim().toLocaleLowerCase('fr').replace(/[’]/gu, "'");
   if (/^(?:si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b|[àa] supposer que\b|admettons que\b)/u.test(s)) return 'hypothese';
   if (/^(?:citation\s*:|je cite\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
+  // Citation enchâssée ou récit d'une parole : l'énoncé garde son statut
+  // même si des verbes d'action sont présents dans le passage rapporté.
+  if (/^(?:je|nous|on|il|elle|ils|elles)\s+(?:cite|citons|raconte|racontons|répète|repete|rapportons|rapporte|lis|lisons|déclare|declare|explique|évoque|evoque|affirme|dis|dit|demandons|demande)\b/u.test(s)
+      && (/[«“"].+[»”"]/u.test(s) || /\b(?:que|si)\b/u.test(s))) return 'rapporte';
+  if (/^(?:je|nous|on)\s+(?:n'?ai jamais|n'?avons jamais|n'?avons pas|n'?ai pas|n'?aurai pas|n'?aura pas|ne vais pas|ne veut pas|ne veux pas|ne peux pas)\b/u.test(s)) return 'negation';
+  if (/^(?:peut-être|peut etre|il est possible que|au cas où|dans le cas où|à supposer que|à imaginer que)\b/u.test(s)) return 'hypothese';
   if (/^(?:on m'a dit|j'ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que|j'ai entendu que|quelqu'un dit que|je dis que|je raconte que|je lui dis que|je lis que)\b/u.test(s)) return 'rapporte';
   if (/^(?:ne\s+|n')/u.test(s) || /^je refuse de\b/u.test(s)) return 'negation';
   if (/\b(?:je|nous|on)\s+n['e]?\s*(?:le |la |les |l'|te |vous |y |en )?(?:[a-zéèêàâôùûîï]+\s+)?pas\b/u.test(s)
