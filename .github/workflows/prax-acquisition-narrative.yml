@@ -1,0 +1,29 @@
+name: Prax acquisition narrative
+
+on:
+  pull_request:
+    paths:
+      - 'src/prax/vocab/conversation.ts'
+      - 'src/engine/praxNarrateur/**'
+      - 'tests/praxAcquisitionNarrative.test.ts'
+      - '.github/workflows/prax-acquisition-narrative.yml'
+  workflow_dispatch:
+
+jobs:
+  prax-narration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Compiler tous les tests
+        run: npx tsc -p tsconfig.test.json
+      - name: Tests de l'acquisition native Prax
+        run: node --test .test-dist/tests/praxAcquisitionNarrative.test.js
+      - name: Verification TypeScript de l'application
+        run: npx tsc --noEmit
+      - name: Export web
+        run: npx expo export -p web
