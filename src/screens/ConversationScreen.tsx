@@ -288,6 +288,12 @@ export default function ConversationScreen({ route, navigation }: Props) {
     let actif = true;
     const dernierMessageJoueur = [...story.messages].reverse().find((m) => m.role === 'user');
     const dernierDiagnostic = [...story.messages].reverse().find((m) => m.role === 'assistant' && m.diagnosticTour)?.diagnosticTour;
+    if (appSettings.narrateurPrax) {
+      // Narrateur Prax : pas de sélection de lore (ni d'appel d'embeddings) ; le
+      // diagnostic du tour porte les coulisses du planificateur.
+      setDebugLore({ metamoteurs: [], loreElyndor: [], souvenirs: [], diagnosticTour: dernierDiagnostic });
+      return;
+    }
     if (dernierMessageJoueur && debugLoreMessageIdRef.current !== dernierMessageJoueur.id) {
       calculerDebugLore(story, dernierMessageJoueur.content, appSettings)
         .then((debug) => {
@@ -300,7 +306,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
     return () => { actif = false; };
   }, [story, appSettings]);
 
-  const clefManquante = appSettings && appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' &&
+  const clefManquante = appSettings && !appSettings.narrateurPrax && appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' &&
     !(appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey);
   const profilNonDeclare = appSettings && !appSettings.profilContenu;
 
@@ -319,15 +325,18 @@ export default function ConversationScreen({ route, navigation }: Props) {
       return;
     }
 
-    const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
-    const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
-    if (appSettings.moteurInference === 'serveur' && !appSettings.serveurLocalModele?.trim()) {
-      setErreur('Choisis le modèle du serveur local dans Réglages avant de commencer.');
-      return;
-    }
-    if (appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' && !cleApi) {
-      setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
-      return;
+    // Le narrateur Prax (test) tourne sur l'appareil : aucun fournisseur à vérifier.
+    if (!appSettings.narrateurPrax) {
+      const fournisseur = appSettings.moteurInference === 'infermatic' ? 'Infermatic' : 'OpenRouter';
+      const cleApi = appSettings.moteurInference === 'infermatic' ? appSettings.infermaticApiKey : appSettings.openRouterApiKey;
+      if (appSettings.moteurInference === 'serveur' && !appSettings.serveurLocalModele?.trim()) {
+        setErreur('Choisis le modèle du serveur local dans Réglages avant de commencer.');
+        return;
+      }
+      if (appSettings.moteurInference !== 'local' && appSettings.moteurInference !== 'serveur' && !cleApi) {
+        setErreur(`Configure ta clé API ${fournisseur} dans Réglages avant de commencer.`);
+        return;
+      }
     }
     if (!appSettings.profilContenu) {
       setErreur('Déclare un profil de contenu (Grand public / Adulte) dans Réglages avant de commencer.');
@@ -389,6 +398,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
   const suggererReplique = useCallback(async () => {
     if (!story || !appSettings || enCours || suggestionEnCours) return;
+    if (appSettings.narrateurPrax) {
+      setErreur('La suggestion de réplique utilise le modèle IA : indisponible avec le narrateur Prax.');
+      return;
+    }
     setSuggestionEnCours(true);
     setErreur('');
     try {
@@ -589,6 +602,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
 
   async function forcerMiseAJourMaintenant() {
     if (!story || !appSettings || majForceeEnCours) return;
+    if (appSettings.narrateurPrax) {
+      setMessageConcepteur('Mise à jour par le modèle IA désactivée avec le narrateur Prax.');
+      return;
+    }
     setMajForceeEnCours(true);
     setMessageConcepteur('');
     try {

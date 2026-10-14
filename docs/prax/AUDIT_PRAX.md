@@ -207,7 +207,9 @@ le plus lourd. Les petits mondes décident instantanément. Détails et pistes :
 
 ## 7. Pistes pour la suite (non faites ici, à la demande)
 
-- **Intégration à l'application** : brancher un `State` Prax par partie, le
+- **Intégration à l'application** : un premier essai existe, le narrateur Prax
+  (test), qui remplace le modèle IA dans la conversation (voir
+  `docs/prax/NARRATEUR_PRAX_TEST.md`). Suite prévue : brancher un `State` Prax par partie, le
   sauvegarder avec `serializeState` (une chaîne pour AsyncStorage) et
   traduire les actions choisies en consignes pour le narrateur.
 - **Méta-moteurs d'Elyndor** : plusieurs responsabilités M01–M15 ont un

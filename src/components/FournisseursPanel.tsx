@@ -10,15 +10,17 @@ import {listerModelesImagesOpenAI, MODELES_IMAGES_OPENAI_SUGGERES} from '../engi
 import {couleurs,espacement,polices} from '../theme/theme';
 import Bouton from './Bouton';
 
-type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt';
+type ModeTexte='openrouter'|'openai'|'runpod'|'serveur'|'chatgpt'|'prax';
 type ModeImages='desactive'|'runpod'|'openrouter'|'openai';
 const LABELS:Record<ModeTexte,string>={
   openrouter:'OpenRouter',openai:'OpenAI / GPT (clé API)',runpod:'RunPod Elyndor',serveur:'Autre API compatible',chatgpt:'ChatGPT — abonnement (sans clé API)',
+  prax:'Prax — moteur de décision local (test, sans IA)',
 };
 const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
+  if(v.narrateurPrax)return 'prax';
   if(v.moteurInference==='chatgpt'||v.fournisseurNarration==='chatgpt')return 'chatgpt';
   if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
   if(v.moteurInference==='openrouter')return 'openrouter';
@@ -102,8 +104,16 @@ export default function FournisseursPanel(){
     if(!cfg)return;
     setBusy(true);setMsg('');
     try{
+      if(mode==='prax'){
+        // Prax remplace le narrateur sans toucher au fournisseur IA, conservé pour le retour.
+        await saveSettings({...cfg,narrateurPrax:true,fournisseurImages:selection,fournisseurEmbeddings:cfg.fournisseurEmbeddings==='runpod'?'runpod':'desactive'});
+        setCfg(await getSettings());
+        setMsg('Narrateur Prax activé : la conversation est jouée par le moteur de décision, sans aucun appel IA.');
+        return;
+      }
       const v:AppSettings={
         ...cfg,
+        narrateurPrax:false,
         moteurInference:mode==='chatgpt'?'chatgpt':mode==='openai'?'openai':mode==='openrouter'?'openrouter':'serveur',
         fournisseurNarration:mode,
         serveurLocalUrl:mode==='runpod'?ELYNDOR_CLOUD_REGLAGE_URL:cfg.serveurLocalUrl,
@@ -150,6 +160,7 @@ export default function FournisseursPanel(){
       accessibilityRole="radio" accessibilityState={{checked:mode===x}} onPress={()=>setMode(x)}>
       <Text style={st.name}>{mode===x?'● ':'○ '}{LABELS[x]}</Text>
     </Pressable>)}
+    {mode==='prax'?<Text style={st.text}>Prax joue la conversation directement sur l’appareil : il décide de ce que font les personnages (relations, témoins, rumeurs, réputation) et répond avec des phrases toutes prêtes en français. Aucun appel IA, aucune clé nécessaire. Ton fournisseur IA reste enregistré pour revenir au narrateur habituel.</Text>:null}
     {mode==='chatgpt'?<>
       <Text style={st.text}>Connexion à ton abonnement via Codex et la passerelle Elyndor Render. Aucune clé API à saisir.</Text>
       <Text style={st.label}>Statut : {chatgptStatut}</Text>

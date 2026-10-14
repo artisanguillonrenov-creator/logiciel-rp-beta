@@ -1,5 +1,6 @@
 import type { NarrativeCoreState } from '../engine/noyauNarratif';
 import type { EtatVisuelHistoire } from '../engine/visualState';
+import type { CompteRenduTour, EtatPraxHistoire } from '../engine/praxNarrateur/types';
 
 export type Creativite = 'faible' | 'moyenne' | 'elevee';
 export type Longueur = 'courte' | 'moyenne' | 'longue';
@@ -117,6 +118,10 @@ export interface Message {
   // Diagnostic concepteur passif du chemin réellement emprunté par ce tour.
   // Jamais injecté dans le prompt et ignoré par le gameplay.
   diagnosticTour?: DiagnosticTour;
+  // Narrateur Prax (test) : compte rendu structuré du tour (actions, témoins,
+  // relations, coulisses du planificateur). Destiné plus tard au modèle IA
+  // qui embellira la réponse ; jamais affiché tel quel au joueur.
+  praxCompteRendu?: CompteRenduTour;
 }
 
 export interface UsageTokens {
@@ -381,6 +386,10 @@ export interface StoryState {
   // ville, lieu et personnages présents, mis à jour après chaque tour.
   // Optionnel : absent = déduit du lieu et du point de départ de l'histoire.
   scene?: EtatScene;
+  // Narrateur Prax (test, src/engine/praxNarrateur) : état du moteur de
+  // décision pour cette partie. Optionnel, sans bump de schéma : absent tant
+  // que Prax n'a pas joué de tour dans la partie.
+  prax?: EtatPraxHistoire;
 }
 
 export interface EtatScene {
@@ -464,6 +473,11 @@ export interface AppSettings {
   // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
   // de cette phase.
   modeConcepteur?: boolean;
+  // Narrateur Prax (test) : le moteur de décision local remplace le modèle IA
+  // dans la conversation — aucun appel réseau, aucune automatisation IA en
+  // arrière-plan tant que l'option est active. Les autres réglages du
+  // fournisseur sont conservés pour le retour au modèle IA.
+  narrateurPrax?: boolean;
   // Langue de l'interface et de la conversation (Ajouts_A_Integrer.md,
   // sélecteur de langue) — code libre ('fr', 'en', 'es', 'ja', ...).
   // undefined ou 'fr' = comportement historique, aucune traduction. Le

@@ -193,7 +193,10 @@ export function registerNarrativeAutomationHandlers(deps: NarrativeAutomationDep
     const snapshot = await deps.getStory(job.storyId);
     if (!snapshot || calculerRevisionNarrative(snapshot) !== revision) return;
 
-    const patch = await calculerRattrapageNarratif(snapshot, await deps.getSettings());
+    const reglages = await deps.getSettings();
+    // Narrateur Prax (test) : aucune mise à jour par le modèle IA en arrière-plan.
+    if (reglages.narrateurPrax) return;
+    const patch = await calculerRattrapageNarratif(snapshot, reglages);
     if (!patch) return;
     const { diagnosticPostTraitement, minutesEcoulees, ...etatPatch } = patch;
 

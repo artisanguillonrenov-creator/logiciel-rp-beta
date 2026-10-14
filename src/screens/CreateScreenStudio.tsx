@@ -32,6 +32,7 @@ import elyndorLoreRaw from '../data/elyndorLore.json';
 import { chargerLoreElyndor } from '../engine/loreLoader';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
+import { ouvrirAvecPrax } from '../engine/praxNarrateur';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { creerNouvelleHistoire } from '../engine/story';
 import { getPersonas, getSettings, savePersona, saveStory } from '../storage/storage';
@@ -400,8 +401,13 @@ export default function CreateScreenStudio({ navigation }: Props) {
       });
       try {
         const settings = await getSettings();
-        const ouverture = await genererMessageOuverture(histoire, settings);
-        histoire.messages.push(ouverture);
+        if (settings.narrateurPrax) {
+          // Narrateur Prax (test) : l'ouverture et l'état du moteur sont créés ensemble.
+          Object.assign(histoire, ouvrirAvecPrax(histoire));
+        } else {
+          const ouverture = await genererMessageOuverture(histoire, settings);
+          histoire.messages.push(ouverture);
+        }
       } catch {
         // L'ouverture assistée reste facultative : une panne réseau ne bloque jamais la création.
       }

@@ -8,6 +8,7 @@ import {
   BUDGET_SYSTEM_DISTANT,
 } from './promptBuilder';
 import { configurationLLM } from './openrouter';
+import { messageOuverturePrax, narrateurPraxActif, regenererAvecPrax } from './praxNarrateur';
 import { genererReponseComplete } from './completionReponse';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import { modeleOverridePourFournisseur } from './llmProvider';
@@ -52,6 +53,7 @@ function genererId(): string {
  * remplacée par un terme générique.
  */
 export async function genererMessageOuverture(story: StoryState, appSettings: AppSettings): Promise<Message> {
+  if (narrateurPraxActif(appSettings)) return messageOuverturePrax(story);
   const debutMs = Date.now();
   const texteRequete = requeteLoreOuverture(story.meta);
   const selection = await calculerSelectionLore(story, texteRequete, appSettings, { aleatoire: false });
@@ -157,6 +159,7 @@ export async function genererMessageOuverture(story: StoryState, appSettings: Ap
  * de message joueur associé, elle est donc réécrite par le moteur d'ouverture.
  */
 export async function regenererOuverture(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
+  if (narrateurPraxActif(appSettings)) return regenererAvecPrax({ ...story, messages: [] });
   const sansOuverture: StoryState = { ...story, messages: [] };
   const ouverture = await genererMessageOuverture(sansOuverture, appSettings);
   const debugLore = await calculerDebugLore(sansOuverture, requeteLoreOuverture(story.meta), appSettings);

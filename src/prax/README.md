@@ -2,12 +2,15 @@
 
 Moteur de **simulation sociale** : portage TypeScript fidèle de
 [Prax](https://github.com/AHartNtkn/Prax) (ahart / AHartNtkn, licence
-BSD-3-Clause — voir `LICENSE-PRAX.md`). Ce module est **autonome**. Il n'est pas
-encore branché sur l'application et n'utilise aucune API Node, donc il est
-compatible avec Hermes et React Native.
+BSD-3-Clause — voir `LICENSE-PRAX.md`). Ce module est **autonome** : il
+n'importe rien du reste de l'application et n'utilise aucune API Node, donc il
+est compatible avec Hermes et React Native. Le seul branchement existant est un
+essai, le « narrateur Prax » (`src/engine/praxNarrateur/`), qui remplace le
+modèle IA dans la conversation quand on le choisit dans les Réglages.
 
 - Audit et décisions : `docs/prax/AUDIT_PRAX.md`.
 - Performances : `docs/prax/PERFORMANCES.md`.
+- Narrateur Prax (test) dans la conversation de l'application : `docs/prax/NARRATEUR_PRAX_TEST.md`.
 
 ## Organisation
 

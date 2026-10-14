@@ -46,6 +46,7 @@ import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererNarrationAvecCloture } from './clotureNarration';
+import { genererTourPrax, narrateurPraxActif, regenererAvecPrax } from './praxNarrateur';
 import { genererDeltaEtatSepare } from './deltaEtatSepare';
 import { annulerMesureTokens, commencerMesureTokens, terminerMesureTokens } from './mesureTokens';
 import {
@@ -927,6 +928,8 @@ export async function genererTour(
   messageJoueur: string,
   reponseAId?: string,
 ): Promise<ResultatTour> {
+  // Narrateur Prax (test) : le moteur de décision local remplace le modèle IA.
+  if (narrateurPraxActif(appSettings)) return genererTourPrax(story, messageJoueur);
   commencerDiagnosticTour(undefined, story.meta.id);
   try {
     const resultat = await genererTourInterne(story, appSettings, messageJoueur, reponseAId);
@@ -955,6 +958,7 @@ export async function genererTour(
 }
 
 export async function regenererDernierTour(story: StoryState, appSettings: AppSettings): Promise<ResultatTour> {
+  if (narrateurPraxActif(appSettings)) return regenererAvecPrax(story);
   const rafraichie = await rafraichirEtatDeriveAvantTour(story);
   // Le tour régénéré ne doit pas laisser ses événements dans le noyau.
   const storyCourante = annulerTour(rafraichie, rafraichie.messages.at(-1)?.id ?? '');
