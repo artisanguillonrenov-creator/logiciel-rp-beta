@@ -35,13 +35,17 @@ import { tokenize } from '../src/prax/core/path';
 import { FORMAT_VERSION, deserializeState, serializeState } from '../src/prax/core/persist';
 import { groundedActionEq, motiveSignatureEq } from '../src/prax/core/planner';
 import { matches } from '../src/prax/core/query';
-import { lcg, pick, preAdvanceStop } from '../src/prax/core/stress';
+import { lcg, pick, preAdvanceStop, stressTest } from '../src/prax/core/stress';
 import { advance, npcAct, runNpcTicks } from '../src/prax/core/turn';
 import { Character, Outcome, action, character, insert, insertFor, practice, scheduleRule } from '../src/prax/core/types';
-import { flowChart } from '../src/prax/script/compile';
+import { compile, flowChart } from '../src/prax/script/compile';
+import { beat, goto, member, player, scene, script } from '../src/prax/script/script';
 import { encodeScript } from '../src/prax/script/json';
 import { DIRECTOR_NAME, barDirectorWorld } from '../src/prax/worlds/bar';
 import { intrigueWorld } from '../src/prax/worlds/intrigue';
+import { barWorld } from '../src/prax/worlds/bar';
+import { playWorld } from '../src/prax/worlds/play';
+import { villageWorld } from '../src/prax/worlds/village';
 import { playScript } from '../src/prax/worlds/play';
 import { playerActions, renderCheck, renderStress, worldNamed } from '../tools/prax/cli';
 
@@ -460,6 +464,64 @@ test('stress.rs : preAdvanceStop place le plafond avant la fin', () => {
 
 // =============================================================================
 // prax-cli/src/main.rs — module #[cfg(test)] (CLI TS : tools/prax/cli.ts)
+// =============================================================================
+// prax-oracle/src/stress.rs — la spec gelée `Prax.StressSpec` sur l'agrégateur
+// =============================================================================
+
+/**
+ * La reproduction v46 (constat 4) : la scène « s » n'offre aucun temps fort à sa
+ * distribution, seulement une transition inconditionnelle en attente vers « s2 »
+ * — on n'avance que par la règle `story` de la frontière de tour. Le détecteur
+ * d'impasses doit la franchir.
+ */
+function deadEndRegressionWorld(): State {
+  const scr = script('s', [player('p'), member('q')], [scene('s', { junctions: [goto('go', 's2', [])] }), scene('s2', { beats: [beat('linger', [], [])] })]);
+  return compile(scr);
+}
+
+// R: stress.rs a_move_less_scene_with_a_pending_transition_is_not_a_false_positive
+// H: StressSpec.hs "a move-less scene with a pending transition is not a stress-harness false positive: the dead-end detector must give the round boundary's wrap its turn before declaring deadlock (v46 review finding 4)"
+test('StressSpec : une scène sans coup mais à transition en attente n’est pas une fausse impasse', () => {
+  const r = stressTest(50, 40, 'currentScene', deadEndRegressionWorld());
+  assert.equal(r.deadEnds, 0);
+  assert.ok(r.visited.has('s2'), 's2 reached');
+});
+
+// R: stress.rs random_play_of_the_episode_no_dead_ends_both_branches
+// H: StressSpec.hs "random play of the episode: no dead ends, both active branches reached"
+test('StressSpec : jeu aléatoire de l’épisode — aucune impasse, les deux branches atteintes', () => {
+  const r = stressTest(60, 40, 'currentScene', intrigueWorld());
+  assert.equal(r.deadEnds, 0, 'no dead ends');
+  assert.equal(r.noEnding, 0, 'no run stuck at the cap');
+  assert.ok(r.endings.has('loyalty'), 'loyalty reached');
+  assert.ok(r.endings.has('complicity'), 'complicity reached');
+});
+
+// R: stress.rs the_bar_survives_random_play
+// H: StressSpec.hs "the bar survives random play with no dead ends and broad coverage"
+test('StressSpec : le bar survit au jeu aléatoire, sans impasse et avec une large couverture', () => {
+  const r = stressTest(20, 30, 'currentScene', barWorld());
+  assert.equal(r.deadEnds, 0);
+  assert.ok(r.coverage.size >= 10, `many distinct actions exercised: ${r.coverage.size}`);
+});
+
+// R: stress.rs scene_coverage_reaches_both_scenes_and_every_ending
+// H: StressSpec.hs "scene coverage: random play reaches both scenes and every ending"
+test('StressSpec : couverture des scènes — les deux scènes et chaque fin sont atteintes', () => {
+  const r = stressTest(200, 50, 'currentScene', playWorld());
+  assert.ok(r.visited.has('confidence'), 'confidence visited');
+  assert.ok(r.visited.has('banquet'), 'banquet visited');
+  for (const e of ['betrayal', 'loyalty', 'complicity']) assert.ok(r.endings.has(e), `${e} reached`);
+  assert.equal(r.deadEnds, 0, 'no dead ends');
+});
+
+// R: stress.rs coverage_family_generalizes_past_current_scene
+// H: StressSpec.hs "coverage family generalizes past Script's currentScene: the village's marketDay family is tracked when named, proving the second application"
+test('StressSpec : la famille suivie se généralise au-delà de currentScene (marketDay du village)', () => {
+  const r = stressTest(80, 60, 'marketDay', villageWorld());
+  assert.ok(r.visited.has('square'), 'the market was observed open at least once');
+});
+
 // =============================================================================
 
 // R: main.rs dump_play_is_byte_identical_to_the_shipped_example

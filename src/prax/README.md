@@ -70,3 +70,16 @@ npm run prax -- explain village bob steal   # pourquoi une action est (in)dispon
 npm run prax:conformance           # rejouer le corpus de référence
 npm test                           # toute la suite (dont tests/prax*.test.ts)
 ```
+
+## Tests
+
+Les tests portés de Prax sont dans `tests/prax*.test.ts`. Chacun porte sa
+référence au test Rust d'origine (`// R:`) et, quand elle existe, à la
+spécification Haskell (`// H:`). `npm test` les lance tous, sauf les plus
+longs, activés par les deux premières variables ci-dessous :
+
+| Variable | Ajoute |
+|---|---|
+| `PRAX_LONG=1` | les longues trajectoires du village, le réveil v37, la règle de faim et 3 longues parties de référence (plusieurs minutes) |
+| `PRAX_REAL_SCALE=1` | le monde vampire à l'échelle réelle |
+| `PRAX_PROPTEST_CASES=n` | le nombre de cas des propriétés aléatoires (200 ou 256 par défaut) |

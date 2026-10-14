@@ -1470,7 +1470,8 @@ test('village_relevance.rs : le champ de vivacité du village', () => {
 //
 // Trajectoire complète (48 pas, `you` inactif) conservée ; seul le préfixe de
 // 21 pas est partagé avec le golden village-21 (voir `VillageRun`).
-test('village_relevance.rs : le réveil v37 de bout en bout', () => {
+// Long (≈ 47 s : 48 pas de planificateur sur le village) : seulement avec PRAX_LONG=1.
+test('village_relevance.rs : le réveil v37 de bout en bout', { skip: process.env.PRAX_LONG === '1' ? false : 'long : PRAX_LONG=1' }, () => {
   const run = villageRunAtMost(36);
   const st = run.st;
   const gale = st.characters.find((c) => c.name === 'gale');
