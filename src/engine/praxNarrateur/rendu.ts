@@ -8,6 +8,7 @@
  * régénération change seulement la formulation).
  */
 import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
+import { exprimerParole, type IntentionDeParole } from '../../prax/vocab/conversation';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
 import { ID_JOUEUR } from './types';
@@ -316,6 +317,30 @@ export function rendreTour(d: DonneesRendu): string {
     }
     const gabarit = RENDU_PNJ[e.genre];
     const lignes = (gabarit ? gabarit(e, cle, d.message ?? '') : [e.libelle]).map(majuscule);
+    // Prax compose lui-même l'expression d'une décision déjà prise : les règles
+    // de son vocabulaire natif ne créent ni nouvelles actions ni nouveaux faits.
+    const intentionsNatives: Partial<Record<EvenementTour['genre'], IntentionDeParole>> = {
+      repondreAimable: 'ecouter',
+      rabrouer: 'refuser',
+      eluder: 'eluder',
+      ceder: 'ceder',
+      tenirTete: 'resister',
+      rendreInsulte: 'rendreInsulte',
+      refuserExcuses: 'refuserExcuses',
+      pardonner: 'pardonner',
+    };
+    const intention = intentionsNatives[e.genre];
+    if (intention) {
+      const acquis = exprimerParole({
+        intention,
+        locuteur: e.acteur,
+        sujet: e.sujetNom,
+      }, d.variante + d.tour + i);
+      if (acquis) {
+        const repliqueIndex = lignes.findIndex((ligne) => ligne.includes(' : « '));
+        if (repliqueIndex >= 0) lignes[repliqueIndex] = `${majuscule(e.acteurNom)} : « ${acquis.texte} »`;
+      }
+    }
     // La narration et la réplique sur des lignes séparées (format de l'interface).
     paragraphes.push(lignes.join('\n'));
   });
