@@ -53,3 +53,175 @@ export function changeSubject(label: string, newTopic: string): Action {
 export function endConversation(label: string): Action {
   return action(label, speakerConds(), [del(CONV_P)]);
 }
+
+
+// ---- Acquisition narrative native V1 -------------------------------------------------
+// Règles acquises à la compilation de Prax : elles résident dans le vocabulaire
+// conversationnel natif, pas dans une mémoire parallèle ni dans un moteur IA.
+// Ces constructions sont originales. Une phrase d'exemple n'est jamais une réponse
+// à retrouver : le contenu sémantique provient exclusivement de la scène Prax.
+
+/** Version stable des connaissances linguistiques installées avec le moteur. */
+export const ACQUIS_EXPRESSION_V1 = 'prax-expression-fr-v1';
+
+export type IntentionDeParole =
+  | 'accueillir' | 'ecouter' | 'eluder' | 'refuser' | 'ceder'
+  | 'resister' | 'rendreInsulte' | 'refuserExcuses' | 'pardonner'
+  | 'informer' | 'demander' | 'contreOffre';
+
+export type RegistreParole = 'sobre' | 'chaleureux' | 'reserve' | 'tranchant';
+export type StatutEnonce = 'direct' | 'hypothese' | 'citation' | 'rapporte';
+
+export interface SensDeParole {
+  /** Action de parole décidée par les pratiques Prax, jamais par ce réalisateur. */
+  intention: IntentionDeParole;
+  /** Identité stable du locuteur, distincte d'une simple classe de rôle. */
+  locuteur: string;
+  /** Fait établi, texte fourni par le moteur, jamais inventé dans la réalisation. */
+  fait?: string;
+  /** Sujet connu, sans présupposer que le locuteur en possède le détail. */
+  sujet?: string;
+  /** Motif explicitement vérifié par le moteur, optionnel. */
+  motif?: string;
+  /** Nouvelle offre décidée en amont ; ce savoir-faire ne négocie pas. */
+  proposition?: { montant: number; monnaie: string };
+  /** Registre explicitement attesté si disponible (sinon signature stable). */
+  registre?: RegistreParole;
+}
+
+export interface ExpressionPrax {
+  texte: string;
+  /** Règles de compétence exercées, utiles au diagnostic. */
+  acquis: readonly string[];
+  version: typeof ACQUIS_EXPRESSION_V1;
+}
+
+/** La grammaire ne doit jamais transformer une citation ou hypothèse en action. */
+export function statutEnonce(message: string): StatutEnonce {
+  const s = message.trim().toLocaleLowerCase('fr');
+  if (/^(si\b|supposons\b|imaginons\b|mettons que\b|dans l.hypoth[eè]se\b|et si\b)/u.test(s)) return 'hypothese';
+  if (/^(?:citation\s*:|[«“"])/u.test(s) && /[»”"]\s*[.!?]?\s*$/u.test(s)) return 'citation';
+  if (/^(?:on m.a dit|j.ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que)\b/u.test(s)) return 'rapporte';
+  return 'direct';
+}
+
+function empreinteParole(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h;
+}
+
+/** Constance du personnage sans inventer de traits psychologiques. */
+export function registreStable(locuteur: string): RegistreParole {
+  const registres: RegistreParole[] = ['sobre', 'chaleureux', 'reserve', 'tranchant'];
+  return registres[empreinteParole(locuteur) % registres.length];
+}
+
+function optionStable<T>(options: readonly T[], cle: string): T {
+  return options[empreinteParole(cle) % options.length];
+}
+
+/** Ne jamais introduire de fait absent ; les segments externes sont uniquement cités. */
+function segmentDiscursif(value: string | undefined): string | undefined {
+  const s = value?.replace(/\s+/gu, ' ').trim();
+  return s ? s.replace(/[.!?;,]+\s*$/gu, '') : undefined;
+}
+
+function sujetAvecDe(s: string): string {
+  if (/^le /iu.test(s)) return 'du ' + s.slice(3);
+  if (/^les /iu.test(s)) return 'des ' + s.slice(4);
+  if (/^(la |l['’])/iu.test(s)) return 'de ' + s;
+  return /^[aeiouyéèêàâîôûh]/iu.test(s) ? 'd’' + s : 'de ' + s;
+}
+
+function ponctuer(s: string): string {
+  const t = s.replace(/\s+([,;.!?])/gu, '$1').replace(/\s+/gu, ' ').trim();
+  if (!t) return '';
+  const cap = t.charAt(0).toLocaleUpperCase('fr') + t.slice(1);
+  return /[.!?…]$/u.test(cap) ? cap : cap + '.';
+}
+
+/**
+ * Acquisition symbolique native : une intention Prax + ses arguments se
+ * réalisent par compositions de constituants. Les variantes ne changent
+ * jamais l'action, les prix, le statut épistémique ou l'état du monde.
+ * Retourne null lorsque les faits nécessaires manquent.
+ */
+export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax | null {
+  if (!sens.locuteur.trim() || !Number.isSafeInteger(variante)) return null;
+  const registre = sens.registre ?? registreStable(sens.locuteur);
+  const cle = sens.locuteur + ':' + sens.intention + ':' + variante + ':' + registre;
+  const choisir = <T>(options: readonly T[], etape: string): T => optionStable(options, cle + ':' + etape);
+  const fait = segmentDiscursif(sens.fait);
+  const motif = segmentDiscursif(sens.motif);
+  const sujet = segmentDiscursif(sens.sujet);
+
+  let noyau: string;
+  const savoirs = ['G3-tour-de-parole', 'G4-voix-stable', 'G6-variation-sans-faits-nouveaux'];
+  switch (sens.intention) {
+    case 'accueillir':
+      noyau = choisir(['Je t’écoute', 'Dis-moi ce que tu cherches', 'Tu peux parler'], 'accueil');
+      break;
+    case 'ecouter':
+      noyau = choisir(['Je t’écoute', 'Tu peux préciser ta demande', 'Je suis là, parle'], 'ecoute');
+      break;
+    case 'eluder':
+      noyau = choisir(['Je préfère ne pas parler', 'Je ne peux rien te dire', 'Je ne souhaite pas discuter'], 'elusion')
+        + (sujet ? ' ' + sujetAvecDe(sujet) : ' de cela');
+      break;
+    case 'refuser':
+      noyau = choisir(['Je refuse', 'Je ne peux pas accepter', 'Ce n’est pas possible'], 'refus');
+      break;
+    case 'ceder':
+      noyau = choisir(['D’accord, je cède', 'Je ne m’opposerai pas', 'Soit, je consens'], 'accord');
+      break;
+    case 'resister':
+      noyau = choisir(['Je ne céderai pas', 'Je maintiens ma position', 'Ce n’est pas une menace qui me fera changer d’avis'], 'resistance');
+      break;
+    case 'rendreInsulte':
+      noyau = choisir(['Ne me parle pas ainsi', 'Garde ces mots pour toi', 'Je ne te permets pas de m’insulter'], 'retour');
+      break;
+    case 'refuserExcuses':
+      noyau = choisir(['Je n’accepte pas tes excuses', 'Tes excuses ne suffisent pas', 'Je ne suis pas prêt à pardonner'], 'excuses');
+      break;
+    case 'pardonner':
+      noyau = choisir(['J’accepte tes excuses', 'Nous pouvons en rester là', 'Je te pardonne'], 'pardon');
+      break;
+    case 'informer':
+      if (!fait) return null;
+      noyau = fait;
+      savoirs.push('G2-fait-attribue');
+      break;
+    case 'demander':
+      if (!sujet) return null;
+      noyau = choisir(['Parle-moi', 'Que sais-tu', 'Peux-tu me renseigner'], 'question') + ' ' + sujetAvecDe(sujet);
+      break;
+    case 'contreOffre': {
+      const p = sens.proposition;
+      if (!p || !Number.isSafeInteger(p.montant) || p.montant < 0 || !p.monnaie.trim()) return null;
+      const montant = String(p.montant) + ' ' + p.monnaie.trim();
+      noyau = choisir(['Je propose', 'Mon offre est de', 'Je peux aller jusqu’à'], 'commerce') + ' ' + montant;
+      savoirs.push('G2-montant-invariant');
+      break;
+    }
+    default:
+      return null;
+  }
+
+  // Les marqueurs sont des constituants discursifs, pas des répliques.
+  // La version sobre n'injecte pas de marqueur sans nécessité.
+  const amorces: Record<RegistreParole, readonly string[]> = {
+    sobre: ['', ''],
+    chaleureux: ['', 'Écoute, ', 'Eh bien, '],
+    reserve: ['', 'À vrai dire, ', 'Pour être clair, '],
+    tranchant: ['', 'Non. ', 'Écoute-moi : '],
+  };
+  // Ne jamais faire précéder une acceptation ou un pardon de « Non ».
+  const amorceAutorisee = registre === 'tranchant'
+    && (sens.intention === 'ceder' || sens.intention === 'pardonner' || sens.intention === 'accueillir' || sens.intention === 'ecouter')
+    ? ['', ''] : amorces[registre];
+  const amorce = choisir(amorceAutorisee, 'amorce');
+  const conclusion = motif && ['refuser', 'resister', 'eluder'].includes(sens.intention) ? '. ' + ponctuer(motif) : '';
+  const texte = ponctuer(amorce + noyau) + conclusion;
+  return { texte, acquis: savoirs, version: ACQUIS_EXPRESSION_V1 };
+}
