@@ -64,6 +64,111 @@ export function endConversation(label: string): Action {
 /** Version stable des connaissances linguistiques installées avec le moteur. */
 export const ACQUIS_EXPRESSION_V1 = 'prax-expression-fr-v1';
 
+
+/**
+ * Compétence grammaticale native G1-G2 : réalise une proposition nouvelle à
+ * partir de faits et de rôles fournis par le cœur. Ce n'est ni une banque de
+ * répliques, ni un moteur d'actions ou une grammaire complète.
+ */
+export interface PropositionPrax {
+  /** Un nom ou groupe sujet déjà établi par Prax, sinon pronom grammatical. */
+  sujet?: string;
+  personne: PersonneFr;
+  verbe: string;
+  temps?: 'present' | 'imparfait' | 'passeCompose';
+  /** Complément validé en amont, laissé lexicalement intact. */
+  complement?: string;
+  /** Lieu établi, jamais inventé par le réalisateur. */
+  lieu?: string;
+  /** Avoir ou être si le passé composé est ambigu. */
+  auxiliaire?: 'avoir' | 'être';
+  /** Genre attesté quand le participe avec être exige un accord. */
+  genre?: 'masculin' | 'feminin';
+  mode?: 'assertion' | 'question' | 'negation' | 'hypothese' | 'rapporte';
+  /** Requis quand le mode est « rapporte ». */
+  source?: string;
+}
+export interface PropositionRealiseePrax {
+  texte: string;
+  /** Information grammaticale seulement : les faits ne sont pas modifiés. */
+  acquis: readonly string[];
+}
+
+function capitaleInitialePrax(texte: string): string {
+  return texte.charAt(0).toLocaleUpperCase('fr') + texte.slice(1);
+}
+
+function premiereLettreMinusculePrax(texte: string): string {
+  return texte.charAt(0).toLocaleLowerCase('fr') + texte.slice(1);
+}
+
+/**
+ * Pas de mots ajoutés pour décrire l'état du monde : les seuls compléments
+ * viennent de l'événement validé. Un verbe inconnu retourne null.
+ * Chaque négation, question ou hypothèse est demandée explicitement, jamais
+ * déduite de la morphologie ou du personnage.
+ */
+export function composerPropositionPrax(p: PropositionPrax, variante = 0): PropositionRealiseePrax | null {
+  if (!Number.isSafeInteger(variante) || !p.verbe.trim()) return null;
+  const sujet = (p.sujet ?? p.personne).trim();
+  const complement = p.complement?.trim() ?? '';
+  const lieu = p.lieu?.trim() ?? '';
+  if (!sujet) return null;
+  const mode = p.mode ?? 'assertion';
+  if (mode === 'rapporte' && !p.source?.trim()) return null;
+  const temps = p.temps ?? 'present';
+  let groupeVerbal: string | null;
+  if (temps === 'present') groupeVerbal = conjuguerPresentPrax(p.verbe, p.personne);
+  else if (temps === 'imparfait') groupeVerbal = conjuguerImparfaitPrax(p.verbe, p.personne);
+  else groupeVerbal = conjuguerPasseComposePrax(p.verbe, p.personne, {
+    auxiliaire: p.auxiliaire, genre: p.genre,
+  });
+  if (!groupeVerbal) return null;
+
+  // Seuls les rôles sémantiques et le mode donnés décident ce qui est affirmé.
+  const negative = mode === 'negation';
+  const elider = /^[aeiouyhàâäéèêëîïôöùûü]/iu.test(groupeVerbal);
+  const verbeAvecNegation = negative
+    ? (elider ? 'n’' : 'ne ') + groupeVerbal + ' pas'
+    : groupeVerbal;
+  // « Je ai » n'existe pas : l'élision ne modifie ni la personne ni les faits.
+  const pronomJe = p.sujet === undefined && p.personne === 'je';
+  const sujetEcrit = pronomJe && /^[aeiouyhàâäéèêëîïôöùûü]/iu.test(verbeAvecNegation)
+    ? 'j’' : sujet;
+  const jointure = sujetEcrit === 'j’' ? '' : ' ';
+  const clause = sujetEcrit + jointure + verbeAvecNegation
+    + (complement ? ' ' + complement : '');
+  const circonstance = lieu ? ' ' + lieu : '';
+  const reordonner = Boolean(lieu && variante % 2 === 1);
+  const complete = reordonner ? lieu + ', ' + clause : clause + circonstance;
+  let texte: string;
+  switch (mode) {
+    case 'question':
+      texte = 'Est-ce que ' + complete + ' ?';
+      break;
+    case 'hypothese':
+      texte = 'Hypothèse : ' + complete + '.';
+      break;
+    case 'rapporte':
+      texte = 'Selon ' + p.source!.trim() + ', ' + complete + '.';
+      break;
+    default:
+      texte = complete + '.';
+  }
+  texte = capitaleInitialePrax(texte).replace(/\s+([.!?,;])/gu, '$1');
+  // La ponctuation finale de l'hypothèse/citation ne transforme pas le fait.
+  return {
+    texte,
+    acquis: [
+      'G1-accord-personne-temps', 'G1-elision',
+      ...(mode === 'question' ? ['G2-question'] : []),
+      ...(mode === 'negation' ? ['G2-negation'] : []),
+      ...(mode === 'hypothese' || mode === 'rapporte' ? ['G2-provenance'] : []),
+      ...(reordonner ? ['G6-ordre-circonstanciel'] : []),
+    ],
+  };
+}
+
 export type IntentionDeParole =
   | 'accueillir' | 'ecouter' | 'eluder' | 'refuser' | 'ceder'
   | 'resister' | 'rendreInsulte' | 'refuserExcuses' | 'pardonner'
