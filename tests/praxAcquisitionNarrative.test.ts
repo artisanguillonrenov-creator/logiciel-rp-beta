@@ -11,6 +11,7 @@ import {
   ACQUIS_EXPRESSION_V1,
   exprimerParole,
   conjuguerPresentPrax,
+  accorderAdjectifPrax,
   groupeNominalPrax,
   registreStable,
   statutEnonce,
@@ -233,4 +234,30 @@ test('les intentions inconnues ou informations manquantes ne sont jamais comblé
   assert.equal(statutEnonce("J'aimerais frapper le garde"), 'eventualite');
   assert.equal(statutEnonce("Je n'attaque pas le garde"), 'negation');
   assert.equal(statutEnonce('Je lui dis que je le frappe'), 'rapporte');
+});
+
+
+test('accords adjectivaux appris : féminin, pluriels et exceptions', () => {
+  assert.equal(accorderAdjectifPrax('grand', 'feminin', 'singulier'), 'grande');
+  assert.equal(accorderAdjectifPrax('sombre', 'feminin', 'pluriel'), 'sombres');
+  assert.equal(accorderAdjectifPrax('royal', 'masculin', 'pluriel'), 'royaux');
+  assert.equal(accorderAdjectifPrax('fier', 'feminin', 'pluriel'), 'fières');
+  assert.equal(accorderAdjectifPrax('bas', 'feminin', 'singulier'), 'basse');
+  assert.equal(accorderAdjectifPrax('blanc', 'feminin', 'singulier'), 'blanche');
+  assert.equal(accorderAdjectifPrax('futuriste', 'feminin', 'singulier'), 'futuriste');
+  assert.equal(accorderAdjectifPrax('heureux', 'feminin', 'singulier'), null, 'exception non enseignée : abstention');
+  assert.equal(groupeNominalPrax('homme', 'masculin', 'singulier'), 'l’homme');
+  assert.equal(groupeNominalPrax('haricot', 'masculin', 'singulier', 'defini', true), 'le haricot');
+});
+
+test('l’historique de la partie évite une répétition sans seconde mémoire', () => {
+  const sens = { locuteur: 'margaux', intention: 'refuser' as const, registre: 'sobre' as const };
+  const base = exprimerParole(sens, 1);
+  assert.ok(base);
+  const autre = exprimerParole(sens, 1, ['Margaux : « ' + base.texte + ' »']);
+  assert.ok(autre);
+  assert.notEqual(base.texte, autre.texte);
+  assert.ok(autre.acquis.includes('G6-anti-repetition-contextuelle'));
+  const stable = exprimerParole(sens, 1, ['Margaux : « ' + base.texte + ' »']);
+  assert.deepEqual(stable, autre);
 });
