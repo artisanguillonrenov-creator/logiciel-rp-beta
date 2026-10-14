@@ -242,7 +242,7 @@ export function groupeNominalPrax(
  * jamais l'action, les prix, le statut épistémique ou l'état du monde.
  * Retourne null lorsque les faits nécessaires manquent.
  */
-export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax | null {
+function exprimerParoleBrute(sens: SensDeParole, variante = 0): ExpressionPrax | null {
   if (!sens.locuteur.trim() || !Number.isSafeInteger(variante)) return null;
   const registre = sens.registre ?? registreStable(sens.locuteur);
   const cle = sens.locuteur + ':' + sens.intention + ':' + variante + ':' + registre;
@@ -370,4 +370,29 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
   const conclusion = motif && ['refuser', 'resister', 'eluder'].includes(sens.intention) ? '. ' + ponctuer(motif) : '';
   const texte = ponctuer(amorce + suite) + conclusion;
   return { texte, acquis: savoirs, version: ACQUIS_EXPRESSION_V1 };
+}
+
+
+/**
+ * Évite les répliques strictement répétées dans les derniers messages déjà
+ * persistés par l'application. Aucune seconde mémoire et aucun état mutable :
+ * une même scène et un même historique rendent le même texte.
+ */
+export function exprimerParole(
+  sens: SensDeParole,
+  variante = 0,
+  derniersTextes: readonly string[] = [],
+): ExpressionPrax | null {
+  const premier = exprimerParoleBrute(sens, variante);
+  if (!premier || derniersTextes.length === 0) return premier;
+  const dejaPrononce = (candidat: ExpressionPrax): boolean =>
+    derniersTextes.some((ligne) => ligne.includes(candidat.texte));
+  if (!dejaPrononce(premier)) return premier;
+  for (let ecart = 1; ecart <= 12; ecart++) {
+    const autre = exprimerParoleBrute(sens, variante + ecart);
+    if (autre && !dejaPrononce(autre)) {
+      return { ...autre, acquis: [...autre.acquis, 'G6-anti-repetition-contextuelle'] };
+    }
+  }
+  return premier;
 }
