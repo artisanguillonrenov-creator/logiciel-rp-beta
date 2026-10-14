@@ -98,6 +98,16 @@ export function avecA(nom: string): string {
   return /^(comptoir|palais|march|quartier|port)/i.test(nom) ? `au ${nom}` : `à ${nom}`;
 }
 
+// Les attitudes verbales sont des actions de langage. Sans action Prax
+// distincte, une réponse ne prouve ni sourire, ni recul, ni posture du corps.
+const ACTIONS_DE_PAROLE_SEULES: ReadonlySet<EvenementTour['genre']> = new Set([
+  'accueillir', 'rendreSalut', 'repondreAimable', 'rabrouer', 'repondre',
+  'eluder', 'ignorerSujet', 'remercier', 'ceder', 'tenirTete', 'insulter',
+  'rendreInsulte', 'menacer', 'implorer', 'accuser', 'pardonner', 'rassurer',
+  'refuserExcuses', 'presser', 'perdrePatience', 'proposer', 'refuserDemande',
+  'renvoyer', 'consentirRabais', 'maintenirPrix', 'conclure',
+]);
+
 const ACCUEIL_PAR_ROLE: Record<string, string[]> = {
   receptionniste: [
     'Bienvenue à la Guilde des Aventuriers. Tu viens pour un contrat, ou pour t’inscrire ?',
@@ -408,7 +418,14 @@ export function rendreTour(d: DonneesRendu): string {
         return;
       }
     }
-    // La narration et la réplique sur des lignes séparées (format de l'interface).
+    if (ACTIONS_DE_PAROLE_SEULES.has(e.genre)) {
+      const repliques = lignes.filter((l) => l.includes(' : « '));
+      if (repliques.length) {
+        paragraphes.push(repliques.join('\n'));
+        return;
+      }
+    }
+    // Les actions physiques effectives gardent leur narration.
     paragraphes.push(lignes.join('\n'));
   });
   if (!d.evenements.some((e) => e.acteur !== ID_JOUEUR) && d.presentsApres.length > 0) {
