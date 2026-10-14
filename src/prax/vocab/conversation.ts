@@ -131,9 +131,17 @@ export function composerPropositionPrax(p: PropositionPrax, variante = 0): Propo
   // conserver « ne » que fabriquer « n’hache ».
   const elider = /^[aeiouyàâäéèêëîïôöùûü]/iu.test(groupeVerbal)
     || /^habit(?:e|es|ons|ez|ent)/iu.test(groupeVerbal);
-  const verbeAvecNegation = negative
-    ? (elider ? 'n’' : 'ne ') + groupeVerbal + ' pas'
-    : groupeVerbal;
+  // Au passé composé, la négation encadre l'auxiliaire :
+  // « n'a pas volé » et non « n'a volé pas ».
+  const verbalNegatif = temps === 'passeCompose' && groupeVerbal.includes(' ')
+    ? (() => {
+        const espace = groupeVerbal.indexOf(' ');
+        const auxiliaire = groupeVerbal.slice(0, espace);
+        const participe = groupeVerbal.slice(espace + 1);
+        return (elider ? 'n’' : 'ne ') + auxiliaire + ' pas ' + participe;
+      })()
+    : (elider ? 'n’' : 'ne ') + groupeVerbal + ' pas';
+  const verbeAvecNegation = negative ? verbalNegatif : groupeVerbal;
   // « Je ai » n'existe pas : l'élision ne modifie ni la personne ni les faits.
   const pronomJe = p.sujet === undefined && p.personne === 'je';
   const sujetEcrit = pronomJe && (/^[aeiouyàâäéèêëîïôöùûü]/iu.test(verbeAvecNegation)
