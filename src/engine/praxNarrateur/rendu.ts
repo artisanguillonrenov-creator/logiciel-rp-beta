@@ -8,7 +8,7 @@
  * régénération change seulement la formulation).
  */
 import { exemplesBibliotheque, renduActeJoueur, renduActePnj } from './bibliotheque';
-import { exprimerParole, type IntentionDeParole } from '../../prax/vocab/conversation';
+import { exprimerParole, statutEnonce, type IntentionDeParole } from '../../prax/vocab/conversation';
 import { sujetPrax } from './sujets';
 import type { CompteRenduTour, EvenementTour, PnjDescription } from './types';
 import { ID_JOUEUR } from './types';
@@ -236,9 +236,25 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'saluer':
       return [choisir([`Tu salues ${c}.`, `Tu adresses un salut ${aNom(c)}.`], cle)];
     case 'converser':
-      return [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)];
-    case 'relancer':
-      return [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
+    case 'relancer': {
+      // Prax a enregistré un acte de PAROLE, jamais l'exécution d'une action
+      // citée. Le contenu du joueur est conservé au lieu d'être résumé ou
+      // transformé en une action imaginaire.
+      if (e.precision) {
+        const texte = e.precision.trim();
+        const modalite = statutEnonce(texte);
+        const intro = modalite === 'hypothese' ? 'Tu évoques une hypothèse'
+          : modalite === 'rapporte' ? 'Tu rapportes des propos'
+          : modalite === 'negation' ? 'Tu précises ton refus'
+          : modalite === 'citation' ? 'Tu cites des paroles'
+          : 'Tu prends la parole';
+        const dit = modalite === 'citation' && /^[«“"]/.test(texte) ? texte : `« ${texte} »`;
+        return [`${intro} ${aNom(c)} : ${dit}`];
+      }
+      return e.genre === 'converser'
+        ? [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)]
+        : [choisir([`Tu insistes auprès ${deNom(c)}.`, 'Tu reprends la parole.'], cle)];
+    }
     case 'demander':
       return [choisir([`Tu exposes ta demande ${aNom(c)}.`, `Tu fais part de ce que tu cherches ${aNom(c)}.`], cle)];
     case 'marchander':
