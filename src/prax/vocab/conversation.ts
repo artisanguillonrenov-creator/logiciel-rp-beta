@@ -142,6 +142,68 @@ function ponctuer(s: string): string {
 }
 
 /**
+ * Morphologie française native : petit sous-ensemble fiable, sans dépendance
+ * externe. Les formes inconnues sont refusées plutôt que fabriquées au hasard.
+ */
+export type PersonneFr = 'je' | 'tu' | 'il' | 'nous' | 'vous' | 'ils';
+const PERSONNES_FR: readonly PersonneFr[] = ['je', 'tu', 'il', 'nous', 'vous', 'ils'];
+const IRREGULIERS: Readonly<Record<string, readonly string[]>> = {
+  être: ['suis', 'es', 'est', 'sommes', 'êtes', 'sont'],
+  avoir: ['ai', 'as', 'a', 'avons', 'avez', 'ont'],
+  aller: ['vais', 'vas', 'va', 'allons', 'allez', 'vont'],
+  faire: ['fais', 'fais', 'fait', 'faisons', 'faites', 'font'],
+  pouvoir: ['peux', 'peux', 'peut', 'pouvons', 'pouvez', 'peuvent'],
+  vouloir: ['veux', 'veux', 'veut', 'voulons', 'voulez', 'veulent'],
+  devoir: ['dois', 'dois', 'doit', 'devons', 'devez', 'doivent'],
+  venir: ['viens', 'viens', 'vient', 'venons', 'venez', 'viennent'],
+};
+const SECOND_GROUPE = new Set(['finir', 'choisir', 'grandir', 'réussir', 'rougir', 'vieillir']);
+
+/** Conjugaison présente : un inconnu retourne null, pas une forme approximative. */
+export function conjuguerPresentPrax(infinitif: string, personne: PersonneFr): string | null {
+  const i = PERSONNES_FR.indexOf(personne);
+  if (i < 0) return null;
+  const verbe = infinitif.trim().toLocaleLowerCase('fr');
+  const special = IRREGULIERS[verbe];
+  if (special) return special[i];
+  if (SECOND_GROUPE.has(verbe)) {
+    const base = verbe.slice(0, -2);
+    return base + ['is', 'is', 'it', 'issons', 'issez', 'issent'][i];
+  }
+  if (verbe.endsWith('er') && !/(ger|cer|yer|eler|eter|éger|écer)$/u.test(verbe)) {
+    const base = verbe.slice(0, -2);
+    return base + ['e', 'es', 'e', 'ons', 'ez', 'ent'][i];
+  }
+  return null;
+}
+
+/** Groupe nominal avec genre/nombre attestés : aucun changement du fait représenté. */
+export function groupeNominalPrax(
+  lemme: string,
+  genre: 'masculin' | 'feminin',
+  nombre: 'singulier' | 'pluriel',
+  article: 'defini' | 'indefini' = 'defini',
+  hAspire = false,
+): string | null {
+  const mot = lemme.trim();
+  if (!/^[\p{L}]+(?:[-’'][\p{L}]+)*$/u.test(mot)) return null;
+  let forme = mot;
+  if (nombre === 'pluriel') {
+    const irreguliers: Record<string, string> = { cheval: 'chevaux', travail: 'travaux', oeil: 'yeux', œil: 'yeux', bijou: 'bijoux' };
+    const cle = mot.toLocaleLowerCase('fr');
+    if (irreguliers[cle]) forme = irreguliers[cle];
+    else if (/(eau|au|eu)$/iu.test(mot)) forme += 'x';
+    else if (/[sxz]$/iu.test(mot)) forme = mot;
+    else if (/al$/iu.test(mot) && !/(bal|carnaval|festival|récital)$/iu.test(mot)) forme = mot.slice(0, -2) + 'aux';
+    else forme += 's';
+  }
+  if (nombre === 'pluriel') return (article === 'defini' ? 'les ' : 'des ') + forme;
+  if (article === 'indefini') return (genre === 'masculin' ? 'un ' : 'une ') + forme;
+  if (!hAspire && /^[aeiouyéèêàâîïôûùœ]/iu.test(mot)) return 'l’' + forme;
+  return (genre === 'masculin' ? 'le ' : 'la ') + forme;
+}
+
+/**
  * Acquisition symbolique native : une intention Prax + ses arguments se
  * réalisent par compositions de constituants. Les variantes ne changent
  * jamais l'action, les prix, le statut épistémique ou l'état du monde.
@@ -200,7 +262,7 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
       const p = sens.proposition;
       if (!p || !Number.isSafeInteger(p.montant) || p.montant < 0 || !p.monnaie.trim()) return null;
       const montant = String(p.montant) + ' ' + p.monnaie.trim();
-      noyau = choisir(['Je propose', 'Mon offre est de', 'Je peux aller jusqu’à'], 'commerce') + ' ' + montant;
+      noyau = choisir(['Je ' + conjuguerPresentPrax('proposer', 'je'), 'Mon offre est de', 'Je peux aller jusqu’à'], 'commerce') + ' ' + montant;
       savoirs.push('G2-montant-invariant');
       break;
     }
