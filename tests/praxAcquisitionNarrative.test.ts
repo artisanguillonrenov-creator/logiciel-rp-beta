@@ -337,7 +337,7 @@ test('Prax compose des propositions inédites sans scripts de dialogue préenreg
 test('la proposition préserve question, hypothèse et provenance de la connaissance', () => {
   const scenario = { sujet: 'Alix', personne: 'il' as const, verbe: 'savoir', complement: 'la réponse' };
   const interrogation = composerPropositionPrax({ ...scenario, mode: 'question' });
-  assert.equal(interrogation?.texte, 'Est-ce que Alix sait la réponse?');
+  assert.equal(interrogation?.texte, 'Est-ce qu’Alix sait la réponse?');
   const hypothese = composerPropositionPrax({ ...scenario, mode: 'hypothese' });
   assert.match(hypothese?.texte ?? '', /Hypothèse : Alix sait la réponse/);
   assert.equal(composerPropositionPrax({ ...scenario, mode: 'rapporte' }), null);
@@ -352,7 +352,7 @@ test('réordonner le cadre ne déplace jamais un acteur ou ne change jamais le m
   const a = composerPropositionPrax(evenement, 0);
   const b = composerPropositionPrax(evenement, 1);
   assert.equal(a?.texte, 'La marchande proposait 47 pièces de cuivre sur la place.');
-  assert.equal(b?.texte, 'Sur la place, La marchande proposait 47 pièces de cuivre.');
+  assert.equal(b?.texte, 'Sur la place, la marchande proposait 47 pièces de cuivre.');
   assert.match(a?.texte ?? '', /47 pièces de cuivre/);
   assert.match(b?.texte ?? '', /47 pièces de cuivre/);
 });
