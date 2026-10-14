@@ -14,6 +14,7 @@ import {
   conjuguerImparfaitPrax,
   conjuguerPasseComposePrax,
   accorderAdjectifPrax,
+  composerPropositionPrax,
   groupeNominalPrax,
   registreStable,
   statutEnonce,
@@ -312,4 +313,46 @@ test('une parole citée par un personnage reste une parole, pas un vol ou une at
   for (const enonce of cas) {
     assert.notEqual(statutEnonce(enonce), 'direct', enonce);
   }
+});
+
+
+test('Prax compose des propositions inédites sans scripts de dialogue préenregistrés', () => {
+  const phrase = composerPropositionPrax({
+    sujet: 'Borin',
+    personne: 'il',
+    verbe: 'montrer',
+    complement: 'une ancienne carte',
+    temps: 'present',
+  });
+  assert.equal(phrase?.texte, 'Borin montre une ancienne carte.');
+  assert.deepEqual(composerPropositionPrax({
+    sujet: 'Borin', personne: 'il', verbe: 'montrer', complement: 'une ancienne carte',
+  }), phrase, 'même fait, même formulation stable');
+  assert.equal(composerPropositionPrax({ personne: 'je', verbe: 'avoir', complement: 'une carte' })?.texte, 'J’ai une carte.');
+  assert.equal(composerPropositionPrax({ sujet: 'Margaux', personne: 'il', verbe: 'voir', complement: 'la grille', mode: 'negation' })?.texte, 'Margaux ne voit pas la grille.');
+  assert.equal(composerPropositionPrax({ sujet: 'Borin', personne: 'il', verbe: 'voler', complement: 'une bague', temps: 'passeCompose' })?.texte, 'Borin a volé une bague.');
+  assert.equal(composerPropositionPrax({ sujet: 'Borin', personne: 'il', verbe: 'venir', temps: 'passeCompose' }), null, 'pas de genre inventé');
+});
+
+test('la proposition préserve question, hypothèse et provenance de la connaissance', () => {
+  const scenario = { sujet: 'Alix', personne: 'il' as const, verbe: 'savoir', complement: 'la réponse' };
+  const interrogation = composerPropositionPrax({ ...scenario, mode: 'question' });
+  assert.equal(interrogation?.texte, 'Est-ce que Alix sait la réponse?');
+  const hypothese = composerPropositionPrax({ ...scenario, mode: 'hypothese' });
+  assert.match(hypothese?.texte ?? '', /Hypothèse : Alix sait la réponse/);
+  assert.equal(composerPropositionPrax({ ...scenario, mode: 'rapporte' }), null);
+  assert.match(composerPropositionPrax({ ...scenario, mode: 'rapporte', source: 'le veilleur' })?.texte ?? '', /Selon le veilleur, Alix sait la réponse/);
+});
+
+test('réordonner le cadre ne déplace jamais un acteur ou ne change jamais le montant', () => {
+  const evenement = {
+    sujet: 'La marchande', personne: 'il' as const, verbe: 'proposer', complement: '47 pièces de cuivre',
+    lieu: 'sur la place', temps: 'imparfait' as const,
+  };
+  const a = composerPropositionPrax(evenement, 0);
+  const b = composerPropositionPrax(evenement, 1);
+  assert.equal(a?.texte, 'La marchande proposait 47 pièces de cuivre sur la place.');
+  assert.equal(b?.texte, 'Sur la place, La marchande proposait 47 pièces de cuivre.');
+  assert.match(a?.texte ?? '', /47 pièces de cuivre/);
+  assert.match(b?.texte ?? '', /47 pièces de cuivre/);
 });
