@@ -282,6 +282,76 @@ export function accorderAdjectifPrax(
   return base + 's';
 }
 
+/** Imparfait : scène de fond ou habitude, seulement sur verbes pris en charge. */
+export function conjuguerImparfaitPrax(infinitif: string, personne: PersonneFr): string | null {
+  const i = PERSONNES_FR.indexOf(personne);
+  if (i < 0) return null;
+  const verbe = infinitif.trim().toLocaleLowerCase('fr');
+  let radical: string;
+  if (verbe === 'être') radical = 'ét';
+  else {
+    const nous = conjuguerPresentPrax(verbe, 'nous');
+    if (!nous?.endsWith('ons')) return null;
+    radical = nous.slice(0, -3);
+  }
+  // Devant -ions/-iez, la cédille ou le e orthographique ne subsistent pas.
+  if (i === 3 || i === 4) {
+    if (verbe.endsWith('cer') && radical.endsWith('ç')) radical = radical.slice(0, -1) + 'c';
+    if (verbe.endsWith('ger') && radical.endsWith('ge')) radical = radical.slice(0, -1);
+  }
+  return radical + ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'][i];
+}
+
+const PARTICIPES_PASSE: Readonly<Record<string, string>> = {
+  être: 'été', avoir: 'eu', aller: 'allé', faire: 'fait', pouvoir: 'pu',
+  vouloir: 'voulu', devoir: 'dû', venir: 'venu', dire: 'dit',
+  savoir: 'su', voir: 'vu', croire: 'cru', prendre: 'pris',
+  comprendre: 'compris', mettre: 'mis', écrire: 'écrit',
+  lire: 'lu', boire: 'bu', partir: 'parti', sortir: 'sorti',
+  dormir: 'dormi', ouvrir: 'ouvert', offrir: 'offert', recevoir: 'reçu',
+};
+
+/**
+ * Passé composé : passé attesté dans une scène. Le choix d'auxiliaire peut
+ * être fourni par l'appelant ; on n'invente ni sujet ni sexe du personnage.
+ */
+export function conjuguerPasseComposePrax(
+  infinitif: string,
+  personne: PersonneFr,
+  options: {
+    auxiliaire?: 'avoir' | 'être';
+    genre?: 'masculin' | 'feminin';
+  } = {},
+): string | null {
+  const i = PERSONNES_FR.indexOf(personne);
+  if (i < 0) return null;
+  const verbe = infinitif.trim().toLocaleLowerCase('fr');
+  let participe = PARTICIPES_PASSE[verbe];
+  if (!participe && verbe.endsWith('er') && /^[\p{L}]+$/u.test(verbe)) participe = verbe.slice(0, -2) + 'é';
+  if (!participe && SECOND_GROUPE.has(verbe)) participe = verbe.slice(0, -2) + 'i';
+  if (!participe) return null;
+  // Les usages transitifs de sortir, monter etc. exigent un choix explicite.
+  const ambigus = new Set(['sortir', 'monter', 'descendre', 'rentrer', 'passer', 'retourner']);
+  const auxiliaire = options.auxiliaire
+    ?? (['venir', 'partir', 'aller', 'arriver', 'entrer', 'tomber', 'rester'].includes(verbe)
+      ? 'être' : ambigus.has(verbe) ? null : 'avoir');
+  if (!auxiliaire) return null;
+  const participeAccorde = auxiliaire === 'être'
+    ? (participe + (options.genre === 'feminin' ? 'e' : options.genre === 'masculin' ? '' : ''))
+    : participe;
+  // Si être et le genre n'est pas fourni, la flexion reste ambiguë :
+  // pour les formes non marquées (« est venu »), on ne doit pas deviner.
+  if (auxiliaire === 'être' && !options.genre) return null;
+  const personnePlurielle = i === 3 || i === 4 || i === 5;
+  const accord = auxiliaire === 'être' && personnePlurielle ? participeAccorde + 's' : participeAccorde;
+  const aide = conjuguerPresentPrax(auxiliaire, personne);
+  if (!aide) return null;
+  const sujet = ['je', 'tu', 'il', 'nous', 'vous', 'ils'][i];
+  // Cette fonction réalise un groupe verbal, sans pronom sujet.
+  void sujet;
+  return aide + ' ' + accord;
+}
+
 /**
  * Acquisition symbolique native : une intention Prax + ses arguments se
  * réalisent par compositions de constituants. Les variantes ne changent
