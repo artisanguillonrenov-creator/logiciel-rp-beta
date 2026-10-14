@@ -394,3 +394,27 @@ test('l’ouverture emprunte son ambiance aux faits de la partie sans ajouter de
   const neutre = rendreOuverture('la taverne', 'Paris', [], '');
   assert.doesNotMatch(neutre, /fumée|pluie|orage/i);
 });
+
+
+test('la négation compose correctement les temps composés sans déplacer les faits', () => {
+  const agir = composerPropositionPrax({
+    sujet: 'Borin', personne: 'il', verbe: 'voler', temps: 'passeCompose',
+    complement: 'la bourse', mode: 'negation',
+  });
+  assert.equal(agir?.texte, 'Borin n’a pas volé la bourse.');
+  const partir = composerPropositionPrax({
+    sujet: 'Alix', personne: 'il', genre: 'feminin', verbe: 'venir',
+    temps: 'passeCompose', mode: 'negation',
+  });
+  assert.equal(partir?.texte, 'Alix n’est pas venue.');
+  const auxiliaireNonVocalique = composerPropositionPrax({
+    sujet: 'Alix', personne: 'il', genre: 'feminin', verbe: 'venir',
+    temps: 'passeCompose', mode: 'negation', auxiliaire: 'être',
+  });
+  assert.equal(auxiliaireNonVocalique?.texte, 'Alix n’est pas venue.');
+  const sujetJe = composerPropositionPrax({
+    personne: 'je', verbe: 'avoir', temps: 'passeCompose', mode: 'negation',
+    complement: 'les clés',
+  });
+  assert.equal(sujetJe?.texte, 'Je n’ai pas eu les clés.');
+});
