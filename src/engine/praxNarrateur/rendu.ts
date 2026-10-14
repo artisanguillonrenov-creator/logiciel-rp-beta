@@ -252,15 +252,17 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
       // transformé en une action imaginaire.
       if (e.precision) {
         const texte = e.precision.trim();
-        const modalite = statutEnonce(texte);
-        const intro = modalite === 'hypothese' ? 'Tu évoques une hypothèse'
-          : modalite === 'rapporte' ? 'Tu rapportes des propos'
-           : modalite === 'negation' ? 'Tu précises'
-          : modalite === 'citation' ? 'Tu prononces ces mots'
-          : modalite === 'rectification' ? 'Tu rectifies tes propos'
-          : 'Tu prends la parole';
+        // « Je te dis que tu mens » s'adresse à l'interlocuteur : ce sont tes mots, pas des propos rapportés.
+        const adresseDirecte = /^je (te |vous )?(dis|affirme|declare|déclare|repete|répète) que\b/i.test(texte) && /\b(tu|te|t’|t'|toi|vous)\b/i.test(texte.replace(/^je (te |vous )?/i, ''));
+        const modalite = adresseDirecte ? 'direct' : statutEnonce(texte);
+        const intro = modalite === 'hypothese' ? `Tu évoques une hypothèse devant ${c}`
+          : modalite === 'rapporte' ? `Tu rapportes des propos ${aNom(c)}`
+          : modalite === 'negation' ? `Tu précises ${aNom(c)}`
+          : modalite === 'citation' ? `Tu prononces ces mots devant ${c}`
+          : modalite === 'rectification' ? `Tu rectifies tes propos auprès ${deNom(c)}`
+          : `Tu dis ${aNom(c)}`;
         const dit = modalite === 'citation' && /^[«“"]/.test(texte) ? texte : `« ${texte} »`;
-        return [`${intro} ${aNom(c)} : ${dit}`];
+        return [`${intro} : ${dit}`];
       }
       return e.genre === 'converser'
         ? [choisir([`Tu t’adresses ${aNom(c)}.`, `Tu engages la conversation avec ${c}.`], cle)]
@@ -281,7 +283,9 @@ function renduJoueur(e: EvenementTour, cle: string, presentsApres: PnjDescriptio
     case 'complimenter':
       return [`Tu complimentes ${c}.`];
     case 'menacer':
-      return [choisir([`Tu menaces ${c}.`, `Tu adresses une menace à ${c}.`], cle)];
+      // Une menace conditionnelle garde les mots exacts du joueur.
+      if (e.precision?.trim()) return [`Tu menaces ${c} : « ${e.precision.trim()} »`];
+      return [choisir([`Tu menaces ${c}.`, `Tu adresses une menace ${aNom(c)}.`], cle)];
     case 'insulter':
     case 'rendreInsulte':
       return [`Tu insultes ${c}.`];
@@ -379,9 +383,9 @@ export function rendreTour(d: DonneesRendu): string {
       ignorerSujet: 'ignorerSujet',
       presser: 'presser',
       perdrePatience: 'perdrePatience',
-      renvoyer: 'renvoyer',
+      // renvoyer et proposer gardent les répliques du narrateur, qui disent vers qui
+      // se tourner et que la chose se paie : la formule générique perdrait cette information.
       refuserDemande: 'refuser',
-      proposer: 'proposer',
       maintenirPrix: 'maintenirPrix',
       consentirRabais: 'consentirRabais',
       conclure: 'conclure',

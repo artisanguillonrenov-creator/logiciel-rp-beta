@@ -355,3 +355,24 @@ test('une session de 12 tours reste rapide (planificateur à profondeur 2)', () 
   assert.ok(s.messages.every((m) => m.role !== 'assistant' || m.content.trim().length > 0));
   assert.ok(!s.messages.some((m) => m.content.includes(ID_JOUEUR)), 'l’identifiant interne du joueur ne fuit jamais dans le texte');
 });
+
+test('demande polie, question adressée, menace conditionnelle : des actes adressés, jamais une attaque', () => {
+  const genreDe = (s: StoryState) => s.messages[s.messages.length - 1].praxCompteRendu!.evenements[0].genre;
+  let s = jouer(partieMarche(['Le marchand']), ['Je voudrais une lanterne']);
+  assert.equal(genreDe(s), 'demander');
+  s = jouer(s, ['J’aimerais une corde']);
+  assert.equal(genreDe(s), 'demander');
+  s = jouer(s, ['Je pourrais avoir une chope ?']);
+  assert.equal(genreDe(s), 'demander');
+  s = jouer(s, ['Si tu ne me rends pas ma bourse, je te frappe']);
+  assert.equal(genreDe(s), 'menacer');
+  assert.match(dernier(s), /Tu menaces le marchand : « Si tu ne me rends pas ma bourse, je te frappe »/);
+  s = jouer(s, ['Je pourrais te tuer']);
+  assert.equal(genreDe(s), 'menacer');
+  // Une hypothèse posée en question reste une parole.
+  s = jouer(s, ['Si je frappais le garde, que se passerait-il ?']);
+  assert.ok(['converser', 'relancer'].includes(genreDe(s)));
+  assert.match(dernier(s), /Tu évoques une hypothèse devant le marchand/);
+  s = jouer(s, ['Je dis que tu es un voleur']);
+  assert.match(dernier(s), /Tu dis au marchand : « Je dis que tu es un voleur »/);
+});

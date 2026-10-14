@@ -218,7 +218,7 @@ test('le rendu conserve les paroles hypothétiques du joueur plutôt que les ex�
     precision: 'Si je frappais le garde, que se passerait-il ?',
   };
   const rendu = rendreTour({ evenements: [base], presentsApres: [], tour: 1, variante: 0 });
-  assert.match(rendu, /Tu évoques une hypothèse à Margaux/);
+  assert.match(rendu, /Tu évoques une hypothèse devant Margaux/);
   assert.match(rendu, /Si je frappais le garde/);
   assert.doesNotMatch(rendu, /Tu frappes le garde/);
 });

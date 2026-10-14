@@ -55,11 +55,16 @@ const REGLES: Array<{ genre: GenreAction; motif: RegExp }> = [
   { genre: 's_excuser', motif: /\b(je (te|vous) (demande|presente) (pardon|mes excuses)|desole\w*|excuse[- ]moi\b(?! ?,? (ou|est-ce|sais))|mes excuses|pardonne[- ]moi)/ },
   { genre: 'aider', motif: /\b(je (peux|pourrais) (t|vous) aider|(t|vous) aider|coup de main|besoin d.aide|je (t|vous) aide)/ },
   { genre: 'marchander', motif: /\b(marchand(e|er|ons)\b|negoci\w*|trop cher|baiss\w* (le|ton|votre|ce) prix|rabais|ristourne|(faire|fais|faites) un (effort|prix)|moins cher)/ },
-  { genre: 'demander', motif: /\b(je (cherche|recherche|veux|voudrais|souhaite|souhaiterais|aimerais|desire)|est ce que (tu as|vous avez|tu aurais|vous auriez|tu vends|vous vendez)|(tu as|vous avez|t as|tu aurais|vous auriez) .{0,80}\?|il me faut|j ai besoin|achet\w*|achat|a vendre|combien (pour|coute|vaut|tu veux|vous voulez))/ },
+  { genre: 'demander', motif: /\b(je (cherche|recherche|veux|voudrais|souhaite|souhaiterais|aimerais|desire)|j aimerais|(je pourrais|je peux|puis je|pourrais je) (avoir|obtenir|prendre)|si (tu as|vous avez|tu aurais|vous auriez) (un|une|des|du|de la|de l)\b|est ce que (tu as|vous avez|tu aurais|vous auriez|tu vends|vous vendez)|(tu as|vous avez|t as|tu aurais|vous auriez) .{0,80}\?|il me faut|j ai besoin|achet\w*|achat|a vendre|combien (pour|coute|vaut|tu veux|vous voulez))/ },
   { genre: 'remercier', motif: /\b(merci|je (te|vous) remercie)\b/ },
   { genre: 'complimenter', motif: /\b(compliment\w*|felicit\w*|bravo|magnifique|ravissant\w*|charmant\w*|superbe|tres belle|tres beau|impressionnant\w*)/ },
   { genre: 'saluer', motif: /\b(bonjour|bonsoir|salut|salue\w*|je (te|vous) salue|enchante\w*|bien le bonjour)\b/ },
 ];
+
+/** Violence nommée (frapper, tuer, voler…) : dite au conditionnel, c'est une menace, pas un acte. */
+const VIOLENCE = /\b(frapp\w*|attaqu\w*|tu(e|er|erai|erais)|cogn\w*|poignard\w*|egorg\w*|tabass\w*|saign\w*|cass\w* la (gueule|figure)|tranch\w*|crev\w*)\b/;
+/** Le message s'adresse à l'interlocuteur (tu, te, toi, vous). */
+const DEUXIEME_PERSONNE = /\b(tu|te|t|toi|vous|ton|ta|tes|votre|vos)\b/;
 
 const ATTENTE = /^(continue[rz]?|suite|\.\.\.|…|j.attends|j.observe|j.ecoute|je reste|je patiente|je regarde autour)/;
 const QUESTION = /\?|\b(demand\w*|interrog\w*|questionn\w*|parl\w* (de|du|des)|que sais|sais[- ]tu|savez[- ]vous|connai\w*|raconte|explique|cherche|renseign\w*|ou (est|sont|trouver)|comment|pourquoi|quand|qui est)/;
@@ -154,8 +159,22 @@ export function comprendre(
   // Une citation, une hypothèse ou un témoignage est une parole, pas la
   // réalisation d'une action matérielle. La mention « je le frappe »
   // ne doit jamais provoquer un combat quand elle n'est que citée.
-  if (statutEnonce(message) !== 'direct') {
+  // Trois exceptions, qui restent des actes adressés au PNJ présent :
+  // - la demande polie (« je voudrais une chambre ») est une demande ;
+  // - « je te demande si tu as… » est une question ;
+  // - la violence promise à l'interlocuteur (« si tu ne rends pas ma bourse, je te frappe »,
+  //   « je pourrais te tuer ») est une menace, jamais une attaque.
+  const statut = statutEnonce(message);
+  const violence = VIOLENCE.test(texte);
+  const adresse = DEUXIEME_PERSONNE.test(texte);
+  const demandePolie = statut === 'eventualite' && !violence;
+  const questionAdressee = statut === 'rapporte' && /^je (te |vous )?demande (si|s il|de|que|combien|ou|quand|comment|pourquoi)\b/.test(texte) && adresse;
+  if (statut !== 'direct' && !demandePolie && !questionAdressee) {
     const cible = cibleDuMessage(texte, st, desc, opts.dernierInterlocuteur);
+    if ((statut === 'hypothese' || statut === 'eventualite') && violence && adresse && !message.includes('?') && cible) {
+      const menace = chercherAction(st, GABARIT.menacer as string, { Cible: cible });
+      if (menace) return { genre: 'menacer', action: menace, cible, precision: message.trim() };
+    }
     const dejaParle = cible ? st.dbHas(`parle.${ID_JOUEUR}.${cible}`) : false;
     const genre = dejaParle ? 'relancer' : 'converser';
     const action = cible ? chercherAction(st, GABARIT[genre] as string, { Cible: cible }) : null;
@@ -182,6 +201,7 @@ export function comprendre(
   }
 
   // La bibliothèque universelle : une expression du catalogue, plus précise que les motifs du narrateur.
+  let achatSansPrix = false;
   if (reconnu) {
     const eq = reconnu.entree.equivalentPrax;
     if (eq) {
@@ -194,6 +214,12 @@ export function comprendre(
         const parDefaut = reconnu.entree.famille === 'transaction' && !nommee ? cibleCommerce(st, desc, cible) : cible;
         const r = comprendreActe(reconnu, message, st, desc, presentsDuJoueur(st, desc), nommee, parDefaut);
         if (r) return { genre: 'acte', action: r.action, cible: r.cible, motif: r.motif, acte: r.saisie };
+        // Un achat ou une location sans prix annoncé reste une demande au vendeur
+        // (« je voudrais louer une chambre »), pas une question sur un sujet.
+        if (reconnu.entree.famille === 'transaction') {
+          genre = 'demander';
+          achatSansPrix = true;
+        }
       }
     }
   }
@@ -201,7 +227,7 @@ export function comprendre(
   // Une question sur un sujet connu l'emporte sur une politesse ou une demande vague
   // (« je cherche un contrat » interroge sur la Guilde).
   const politesse = genre === null || genre === 'saluer' || genre === 'remercier' || genre === 's_excuser' || genre === 'complimenter' || genre === 'demander';
-  if (sujets.length > 0 && politesse && (QUESTION.test(texte) || genre === null || genre === 'demander')) genre = 'interroger';
+  if (!achatSansPrix && sujets.length > 0 && politesse && (QUESTION.test(texte) || genre === null || genre === 'demander')) genre = 'interroger';
   // Réplique sans action reconnue : on engage la conversation, ou on relance si c'est déjà fait.
   if (genre === null && /[a-z]/.test(texte)) genre = 'converser';
   if (genre === null) return { genre: null, action: null, motif: 'Prax n’a reconnu aucune action dans ce message.' };

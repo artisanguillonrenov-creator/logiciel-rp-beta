@@ -129,3 +129,22 @@ la couverture exhaustive des 77 principes et les mesures sur Android restent
 non démontrés. Les exemples du dossier ne sont pas importés comme répliques
 préfabriquées : cela contredirait l'objectif de généralisation. Les correctifs
 suivants devront rester dans le code natif de Prax, sans service externe.
+
+## Corrections après audit
+
+- **Demandes polies.** « Je voudrais… », « j'aimerais… » et « je pourrais avoir… » redeviennent des demandes
+  au PNJ : seule une éventualité violente reste une parole. Un achat ou une location sans prix annoncé
+  reste une demande au vendeur.
+- **Menaces conditionnelles.** Une violence promise à l'interlocuteur (« si tu ne me rends pas ma bourse,
+  je te frappe », « je pourrais te tuer ») devient une **menace**, avec les mots exacts du joueur. Ce n'est
+  jamais une attaque. Une hypothèse posée en question reste une parole.
+- **Questions et affirmations adressées.** « Je demande si tu as… » est une question au PNJ, et
+  « je dis que tu es… » se raconte comme tes mots (« Tu dis à … »), pas comme des propos rapportés.
+- **Répliques informatives.** *renvoyer* et *proposer* gardent les répliques du narrateur (« vois plutôt un
+  marchand », « ça se paie »), sans les gestes inventés.
+- **Français.**
+  - Une espace avant « ? », « ! », « : » et « ; ».
+  - « Il se dit qu'Arwen… » devant une voyelle.
+  - « Tu évoques une hypothèse devant… », « Tu dis à… ».
+- `statutEnonce` est inchangé ; seule la façon dont la compréhension s'en sert a changé.
+  Tests : `tests/praxNarrateur.test.ts`, « demande polie, question adressée, menace conditionnelle ».

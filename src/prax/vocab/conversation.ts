@@ -279,7 +279,8 @@ function sujetAvecDe(s: string): string {
 }
 
 function ponctuer(s: string): string {
-  const t = s.replace(/\s+([,;.!?])/gu, '$1').replace(/\s+/gu, ' ').trim();
+  // Typographie française : pas d'espace avant la virgule et le point, une espace avant ? ! : ;
+  const t = s.replace(/\s+([,.])/gu, '$1').replace(/\s*([?!;:])/gu, ' $1').replace(/\s+/gu, ' ').trim();
   if (!t) return '';
   const cap = t.charAt(0).toLocaleUpperCase('fr') + t.slice(1);
   return /[.!?…]$/u.test(cap) ? cap : cap + '.';
@@ -564,7 +565,7 @@ function exprimerParoleBrute(sens: SensDeParole, variante = 0): ExpressionPrax |
       if (sens.statut === 'rapporte') {
         // Le personnage ne peut pas s'attribuer un témoignage visuel qu'il
         // n'a pas fait. Le rapport reste explicitement un rapport.
-        noyau = 'Il se dit que ' + fait;
+        noyau = (/^[aeiouyàâäéèêëîïôöùûüh]/iu.test(fait) && !/^h[aeiou]/iu.test(fait) ? 'Il se dit qu’' : 'Il se dit que ') + fait;
         savoirs.push('G2-provenance-rapportee');
       } else if (sens.statut === 'citation') {
         noyau = '« ' + fait + ' »';
