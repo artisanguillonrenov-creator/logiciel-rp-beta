@@ -6,6 +6,8 @@ import { deserializeState, serializeState } from '../src/prax/core/persist';
 import {
   ACQUIS_EXPRESSION_V1,
   exprimerParole,
+  conjuguerPresentPrax,
+  groupeNominalPrax,
   registreStable,
   statutEnonce,
 } from '../src/prax/vocab/conversation';
@@ -64,4 +66,28 @@ test('le langage rapporté ou hypothétique ne réalise pas une action', () => {
   assert.equal(statutEnonce('Supposons que je lui vole la bourse.'), 'hypothese');
   assert.equal(statutEnonce('« Je le frappe. »'), 'citation');
   assert.equal(statutEnonce('On m’a dit que l’homme avait volé une clef.'), 'rapporte');
+});
+
+
+test('grammaire native : accords et déterminants généralisent à des lexèmes inédits', () => {
+  assert.equal(groupeNominalPrax('portail', 'masculin', 'pluriel'), 'les portails');
+  assert.equal(groupeNominalPrax('voyageuse', 'feminin', 'pluriel'), 'les voyageuses');
+  assert.equal(groupeNominalPrax('château', 'masculin', 'singulier'), 'le château');
+  assert.equal(groupeNominalPrax('château', 'masculin', 'pluriel'), 'les châteaux');
+  assert.equal(groupeNominalPrax('auberge', 'feminin', 'singulier'), 'l’auberge');
+  assert.equal(groupeNominalPrax('hall', 'masculin', 'singulier', 'defini', true), 'le hall');
+  assert.equal(groupeNominalPrax('cheval', 'masculin', 'pluriel'), 'les chevaux');
+  assert.equal(groupeNominalPrax('œil', 'masculin', 'pluriel'), 'les yeux');
+  assert.equal(groupeNominalPrax('7', 'masculin', 'singulier'), null);
+});
+
+test('grammaire native : présent conjugué et formes hors couverture refusées', () => {
+  assert.equal(conjuguerPresentPrax('parler', 'tu'), 'parles');
+  assert.equal(conjuguerPresentPrax('proposer', 'nous'), 'proposons');
+  assert.equal(conjuguerPresentPrax('finir', 'ils'), 'finissent');
+  assert.equal(conjuguerPresentPrax('être', 'vous'), 'êtes');
+  assert.equal(conjuguerPresentPrax('aller', 'je'), 'vais');
+  assert.equal(conjuguerPresentPrax('avoir', 'ils'), 'ont');
+  assert.equal(conjuguerPresentPrax('venir', 'il'), 'vient');
+  assert.equal(conjuguerPresentPrax('placer', 'nous'), null, 'conjugaison exigeant une modification orthographique non prise en charge');
 });
