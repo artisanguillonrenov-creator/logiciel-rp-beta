@@ -361,8 +361,13 @@ export function exprimerParole(sens: SensDeParole, variante = 0): ExpressionPrax
   const amorceAutorisee = registre === 'tranchant'
     && (sens.intention === 'ceder' || sens.intention === 'pardonner' || sens.intention === 'accueillir' || sens.intention === 'ecouter')
     ? ['', ''] : amorces[registre];
-  const amorce = choisir(amorceAutorisee, 'amorce');
+  // Une information canonique et sa provenance ne reçoivent aucun tic de
+  // locuteur susceptible d'en changer la portée ou la typographie.
+  const amorce = sens.intention === 'informer' ? '' : choisir(amorceAutorisee, 'amorce');
+  const suite = amorce && /[,：:]\s*$/u.test(amorce) && /^[\p{Lu}]/u.test(noyau)
+    ? noyau.charAt(0).toLocaleLowerCase('fr') + noyau.slice(1)
+    : noyau;
   const conclusion = motif && ['refuser', 'resister', 'eluder'].includes(sens.intention) ? '. ' + ponctuer(motif) : '';
-  const texte = ponctuer(amorce + noyau) + conclusion;
+  const texte = ponctuer(amorce + suite) + conclusion;
   return { texte, acquis: savoirs, version: ACQUIS_EXPRESSION_V1 };
 }
