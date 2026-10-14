@@ -335,10 +335,29 @@ export function rendreTour(d: DonneesRendu): string {
         intention,
         locuteur: e.acteur,
         sujet: e.sujetNom,
+        registre: e.registreParole,
       }, d.variante + d.tour + i);
       if (acquis) {
-        const repliqueIndex = lignes.findIndex((ligne) => ligne.includes(' : « '));
-        if (repliqueIndex >= 0) lignes[repliqueIndex] = `${majuscule(e.acteurNom)} : « ${acquis.texte} »`;
+        // Les anciens gestes génériques ne sont pas attestés dans l'état
+        // Prax (« recule », « croise les bras »). Une simple parole ne doit
+        // pas créer de déplacement ou de fait physique non joué.
+        paragraphes.push(`${majuscule(e.acteurNom)} : « ${acquis.texte} »`);
+        return;
+      }
+    }
+    if (e.genre === 'raconter' && e.rapporte) {
+      const verbe: Record<string, string> = { voler: 'a volé', attaquer: 'a attaqué', menacer: 'a menacé' };
+      const fait = `${e.rapporte.auteurNom} ${verbe[e.rapporte.genre] ?? 'a agi contre'} ${e.rapporte.victimeNom}`;
+      const rapporte = exprimerParole({
+        intention: 'informer',
+        locuteur: e.acteur,
+        fait,
+        statut: 'rapporte',
+        registre: e.registreParole,
+      }, d.variante + d.tour + i);
+      if (rapporte) {
+        paragraphes.push(`${majuscule(e.acteurNom)} : « ${rapporte.texte} »`);
+        return;
       }
     }
     // La narration et la réplique sur des lignes séparées (format de l'interface).
