@@ -140,11 +140,11 @@ export function composerPropositionPrax(p: PropositionPrax, variante = 0): Propo
     + (complement ? ' ' + complement : '');
   const circonstance = lieu ? ' ' + lieu : '';
   const reordonner = Boolean(lieu && variante % 2 === 1);
-  const complete = reordonner ? lieu + ', ' + clause : clause + circonstance;
+  const complete = reordonner ? lieu + ', ' + premiereLettreMinusculePrax(clause) : clause + circonstance;
   let texte: string;
   switch (mode) {
     case 'question':
-      texte = 'Est-ce que ' + complete + ' ?';
+      texte = (/^[aeiouyhàâäéèêëîïôöùûü]/iu.test(complete) ? 'Est-ce qu’' : 'Est-ce que ') + complete + ' ?';
       break;
     case 'hypothese':
       texte = 'Hypothèse : ' + complete + '.';
@@ -220,7 +220,7 @@ export function statutEnonce(message: string): StatutEnonce {
   if (/^(?:je|nous|on|il|elle|ils|elles)\s+(?:cite|citons|raconte|racontons|répète|repete|rapportons|rapporte|lis|lisons|déclare|declare|explique|évoque|evoque|affirme|dis|dit|demandons|demande)\b/u.test(s)
       && (/[«“"].+[»”"]/u.test(s) || /\b(?:que|si)\b/u.test(s))) return 'rapporte';
   if (/^(?:je|nous|on)\s+(?:n'?ai jamais|n'?avons jamais|n'?avons pas|n'?ai pas|n'?aurai pas|n'?aura pas|ne vais pas|ne veut pas|ne veux pas|ne peux pas)\b/u.test(s)) return 'negation';
-  if (/^(?:peut-être|peut etre|il est possible que|au cas où|dans le cas où|à supposer que|à imaginer que)\b/u.test(s)) return 'hypothese';
+  if (/^(?:peut-être|peut etre|il est possible que|au cas où|dans le cas où|à supposer que|à imaginer que)(?:\s|$)/u.test(s)) return 'hypothese';
   if (/^(?:on m'a dit|j'ai entendu dire|il para[iî]t que|selon |elle a dit|il a dit|on raconte que|j'ai entendu que|quelqu'un dit que|je dis que|je raconte que|je lui dis que|je lis que)\b/u.test(s)) return 'rapporte';
   if (/^(?:ne\s+|n')/u.test(s) || /^je refuse de\b/u.test(s)) return 'negation';
   if (/\b(?:je|nous|on)\s+n['e]?\s*(?:le |la |les |l'|te |vous |y |en )?(?:[a-zéèêàâôùûîï]+\s+)?pas\b/u.test(s)
