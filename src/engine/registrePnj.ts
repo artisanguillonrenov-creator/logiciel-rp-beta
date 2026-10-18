@@ -6,6 +6,8 @@ import { synchroniserMemoireNarrative } from './memoireNarrative';
 export interface SouvenirPnj {
   evenementId: string;
   messageIds: string[];
+  /** Empreinte des messages source : invalide le souvenir après réécriture à IDs constants. */
+  empreinteSource?: string;
   resume: string;
   source: 'vecu' | 'appris';
   lieu?: string;
@@ -26,6 +28,20 @@ export interface RegistrePnj {
   fiches: FicheRegistrePnj[];
 }
 export const registrePnjVide = (): RegistrePnj => ({ version: 1, fiches: [] });
+
+// Signature déterministe du texte source, indépendante des IDs conservés par une régénération.
+function empreinteMessages(messages: { id: string; content: string }[], messageIds: string[]): string | undefined {
+  const parId = new Map(messages.map(m => [m.id, m.content]));
+  if (!messageIds.length || messageIds.some(id => !parId.has(id))) return undefined;
+  let hash = 0x811c9dc5;
+  for (const id of messageIds) {
+    for (const caractere of id + '\\u0000' + parId.get(id)! + '\\u0001') {
+      hash ^= caractere.charCodeAt(0);
+      hash = Math.imul(hash, 0x01000193);
+    }
+  }
+  return (hash >>> 0).toString(36);
+}
 
 function correspond(nom: string, fiche: FicheRegistrePnj): boolean {
   const cle = normaliserTexte(nom);
@@ -49,7 +65,8 @@ export function consoliderRegistrePnj(story: StoryState): RegistrePnj {
       alias: [...new Set([...(ancien?.alias ?? []), ...(e.alias ?? []).filter(x => !x.startsWith('emergent-'))])],
       origine: ancien?.origine ?? 'invente',
       sourceCanonId: ancien?.sourceCanonId,
-      souvenirs: (ancien?.souvenirs ?? []).filter(s => s.messageIds.every(id => ids.has(id))),
+      souvenirs: (ancien?.souvenirs ?? []).filter(s => s.messageIds.every(id => ids.has(id)) &&
+        !!s.empreinteSource && s.empreinteSource === empreinteMessages(story.messages, s.messageIds)),
     } satisfies FicheRegistrePnj;
   });
   const evenements = synchroniserMemoireNarrative({ ...story, loreEmergent: entrees });
@@ -71,7 +88,8 @@ export function consoliderRegistrePnj(story: StoryState): RegistrePnj {
       });
       if (!presentRegistre && !priseDeParole) continue;
       fiche.souvenirs.push({
-        evenementId: e.id, messageIds: e.messageIds, resume: e.resultat,
+        evenementId: e.id, messageIds: e.messageIds,
+        empreinteSource: empreinteMessages(story.messages, e.messageIds), resume: e.resultat,
         source: 'vecu', lieu: e.lieu, date: e.temps ?? e.dateChronique,
         importance: 1,
       });
