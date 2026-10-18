@@ -8,6 +8,7 @@ import {
 import { enregistrerAssetVisuel, obtenirAssetVisuel, supprimerAssetVisuel } from '../storage/assetsVisuelsStore';
 import { couleurs, polices } from '../theme/theme';
 import Bouton from './Bouton';
+import { obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { executerImage } from '../engine/serviceVisuel';
 import { CADRAGE_PORTRAIT } from '../engine/cadrageVisuel';
 import type { ContratVisuel } from '../engine/contratVisuel';
@@ -17,7 +18,7 @@ import SelecteurReferencesElyndor, { type ReferenceElyndor } from './SelecteurRe
  * Références visuelles optionnelles d'une fiche du lorebook. La fiche elle-même
  * n'est pas modifiée : seuls des liens vers des images enregistrées à part.
  */
-export default function ReferencesVisuellesFiche({ ficheId, titre = '', description = '' }: { ficheId: string; titre?: string; description?: string }) {
+export default function ReferencesVisuellesFiche({ ficheId, titre = '', description = '', avatarSource }: { ficheId: string; titre?: string; description?: string; avatarSource?: { storyId: string; pnjId: string } }) {
   const [liens, setLiens] = useState<LienAssetLore[]>([]);
   const [uris, setUris] = useState<Record<string, string | null>>({});
   const [ajout, setAjout] = useState(false);
@@ -36,6 +37,29 @@ export default function ReferencesVisuellesFiche({ ficheId, titre = '', descript
   }
 
   useEffect(() => { void recharger().catch((e) => setMessage(e instanceof Error ? e.message : String(e))); }, [ficheId]);
+
+  async function importerPortraitPnj() {
+    if (!avatarSource || busy) return;
+    setBusy(true); setMessage('');
+    try {
+      const existants = await lireAssetsLore();
+      if ((existants.liens[ficheId] ?? []).some(l => l.role === 'identite')) {
+        setMessage('Un portrait existe déjà : aucun remplacement automatique.');
+        return;
+      }
+      const uri = await obtenirAvatarPnj(avatarSource.storyId, avatarSource.pnjId);
+      if (!uri) { setMessage('Aucun portrait enregistré dans cette histoire. Tu peux en générer un.'); return; }
+      const data = await preparerImageReference(uri);
+      const assetId = nouvelIdentifiantAsset();
+      await enregistrerAssetVisuel(assetId, data);
+      await modifierAssetsLore(v => ajouterLienAsset(v, ficheId, {
+        assetId, role: 'identite', libelle: ('Portrait de ' + titre).slice(0, 120), ajouteLe: Date.now(),
+      }));
+      await recharger();
+      setMessage('Portrait du PNJ importé dans le lorebook général.');
+    } catch(e) { setMessage(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
 
   async function ajouter(ref: ReferenceElyndor) {
     try {
@@ -112,6 +136,7 @@ export default function ReferencesVisuellesFiche({ ficheId, titre = '', descript
 
   return <View style={st.bloc}>
     <Text style={st.label}>Références visuelles (optionnel)</Text>
+    {avatarSource ? <Bouton titre="Importer le portrait du PNJ depuis son histoire" onPress={() => void importerPortraitPnj()} desactive={busy} /> : null}
     <Bouton titre={liens.some(l => l.role === 'identite') ? 'Régénérer le portrait depuis la fiche' : 'Générer le portrait depuis la fiche'} onPress={() => void generer()} desactive={busy || !titre.trim() || !description.trim()} />
     {busy ? <Text style={st.aide}>Traitement en cours…</Text> : null}
     {preview ? <View style={st.bloc}>
