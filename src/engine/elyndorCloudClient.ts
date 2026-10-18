@@ -11,6 +11,12 @@ import { activerReglagesFournisseurs, reglagesFournisseursActifs, resoudreRouteT
 /** Client réseau OpenAI-compatible : OpenAI direct, OpenRouter, RunPod et serveur tiers. */
 
 const DELAI_GENERATION_MS = 600_000;
+function nomFournisseur(route: RouteTexte): string {
+  return route.fournisseur === 'runpod' ? 'Elyndor Cloud'
+    : route.fournisseur === 'openrouter' ? 'OpenRouter'
+    : route.fournisseur === 'openai' ? 'OpenAI'
+    : route.fournisseur === 'chatgpt' ? 'ChatGPT' : 'API personnalisée';
+}
 const TENTATIVES_REPONSE_VIDE = 3;
 
 export interface ChatMessage {
@@ -48,6 +54,8 @@ export interface AppelModeleOptions {
   samplers?: Record<string, number>;
   moteurInference?: MoteurInference;
   baseUrl?: string;
+  /** Destination figée pour cet appel ; évite tout ancien fournisseur global. */
+  route?: RouteTexte;
   signal?: AbortSignal;
   /** Libellé concepteur uniquement : n'altère jamais la requête envoyée au modèle. */
   diagnosticLabel?: string;
@@ -79,8 +87,7 @@ export { ErreurElyndorCloud as ErreurOpenRouter };
 
 /**
  * Même forme que l'ancienne configuration LLM afin de ne pas propager un
- * refactor inutile dans le noyau narratif. Les paramètres et overrides de
- * l'histoire sont volontairement ignorés : le modèle Cloud est canonique.
+ * refactor inutile dans le noyau narratif. Le fournisseur choisi est fixé par appel.
  */
 export function configurationLLM(settings: AppSettings, _modeleOverride?: string) {
   activerReglagesFournisseurs(settings);
@@ -89,6 +96,7 @@ export function configurationLLM(settings: AppSettings, _modeleOverride?: string
     apiKey: route.apiKey, model: route.model,
     moteurInference: (route.fournisseur === 'chatgpt' ? 'chatgpt' : route.fournisseur === 'openai' ? 'openai' : route.fournisseur === 'openrouter' ? 'openrouter' : 'serveur') as MoteurInference,
     baseUrl: route.url.replace(/\/chat\/completions$/, ''),
+    route,
   };
 }
 
@@ -139,18 +147,19 @@ async function detailErreur(response: Response): Promise<string> {
 }
 
 async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?: RouteTexte): Promise<Response> {
+  const destination = route ?? resoudreRouteTexte(reglagesFournisseursActifs());
+  const fournisseur = nomFournisseur(destination);
   const controleur = new AbortController();
   const relayerAnnulation = () => controleur.abort(signalExterne?.reason);
   if (signalExterne?.aborted) relayerAnnulation();
   else signalExterne?.addEventListener('abort', relayerAnnulation, { once: true });
 
   const timer = setTimeout(
-    () => controleur.abort(new Error('Délai de réponse Elyndor Cloud dépassé.')),
+    () => controleur.abort(new Error(`Délai de réponse ${fournisseur} dépassé.`)),
     DELAI_GENERATION_MS,
   );
 
   try {
-    const destination = route ?? resoudreRouteTexte(reglagesFournisseursActifs());
     if (destination.fournisseur === 'openrouter' && !destination.apiKey) {
       throw new ErreurElyndorCloud('Renseigne ta clé OpenRouter dans Réglages → Fournisseurs IA.');
     }
@@ -164,16 +173,18 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?
     });
   } catch (cause) {
     if (signalExterne?.aborted) {
-      throw new ErreurElyndorCloud('Génération Elyndor Cloud annulée.');
+      throw new ErreurElyndorCloud(`Génération ${fournisseur} annulée.`);
     }
     if (controleur.signal.aborted) {
       throw new ErreurElyndorCloud(
-        "Elyndor Cloud n'a pas répondu avant la limite. Le pod peut être en démarrage ; réessaie dans quelques instants.",
+        destination.fournisseur === 'runpod'
+          ? "Elyndor Cloud n'a pas répondu avant la limite. Le pod peut être en démarrage."
+          : `${fournisseur} n'a pas répondu avant la limite.`,
       );
     }
     if (cause instanceof ErreurElyndorCloud) throw cause;
     throw new ErreurElyndorCloud(
-      'Impossible de joindre le fournisseur IA sélectionné. Vérifie la connexion et la clé.',
+      `Impossible de joindre ${fournisseur}. Vérifie la connexion et la clé.`,
     );
   } finally {
     clearTimeout(timer);
@@ -187,13 +198,13 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?
  * contenu concaténé, raisonnement éventuel, finish_reason et usage du dernier
  * morceau qui les porte.
  */
-export function analyserCorpsReponse(texte: string): Record<string, any> {
+export function analyserCorpsReponse(texte: string, fournisseur = 'Elyndor Cloud'): Record<string, any> {
   const brut = texte.trim();
   if (!brut.startsWith('data:') && !brut.startsWith('event:') && !brut.startsWith(':')) {
     try {
       return JSON.parse(brut);
     } catch {
-      throw new ErreurElyndorCloud('Réponse Elyndor Cloud illisible.');
+      throw new ErreurElyndorCloud(`Réponse ${fournisseur} illisible.`);
     }
   }
   let contenu = '';
@@ -212,7 +223,7 @@ export function analyserCorpsReponse(texte: string): Record<string, any> {
     }
     if (morceau?.error) {
       const detail = morceau.error.message ?? JSON.stringify(morceau.error);
-      throw new ErreurElyndorCloud(`Erreur Elyndor Cloud : ${detail}`);
+      throw new ErreurElyndorCloud(`Erreur ${fournisseur} : ${detail}`);
     }
     const choix = morceau?.choices?.[0];
     const delta = choix?.delta ?? {};
@@ -235,8 +246,9 @@ async function appelerChat(
   diagnosticLabel?: string,
   storyId?: string,
   samplers?: Record<string, number>,
+  routeFixee?: RouteTexte,
 ): Promise<Record<string, any>> {
-  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel, storyId, samplers)).message;
+  return (await appelerChatDetaille(messages, temperature, maxTokens, signal, tools, diagnosticLabel, storyId, samplers, routeFixee)).message;
 }
 
 async function appelerChatDetaille(
@@ -248,8 +260,10 @@ async function appelerChatDetaille(
   diagnosticLabel?: string,
   storyId?: string,
   samplers?: Record<string, number>,
+  routeFixee?: RouteTexte,
 ): Promise<{ message: Record<string, any>; finishReason: string }> {
-  const route = resoudreRouteTexte(reglagesFournisseursActifs());
+  const route = routeFixee ?? resoudreRouteTexte(reglagesFournisseursActifs());
+  const fournisseur = nomFournisseur(route);
   if (route.fournisseur === 'chatgpt') {
     const texte = await reponseChatGPT(tools?.length ? ajouterInstructionsOutilsJson(messages, tools as ToolDefinition[]) : messages, route.model, signal);
     return { message: { role: 'assistant', content: texte }, finishReason: 'stop' };
@@ -281,6 +295,7 @@ async function appelerChatDetaille(
       // Ne transmettre que les clés prévalidées par reglagesNarrateur.ts.
       ...(route.fournisseur === 'runpod' ? (samplers || {}) : {}),
       ...(route.fournisseur === 'runpod' ? { reasoning_effort: 'low' } : {}),
+      ...(route.fournisseur === 'openrouter' ? (profil.reasoningRequestParameters || {}) : {}),
       // Streaming : le proxy Runpod (Cloudflare) coupe toute réponse qui n'a
       // rien envoyé en 100 s (erreur 524). En flux, les jetons arrivent au fil
       // de l'eau et une longue narration n'est plus interrompue. Les appels à
@@ -291,12 +306,12 @@ async function appelerChatDetaille(
   }, signal, route);
   } catch (erreur) {
     journaliser('appel-ia', {
-      composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
+      composant: diagnosticLabel ?? fournisseur, temperature, maxTokens, messages,
       dureeMs: Date.now() - debutAppel, statut: 'erreur',
       raison: erreur instanceof Error ? erreur.message : 'Erreur réseau',
     }, storyId);
     enregistrerAppelIADiagnostic({
-      composant: diagnosticLabel ?? 'Elyndor Cloud',
+      composant: diagnosticLabel ?? fournisseur,
       modele: route.model,
       maxTokens,
       dureeMs: Date.now() - debutAppel,
@@ -310,12 +325,12 @@ async function appelerChatDetaille(
   if (!response.ok) {
     const detail = await detailErreur(response);
     journaliser('appel-ia', {
-      composant: diagnosticLabel ?? 'Elyndor Cloud', temperature, maxTokens, messages,
+      composant: diagnosticLabel ?? fournisseur, temperature, maxTokens, messages,
       dureeMs: Date.now() - debutAppel, statut: 'erreur',
       raison: `HTTP ${response.status}${detail ? ` : ${detail}` : ''}`,
     }, storyId);
     enregistrerAppelIADiagnostic({
-      composant: diagnosticLabel ?? 'Elyndor Cloud',
+      composant: diagnosticLabel ?? fournisseur,
       modele: route.model,
       maxTokens,
       dureeMs: Date.now() - debutAppel,
@@ -324,15 +339,15 @@ async function appelerChatDetaille(
       raison: `HTTP ${response.status}${detail ? ` : ${detail}` : ''}`,
     });
     throw new ErreurElyndorCloud(
-      `Erreur Elyndor Cloud (${response.status})${detail ? ` : ${detail}` : ''}`,
+      `Erreur ${fournisseur} (${response.status})${detail ? ` : ${detail}` : ''}`,
       response.status,
     );
   }
 
-  const data = analyserCorpsReponse(await response.text());
+  const data = analyserCorpsReponse(await response.text(), fournisseur);
   enregistrerUsageAppel(data?.usage);
   enregistrerAppelIADiagnostic({
-    composant: diagnosticLabel ?? 'Elyndor Cloud',
+    composant: diagnosticLabel ?? fournisseur,
     modele: route.model,
     maxTokens,
     dureeMs: Date.now() - debutAppel,
@@ -342,7 +357,7 @@ async function appelerChatDetaille(
   appliquerPolitiqueRaisonnement(message, profil);
   const finishReason = String(data?.choices?.[0]?.finish_reason ?? data?.finish_reason ?? '');
   journaliser('appel-ia', {
-    composant: diagnosticLabel ?? 'Elyndor Cloud',
+    composant: diagnosticLabel ?? fournisseur,
     temperature,
     maxTokens,
     outils: Array.isArray(tools) ? tools.length : 0,
@@ -358,6 +373,7 @@ async function appelerChatDetaille(
 }
 
 export async function appellerModele({
+  route,
   samplers,
   messages,
   temperature = 0.9,
@@ -367,14 +383,14 @@ export async function appellerModele({
   storyId,
 }: AppelModeleOptions): Promise<string> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers, route);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return contenu;
     if (tentative === TENTATIVES_REPONSE_VIDE) {
-      throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
+      throw new ErreurElyndorCloud(`${nomFournisseur(route ?? resoudreRouteTexte(reglagesFournisseursActifs()))} a répondu sans texte exploitable.`);
     }
   }
-  throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
+  throw new ErreurElyndorCloud(`${nomFournisseur(route ?? resoudreRouteTexte(reglagesFournisseursActifs()))} a répondu sans texte exploitable.`);
 }
 
 export interface ReponseModele {
@@ -385,6 +401,7 @@ export interface ReponseModele {
 
 /** Comme appellerModele, mais indique si la réponse a été coupée par le plafond de tokens. */
 export async function appellerModeleDetaille({
+  route,
   samplers,
   messages,
   temperature = 0.9,
@@ -394,14 +411,15 @@ export async function appellerModeleDetaille({
   storyId,
 }: AppelModeleOptions): Promise<ReponseModele> {
   for (let tentative = 1; tentative <= TENTATIVES_REPONSE_VIDE; tentative++) {
-    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers);
+    const { message, finishReason } = await appelerChatDetaille(messages, temperature, maxTokens, signal, undefined, diagnosticLabel, storyId, samplers, route);
     const contenu = typeof message.content === 'string' ? message.content.trim() : '';
     if (contenu) return { contenu, coupee: finishReason === 'length' };
   }
-  throw new ErreurElyndorCloud('Elyndor Cloud a répondu sans texte exploitable.');
+  throw new ErreurElyndorCloud(`${nomFournisseur(route ?? resoudreRouteTexte(reglagesFournisseursActifs()))} a répondu sans texte exploitable.`);
 }
 
 export async function appellerModeleAvecOutils({
+  route,
   messages,
   outils,
   temperature = 0.2,
@@ -413,7 +431,7 @@ export async function appellerModeleAvecOutils({
   const schemas = outils.map(versSchemaOutil);
 
   try {
-    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas, diagnosticLabel, storyId);
+    const message = await appelerChat(messages, temperature, maxTokens, signal, schemas, diagnosticLabel, storyId, undefined, route);
     return {
       contenu: typeof message.content === 'string' ? message.content : '',
       appelsOutils: parserAppelsOutils(message),
@@ -431,6 +449,8 @@ export async function appellerModeleAvecOutils({
       undefined,
       diagnosticLabel ? `${diagnosticLabel} — repli JSON` : 'Outils — repli JSON',
       storyId,
+      undefined,
+      route,
     );
     return extraireAppelsOutilsJson(typeof message.content === 'string' ? message.content : '');
   }
