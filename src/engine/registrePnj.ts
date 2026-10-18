@@ -43,9 +43,18 @@ function empreinteMessages(messages: { id: string; content: string }[], messageI
   return (hash >>> 0).toString(36);
 }
 
-function correspond(nom: string, fiche: FicheRegistrePnj): boolean {
+function correspond(nom: string, fiche: FicheRegistrePnj, fiches: FicheRegistrePnj[]): boolean {
   const cle = normaliserTexte(nom);
-  return [fiche.nom, ...fiche.alias].some(v => normaliserTexte(v) === cle);
+  if (!cle) return false;
+  // « Marcus » ne prouve pas lequel des deux Marcus était témoin.
+  const correspondances = fiches.filter(f => [f.nom, ...f.alias].some(v => normaliserTexte(v) === cle));
+  return correspondances.length === 1 && correspondances[0].id === fiche.id;
+}
+
+function prenomUsuel(nom: string): string | undefined {
+  // Pas d'alias de prénom pour les noms culturels à un seul élément.
+  const morceaux = nom.trim().split(/\s+/);
+  return morceaux.length >= 2 && !nom.includes('(') ? morceaux[0] : undefined;
 }
 function entite(story: StoryState, fiche: FicheRegistrePnj): EntreeLoreEmergent | undefined {
   return story.loreEmergent.find(e => e.id === fiche.entreeId || e.alias?.includes(fiche.entreeId));
@@ -62,7 +71,11 @@ export function consoliderRegistrePnj(story: StoryState): RegistrePnj {
       id: ancien?.id ?? e.id,
       entreeId: e.id,
       nom: e.titre,
-      alias: [...new Set([...(ancien?.alias ?? []), ...(e.alias ?? []).filter(x => !x.startsWith('emergent-'))])],
+      alias: [...new Set([
+        ...(ancien?.alias ?? []),
+        ...(prenomUsuel(e.titre) ? [prenomUsuel(e.titre)!] : []),
+        ...(e.alias ?? []).filter(x => !x.startsWith('emergent-')),
+      ])],
       origine: ancien?.origine ?? 'invente',
       sourceCanonId: ancien?.sourceCanonId,
       souvenirs: (ancien?.souvenirs ?? []).filter(s => s.messageIds.every(id => ids.has(id)) &&
@@ -78,12 +91,12 @@ export function consoliderRegistrePnj(story: StoryState): RegistrePnj {
       // Pour les anciennes histoires sans registre, seule une réplique explicite
       // du PNJ est une preuve minimale de sa présence.
       const presentRegistre = e.fiabilitePresence === 'registre' &&
-        e.participants.some(p => correspond(p, fiche));
+        e.participants.some(p => correspond(p, fiche, fiches));
       const priseDeParole = e.messageIds.some(id => {
         const texte = story.messages.find(m => m.id === id)?.content ?? '';
         return texte.split('\n').some(l => {
           const match = /^\s*([\p{L}][\p{L}'’ -]{1,50})\s*:\s*[«"]/u.exec(l);
-          return !!match && correspond(match[1], fiche);
+          return !!match && correspond(match[1], fiche, fiches);
         });
       });
       if (!presentRegistre && !priseDeParole) continue;
@@ -111,9 +124,8 @@ export function rechercherPnjLexical(story: StoryState, requete: string, maxPnj 
   if (!registre || !requete.trim()) return [];
   const groupes = new Map<string, FicheRegistrePnj[]>();
   for (const fiche of registre.fiches) {
-    for (const alias of [fiche.nom, ...fiche.alias]) {
-      const cle = normaliserTexte(alias);
-      if (cle) groupes.set(cle, [...(groupes.get(cle) ?? []), fiche]);
+    for (const cle of new Set([fiche.nom, ...fiche.alias].map(normaliserTexte).filter(Boolean))) {
+      groupes.set(cle, [...(groupes.get(cle) ?? []), fiche]);
     }
   }
   const retenus = registre.fiches.filter(f => [f.nom, ...f.alias].some(alias => {
