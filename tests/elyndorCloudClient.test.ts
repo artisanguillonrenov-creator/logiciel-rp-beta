@@ -4,6 +4,7 @@ import {
   analyserCorpsReponse,
   appellerModele,
   listerModelesGPT,
+  listerModeles,
   modeleGPTConversationnel,
   configurationLLM,
 } from '../src/engine/elyndorCloudClient';
@@ -335,7 +336,6 @@ test('une erreur HTTP d’OpenRouter ne mentionne pas à tort Elyndor Cloud', as
 
 test('le catalogue gratuit OpenRouter reste visible quand RunPod était actif', async () => {
   configurationLLM(anciensReglages);
-  const { listerModeles } = await import('../src/engine/elyndorCloudClient');
   let url = '';
   globalThis.fetch = async (input) => {
     url = String(input);
