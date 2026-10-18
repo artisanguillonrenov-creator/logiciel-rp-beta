@@ -1,10 +1,10 @@
-import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message, ProfilPnj } from '../types';
+import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message, ProfilMonde } from '../types';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { configurationLLM, appellerModele } from './openrouter';
 import { filtrerTextePourProfil, texteCompatibleAvecProfil } from './contenuAdulte';
 import { cleNomLore, fusionnerDoublonsLore, memeEntiteLore } from './loreEmergentDoublons';
 
-const CATEGORIES: CategorieLoreEmergent[] = ['pnj', 'objet', 'lieu', 'faction', 'evenement'];
+const CATEGORIES: CategorieLoreEmergent[] = ['objet', 'lieu', 'faction', 'evenement', 'creature', 'ressource', 'coutume'];
 
 function idEntree(): string {
   return `emergent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -14,19 +14,18 @@ interface CandidatLoreEmergent {
   categorie: CategorieLoreEmergent;
   titre: string;
   contenu: string;
-  profilPnj?: ProfilPnj;
+  profilMonde?: ProfilMonde;
   /** Seul un identifiant confirmé autorise une fusion de PNJ homonymes. */
   entreeExistanteId?: string;
 }
 
-const CHAMPS_PNJ: Array<keyof ProfilPnj> = ['race', 'ageApparent', 'apparence', 'personnalite', 'profession', 'particularites', 'origine', 'genre', 'taille', 'silhouette', 'visage', 'yeux', 'cheveux', 'peau', 'signesDistinctifs', 'biographie', 'competences', 'relationsInitiales', 'orientation', 'gouts', 'desirs', 'habitudes', 'preferencesIntimes', 'pratiquesPreferees', 'positionsPreferees', 'limites'];
-
-function nettoyerProfilPnj(brut: unknown): ProfilPnj | undefined {
+const CHAMPS_MONDE: Array<keyof ProfilMonde> = ['localisation','origine','apparence','architecture','dimensions','acces','activites','occupants','materiaux','proprietes','fabrication','rarete','organisation','hierarchie','objectifs','territoire','ressources','alliances','habitat','comportement','capacites','faiblesses','traditions','croyances','histoire','referencesPnj'];
+function nettoyerProfilMonde(brut: unknown): ProfilMonde | undefined {
   if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return undefined;
-  const profil: ProfilPnj = {};
-  for (const champ of CHAMPS_PNJ) {
+  const profil: ProfilMonde = {};
+  for (const champ of CHAMPS_MONDE) {
     const valeur = (brut as Record<string, unknown>)[champ];
-    if (typeof valeur === 'string' && valeur.trim()) profil[champ] = valeur.trim().slice(0, 240);
+    if (typeof valeur === 'string' && valeur.trim()) profil[champ] = valeur.trim().slice(0, 500);
   }
   return Object.keys(profil).length ? profil : undefined;
 }
@@ -41,8 +40,8 @@ async function extraireCandidats(
   const existantsVisibles = appSettings.profilContenu === 'adulte'
     ? existants
     : existants.filter((e) => texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, appSettings.profilContenu));
-  const existantsTexte = existantsVisibles.length
-    ? existantsVisibles.map((e) => `- [${e.categorie}] ID=${e.id} ${e.titre}${e.categorie === 'pnj' ? ` (${e.profilPnj?.profession ?? 'rôle inconnu'})` : ''}`).join('\n')
+  const existantsTexte = existantsVisibles.filter(e => e.categorie !== 'pnj').length
+    ? existantsVisibles.filter(e => e.categorie !== 'pnj').map((e) => `- [${e.categorie}] ID=${e.id} ${e.titre}${e.categorie === 'pnj' ? ` (${e.profilPnj?.profession ?? 'rôle inconnu'})` : ''}`).join('\n')
     : 'Aucun.';
 
   try {
@@ -55,14 +54,10 @@ async function extraireCandidats(
       messages: [
         {
           role: 'system',
-          content: `Tu identifies les éléments de MONDE nouveaux et durables introduits dans un extrait de jeu de rôle : PNJ nommés destinés à revenir, lieux nommés, factions, objets marquants, événements qui feront date. Réponds UNIQUEMENT avec un JSON strict :
-{"candidats": [{"categorie": "pnj|objet|lieu|faction|evenement", "entreeExistanteId": null, "titre": "...", "contenu": "description factuelle en une ou deux phrases", "profilPnj": {"race":"", "ageApparent":"", "apparence":"", "personnalite":"", "profession":"", "particularites":"", "origine":"", "genre":"", "taille":"", "silhouette":"", "visage":"", "yeux":"", "cheveux":"", "peau":"", "signesDistinctifs":"", "biographie":"", "competences":"", "relationsInitiales":"", "orientation":"", "gouts":"", "desirs":"", "habitudes":"", "preferencesIntimes":"", "pratiquesPreferees":"", "positionsPreferees":"", "limites":""}}]}
-
-Pour un élément déjà répertorié, reprends EXACTEMENT son titre et renseigne entreeExistanteId avec son ID précis. Pour un NOUVEAU personnage ou élément, mets entreeExistanteId à null. Ne relie jamais deux personnes sur leur seul prénom.
-Pour un PNJ, le "titre" doit être son NOM PROPRE dès que le texte en révèle un (ex. "Kaelen"), jamais son rôle ou son métier ("Marchand", "Garde") même si c'est ainsi qu'il est le plus souvent désigné dans l'extrait — un rôle générique comme titre ferait ensuite confondre ce PNJ précis avec n'importe quelle autre mention du même mot. N'utilise un rôle en titre que si aucun nom propre n'est donné nulle part dans l'extrait.
-Pour tout NOUVEAU PNJ inventé : donne un nom complet distinctif et stable dans "titre", normalement prénom + nom de famille (ou nom de clan adapté à sa culture). Si le récit ne donne qu'un prénom, complète-le par un nom de famille/clan plausible sans changer le prénom. Les personnages canoniques existants gardent STRICTEMENT leur identité canonique, même sans patronyme. Ne change jamais le nom d'un PNJ déjà répertorié. Deux PNJ nommés Marcus doivent avoir des noms complets et des IDs distincts.
-N'inclus JAMAIS ${personnageNom} — c'est le personnage du joueur, pas un PNJ, quelle que soit la fréquence à laquelle il est mentionné.
-Pour un PNJ, complète les champs de profilPnj avec des traits stables et cohérents avec le monde ; conserve exactement les caractéristiques déjà établies. Pour un PNJ inventé adulte, remplis TOUS les champs du profil dès la première apparition, y compris biographie fictive initiale, orientation, goûts, désirs, habitudes, préférences intimes, pratiques et positions préférées, limites et consentement. Ces données restent privées dans le registre et ne sont pas à révéler dans la narration sans raison. Pour un PNJ déjà connu, complète TOUS les champs manquants sans changer ceux qui sont établis. Ne fabrique jamais de souvenirs d'événements réellement joués ; une biographie fictive antérieure est permise. Pour un personnage mineur ou dont la majorité est incertaine, laisse vides tous les champs sexuels et intimes. Ne crée pas de relations vécues avec le joueur hors récit. Pour les autres catégories, omets profilPnj. Ignore les figurants sans nom et les objets ou lieux anecdotiques. Le contenu factuel ne doit rien inventer. Ce qui est déjà répertorié (ne le reprends que si une information nouvelle importante s'y ajoute) :
+          content: `Tu es le job du LORE ÉMERGENT DU MONDE d'Elyndor. Les PNJ et leurs fiches sont gérés par un registre distinct : ne crée JAMAIS de candidat de catégorie pnj. Identifie uniquement les éléments de monde pertinents, durables et nommés introduits dans l'extrait : lieux, objets, factions, événements importants, créatures, ressources et coutumes. Ignore les détails anecdotiques et les figurants.
+Réponds UNIQUEMENT avec un JSON strict : {"candidats":[{"categorie":"lieu|objet|faction|evenement|creature|ressource|coutume","entreeExistanteId":null,"titre":"Nom précis","contenu":"Faits établis dans le récit","profilMonde":{"localisation":"","origine":"","apparence":"","architecture":"","dimensions":"","acces":"","activites":"","occupants":"","materiaux":"","proprietes":"","fabrication":"","rarete":"","organisation":"","hierarchie":"","objectifs":"","territoire":"","ressources":"","alliances":"","habitat":"","comportement":"","capacites":"","faiblesses":"","traditions":"","croyances":"","histoire":"","referencesPnj":""}}]}.
+Complète les champs spécialisés pertinents dès la première apparition avec des caractéristiques plausibles et cohérentes, sans contredire les faits déjà établis. Laisse vides les champs non pertinents ou réellement inconnus. Le champ contenu ne rapporte QUE les faits narrés, jamais les inventions de complétion. N'invente jamais un événement vécu, une découverte du joueur ou une conséquence d'action. Les changements provoqués par le joueur restent propres à cette histoire. Les PNJ liés sont référencés par identifiant confirmé dans referencesPnj ; n'invente pas d'identifiant.
+Pour enrichir un élément existant, indique son entreeExistanteId exact et conserve son titre et ses caractéristiques. Ne fusionne pas des homonymes sans identité confirmée. Éléments existants :
 ${existantsTexte}`,
         },
         { role: 'user', content: transcript },
@@ -75,13 +70,13 @@ ${existantsTexte}`,
     if (!Array.isArray(parsed.candidats)) return [];
     const nomJoueurNormalise = personnageNom.trim().toLowerCase();
     return parsed.candidats
-      .filter((c: any) => c && typeof c.titre === 'string' && c.titre.trim())
+      .filter((c: any) => c && CATEGORIES.includes(c.categorie) && typeof c.titre === 'string' && c.titre.trim())
       .filter((c: any) => String(c.titre).trim().toLowerCase() !== nomJoueurNormalise)
       .map((c: any): CandidatLoreEmergent => ({
-        categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'pnj',
+        categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'objet',
         titre: String(c.titre).trim(),
         contenu: String(c.contenu ?? '').trim(),
-        profilPnj: c.categorie === 'pnj' ? nettoyerProfilPnj(c.profilPnj) : undefined,
+        profilMonde: c.categorie !== 'pnj' ? nettoyerProfilMonde(c.profilMonde) : undefined,
         entreeExistanteId: typeof c.entreeExistanteId === 'string' ? c.entreeExistanteId.trim() || undefined : undefined,
       }))
       .filter((c: CandidatLoreEmergent) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
@@ -125,7 +120,8 @@ export async function mettreAJourLoreEmergent({
       ...existant,
       contenu: candidat.contenu.length > existant.contenu.length ? candidat.contenu : existant.contenu,
       // Les traits initiaux font autorité : on complète les lacunes sans écraser l'identité.
-      profilPnj: existant.categorie === 'pnj' ? { ...(candidat.profilPnj ?? {}), ...(existant.profilPnj ?? {}) } : undefined,
+      profilPnj: existant.profilPnj,
+      profilMonde: { ...(candidat.profilMonde ?? {}), ...(existant.profilMonde ?? {}) },
       statut: 'permanent',
       dernierAcces: messages.length,
     };
@@ -135,6 +131,10 @@ export async function mettreAJourLoreEmergent({
   const idsAvant = new Set(entrees.map(e => e.id));
   const trouver = (candidat: CandidatLoreEmergent): number => {
     if (candidat.categorie !== 'pnj') {
+      if (candidat.entreeExistanteId) {
+        const index = entrees.findIndex(e => e.id === candidat.entreeExistanteId && e.categorie === candidat.categorie);
+        if (index >= 0) return index;
+      }
       return entrees.findIndex(e => memeEntiteLore(e, candidat));
     }
     if (candidat.entreeExistanteId) {
@@ -160,7 +160,7 @@ export async function mettreAJourLoreEmergent({
     if (deja >= 0) { confirmer(deja, candidat); continue; }
     entrees.push({
       id: idEntree(), categorie: candidat.categorie, titre: candidat.titre,
-      contenu: candidat.contenu, profilPnj: candidat.categorie === 'pnj' ? candidat.profilPnj : undefined,
+      contenu: candidat.contenu, profilMonde: candidat.profilMonde,
       statut: 'provisoire', premiereMention: messages.length, dernierAcces: messages.length,
     });
   }

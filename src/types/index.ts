@@ -224,7 +224,10 @@ export interface MemoryState {
 // récurrent, un lieu, une faction, un objet ou un événement marquant.
 // Distincte du lorebook Elyndor statique, mais rejoint le même pool de
 // sélection sémantique une fois "permanent".
-export type CategorieLoreEmergent = 'pnj' | 'objet' | 'lieu' | 'faction' | 'evenement';
+export type CategorieLoreEmergent = 'pnj' | 'objet' | 'lieu' | 'faction' | 'evenement' | 'creature' | 'ressource' | 'coutume';
+
+/** Champs structurés propres aux éléments du monde, distincts des profils PNJ. */
+export type ProfilMonde = Partial<Record<'localisation' | 'origine' | 'apparence' | 'architecture' | 'dimensions' | 'acces' | 'activites' | 'occupants' | 'materiaux' | 'proprietes' | 'fabrication' | 'rarete' | 'organisation' | 'hierarchie' | 'objectifs' | 'territoire' | 'ressources' | 'alliances' | 'habitat' | 'comportement' | 'capacites' | 'faiblesses' | 'traditions' | 'croyances' | 'histoire' | 'referencesPnj', string>>;
 
 /** Traits de référence établis ou proposés une seule fois par le modèle narrateur. */
 export interface ProfilPnj {
@@ -263,6 +266,8 @@ export interface EntreeLoreEmergent {
   contenu: string;
   /** Profil durable du PNJ, jamais remplacé par un changement de scène. */
   profilPnj?: ProfilPnj;
+  /** Détails structurés du monde : enrichissement sans écrasement des faits établis. */
+  profilMonde?: ProfilMonde;
   // "provisoire" : vu une fois, pas encore confirmé comme durable — n'est
   // pas injecté dans le contexte. "permanent" : reconfirmé au moins une
   // fois (voir src/engine/emergentLore.ts) — validé avant tout ajout

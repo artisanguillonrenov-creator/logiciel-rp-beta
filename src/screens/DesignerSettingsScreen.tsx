@@ -16,6 +16,7 @@ import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
 import LorebookPanel from '../components/LorebookPanel';
 import AtelierPnjPanel from '../components/AtelierPnjPanel';
+import AtelierMondePanel from '../components/AtelierMondePanel';
 import AtelierVisuelPanel from '../components/AtelierVisuelPanel';
 import AtelierMaintenancePanel from '../components/AtelierMaintenancePanel';
 import AtelierCommercialPanel from '../components/AtelierCommercialPanel';
@@ -30,7 +31,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur' | '
 
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
-  'recherche' | 'lorebook' | 'pnj' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
+  'recherche' | 'lorebook' | 'pnj' | 'monde' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
   'commercial' | 'profils' | 'instantanes' | 'narrateur' | 'elyndorlab';
 const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
   { id: 'elyndorlab', titre: 'Elyndor Lab — Code source', detail: 'Explorateur GitHub-like, éditeur local, versions et ZIP', pret: true },
@@ -42,6 +43,7 @@ const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string;
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Contexte et mémoire', detail: 'Budgets, mémoire, tokens, recherche et diagnostics réels', pret: true },
   { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
+  { id: 'monde', titre: 'Lore émergent — monde', detail: 'Fiches par histoire, édition et transfert manuel', pret: true },
   { id: 'pnj', titre: 'Lorebooks PNJ', detail: 'Fiches, souvenirs, recherche lexicale et promotion vers le canon', pret: true },
   { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images et portraits actifs', pret: true },
   { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
@@ -278,6 +280,12 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
           {modeConcepteur && estModule && section === 'pnj' ? (
             <Panneau style={styles.bloc}>
               <AtelierPnjPanel promouvoir={promotionPnj => navigation.navigate('ModuleConcepteur', { section: 'lorebook', promotionPnj })}/>
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'monde' ? (
+            <Panneau style={styles.bloc}>
+              <AtelierMondePanel promouvoir={promotionPnj => navigation.navigate('ModuleConcepteur', { section: 'lorebook', promotionPnj })}/>
             </Panneau>
           ) : null}
 
