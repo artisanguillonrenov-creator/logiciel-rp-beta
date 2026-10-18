@@ -1,4 +1,4 @@
-import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message, ProfilPnj, ProfilMonde } from '../types';
+import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message, ProfilMonde } from '../types';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { configurationLLM, appellerModele } from './openrouter';
 import { filtrerTextePourProfil, texteCompatibleAvecProfil } from './contenuAdulte';
@@ -14,24 +14,10 @@ interface CandidatLoreEmergent {
   categorie: CategorieLoreEmergent;
   titre: string;
   contenu: string;
-  profilPnj?: ProfilPnj;
   profilMonde?: ProfilMonde;
   /** Seul un identifiant confirmé autorise une fusion de PNJ homonymes. */
   entreeExistanteId?: string;
 }
-
-const CHAMPS_PNJ: Array<keyof ProfilPnj> = ['race', 'ageApparent', 'apparence', 'personnalite', 'profession', 'particularites', 'origine', 'genre', 'taille', 'silhouette', 'visage', 'yeux', 'cheveux', 'peau', 'signesDistinctifs', 'biographie', 'competences', 'relationsInitiales', 'orientation', 'gouts', 'desirs', 'habitudes', 'preferencesIntimes', 'pratiquesPreferees', 'positionsPreferees', 'limites'];
-
-function nettoyerProfilPnj(brut: unknown): ProfilPnj | undefined {
-  if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return undefined;
-  const profil: ProfilPnj = {};
-  for (const champ of CHAMPS_PNJ) {
-    const valeur = (brut as Record<string, unknown>)[champ];
-    if (typeof valeur === 'string' && valeur.trim()) profil[champ] = valeur.trim().slice(0, 240);
-  }
-  return Object.keys(profil).length ? profil : undefined;
-}
-
 
 const CHAMPS_MONDE: Array<keyof ProfilMonde> = ['localisation','origine','apparence','architecture','dimensions','acces','activites','occupants','materiaux','proprietes','fabrication','rarete','organisation','hierarchie','objectifs','territoire','ressources','alliances','habitat','comportement','capacites','faiblesses','traditions','croyances','histoire','referencesPnj'];
 function nettoyerProfilMonde(brut: unknown): ProfilMonde | undefined {
@@ -84,7 +70,7 @@ ${existantsTexte}`,
     if (!Array.isArray(parsed.candidats)) return [];
     const nomJoueurNormalise = personnageNom.trim().toLowerCase();
     return parsed.candidats
-      .filter((c: any) => c && typeof c.titre === 'string' && c.titre.trim())
+      .filter((c: any) => c && CATEGORIES.includes(c.categorie) && typeof c.titre === 'string' && c.titre.trim())
       .filter((c: any) => String(c.titre).trim().toLowerCase() !== nomJoueurNormalise)
       .map((c: any): CandidatLoreEmergent => ({
         categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'objet',
@@ -145,6 +131,10 @@ export async function mettreAJourLoreEmergent({
   const idsAvant = new Set(entrees.map(e => e.id));
   const trouver = (candidat: CandidatLoreEmergent): number => {
     if (candidat.categorie !== 'pnj') {
+      if (candidat.entreeExistanteId) {
+        const index = entrees.findIndex(e => e.id === candidat.entreeExistanteId && e.categorie === candidat.categorie);
+        if (index >= 0) return index;
+      }
       return entrees.findIndex(e => memeEntiteLore(e, candidat));
     }
     if (candidat.entreeExistanteId) {
