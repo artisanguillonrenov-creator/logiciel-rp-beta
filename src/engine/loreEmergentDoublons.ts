@@ -1,12 +1,8 @@
 import type { EntreeLoreEmergent } from '../types';
 
-// Un même PNJ ne doit avoir qu'une fiche. Le rapprochement par embeddings
-// (emergentLore.ts) compare « nom — description » : quand la description
-// change d'un tour à l'autre (« marchand d'esclaves », puis « accompagne
-// William »), le score passe sous le seuil et une deuxième fiche « Marcus »
-// était créée, avec son propre portrait. Avec plusieurs fiches du même nom,
-// indexerLocuteurs refusait aussi de choisir et la réplique restait sans
-// portrait. Le nom fait donc foi avant la description.
+// Les PNJ homonymes ne sont pas une seule personne. Les autres catégories de lore
+// gardent la déduplication lexicale historique ; les PNJ ne fusionnent qu'avec
+// une preuve d'identité explicite (ID commun ou alias d'ancien ID déjà attesté).
 
 /** Nom comparable : minuscules, sans accents ni ponctuation (« N'Kala » → « n kala »). */
 export function cleNomLore(titre: string): string {
@@ -48,14 +44,19 @@ function meilleurTitre(a: string, b: string): string {
 }
 
 /**
- * Fusionne les fiches d'une même entité (même catégorie, même nom). La plus
- * ancienne garde son identifiant ; les autres identifiants passent dans
- * `alias`, pour retrouver un portrait déjà généré sous l'un d'eux.
+ * Fusionne les autres éléments du lore par nom ; un PNJ n'est fusionné
+ * qu'avec le même ID ou un ancien ID explicitement lié. Deux personnes
+ * distinctes gardent deux fiches, même avec un nom identique.
  */
 export function fusionnerDoublonsLore(entrees: EntreeLoreEmergent[]): EntreeLoreEmergent[] {
   const resultat: EntreeLoreEmergent[] = [];
   for (const entree of entrees) {
-    const i = resultat.findIndex((r) => memeEntiteLore(r, entree));
+    const i = resultat.findIndex((r) => {
+      if (r.categorie === 'pnj' && entree.categorie === 'pnj') {
+        return r.id === entree.id || !!r.alias?.includes(entree.id) || !!entree.alias?.includes(r.id);
+      }
+      return memeEntiteLore(r, entree);
+    });
     if (i < 0) {
       resultat.push(entree);
       continue;
@@ -65,6 +66,7 @@ export function fusionnerDoublonsLore(entrees: EntreeLoreEmergent[]): EntreeLore
     resultat[i] = {
       ...base,
       titre: meilleurTitre(base.titre, entree.titre),
+      profilPnj: base.categorie === 'pnj' ? { ...(entree.profilPnj ?? {}), ...(base.profilPnj ?? {}) } : undefined,
       contenu: entree.contenu.length > base.contenu.length ? entree.contenu : base.contenu,
       statut: base.statut === 'permanent' || entree.statut === 'permanent' ? 'permanent' : 'provisoire',
       premiereMention: Math.min(base.premiereMention, entree.premiereMention),

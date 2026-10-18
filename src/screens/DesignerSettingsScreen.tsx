@@ -15,6 +15,7 @@ import AtelierConfigurationPanel from '../components/AtelierConfigurationPanel';
 import AtelierDiagnosticPanel from '../components/AtelierDiagnosticPanel';
 import AtelierRunpodPanel from '../components/AtelierRunpodPanel';
 import LorebookPanel from '../components/LorebookPanel';
+import AtelierPnjPanel from '../components/AtelierPnjPanel';
 import AtelierVisuelPanel from '../components/AtelierVisuelPanel';
 import AtelierMaintenancePanel from '../components/AtelierMaintenancePanel';
 import AtelierCommercialPanel from '../components/AtelierCommercialPanel';
@@ -29,7 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ReglagesConcepteur' | '
 
 const IMAGE_CONCEPTEUR = require('../../assets/scenes/accueil.png');
 type ModuleAtelier = 'tableau' | 'modeles' | 'runpod' | 'narration' | 'metamoteurs' |
-  'recherche' | 'lorebook' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
+  'recherche' | 'lorebook' | 'pnj' | 'visuel' | 'stockage' | 'diagnostics' | 'maintenance' |
   'commercial' | 'profils' | 'instantanes' | 'narrateur' | 'elyndorlab';
 const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string; pret: boolean }> = [
   { id: 'elyndorlab', titre: 'Elyndor Lab — Code source', detail: 'Explorateur GitHub-like, éditeur local, versions et ZIP', pret: true },
@@ -41,6 +42,7 @@ const MODULES: ReadonlyArray<{ id: ModuleAtelier; titre: string; detail: string;
   { id: 'metamoteurs', titre: '15 méta-moteurs', detail: 'Responsabilités codées V2.1', pret: true },
   { id: 'recherche', titre: 'Contexte et mémoire', detail: 'Budgets, mémoire, tokens, recherche et diagnostics réels', pret: true },
   { id: 'lorebook', titre: 'Lorebook', detail: 'Bibliothèque, édition, IA et publication', pret: true },
+  { id: 'pnj', titre: 'Lorebooks PNJ', detail: 'Fiches, souvenirs, recherche lexicale et promotion vers le canon', pret: true },
   { id: 'visuel', titre: 'Atelier visuel', detail: 'Préréglages images et portraits actifs', pret: true },
   { id: 'stockage', titre: 'Stockage', detail: 'Explorateur, export et nettoyage', pret: true },
   { id: 'diagnostics', titre: 'Diagnostics', detail: 'Cache, traces et erreurs', pret: true },
@@ -269,7 +271,13 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
           {modeConcepteur && estModule && section === 'lorebook' ? (
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>BIBLIOTHÈQUE CANONIQUE</Text>
-              <LorebookPanel />
+              <LorebookPanel promotionPnj={estModule ? (route.params as RootStackParamList['ModuleConcepteur']).promotionPnj : undefined} />
+            </Panneau>
+          ) : null}
+
+          {modeConcepteur && estModule && section === 'pnj' ? (
+            <Panneau style={styles.bloc}>
+              <AtelierPnjPanel promouvoir={promotionPnj => navigation.navigate('ModuleConcepteur', { section: 'lorebook', promotionPnj })}/>
             </Panneau>
           ) : null}
 

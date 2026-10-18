@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
@@ -35,7 +35,8 @@ const dossierFiche = (f: FicheAffichee) => dossiersNavigationLore(f);
 type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic' | 'images';
 interface LoreProposition { id: string; titre: string; contenu: string; categorie: string; origine: string; }
 
-export default function LorebookPanel() {
+export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourceId: string; avatarSource?: { storyId: string; pnjId: string }; fiche: Partial<FicheEditable> } }) {
+  const dernierePromotion = useRef('');
   const [etat, setEtat] = useState<EtatLore | null>(null);
   const [charge, setCharge] = useState(true);
   const [occupe, setOccupe] = useState(false);
@@ -142,6 +143,12 @@ export default function LorebookPanel() {
       [{ text: 'Annuler', style: 'cancel' }, { text: 'Continuer', onPress: ouvrir }]);
     else ouvrir();
   }
+  useEffect(() => {
+    if (!etat || !promotionPnj || dernierePromotion.current === promotionPnj.sourceId) return;
+    dernierePromotion.current = promotionPnj.sourceId;
+    creerFiche(promotionPnj.fiche);
+  }, [etat, promotionPnj]);
+
   const renseigner = <K extends keyof FicheEditable>(nom: K, valeur: FicheEditable[K]) => {
     setEdition(ancien => ancien ? { ...ancien, [nom]: valeur } : ancien);
     setProposition(null);
@@ -358,13 +365,13 @@ export default function LorebookPanel() {
         <TextInput style={styles.champ} value={simulation} onChangeText={setSimulation}
           placeholder="Ex : je rejoins la Guilde des Aventuriers à Paris"/>
         <Bouton titre="Simuler la sélection des passages" onPress={simuler} style={styles.bouton}/>
-        <Text style={styles.aide}>Simulation lexicale avec le même sélecteur de passages que le narrateur. Ce n’est pas une mesure d’injection réelle : embeddings, scène et autres contraintes peuvent modifier le résultat final.</Text>
+        <Text style={styles.aide}>Simulation lexicale avec le même sélecteur de passages que le narrateur. Ce n’est pas une mesure d’injection réelle : scène, budget et autres contraintes peuvent modifier le résultat final.</Text>
         {resultats?.length === 0 ? <Text style={styles.aide}>Aucun passage retenu.</Text> : null}
         {resultats?.map((v, i) => <Text key={i} style={styles.texte}>{i + 1}. {v}</Text>)}
         {signalerDoublonsLore(edition, fiches, id).map(v => <Text key={v} style={styles.avertissement}>Doublon de titre potentiel : {v}</Text>)}
       </View> : null}
       {onglet === 'images' ? (courante
-        ? <ReferencesVisuellesFiche ficheId={id}/>
+        ? <ReferencesVisuellesFiche ficheId={id} titre={edition.titre} description={edition.contenu} avatarSource={promotionPnj?.avatarSource}/>
         : <Text style={styles.aide}>Enregistre d’abord la fiche pour lui rattacher des images.</Text>) : null}
       <Bouton titre={courante?.protegee || !courante ? 'Enregistrer en brouillon' : 'Enregistrer la fiche'}
         onPress={() => void sauvegarder()} desactive={occupe} style={styles.bouton}/>

@@ -19,8 +19,16 @@ const fiches = [
   pnj('m3', 'marcus', 'Le marchand.', 11),
 ];
 
-test('les fiches d’un même PNJ sont fusionnées, la plus ancienne garde son identifiant', () => {
-  const fusion = fusionnerDoublonsLore(fiches);
+// Ces rapprochements sont attestés par les anciens IDs : même personnage,
+// contrairement à deux inconnus qui partagent seulement un prénom.
+const fichesLiees = fiches.map(e => {
+  if (e.id === 'm1') return { ...e, alias: ['m2', 'm3'] };
+  if (e.id === 'e1') return { ...e, alias: ['n1', 'n2'] };
+  return e;
+});
+
+test('les fiches explicitement liées d’un PNJ sont fusionnées sans perdre leur ID', () => {
+  const fusion = fusionnerDoublonsLore(fichesLiees);
   assert.deepEqual(fusion.map((e) => e.titre), ['Marcus', 'N’Kala']);
   const [marcus, nkala] = fusion;
   assert.equal(marcus.id, 'm1');
@@ -39,10 +47,20 @@ test('des PNJ différents ou de catégories différentes restent séparés', () 
 });
 
 test('la réplique retrouve son PNJ une fois les doublons fusionnés', () => {
-  const story = { meta: { personnageNom: 'William' }, loreEmergent: fiches } as unknown as StoryState;
+  const story = { meta: { personnageNom: 'William' }, loreEmergent: fichesLiees } as unknown as StoryState;
   const visibles = listerPnjVisuels(story);
   assert.equal(visibles.length, 2);
   const index = indexerLocuteurs(visibles);
   assert.equal(index.get('marcus')?.id, 'm1');
   assert.equal(index.get('n’kala')?.id, 'e1');
+});
+
+test('sans lien d’identité, les noms répétés ne sont jamais fusionnés par supposition', () => {
+  const unies = fusionnerDoublonsLore(fiches);
+  assert.equal(unies.length, fiches.length);
+  assert.equal(unies.filter(f=>f.titre.toLowerCase()==='marcus').length,3);
+  const story = { meta: { personnageNom: 'William' }, loreEmergent: fiches } as unknown as StoryState;
+  const visibles=listerPnjVisuels(story);
+  const index=indexerLocuteurs(visibles);
+  assert.equal(index.get('marcus'),undefined);
 });

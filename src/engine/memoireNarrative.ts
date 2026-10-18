@@ -1,5 +1,6 @@
 import type { RelationPersonnage, StoryState } from '../types';
 import { classerLexical } from './rechercheLexicale';
+import { rechercherPnjLexical } from './registrePnj';
 import { contientExpression, normaliserTexte } from './texteRecherche';
 
 // Mémoire narrative : vue de RÉCUPÉRATION des échanges joueur → narrateur.
@@ -40,7 +41,7 @@ export interface EvenementNarratif {
 
 export interface BlocContexte {
   id: string;
-  type: 'scene' | 'event' | 'npc_memory' | 'relation' | 'engagement' | 'canon' | 'world';
+  type: 'scene' | 'event' | 'npc_memory' | 'npc_profile' | 'relation' | 'engagement' | 'canon' | 'world';
   priorite: number;
   niveau: NiveauBloc;
   source: string;
@@ -305,25 +306,35 @@ export function construireBlocsContexte(
   }
   for (const e of anciens) if (dejaVu(e)) rejetes.push({ id: e.id, type: 'event', niveau: 'P1', cause: 'deja-fourni' });
 
-  const pnjDeLaScene = personnagesConnus(story)
-    .filter((nom) => {
-      const cle = normaliserTexte(nom);
-      return cle.length >= 2 && contientExpression(requeteNormalisee, cle);
-    })
-    .slice(0, 3);
-  for (const nom of pnjDeLaScene) {
-    const cle = normaliserTexte(nom);
-    // Seuls les événements auxquels ce PNJ était présent : une simple mention ne fait pas un souvenir.
-    const vus = evenements.filter((e) => accesEvenement(e, nom) === 'present').slice(-2);
-    if (vus.length) {
+  // Moteur lexical PNJ dédié. La fiche et la mémoire personnelle arrivent
+  // ensemble : pas de rappel d'une scène inconnue par simple mention du nom.
+  const requetePnj = [messageJoueur, ...(story.scene?.presents ?? []), ...story.messages.slice(-1).map(m => m.content)].join('\n');
+  for (const pnj of rechercherPnjLexical(story, requetePnj)) {
+    ajouter({
+      id: 'fiche-pnj:' + pnj.fiche.id,
+      type: 'npc_profile', priorite: 97, niveau: 'P1', source: 'pnj:' + pnj.fiche.id,
+      texte: pnj.texte,
+      messageIds: pnj.souvenirsRetenus.flatMap(s => s.messageIds),
+    });
+  }
+
+  // Compatibilité des anciennes sauvegardes non encore dotées du registre PNJ.
+  // Après conversion, le moteur spécialisé devient la seule source des souvenirs PNJ.
+  if (!story.pnjLorebook?.fiches.length) {
+    const pnjDeLaScene = personnagesConnus(story)
+      .filter(nom => {
+        const cle = normaliserTexte(nom);
+        return cle.length >= 2 && contientExpression(requeteNormalisee, cle);
+      }).slice(0, 3);
+    for (const nom of pnjDeLaScene) {
+      const vus = evenements.filter(e => accesEvenement(e, nom) === 'present').slice(-2);
+      if (!vus.length) continue;
       ajouter({
-        id: `npc:${cle}`,
-        type: 'npc_memory',
-        priorite: 96,
-        niveau: 'P1',
-        source: `pnj:${nom}`,
-        texte: `Mémoire accessible à ${nom} (événements auxquels ce PNJ a été présent):\n${vus.map((e) => `- ${resumer(e.resultat, 240)}`).join('\n')}`,
-        messageIds: vus.flatMap((e) => e.messageIds),
+        id: 'npc:' + normaliserTexte(nom), type: 'npc_memory', priorite: 96, niveau: 'P1',
+        source: 'pnj:' + nom,
+        texte: 'Mémoire accessible à ' + nom + ' (événements auxquels ce PNJ a été présent):\\n' +
+          vus.map(e => '- ' + resumer(e.resultat, 240)).join('\\n'),
+        messageIds: vus.flatMap(e => e.messageIds),
       });
     }
   }
