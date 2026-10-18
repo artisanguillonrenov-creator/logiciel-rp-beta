@@ -438,11 +438,8 @@ export async function appellerModeleAvecOutils({
 
 /** Catalogue OpenRouter gratuit conservé pour son mode propre. */
 export async function listerModeles(): Promise<ModeleOpenRouter[]> {
-  const actifs = reglagesFournisseursActifs();
-  if (actifs.moteurInference !== 'openrouter') {
-    const route = resoudreRouteTexte(actifs);
-    return [{ id: route.model, nom: route.model }];
-  }
+  // Le catalogue doit fonctionner AVANT l'activation d'OpenRouter : autrement
+  // le formulaire ne présentait que le modèle du fournisseur précédent.
   const resultat = await fetch('https://openrouter.ai/api/v1/models');
   if (!resultat.ok) throw new ErreurElyndorCloud('Catalogue OpenRouter indisponible.', resultat.status);
   const donnees = await resultat.json();
