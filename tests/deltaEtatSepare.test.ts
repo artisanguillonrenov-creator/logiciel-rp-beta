@@ -53,28 +53,33 @@ test('état séparé : transmet uniquement le récit FINAL à la génération te
   assert.ok(delta?.events);
 });
 
-test('fourchette : le contrôle refuse strictement tout nombre extérieur', async () => {
+test('fourchette : les bornes sont contrôlées sans refuser une narration', async () => {
   assert.equal(plageRespectee(215, { min: 215, max: 235 }), true);
   assert.equal(plageRespectee(235, { min: 215, max: 235 }), true);
   assert.equal(plageRespectee(214, { min: 215, max: 235 }), false);
   assert.equal(plageRespectee(236, { min: 215, max: 235 }), false);
-  await assert.rejects(controlerLongueurNarration({
+  const resultat = await controlerLongueurNarration({
     texte: 'La réponse est complète.',
     plage: { min: 215, max: 235 },
     temperature: 0.85,
     compter: async () => null,
-    reformuler: async () => { throw new Error('Ne jamais régénérer sans tokenizer'); },
-  }), /Comptage exact/);
+    reformuler: async () => { throw new Error('Aucune régénération autorisée'); },
+  });
+  assert.equal(resultat.texte, 'La réponse est complète.');
+  assert.equal(resultat.verification, 'indisponible');
+  assert.equal(resultat.conforme, false);
 });
 
-test('fourchette : après deux essais infructueux, aucune narration hors plage publiée', async () => {
+test('fourchette : même hors plage, jamais de réécriture ni de refus de publication', async () => {
   let tentatives = 0;
-  await assert.rejects(controlerLongueurNarration({
+  const resultat = await controlerLongueurNarration({
     texte: 'La réponse est complète.',
     plage: { min: 215, max: 235 },
     temperature: 0.85,
     compter: async () => 445,
     reformuler: async () => { tentatives++; return 'Une autre réponse entière.'; },
-  }), /445 tokens, attendu 215–235/);
-  assert.equal(tentatives, 2);
+  });
+  assert.equal(resultat.texte, 'La réponse est complète.');
+  assert.equal(resultat.conforme, false);
+  assert.equal(tentatives, 0);
 });
