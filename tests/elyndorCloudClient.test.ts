@@ -294,3 +294,57 @@ test('GPT : aucune requête API sans clé', async () => {
   await assert.rejects(appellerModele({apiKey: '', model: '', messages: [{role: 'user', content: 'x'}]}), /clé API OpenAI/);
   assert.equal(appels, 0);
 });
+
+
+test('un scénario préparé avec OpenRouter conserve sa route même après un autre réglage RunPod', async () => {
+  const openrouter = configurationLLM({
+    openRouterApiKey: 'cle-test-or', model: 'fiction/modele:free',
+    moteurInference: 'openrouter', fournisseurNarration: 'openrouter',
+    fournisseurEmbeddings: 'desactive',
+  });
+  // Simule un autre module qui charge encore les paramètres du pod.
+  configurationLLM(anciensReglages);
+  let url = ''; let corps: any; let authorization = '';
+  globalThis.fetch = async (input, init) => {
+    url = String(input);
+    corps = JSON.parse(String(init?.body));
+    authorization = (init?.headers as Record<string, string>).Authorization;
+    return Response.json({ choices: [{ message: { content: 'Une histoire commence.' } }] });
+  };
+  const texte = await appellerModele({
+    ...openrouter, messages: [{ role: 'user', content: 'Début de scénario' }],
+  });
+  assert.equal(texte, 'Une histoire commence.');
+  assert.equal(url, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(corps.model, 'fiction/modele:free');
+  assert.equal(authorization, 'Bearer cle-test-or');
+  assert.deepEqual(corps.reasoning, { enabled: false });
+});
+
+test('une erreur HTTP d’OpenRouter ne mentionne pas à tort Elyndor Cloud', async () => {
+  const openrouter = configurationLLM({
+    openRouterApiKey: 'cle-test-or', model: 'fiction/modele:free',
+    moteurInference: 'openrouter', fournisseurNarration: 'openrouter',
+  });
+  globalThis.fetch = async () => Response.json({ error: { message: 'Trop de requêtes' } }, { status: 429 });
+  await assert.rejects(
+    appellerModele({ ...openrouter, messages: [{ role: 'user', content: 'Bonjour' }] }),
+    /Erreur OpenRouter \(429\)/,
+  );
+});
+
+test('le catalogue gratuit OpenRouter reste visible quand RunPod était actif', async () => {
+  configurationLLM(anciensReglages);
+  const { listerModeles } = await import('../src/engine/elyndorCloudClient');
+  let url = '';
+  globalThis.fetch = async (input) => {
+    url = String(input);
+    return Response.json({ data: [
+      { id: 'fiction/modele:free', name: 'Gratuit' },
+      { id: 'fiction/payante', name: 'Payant' },
+    ] });
+  };
+  const modeles = await listerModeles();
+  assert.equal(url, 'https://openrouter.ai/api/v1/models');
+  assert.deepEqual(modeles, [{ id: 'fiction/modele:free', nom: 'Gratuit' }]);
+});
