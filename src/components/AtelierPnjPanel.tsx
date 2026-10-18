@@ -10,6 +10,26 @@ import { couleurs } from '../theme/theme';
 const CHAMPS: Array<[keyof ProfilPnj, string]> = [
   ['race', 'Race'], ['ageApparent', 'Âge apparent'], ['apparence', 'Apparence de référence'],
   ['personnalite', 'Personnalité'], ['profession', 'Profession'], ['particularites', 'Particularités'],
+  ['origine', 'Origine'],
+  ['genre', 'Genre'],
+  ['taille', 'Taille'],
+  ['silhouette', 'Silhouette'],
+  ['visage', 'Visage'],
+  ['yeux', 'Yeux'],
+  ['cheveux', 'Cheveux'],
+  ['peau', 'Peau'],
+  ['signesDistinctifs', 'Signes distinctifs'],
+  ['biographie', 'Biographie'],
+  ['competences', 'Compétences'],
+  ['relationsInitiales', 'Relations initiales'],
+  ['orientation', 'Orientation et attirances'],
+  ['gouts', 'Goûts personnels'],
+  ['desirs', 'Désirs et envies'],
+  ['habitudes', 'Habitudes'],
+  ['preferencesIntimes', 'Préférences intimes'],
+  ['pratiquesPreferees', 'Pratiques préférées'],
+  ['positionsPreferees', 'Positions préférées'],
+  ['limites', 'Limites et consentement'],
 ];
 const messageErreur = (e: unknown) => e instanceof Error ? e.message : 'Erreur de sauvegarde.';
 interface PromotionPnj { sourceId: string; fiche: Partial<FicheEditable> }
