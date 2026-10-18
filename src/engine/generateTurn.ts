@@ -465,7 +465,6 @@ export function construireCtxBase(
   return {
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
-    longueursCibles: reglagesAtelier?.narrateur.longueurs,
     stylesNarratifs: reglagesAtelier?.narrateur.styles,
     resume: filtrer(story.memoire.resume),
     faits,
