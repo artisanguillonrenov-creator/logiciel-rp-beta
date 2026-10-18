@@ -12,63 +12,61 @@ const options: AppelModeleOptions = {
   ],
 };
 
-function mots(texte: string): Promise<number> {
-  return Promise.resolve(texte.trim().split(/\s+/).filter(Boolean).length);
-}
-
-test('le seuil MIN déclenche une nouvelle phase limitée à MAX - MIN', async () => {
+test('le moteur fixe MAX sans injecter de longueur dans le prompt', async () => {
   const appels: AppelModeleOptions[] = [];
-  const sortie = await genererNarrationAvecCloture(options, { min: 5, max: 9 },
-    async appel => {
-      appels.push(appel);
-      return appels.length === 1 ? 'La porte du château reste' : 'fermée.';
-    }, mots);
-  assert.equal(appels.length, 2);
-  assert.equal(appels[0].maxTokens, 5);
-  assert.equal(appels[1].maxTokens, 4);
-  assert.match(appels[1].messages.at(-1)?.content ?? '', /conclusion/i);
+  const sortie = await genererNarrationAvecCloture(options, { min: 215, max: 235 },
+    async requete => { appels.push(requete); return ' La porte du château reste fermée. '; });
+  assert.equal(appels.length, 1);
+  assert.equal(appels[0].maxTokens, 235);
+  assert.deepEqual(appels[0].messages, options.messages);
+  assert.equal(appels[0].messages[0].content, 'Narrateur du monde Elyndor.');
+  assert.equal(appels[0].messages[1].content, 'Continue la scène.');
   assert.equal(sortie, 'La porte du château reste fermée.');
-  assert.equal(await mots(sortie), 6);
 });
 
-test('une réponse déjà complète à MIN ne consomme aucun second appel', async () => {
+test('une réponse courte reste jouable sans seconde requête ni message technique', async () => {
   let nombreAppels = 0;
-  const sortie = await genererNarrationAvecCloture(options, { min: 3, max: 8 },
-    async () => { nombreAppels++; return 'La porte claque.'; }, mots);
+  const sortie = await genererNarrationAvecCloture(options, { min: 215, max: 235 },
+    async () => { nombreAppels++; return 'La porte claque.'; });
   assert.equal(nombreAppels, 1);
   assert.equal(sortie, 'La porte claque.');
 });
 
-test('la plage 215–235 garde ses bornes et sa continuation max 20', async () => {
-  const appels: AppelModeleOptions[] = [];
-  const brouillon = 'La '.repeat(214) + 'suite';
-  const sortie = await genererNarrationAvecCloture(options, { min: 215, max: 235 },
-    async opts => {
-      appels.push(opts);
-      return appels.length === 1 ? brouillon : 's’achève.';
-    }, mots);
-  assert.equal(appels[0].maxTokens, 215);
-  assert.equal(appels[1].maxTokens, 20);
-  assert.equal(await mots(sortie), 216);
-  const controle = await controlerLongueurNarration({
-    texte: sortie, plage: { min: 215, max: 235 }, temperature: 0.85,
-    compter: mots,
-    reformuler: async () => { throw new Error('Pas besoin de régénérer'); },
-  });
-  assert.equal(controle.conforme, true);
+test('la borne de longueur change seulement maxTokens, sans changer les messages', async () => {
+  const longueurs = [
+    { min: 140, max: 160 },
+    { min: 215, max: 235 },
+    { min: 280, max: 320 },
+  ];
+  for (const plage of longueurs) {
+    let recu: AppelModeleOptions | undefined;
+    await genererNarrationAvecCloture(options, plage, async requete => {
+      recu = requete;
+      return 'Fin de scène.';
+    });
+    assert.equal(recu?.maxTokens, plage.max);
+    assert.deepEqual(recu?.messages, options.messages);
+  }
 });
 
-test('si le tokenizer échoue, la phase 2 ne consomme pas de GPU pour rien', async () => {
-  let nombreAppels = 0;
+test('le comptage reste informatif et ne rejette pas une réponse trop courte', async () => {
   const sortie = await genererNarrationAvecCloture(options, { min: 215, max: 235 },
-    async () => { nombreAppels++; return 'La porte reste ouverte.'; },
-    async () => null);
-  assert.equal(nombreAppels, 1);
+    async () => 'La porte reste ouverte.');
   const controle = await controlerLongueurNarration({
     texte: sortie, plage: { min: 215, max: 235 }, temperature: 0.85,
-    compter: async () => null,
+    compter: async () => 12,
   });
   assert.equal(controle.texte, sortie);
-  assert.equal(controle.verification, 'indisponible');
   assert.equal(controle.conforme, false);
+  assert.equal(controle.corrige, false);
+});
+
+test('une fourchette invalide est refusée avant tout appel IA', async () => {
+  let appels = 0;
+  await assert.rejects(
+    genererNarrationAvecCloture(options, { min: 235, max: 215 },
+      async () => { appels++; return 'Texte'; }),
+    /Fourchette narrative incorrecte/,
+  );
+  assert.equal(appels, 0);
 });
