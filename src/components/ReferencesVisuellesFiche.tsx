@@ -8,18 +8,23 @@ import {
 import { enregistrerAssetVisuel, obtenirAssetVisuel, supprimerAssetVisuel } from '../storage/assetsVisuelsStore';
 import { couleurs, polices } from '../theme/theme';
 import Bouton from './Bouton';
+import { executerImage } from '../engine/serviceVisuel';
+import { CADRAGE_PORTRAIT } from '../engine/cadrageVisuel';
+import type { ContratVisuel } from '../engine/contratVisuel';
 import SelecteurReferencesElyndor, { type ReferenceElyndor } from './SelecteurReferencesElyndor';
 
 /**
  * Références visuelles optionnelles d'une fiche du lorebook. La fiche elle-même
  * n'est pas modifiée : seuls des liens vers des images enregistrées à part.
  */
-export default function ReferencesVisuellesFiche({ ficheId }: { ficheId: string }) {
+export default function ReferencesVisuellesFiche({ ficheId, titre = '', description = '' }: { ficheId: string; titre?: string; description?: string }) {
   const [liens, setLiens] = useState<LienAssetLore[]>([]);
   const [uris, setUris] = useState<Record<string, string | null>>({});
   const [ajout, setAjout] = useState(false);
   const [role, setRole] = useState<RoleAssetLore>('decor');
   const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
   async function recharger() {
     const etat = await lireAssetsLore();
@@ -44,6 +49,54 @@ export default function ReferencesVisuellesFiche({ ficheId }: { ficheId: string 
     } catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
   }
 
+  async function generer() {
+    if (busy || !titre.trim() || !description.trim()) return;
+    setBusy(true); setMessage('');
+    try {
+      const contrat: ContratVisuel = {
+        version: 1, origine: 'portrait', format: '3:4', typeScene: 'dialogue',
+        lieu: [], instant: [], eclairage: [], horsCadre: [], mentionnes: [],
+        figurants: [], action: [], elementsObligatoires: [], decor: [],
+        exclusions: [], cadrage: { ...CADRAGE_PORTRAIT },
+        provenance: ['fiche lorebook'], rejets: [],
+        personnages: [{
+          cle: ficheId, nom: titre, type: 'canon', principal: true,
+          identite: [titre], apparence: [], tenue: [], etat: [], action: [],
+          position: [], sources: { identite: 'fiche' },
+        }],
+        texteLibre: 'Portrait de référence du personnage ' + titre + '. ' + description.slice(0, 3000),
+      };
+      const resultat = await executerImage({ contrat, destination: 'portrait lore ' + ficheId });
+      if (!resultat.image) throw new Error('Aucune image générée.');
+      setPreview(resultat.image);
+    } catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function valider() {
+    if (!preview || busy) return;
+    setBusy(true);
+    try {
+      const assetId = nouvelIdentifiantAsset();
+      await enregistrerAssetVisuel(assetId, preview);
+      const anciens = liens.filter(l => l.role === 'identite');
+      const etat = await modifierAssetsLore(v => {
+        let prochain = v;
+        for (const ancien of anciens) prochain = retirerLienAsset(prochain, ficheId, ancien.assetId);
+        return ajouterLienAsset(prochain, ficheId, {
+          assetId, role: 'identite', libelle: ('Portrait de ' + titre).slice(0, 120), ajouteLe: Date.now(),
+        });
+      });
+      for (const ancien of anciens) {
+        if (!assetUtilise(etat, ancien.assetId)) await supprimerAssetVisuel(ancien.assetId).catch(() => undefined);
+      }
+      setPreview(null);
+      await recharger();
+      setMessage('Portrait enregistré.');
+    } catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
+
   async function retirer(assetId: string) {
     try {
       const apres = await modifierAssetsLore((etat) => retirerLienAsset(etat, ficheId, assetId));
@@ -59,6 +112,13 @@ export default function ReferencesVisuellesFiche({ ficheId }: { ficheId: string 
 
   return <View style={st.bloc}>
     <Text style={st.label}>Références visuelles (optionnel)</Text>
+    <Bouton titre={liens.some(l => l.role === 'identite') ? 'Régénérer le portrait depuis la fiche' : 'Générer le portrait depuis la fiche'} onPress={() => void generer()} desactive={busy || !titre.trim() || !description.trim()} />
+    {busy ? <Text style={st.aide}>Traitement en cours…</Text> : null}
+    {preview ? <View style={st.bloc}>
+      <Image source={{ uri: preview }} style={{ width: 210, height: 280 }} />
+      <Bouton titre="Valider ce portrait" onPress={() => void valider()} desactive={busy} />
+      <Bouton titre="Conserver l’ancien portrait" variante="secondaire" onPress={() => setPreview(null)} desactive={busy} />
+    </View> : null}
     <Text style={st.aide}>Images utilisées par les illustrations quand cette fiche concerne le lieu actuel ou un personnage visible. Elles ne sont jamais envoyées au narrateur ni copiées dans la fiche ; l’export JSON du lorebook ne les contient pas.</Text>
     {liens.map((l) => <View key={l.assetId} style={st.ligneAsset}>
       {uris[l.assetId] ? <Image source={{ uri: uris[l.assetId]! }} style={st.image} /> : <View style={st.image}><Text style={st.alerte}>introuvable</Text></View>}
