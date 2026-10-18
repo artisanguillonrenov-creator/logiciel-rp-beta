@@ -371,7 +371,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         {signalerDoublonsLore(edition, fiches, id).map(v => <Text key={v} style={styles.avertissement}>Doublon de titre potentiel : {v}</Text>)}
       </View> : null}
       {onglet === 'images' ? (courante
-        ? <ReferencesVisuellesFiche ficheId={id}/>
+        ? <ReferencesVisuellesFiche ficheId={id} titre={edition.titre} description={edition.contenu}/>
         : <Text style={styles.aide}>Enregistre d’abord la fiche pour lui rattacher des images.</Text>) : null}
       <Bouton titre={courante?.protegee || !courante ? 'Enregistrer en brouillon' : 'Enregistrer la fiche'}
         onPress={() => void sauvegarder()} desactive={occupe} style={styles.bouton}/>
