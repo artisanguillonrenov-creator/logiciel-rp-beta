@@ -4,6 +4,7 @@ import { demarrerConnexionChatGPT, statutChatGPT, deconnecterChatGPT, modelesCha
 import {getSettings,saveSettings} from '../storage/storage';
 import type {AppSettings} from '../types';
 import { ELYNDOR_CLOUD_REGLAGE_URL } from '../engine/elyndorCloud';
+import { resoudreRouteTexte } from '../engine/fournisseursRuntime';
 import {listerModeles,listerModelesGPT,MODELES_GPT_SUGGERES} from '../engine/elyndorCloudClient';
 import {listerModelesImagesOpenRouter} from '../engine/fournisseursImages';
 import {listerModelesImagesOpenAI, MODELES_IMAGES_OPENAI_SUGGERES} from '../engine/openAiImages';
@@ -19,8 +20,9 @@ const MODES_IMAGES:Record<ModeImages,string>={
   desactive:'Désactivées (0 appel GPU)',runpod:'RunPod Elyndor',openrouter:'OpenRouter (potentiellement payant)',openai:'OpenAI / GPT Image (payant)',
 };
 function modeDuTexte(v:AppSettings):ModeTexte{
-  if(v.moteurInference==='chatgpt'||v.fournisseurNarration==='chatgpt')return 'chatgpt';
-  if(v.moteurInference==='openai'||v.fournisseurNarration==='openai')return 'openai';
+  if(v.fournisseurNarration)return v.fournisseurNarration;
+  if(v.moteurInference==='chatgpt')return 'chatgpt';
+  if(v.moteurInference==='openai')return 'openai';
   if(v.moteurInference==='openrouter')return 'openrouter';
   if(v.serveurLocalUrl===ELYNDOR_CLOUD_REGLAGE_URL)return 'runpod';
   return 'serveur';
@@ -123,6 +125,9 @@ export default function FournisseursPanel(){
       if(mode==='openrouter' && !v.openRouterApiKey?.trim()){
         throw new Error('Entre ta clé API OpenRouter pour utiliser ses modèles.');
       }
+      if(mode==='openrouter' && !v.model?.trim()){
+        throw new Error('Choisis un modèle texte OpenRouter avant d’enregistrer.');
+      }
       if(mode==='serveur' && (!v.serveurLocalUrl?.startsWith('https://') || !v.serveurLocalModele?.trim())){
         throw new Error('L’API personnalisée exige une adresse HTTPS et un identifiant de modèle.');
       }
@@ -136,8 +141,15 @@ export default function FournisseursPanel(){
         throw new Error('Confirme l’autorisation des images payantes pour utiliser ce fournisseur.');
       }
       await saveSettings(v);
-      setCfg(await getSettings());
-      setMsg('Fournisseurs enregistrés. Aucun appel GPU ni génération image lancé.');
+      const sauvegarde = await getSettings();
+      const route = resoudreRouteTexte(sauvegarde);
+      setCfg(sauvegarde);
+      setMode(modeDuTexte(sauvegarde));
+      const titre = route.fournisseur === 'runpod' ? 'Elyndor Cloud (RunPod)'
+        : route.fournisseur === 'openrouter' ? 'OpenRouter'
+        : route.fournisseur === 'openai' ? 'OpenAI'
+        : route.fournisseur === 'chatgpt' ? 'ChatGPT' : 'API personnalisée';
+      setMsg(`Narrateur enregistré : ${titre} — modèle ${route.model || 'par défaut'}. Aucun appel IA lancé.`);
     }catch(e){setMsg(e instanceof Error?e.message:String(e));}
     finally{setBusy(false);}
   };
