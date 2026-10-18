@@ -162,8 +162,6 @@ function formaterContexte(meta: StoryMeta): string {
 export interface ContexteConstruction {
   meta: StoryMeta;
   settings: StorySettings;
-  /** Fourchettes narratives définies dans l'atelier (saisies numériques, pas des curseurs). */
-  longueursCibles?: PlagesLongueur;
   stylesNarratifs?: StylesNarratifs;
   resume: string;
   faits: Fact[];
