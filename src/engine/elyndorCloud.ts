@@ -201,11 +201,19 @@ export function normaliserReglagesFournisseurs(valeur: AppSettings): AppSettings
   const ancienCloud = !valeur.fournisseurNarration && valeur.moteurInference === 'serveur'
     && (valeur.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL || !valeur.serveurLocalUrl)
     && (!valeur.serveurLocalModele || valeur.serveurLocalModele === ELYNDOR_CLOUD_MODELE);
-  const mode = ancienCloud ? 'openrouter' : (valeur.moteurInference || 'openrouter');
+  const mode = ancienCloud ? 'openrouter' : (valeur.fournisseurNarration ?? (
+    valeur.moteurInference === 'chatgpt' ? 'chatgpt'
+      : valeur.moteurInference === 'openai' ? 'openai'
+      : valeur.moteurInference === 'serveur'
+        ? (!valeur.serveurLocalUrl || valeur.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL ? 'runpod' : 'serveur')
+        : 'openrouter'
+  ));
   return {
     ...valeur,
-    moteurInference: mode,
-    fournisseurNarration: valeur.fournisseurNarration || (ancienCloud ? 'openrouter' : mode === 'openai' ? 'openai' : mode === 'openrouter' ? 'openrouter' : 'serveur'),
+    moteurInference: mode === 'runpod' ? 'serveur' : mode,
+    fournisseurNarration: mode,
+    serveurLocalUrl: mode === 'runpod' ? ELYNDOR_CLOUD_REGLAGE_URL : valeur.serveurLocalUrl,
+    serveurLocalModele: mode === 'runpod' ? ELYNDOR_CLOUD_MODELE : valeur.serveurLocalModele,
     model: ancienCloud || !valeur.model ? 'openrouter/free' : valeur.model,
     openRouterApiKey: valeur.openRouterApiKey || '',
     openAiModel: valeur.openAiModel || 'gpt-4.1-mini',

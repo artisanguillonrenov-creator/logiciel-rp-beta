@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { resoudreRouteTexte } from '../engine/fournisseursRuntime';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -66,6 +67,7 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
   const estModule = route.name === 'ModuleConcepteur';
   const section: ModuleAtelier = estModule ? (route.params as RootStackParamList['ModuleConcepteur']).section : 'tableau';
   const [modeConcepteur, setModeConcepteur] = useState(false);
+  const [fournisseurAffiche, setFournisseurAffiche] = useState('Non configuré');
   const [chargement, setChargement] = useState(true);
   const [erreurChargement, setErreurChargement] = useState('');
   const [messageCache, setMessageCache] = useState('');
@@ -78,6 +80,12 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
     setErreurChargement('');
     getSettings().then((settings) => {
       setModeConcepteur(!!settings.modeConcepteur);
+      const route = resoudreRouteTexte(settings);
+      const nom = route.fournisseur === 'runpod' ? 'Elyndor Cloud (RunPod)'
+        : route.fournisseur === 'openrouter' ? 'OpenRouter'
+        : route.fournisseur === 'openai' ? 'OpenAI'
+        : route.fournisseur === 'chatgpt' ? 'ChatGPT' : 'API personnalisée';
+      setFournisseurAffiche(`${nom} — ${route.model || 'modèle par défaut'}`);
     }).catch((e) => {
       setErreurChargement(e instanceof Error ? e.message : 'Impossible de lire les réglages concepteur.');
     }).finally(() => setChargement(false));
@@ -325,7 +333,7 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
                 <EtatLigne label="Embeddings" ok={caps.embeddings} detail={caps.raisons.embeddings} />
                 <EtatLigne label="Images & portraits" ok={caps.images} detail={caps.raisons.images} />
                 <EtatLigne label="Traduction" ok={caps.traduction} detail={caps.raisons.traduction} />
-                <EtatLigne label="Fournisseur" ok={caps.narration} detail="Elyndor Cloud" />
+                <EtatLigne label="Fournisseur" ok={caps.narration} detail={fournisseurAffiche} />
               </View>
             ) : (
               <Text style={styles.statut}>Capacités en cours d’initialisation…</Text>

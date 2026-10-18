@@ -1,6 +1,7 @@
 import type { AppSettings } from '../types';
 import { imagesElyndorCloudDisponibles } from '../engine/elyndorCloudImages';
 import { ELYNDOR_CLOUD_MODELE_EMBEDDINGS } from '../engine/elyndorCloud';
+import { resoudreRouteTexte } from '../engine/fournisseursRuntime';
 
 /**
  * L'environnement ne décrit plus que la plateforme d'exécution. Les moteurs
@@ -12,7 +13,7 @@ export interface AutomationEnvironment {
 }
 
 export interface AppCapabilities {
-  fournisseur: 'elyndor-cloud' | 'openrouter' | 'serveur';
+  fournisseur: 'elyndor-cloud' | 'openrouter' | 'openai' | 'chatgpt' | 'serveur';
   narration: boolean;
   embeddings: boolean;
   images: boolean;
@@ -41,13 +42,14 @@ export function calculerCapacites(
   // recherche lexicale reste le relais automatique en cas d'échec réseau.
   const embeddings = settings.fournisseurEmbeddings === 'runpod' && !!ELYNDOR_CLOUD_MODELE_EMBEDDINGS;
   const raisons: AppCapabilities['raisons'] = {
-    inferenceLocale: 'Le moteur local a été retiré ; Elyndor utilise Elyndor Cloud.',
+    inferenceLocale: 'Le moteur local intégré est désactivé ; le narrateur utilise le fournisseur sélectionné.',
   };
   if (!embeddings) raisons.embeddings = 'Embeddings Elyndor Cloud désactivés ; Elyndor utilise la recherche lexicale locale.';
   if (!images) raisons.images = 'Images désactivées, fournisseur non configuré ou génération payante non autorisée.';
 
+  const route = resoudreRouteTexte(settings);
   return {
-    fournisseur: settings.moteurInference === 'openrouter' ? 'openrouter' : settings.serveurLocalUrl === 'elyndor-cloud' ? 'elyndor-cloud' : 'serveur',
+    fournisseur: route.fournisseur === 'runpod' ? 'elyndor-cloud' : route.fournisseur,
     // La disponibilité réelle du pod est une question d'exécution réseau,
     // pas une capacité configurable : aucun ancien réglage ne peut désactiver
     // ou détourner le narrateur Cloud.
