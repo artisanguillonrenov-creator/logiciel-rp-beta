@@ -28,8 +28,6 @@ import {
 import { configurationLLM } from './openrouter';
 import { modeleOverridePourFournisseur } from './llmProvider';
 import { reglagesSontElyndorCloud } from './elyndorCloud';
-import { embeddingsDisponibles, obtenirEmbeddings } from './embeddings';
-import { assurerEmbeddings } from '../storage/embeddingsStore';
 import { mettreAJourMemoire } from './memory';
 import { convertirLoreEmergentPourSelection, mettreAJourLoreEmergent } from './emergentLore';
 import { convertirPluginsPourSelection } from './plugins';
@@ -66,10 +64,8 @@ import {
   type ResultatBlocs,
 } from './memoireNarrative';
 import {
-  embedderMessagesAnciens,
   formaterSouvenirs,
   formaterSouvenirsDebug,
-  selectionnerSouvenirs,
   type Souvenir,
 } from './searchHistorique';
 import {
@@ -332,64 +328,7 @@ export async function calculerSelectionLore(
     };
   };
 
-  if (!embeddingsDisponibles(appSettings)) return selectionLexicale('Embeddings indisponibles : repli lexical.');
-
-  try {
-    const [vecteursElyndor, { vecteurs: [vecteurRequete, vecteurScene, vecteurMessage] }, vecteursMessagesAnciens] = await Promise.all([
-      assurerEmbeddings(
-        passagesLore.map((p) => ({ id: p.id, contenu: `${p.titre}\n${p.contenu}` })),
-        appSettings,
-        'Lore Elyndor (passages)',
-      ),
-      obtenirEmbeddings([texteRequete, requetesLore.scene, requetesLore.message], appSettings, 'Requête de recherche'),
-      embedderMessagesAnciens(messagesAnciens, appSettings),
-    ]);
-
-    const debutClassementSemantique = Date.now();
-    const { entrees: loreElyndor, rapport } = selectionnerPassagesDetaille(passagesLore, requetesLore.scene, {
-      vecteurRequete: vecteurScene ?? vecteurRequete,
-      requeteMessage: requetesLore.message,
-      vecteurMessage,
-      vecteursPassages: vecteursElyndor,
-      ancres: resolution.ancresP0,
-      raisonsAncres: resolution.raisons,
-      aleatoire: optionsLoreElyndor?.aleatoire,
-      budget: reglagesAtelier?.budgetLorePassages,
-    });
-    const souvenirs = selectionnerSouvenirs(messagesAnciens, vecteurRequete, vecteursMessagesAnciens, reglagesAtelier?.maxSouvenirs);
-
-    ajouterEtapeDiagnostic(
-      'Recherche lore et historique',
-      'recherche',
-      'ok',
-      Date.now() - debutRecherche,
-      undefined,
-      [
-        'voie : sémantique bge-m3 + ObjectBox/cosinus',
-        `${poolElyndor.length} entrées lore candidates (${passagesLore.length} passages)`,
-        `${messagesAnciens.length} messages anciens consultables`,
-        `${loreElyndor.length} entrées lore retenues`,
-        `${souvenirs.length} souvenirs retenus`,
-        ...lignesRapportLore(rapport, resolution, { resolutionMs: dureeResolutionMs, indexMs: dureeIndexMs, classementMs: Date.now() - debutClassementSemantique }),
-      ],
-    );
-
-    return {
-      loreElyndor,
-      souvenirs,
-      rapportLore: rapport,
-      debugLore: {
-        metamoteurs: [],
-        loreElyndor: loreElyndor.map((e) => `[${e.niveau ?? 'P2'}] ${formaterDebug(e.titre, e.score)}`),
-        souvenirs: formaterSouvenirsDebug(souvenirs),
-      },
-    };
-  } catch (erreur) {
-    return selectionLexicale(
-      `Échec de la voie sémantique : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`,
-      'repli',
-    );
-  }
+  // Trois recherches lexicales spécialisées : lore général, histoire et PNJ. Aucun embedding.\n  return selectionLexicale('Recherche lexicale seule (embeddings désactivés).', 'ok');
 }
 
 function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {

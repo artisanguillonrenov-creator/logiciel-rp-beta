@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
@@ -35,7 +35,8 @@ const dossierFiche = (f: FicheAffichee) => dossiersNavigationLore(f);
 type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic' | 'images';
 interface LoreProposition { id: string; titre: string; contenu: string; categorie: string; origine: string; }
 
-export default function LorebookPanel() {
+export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourceId: string; fiche: Partial<FicheEditable> } }) {
+  const dernierePromotion = useRef('');
   const [etat, setEtat] = useState<EtatLore | null>(null);
   const [charge, setCharge] = useState(true);
   const [occupe, setOccupe] = useState(false);
@@ -142,6 +143,12 @@ export default function LorebookPanel() {
       [{ text: 'Annuler', style: 'cancel' }, { text: 'Continuer', onPress: ouvrir }]);
     else ouvrir();
   }
+  useEffect(() => {
+    if (!etat || !promotionPnj || dernierePromotion.current === promotionPnj.sourceId) return;
+    dernierePromotion.current = promotionPnj.sourceId;
+    creerFiche(promotionPnj.fiche);
+  }, [etat, promotionPnj]);
+
   const renseigner = <K extends keyof FicheEditable>(nom: K, valeur: FicheEditable[K]) => {
     setEdition(ancien => ancien ? { ...ancien, [nom]: valeur } : ancien);
     setProposition(null);
