@@ -39,6 +39,8 @@ export default function FournisseursPanel(){
   const [msg,setMsg]=useState('');
   const [voirCle,setVoirCle]=useState(false);
   const [catalogue,setCatalogue]=useState<Array<{id:string;nom:string}>>([]);
+  const [rechercheGratuits,setRechercheGratuits]=useState('');
+  const [voirTousGratuits,setVoirTousGratuits]=useState(false);
   const [modelesGPT,setModelesGPT]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImage,setCatalogueImage]=useState<Array<{id:string;nom:string}>>([]);
   const [catalogueImageOpenAI,setCatalogueImageOpenAI]=useState<Array<{id:string;nom:string}>>([]);
@@ -74,7 +76,7 @@ export default function FournisseursPanel(){
     setBusy(true);setMsg('');
     try{
       const all=type==='texte'?await listerModeles():await listerModelesImagesOpenRouter();
-      if(type==='texte')setCatalogue(all);
+      if(type==='texte'){setCatalogue(all);setVoirTousGratuits(false);}
       else setCatalogueImage(all);
       setMsg(all.length+' modèles trouvés ; sélectionne celui que tu veux utiliser.');
     }catch(e){setMsg('Catalogue indisponible : '+(e instanceof Error?e.message:String(e)));}
@@ -187,9 +189,14 @@ export default function FournisseursPanel(){
         onChangeText={t=>set({model:t.trim()})}/>
       <Bouton titre="Voir les modèles gratuits" variante="secondaire" desactive={busy}
         onPress={()=>void chargerCatalogue('texte')}/>
-      {catalogue.slice(0,25).map(item=><Pressable key={item.id} style={st.option} onPress={()=>set({model:item.id})}>
+      {catalogue.length>0?<>
+        <Text style={st.text}>{catalogue.length} modèles gratuits disponibles dans le catalogue actuel.</Text>
+        <TextInput style={st.input} value={rechercheGratuits} onChangeText={setRechercheGratuits} placeholder="Rechercher un modèle gratuit" placeholderTextColor={couleurs.texteFaible}/>
+      </>:null}
+      {catalogue.filter(item=>(item.nom+' '+item.id).toLocaleLowerCase('fr').includes(rechercheGratuits.trim().toLocaleLowerCase('fr'))).slice(0,voirTousGratuits?undefined:25).map(item=><Pressable key={item.id} style={st.option} onPress={()=>set({model:item.id})}>
         <Text style={st.text}>{cfg.model===item.id?'✓ ':''}{item.nom}</Text>
       </Pressable>)}
+      {catalogue.filter(item=>(item.nom+' '+item.id).toLocaleLowerCase('fr').includes(rechercheGratuits.trim().toLocaleLowerCase('fr'))).length>25?<Bouton titre={voirTousGratuits?'Afficher les 25 premiers':'Afficher tous les modèles gratuits'} variante="secondaire" onPress={()=>setVoirTousGratuits(v=>!v)}/>:null}
     </>:null}
     {mode==='openai'?<>
       <Text style={st.text}>GPT utilise directement l’API OpenAI. L’abonnement ChatGPT ne donne pas de crédits API : chaque requête peut être facturée.</Text>
