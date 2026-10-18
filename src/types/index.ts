@@ -234,6 +234,26 @@ export interface ProfilPnj {
   personnalite?: string;
   profession?: string;
   particularites?: string;
+  origine?: string;
+  genre?: string;
+  taille?: string;
+  silhouette?: string;
+  visage?: string;
+  yeux?: string;
+  cheveux?: string;
+  peau?: string;
+  signesDistinctifs?: string;
+  biographie?: string;
+  competences?: string;
+  relationsInitiales?: string;
+  orientation?: string;
+  gouts?: string;
+  desirs?: string;
+  habitudes?: string;
+  preferencesIntimes?: string;
+  pratiquesPreferees?: string;
+  positionsPreferees?: string;
+  limites?: string;
 }
 
 export interface EntreeLoreEmergent {
