@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { StoryState, EntreeLoreEmergent } from '../src/types';
 import { consoliderRegistrePnj, rechercherPnjLexical } from '../src/engine/registrePnj';
+import { fusionnerDoublonsLore } from '../src/engine/loreEmergentDoublons';
 
 const entree = (id: string, titre: string): EntreeLoreEmergent =>
   ({ id, categorie: 'pnj', titre, contenu: 'Marchande de Paris.', statut: 'permanent', premiereMention: 1, dernierAcces: 2 });
@@ -67,4 +68,38 @@ test('une réplique remplacée par celle d’un autre PNJ ne transmet pas le sou
   assert.equal(r.fiches[0].souvenirs.length,1);
   assert.equal(r.fiches[1].souvenirs.length,1);
   assert.ok(r.fiches[1].souvenirs[0].resume.includes('reconnais'));
+});
+
+test('des PNJ de même nom conservent leurs IDs même sans patronyme',()=>{
+  const resultat=fusionnerDoublonsLore([entree('p-a','Marcus'), entree('p-b','Marcus')]);
+  assert.deepEqual(resultat.map(e=>e.id),['p-a','p-b']);
+});
+test('les patronymes permettent la recherche précise mais le prénom partagé reste ambigu',()=>{
+  const a=histoire();
+  a.loreEmergent=[entree('m-valen','Marcus Valen'),entree('m-draven','Marcus Draven')];
+  a.messages=[
+    {id:'x1',role:'user',content:'Je parle à Marcus Valen.',timestamp:1},
+    {id:'x2',role:'assistant',content:'MARCUS VALEN : « Je livre les marchandises. »',timestamp:2},
+    {id:'x3',role:'user',content:'Je parle avec Marcus.',timestamp:3},
+    {id:'x4',role:'assistant',content:'MARCUS : « On se connaît. »',timestamp:4},
+  ];
+  a.pnjLorebook=consoliderRegistrePnj(a);
+  assert.deepEqual(a.pnjLorebook.fiches.map(f=>f.alias),[['Marcus'],['Marcus']]);
+  assert.equal(a.pnjLorebook.fiches[0].souvenirs.length,1);
+  assert.equal(a.pnjLorebook.fiches[1].souvenirs.length,0);
+  assert.equal(rechercherPnjLexical(a,'Marcus apparaît').length,0);
+  const exact=rechercherPnjLexical(a,'Marcus Valen apparaît');
+  assert.equal(exact.length,1);
+  assert.equal(exact[0].fiche.id,'m-valen');
+});
+test('un prénom unique reste un alias lexical utilisable',()=>{
+  const a=histoire();
+  a.loreEmergent=[entree('m-valen','Marcus Valen')];
+  a.messages=[
+    {id:'x1',role:'user',content:'Je parle à Marcus.',timestamp:1},
+    {id:'x2',role:'assistant',content:'MARCUS : « Bonjour. »',timestamp:2},
+  ];
+  a.pnjLorebook=consoliderRegistrePnj(a);
+  assert.equal(a.pnjLorebook.fiches[0].souvenirs.length,1);
+  assert.equal(rechercherPnjLexical(a,'Marcus est là').length,1);
 });
