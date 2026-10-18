@@ -47,3 +47,24 @@ test('un nom ambigu ne sélectionne pas arbitrairement un homonyme',()=>{
   ]};
   assert.equal(rechercherPnjLexical(a,'Alex est là').length,0);
 });
+
+
+test('régénérer une réplique avec le même ID recalcule le souvenir sans conserver le texte annulé',()=>{
+  const a=histoire();
+  a.pnjLorebook=consoliderRegistrePnj(a);
+  assert.match(a.pnjLorebook.fiches[0].souvenirs[0].resume,/sauvé/);
+  a.messages[1]={...a.messages[1],content:'ÉLÉONORE : « Je ne te dois rien. »'};
+  const r=consoliderRegistrePnj(a);
+  assert.equal(r.fiches[0].souvenirs.length,2);
+  assert.ok(r.fiches[0].souvenirs.every(s=>!s.resume.includes('sauvé')));
+  assert.ok(r.fiches[0].souvenirs.some(s=>s.resume.includes('rien')));
+});
+test('une réplique remplacée par celle d’un autre PNJ ne transmet pas le souvenir original',()=>{
+  const a=histoire();
+  a.pnjLorebook=consoliderRegistrePnj(a);
+  a.messages[1]={...a.messages[1],content:'MARCUS : « Je te reconnais. »'};
+  const r=consoliderRegistrePnj(a);
+  assert.equal(r.fiches[0].souvenirs.length,1);
+  assert.equal(r.fiches[1].souvenirs.length,1);
+  assert.ok(r.fiches[1].souvenirs[0].resume.includes('reconnais'));
+});
