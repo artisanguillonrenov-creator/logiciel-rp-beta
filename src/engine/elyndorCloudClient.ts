@@ -5,7 +5,7 @@ import { appliquerPolitiqueRaisonnement, resoudreProfilRaisonnement } from './re
 import { enregistrerUsageAppel } from './mesureTokens';
 import { enregistrerAppelIADiagnostic } from './diagnosticTour';
 import { journaliser } from './journalDiagnostic';
-import { ELYNDOR_CLOUD_MODELE, assurerPodElyndorCloud } from './elyndorCloud';
+import { assurerPodElyndorCloud, urlNarrationElyndorCloud } from './elyndorCloud';
 import { activerReglagesFournisseurs, reglagesFournisseursActifs, resoudreRouteTexte, type RouteTexte } from './fournisseursRuntime';
 
 /** Client réseau OpenAI-compatible : OpenAI direct, OpenRouter, RunPod et serveur tiers. */
@@ -167,7 +167,7 @@ async function fetchCloud(init: RequestInit, signalExterne?: AbortSignal, route?
       throw new ErreurElyndorCloud('Renseigne ta clé API OpenAI dans Réglages → Fournisseurs IA.');
     }
     if (destination.fournisseur === 'runpod') await assurerPodElyndorCloud();
-    return await fetch(destination.url, {
+    return await fetch(destination.fournisseur === 'runpod' ? `${urlNarrationElyndorCloud()}/chat/completions` : destination.url, {
       ...init,
       signal: controleur.signal,
     });
