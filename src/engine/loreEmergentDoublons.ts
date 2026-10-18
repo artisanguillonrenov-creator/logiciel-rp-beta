@@ -65,6 +65,7 @@ export function fusionnerDoublonsLore(entrees: EntreeLoreEmergent[]): EntreeLore
     resultat[i] = {
       ...base,
       titre: meilleurTitre(base.titre, entree.titre),
+      profilPnj: base.categorie === 'pnj' ? { ...(entree.profilPnj ?? {}), ...(base.profilPnj ?? {}) } : undefined,
       contenu: entree.contenu.length > base.contenu.length ? entree.contenu : base.contenu,
       statut: base.statut === 'permanent' || entree.statut === 'permanent' ? 'permanent' : 'provisoire',
       premiereMention: Math.min(base.premiereMention, entree.premiereMention),

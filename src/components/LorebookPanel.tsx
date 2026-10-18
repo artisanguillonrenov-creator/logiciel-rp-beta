@@ -365,7 +365,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         <TextInput style={styles.champ} value={simulation} onChangeText={setSimulation}
           placeholder="Ex : je rejoins la Guilde des Aventuriers à Paris"/>
         <Bouton titre="Simuler la sélection des passages" onPress={simuler} style={styles.bouton}/>
-        <Text style={styles.aide}>Simulation lexicale avec le même sélecteur de passages que le narrateur. Ce n’est pas une mesure d’injection réelle : embeddings, scène et autres contraintes peuvent modifier le résultat final.</Text>
+        <Text style={styles.aide}>Simulation lexicale avec le même sélecteur de passages que le narrateur. Ce n’est pas une mesure d’injection réelle : scène, budget et autres contraintes peuvent modifier le résultat final.</Text>
         {resultats?.length === 0 ? <Text style={styles.aide}>Aucun passage retenu.</Text> : null}
         {resultats?.map((v, i) => <Text key={i} style={styles.texte}>{i + 1}. {v}</Text>)}
         {signalerDoublonsLore(edition, fiches, id).map(v => <Text key={v} style={styles.avertissement}>Doublon de titre potentiel : {v}</Text>)}

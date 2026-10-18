@@ -318,6 +318,27 @@ export function construireBlocsContexte(
     });
   }
 
+  // Compatibilité des anciennes sauvegardes non encore dotées du registre PNJ.
+  // Après conversion, le moteur spécialisé devient la seule source des souvenirs PNJ.
+  if (!story.pnjLorebook?.fiches.length) {
+    const pnjDeLaScene = personnagesConnus(story)
+      .filter(nom => {
+        const cle = normaliserTexte(nom);
+        return cle.length >= 2 && contientExpression(requeteNormalisee, cle);
+      }).slice(0, 3);
+    for (const nom of pnjDeLaScene) {
+      const vus = evenements.filter(e => accesEvenement(e, nom) === 'present').slice(-2);
+      if (!vus.length) continue;
+      ajouter({
+        id: 'npc:' + normaliserTexte(nom), type: 'npc_memory', priorite: 96, niveau: 'P1',
+        source: 'pnj:' + nom,
+        texte: 'Mémoire accessible à ' + nom + ' (événements auxquels ce PNJ a été présent):\\n' +
+          vus.map(e => '- ' + resumer(e.resultat, 240)).join('\\n'),
+        messageIds: vus.flatMap(e => e.messageIds),
+      });
+    }
+  }
+
   for (const relation of story.social.relations) {
     const cle = normaliserTexte(relation.nom);
     if (cle && contientExpression(requeteNormalisee, cle)) {
