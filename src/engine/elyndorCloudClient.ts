@@ -464,8 +464,9 @@ export async function listerModeles(): Promise<ModeleOpenRouter[]> {
   if (!resultat.ok) throw new ErreurElyndorCloud('Catalogue OpenRouter indisponible.', resultat.status);
   const donnees = await resultat.json();
   const modeles = (donnees?.data ?? []) as Array<{id?:string,name?:string}>;
-  return modeles.filter(m=>typeof m.id==='string' && m.id.endsWith(':free'))
-    .map(m=>({id:m.id!,nom:m.name || m.id!}));
+  return modeles.filter(m=>typeof m.id==='string' && (m.id.endsWith(':free') || (m as {pricing?:{prompt?:string;completion?:string}}).pricing?.prompt === '0' && (m as {pricing?:{prompt?:string;completion?:string}}).pricing?.completion === '0'))
+    .map(m=>({id:m.id!,nom:m.name || m.id!}))
+    .sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
 }
 
 /** Suggestions directement sélectionnables, même hors connexion au catalogue OpenAI. */
