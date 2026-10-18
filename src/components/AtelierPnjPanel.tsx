@@ -32,7 +32,7 @@ const CHAMPS: Array<[keyof ProfilPnj, string]> = [
   ['limites', 'Limites et consentement'],
 ];
 const messageErreur = (e: unknown) => e instanceof Error ? e.message : 'Erreur de sauvegarde.';
-interface PromotionPnj { sourceId: string; fiche: Partial<FicheEditable> }
+interface PromotionPnj { sourceId: string; avatarSource?: { storyId: string; pnjId: string }; fiche: Partial<FicheEditable> }
 
 export default function AtelierPnjPanel({ promouvoir }: { promouvoir: (p: PromotionPnj) => void }) {
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
@@ -83,6 +83,7 @@ export default function AtelierPnjPanel({ promouvoir }: { promouvoir: (p: Promot
     ].filter(Boolean).join('\n');
     promouvoir({
       sourceId: story.meta.id + ':' + fiche.id,
+      avatarSource: { storyId: story.meta.id, pnjId: source.id },
       fiche: {
         titre: fiche.nom, contenu: contenu || 'Personnage à compléter.', category: 'PERSONNAGE',
         priority: 35, scope: 'CHARACTER', constant: false, actif: true,
