@@ -328,7 +328,8 @@ export async function calculerSelectionLore(
     };
   };
 
-  // Trois recherches lexicales spécialisées : lore général, histoire et PNJ. Aucun embedding.\n  return selectionLexicale('Recherche lexicale seule (embeddings désactivés).', 'ok');
+  // Trois recherches lexicales spécialisées : lore général, histoire et PNJ. Aucun embedding.
+  return selectionLexicale('Recherche lexicale seule (embeddings désactivés).', 'ok');
 }
 
 function debugMemoireNarrative(nbEvenements: number, blocs: ResultatBlocs): Pick<DebugLore, 'blocsContexte' | 'memoireNarrative'> {
