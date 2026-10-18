@@ -105,8 +105,3 @@ export function samplersPourRequete(config: ReglagesNarrateur | undefined): Reco
   );
   return Object.fromEntries(liste.filter(cle => !incompatibles.has(cle)).map(cle => [cle, valeurs[cle]]));
 }
-export function consigneLongueur(longueur: Longueur, config?: PlagesLongueur): string {
-  const plage = config?.[longueur] ?? reglagesNarrateurDefaut().longueurs[longueur];
-  const cible = Math.round((plage.min + plage.max) / 2);
-  return `Réponse narrative : vise ${cible} tokens, idéalement entre ${plage.min} et ${plage.max} tokens de texte visible (pas des mots). Termine toujours naturellement par une phrase complète. Ne développe pas un nouveau paragraphe quand tu arrives près du maximum. Les données techniques d'état ne comptent pas dans cette longueur.`;
-}
