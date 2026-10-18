@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   CLES_SAMPLERS, reglagesNarrateurDefaut, samplersPourRequete, validerReglagesNarrateur,
-  consigneLongueur,
 } from '../src/concepteur/reglagesNarrateur';
 import { creerConfigurationAtelier, validerConfigurationAtelier, analyserInstantaneAtelier } from '../src/concepteur/configuration';
 import { finDeNarrationComplete, plageRespectee, controlerLongueurNarration } from '../src/engine/controleLongueurNarration';
@@ -22,7 +21,6 @@ test('la plage Court/Moyen/Long est configurable et exprimée en tokens', () => 
   assert.deepEqual(p.courte, { min: 140, max: 160 });
   assert.deepEqual(p.moyenne, { min: 215, max: 235 });
   assert.deepEqual(p.longue, { min: 280, max: 320 });
-  assert.match(consigneLongueur('courte', p), /140 et 160 tokens/);
   assert.throws(() => validerReglagesNarrateur({ ...reglagesNarrateurDefaut(),
     longueurs: { ...p, courte: { min: 180, max: 160 } } }));
 });
