@@ -226,11 +226,23 @@ export interface MemoryState {
 // sélection sémantique une fois "permanent".
 export type CategorieLoreEmergent = 'pnj' | 'objet' | 'lieu' | 'faction' | 'evenement';
 
+/** Traits de référence établis ou proposés une seule fois par le modèle narrateur. */
+export interface ProfilPnj {
+  race?: string;
+  ageApparent?: string;
+  apparence?: string;
+  personnalite?: string;
+  profession?: string;
+  particularites?: string;
+}
+
 export interface EntreeLoreEmergent {
   id: string;
   categorie: CategorieLoreEmergent;
   titre: string;
   contenu: string;
+  /** Profil durable du PNJ, jamais remplacé par un changement de scène. */
+  profilPnj?: ProfilPnj;
   // "provisoire" : vu une fois, pas encore confirmé comme durable — n'est
   // pas injecté dans le contexte. "permanent" : reconfirmé au moins une
   // fois (voir src/engine/emergentLore.ts) — validé avant tout ajout
@@ -352,6 +364,8 @@ export interface StoryState {
   messages: Message[];
   memoire: MemoryState;
   loreEmergent: EntreeLoreEmergent[];
+  /** Registre privé à cette histoire ; détruit avec sa sauvegarde. */
+  pnjLorebook?: import('../engine/registrePnj').RegistrePnj;
   settings: StorySettings;
   directeur: DirecteurState;
   monde: MondeState;

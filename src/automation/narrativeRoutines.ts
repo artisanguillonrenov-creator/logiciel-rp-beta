@@ -4,6 +4,7 @@ import { mettreAJourDirecteur } from '../engine/storyDirector';
 import { mettreAJourMonde } from '../engine/worldSimulation';
 import { mettreAJourSocial } from '../engine/socialDynamics';
 import { mettreAJourLoreEmergent } from '../engine/emergentLore';
+import { consoliderRegistrePnj } from '../engine/registrePnj';
 import { filtrerTextePourProfil } from '../engine/contenuAdulte';
 import { CAPITALES } from '../engine/canonElyndor';
 import { avancerHorloge } from '../engine/noyauNarratif';
@@ -26,7 +27,7 @@ export interface NarrativeAutomationDeps {
 
 export type NarrativeDerivedPatch = Pick<
   StoryState,
-  'memoire' | 'directeur' | 'monde' | 'social' | 'loreEmergent' | 'loreEmergentDernierIndex' | 'scene'
+  'memoire' | 'directeur' | 'monde' | 'social' | 'loreEmergent' | 'loreEmergentDernierIndex' | 'scene' | 'pnjLorebook'
 > & { diagnosticPostTraitement?: DiagnosticPostTraitement; minutesEcoulees?: number };
 
 export function besoinRattrapageNarratif(story: StoryState): boolean {
@@ -167,6 +168,7 @@ export async function calculerRattrapageNarratif(
     social,
     loreEmergent,
     loreEmergentDernierIndex,
+    pnjLorebook: consoliderRegistrePnj({ ...story, loreEmergent, scene: releve?.scene ?? story.scene }),
     scene: releve?.scene ?? story.scene,
     minutesEcoulees: releve?.minutesEcoulees,
     diagnosticPostTraitement: {
