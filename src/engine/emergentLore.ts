@@ -19,7 +19,7 @@ interface CandidatLoreEmergent {
   entreeExistanteId?: string;
 }
 
-const CHAMPS_PNJ: Array<keyof ProfilPnj> = ['race', 'ageApparent', 'apparence', 'personnalite', 'profession', 'particularites'];
+const CHAMPS_PNJ: Array<keyof ProfilPnj> = ['race', 'ageApparent', 'apparence', 'personnalite', 'profession', 'particularites', 'origine', 'genre', 'taille', 'silhouette', 'visage', 'yeux', 'cheveux', 'peau', 'signesDistinctifs', 'biographie', 'competences', 'relationsInitiales', 'orientation', 'gouts', 'desirs', 'habitudes', 'preferencesIntimes', 'pratiquesPreferees', 'positionsPreferees', 'limites'];
 
 function nettoyerProfilPnj(brut: unknown): ProfilPnj | undefined {
   if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return undefined;
@@ -50,19 +50,19 @@ async function extraireCandidats(
       ...configurationLLM(appSettings),
       storyId,
       temperature: 0.2,
-      maxTokens: 1000,
+      maxTokens: 2600,
       diagnosticLabel: 'Lore émergent',
       messages: [
         {
           role: 'system',
           content: `Tu identifies les éléments de MONDE nouveaux et durables introduits dans un extrait de jeu de rôle : PNJ nommés destinés à revenir, lieux nommés, factions, objets marquants, événements qui feront date. Réponds UNIQUEMENT avec un JSON strict :
-{"candidats": [{"categorie": "pnj|objet|lieu|faction|evenement", "entreeExistanteId": null, "titre": "...", "contenu": "description factuelle en une ou deux phrases", "profilPnj": {"race":"", "ageApparent":"", "apparence":"", "personnalite":"", "profession":"", "particularites":""}}]}
+{"candidats": [{"categorie": "pnj|objet|lieu|faction|evenement", "entreeExistanteId": null, "titre": "...", "contenu": "description factuelle en une ou deux phrases", "profilPnj": {"race":"", "ageApparent":"", "apparence":"", "personnalite":"", "profession":"", "particularites":"", "origine":"", "genre":"", "taille":"", "silhouette":"", "visage":"", "yeux":"", "cheveux":"", "peau":"", "signesDistinctifs":"", "biographie":"", "competences":"", "relationsInitiales":"", "orientation":"", "gouts":"", "desirs":"", "habitudes":"", "preferencesIntimes":"", "pratiquesPreferees":"", "positionsPreferees":"", "limites":""}}]}
 
 Pour un élément déjà répertorié, reprends EXACTEMENT son titre et renseigne entreeExistanteId avec son ID précis. Pour un NOUVEAU personnage ou élément, mets entreeExistanteId à null. Ne relie jamais deux personnes sur leur seul prénom.
 Pour un PNJ, le "titre" doit être son NOM PROPRE dès que le texte en révèle un (ex. "Kaelen"), jamais son rôle ou son métier ("Marchand", "Garde") même si c'est ainsi qu'il est le plus souvent désigné dans l'extrait — un rôle générique comme titre ferait ensuite confondre ce PNJ précis avec n'importe quelle autre mention du même mot. N'utilise un rôle en titre que si aucun nom propre n'est donné nulle part dans l'extrait.
 Pour tout NOUVEAU PNJ inventé : donne un nom complet distinctif et stable dans "titre", normalement prénom + nom de famille (ou nom de clan adapté à sa culture). Si le récit ne donne qu'un prénom, complète-le par un nom de famille/clan plausible sans changer le prénom. Les personnages canoniques existants gardent STRICTEMENT leur identité canonique, même sans patronyme. Ne change jamais le nom d'un PNJ déjà répertorié. Deux PNJ nommés Marcus doivent avoir des noms complets et des IDs distincts.
 N'inclus JAMAIS ${personnageNom} — c'est le personnage du joueur, pas un PNJ, quelle que soit la fréquence à laquelle il est mentionné.
-Pour un PNJ, complète les champs de profilPnj avec des traits stables et cohérents avec le monde ; conserve exactement les caractéristiques déjà établies. Tu peux proposer des traits personnels inconnus, mais n'invente jamais de souvenirs, de relations, d'événements vécus, ni d'histoires passées. Pour les autres catégories, omets profilPnj. Ignore les figurants sans nom et les objets ou lieux anecdotiques. Le contenu factuel ne doit rien inventer. Ce qui est déjà répertorié (ne le reprends que si une information nouvelle importante s'y ajoute) :
+Pour un PNJ, complète les champs de profilPnj avec des traits stables et cohérents avec le monde ; conserve exactement les caractéristiques déjà établies. Pour un PNJ inventé adulte, remplis TOUS les champs du profil dès la première apparition, y compris biographie fictive initiale, orientation, goûts, désirs, habitudes, préférences intimes, pratiques et positions préférées, limites et consentement. Ces données restent privées dans le registre et ne sont pas à révéler dans la narration sans raison. Pour un PNJ déjà connu, complète TOUS les champs manquants sans changer ceux qui sont établis. Ne fabrique jamais de souvenirs d'événements réellement joués ; une biographie fictive antérieure est permise. Pour un personnage mineur ou dont la majorité est incertaine, laisse vides tous les champs sexuels et intimes. Ne crée pas de relations vécues avec le joueur hors récit. Pour les autres catégories, omets profilPnj. Ignore les figurants sans nom et les objets ou lieux anecdotiques. Le contenu factuel ne doit rien inventer. Ce qui est déjà répertorié (ne le reprends que si une information nouvelle importante s'y ajoute) :
 ${existantsTexte}`,
         },
         { role: 'user', content: transcript },
