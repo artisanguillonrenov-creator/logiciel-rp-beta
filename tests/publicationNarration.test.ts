@@ -96,7 +96,7 @@ test('tokenizer : 404, faux résultat, erreur réseau et ids de tokens invalides
   assert.equal(await compterTokensNarration('Test.', erreur, async () => undefined), null);
 });
 
-test('une fin tronquée reste inchangée sans tentative de réécriture', async () => {
+test('une fin tronquée est retirée sans tentative de réécriture', async () => {
   const phrase = Array(219).fill('mot').join(' ') + ' terminé.';
   const coupe = phrase + ' ' + Array(14).fill('interrompu').join(' ');
   const compter = async (texte: string) => texte.trim().split(/\s+/).length;
@@ -109,9 +109,9 @@ test('une fin tronquée reste inchangée sans tentative de réécriture', async 
     reformuler: async () => { appelsIA++; throw Error('Pas de génération nécessaire'); },
   });
   assert.equal(resultat.conforme, true);
-  assert.equal(resultat.corrige, false);
-  assert.equal(resultat.tokens, 234);
-  assert.equal(resultat.texte, coupe);
+  assert.equal(resultat.corrige, true);
+  assert.equal(resultat.tokens, 220);
+  assert.equal(resultat.texte, phrase);
   assert.equal(appelsIA, 0);
 });
 

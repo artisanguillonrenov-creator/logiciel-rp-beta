@@ -34,6 +34,20 @@ function contexte() {
   };
 }
 
+test('aucune longueur en tokens n’est injectée dans les prompts court, moyen et long', () => {
+  const base = contexte();
+  const systemes = (['courte', 'moyenne', 'longue'] as const).map(longueur => {
+    const [systeme] = construireMessages({
+      ...base,
+      settings: { ...base.settings, longueur },
+    }, { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: BUDGET_CONVERSATION_LOCAL });
+    assert.doesNotMatch(systeme.content, /Réponse narrative\s*:\s*vise|\[CONTRÔLE DE LONGUEUR\]|215\s*(?:à|et|–)\s*235\s*tokens/);
+    return systeme.content;
+  });
+  assert.equal(systemes[0], systemes[1]);
+  assert.equal(systemes[1], systemes[2]);
+});
+
 test('le budget local borne le prompt sans retirer les règles immuables', () => {
   const [systeme] = construireMessages(contexte(), { budgetSysteme: BUDGET_SYSTEM_LOCAL, budgetConversation: BUDGET_CONVERSATION_LOCAL });
   assert.ok(systeme.content.length <= BUDGET_SYSTEM_LOCAL);

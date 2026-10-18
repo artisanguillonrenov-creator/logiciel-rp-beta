@@ -101,10 +101,31 @@ interface OptionsControle {
 }
 
 /**
- * La fourchette de longueur est un objectif narratif, pas un motif de refus.
- * Ne jamais reformuler, tronquer ou régénérer une réponse uniquement
- * pour respecter un nombre de tokens. Les contrôles de cohérence, de contenu,
- * d'agentivité du joueur et la validation de publication restent inchangés.
+ * Dernières fins de phrases réellement fermées, dans l'ordre décroissant.
+ * Ne coupe ni à l'intérieur d'une citation encore ouverte, ni après un
+ * simple marqueur de dialogue. Une réplique « … » complète reste valide.
+ */
+function prefixesComplets(texte: string): string[] {
+  const resultats: string[] = [];
+  const vus = new Set<string>();
+  const fins = /(?:[.!?…]+(?:[ \u00a0\u202f]?[»"”'*)\]])*|[»”])(?=\s|$)/g;
+  for (const fin of texte.matchAll(fins)) {
+    const candidat = texte.slice(0, (fin.index ?? 0) + fin[0].length).trimEnd();
+    if (!candidat || vus.has(candidat) || !finDeNarrationComplete(candidat)) continue;
+    vus.add(candidat);
+    resultats.push(candidat);
+  }
+  return resultats.reverse();
+}
+
+/**
+ * Un seul contrôle de sortie : mesure le texte visible et ne garde, si la
+ * génération finit au milieu d'une phrase (ou dépasse le plafond après
+ * une réparation), que sa dernière phrase complète.
+ *
+ * La plage vient des réglages concepteur. Une réponse sous le minimum
+ * reste publiable : aucun nouveau prompt, aucun refus pour longueur.
+ * Sans phrase terminée, conserver le texte original plutôt que publier vide.
  */
 export async function controlerLongueurNarration({
   texte, plage, compter = compterTokensNarration,
@@ -113,17 +134,36 @@ export async function controlerLongueurNarration({
   const verification = compter === compterTokensNarration &&
     resoudreRouteTexte(reglagesFournisseursActifs()).fournisseur !== 'runpod'
     ? 'estimee' as const : 'exacte' as const;
-  let tokens: number | null = null;
-  try {
-    tokens = await compter(propre);
-  } catch {
-    // L'indisponibilité du compteur ne doit jamais empêcher de jouer.
+
+  async function mesurer(valeur: string): Promise<number | null> {
+    try { return await compter(valeur); }
+    catch { return null; } // Un compteur indisponible ne bloque pas le jeu.
   }
+
+  let retenu = propre;
+  let tokens = await mesurer(retenu);
+  const interrompue = !finDeNarrationComplete(retenu);
+  const depassement = tokens !== null && tokens > plage.max;
+
+  if (interrompue || depassement) {
+    const candidats = prefixesComplets(retenu).filter(c => c !== retenu);
+    for (const candidat of candidats) {
+      const mesure = await mesurer(candidat);
+      // En cas de dépassement connu, rechercher une phrase sous le plafond.
+      // Le minimum reste indicatif : mieux vaut une phrase terminée et courte.
+      if (depassement && mesure !== null && mesure > plage.max) continue;
+      if (depassement && mesure === null && !interrompue) break;
+      retenu = candidat;
+      tokens = mesure;
+      break;
+    }
+  }
+
   return {
-    texte: propre,
+    texte: retenu,
     tokens,
     conforme: tokens !== null && plageRespectee(tokens, plage),
-    corrige: false,
+    corrige: retenu !== propre,
     verification: tokens === null ? 'indisponible' : verification,
   };
 }

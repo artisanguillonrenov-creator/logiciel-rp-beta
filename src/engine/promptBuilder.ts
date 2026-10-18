@@ -1,5 +1,5 @@
 import type { ChatMessage } from './openrouter';
-import { consigneLongueur, reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/reglagesNarrateur';
+import { reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/reglagesNarrateur';
 import { BUDGET_LORE_PASSAGES } from './passagesLore';
 import { instructionStyle, type StylesNarratifs } from '../concepteur/interpretationNarrative';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
@@ -71,10 +71,6 @@ function formaterFaits(faits: Fact[], budget = 3200): string {
   return tronquer(faits.map((f) => `- [${f.type}] ${f.texte}${f.resolue ? ' (résolu)' : ''}`).join('\n'), budget);
 }
 
-function instructionLongueur(longueur: StorySettings['longueur'], plages?: PlagesLongueur): string {
-  return consigneLongueur(longueur, plages);
-}
-
 // Retours de partie réelle : vouvoiement glissé, peuples inventés
 // (« Elfelle »), transaction conclue sans le joueur.
 export const INSTRUCTION_STYLE_JOUEUR = [
@@ -110,7 +106,7 @@ Le registre CRU et VULGAIRE est disponible lorsque la scène et les curseurs le 
 - les scènes sexuelles adultes, lorsqu'elles sont établies et permises par le profil, peuvent employer les mots crus (bite, chatte, cul, seins, baiser, sucer…) sans euphémisme imposé.`;
 
 export const INSTRUCTION_FIN_DE_REPONSE =
-  'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique. Si la place manque, conclus plus tôt plutôt que de laisser une phrase en suspens.';
+  'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique.';
 
 export function libelleViolence(niveau: StorySettings['violence']): string {
   switch (niveau) {
@@ -166,8 +162,6 @@ function formaterContexte(meta: StoryMeta): string {
 export interface ContexteConstruction {
   meta: StoryMeta;
   settings: StorySettings;
-  /** Fourchettes narratives définies dans l'atelier (saisies numériques, pas des curseurs). */
-  longueursCibles?: PlagesLongueur;
   stylesNarratifs?: StylesNarratifs;
   resume: string;
   faits: Fact[];
@@ -319,7 +313,6 @@ ${ctx.registreAdulte ? INSTRUCTION_REGISTRE_ADULTE : INSTRUCTION_REGISTRE_GRAND_
 Les paramètres de session ci-dessous priment sur toute formulation du lore portant sur l'intensité de narration. Le lore établit des faits ; il ne relève jamais un curseur.
 
 Ton : ${instructionStyle(ctx.settings.ton, ctx.stylesNarratifs)}
-${instructionLongueur(ctx.settings.longueur, ctx.longueursCibles)}
 ${INSTRUCTION_FIN_DE_REPONSE}
 ${INSTRUCTION_STYLE_JOUEUR}
 Rythme : ${libelleRythme(ctx.settings.rythme)}.

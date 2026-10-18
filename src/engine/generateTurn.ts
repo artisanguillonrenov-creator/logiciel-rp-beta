@@ -465,7 +465,6 @@ export function construireCtxBase(
   return {
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
-    longueursCibles: reglagesAtelier?.narrateur.longueurs,
     stylesNarratifs: reglagesAtelier?.narrateur.styles,
     resume: filtrer(story.memoire.resume),
     faits,
@@ -846,10 +845,15 @@ async function genererTourInterne(
       storyId: storyCourante.meta.id, samplers,
     }),
   );
+  if (longueurFinale.corrige) {
+    // La mémoire et l'état doivent correspondre exactement au texte conservé.
+    deltaEtat = deltaAssocieAuTexte(reponse, longueurFinale.texte, deltaEtat);
+    aEteCorrige = true;
+  }
   reponse = longueurFinale.texte;
-  ajouterEtapeDiagnostic('Longueur de narration (informative)', 'validation',
+  ajouterEtapeDiagnostic('Longueur et fin de phrase (sans blocage)', 'validation',
     'ok', 0,
-    `Longueur : ${longueurFinale.tokens ?? 'non mesurée'} tokens (${longueurFinale.verification}). Objectif : ${plageNarration.min}–${plageNarration.max}. Aucun rejet pour dépassement.`);
+    `Longueur : ${longueurFinale.tokens ?? 'non mesurée'} tokens (${longueurFinale.verification}). Objectif : ${plageNarration.min}–${plageNarration.max}. ${longueurFinale.corrige ? 'Fin incomplète ou excédentaire retirée.' : 'Texte conservé.'} Aucun rejet pour longueur.`);
 
   // Vérifie le texte RÉEL affiché/enregistré après TOUTES les régénérations.
   // Pas de nouvelle correction en aval : elle invaliderait le comptage et
