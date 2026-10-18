@@ -35,7 +35,7 @@ const dossierFiche = (f: FicheAffichee) => dossiersNavigationLore(f);
 type Onglet = 'contenu' | 'activation' | 'avance' | 'diagnostic' | 'images';
 interface LoreProposition { id: string; titre: string; contenu: string; categorie: string; origine: string; }
 
-export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourceId: string; fiche: Partial<FicheEditable> } }) {
+export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourceId: string; avatarSource?: { storyId: string; pnjId: string }; fiche: Partial<FicheEditable> } }) {
   const dernierePromotion = useRef('');
   const [etat, setEtat] = useState<EtatLore | null>(null);
   const [charge, setCharge] = useState(true);
@@ -371,7 +371,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         {signalerDoublonsLore(edition, fiches, id).map(v => <Text key={v} style={styles.avertissement}>Doublon de titre potentiel : {v}</Text>)}
       </View> : null}
       {onglet === 'images' ? (courante
-        ? <ReferencesVisuellesFiche ficheId={id} titre={edition.titre} description={edition.contenu}/>
+        ? <ReferencesVisuellesFiche ficheId={id} titre={edition.titre} description={edition.contenu} avatarSource={promotionPnj?.avatarSource}/>
         : <Text style={styles.aide}>Enregistre d’abord la fiche pour lui rattacher des images.</Text>) : null}
       <Bouton titre={courante?.protegee || !courante ? 'Enregistrer en brouillon' : 'Enregistrer la fiche'}
         onPress={() => void sauvegarder()} desactive={occupe} style={styles.bouton}/>
