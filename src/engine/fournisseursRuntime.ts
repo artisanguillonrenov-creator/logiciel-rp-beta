@@ -24,10 +24,19 @@ export interface RouteTexte {
   apiKey: string;
 }
 export function resoudreRouteTexte(settings: AppSettings): RouteTexte {
-  if (settings.moteurInference === 'chatgpt' || settings.fournisseurNarration === 'chatgpt') {
+  // Le choix explicite de l'utilisateur prime sur les anciens réglages du moteur.
+  // La présence d'une ancienne URL Elyndor Cloud ne peut réactiver RunPod.
+  const mode = settings.fournisseurNarration ?? (
+    settings.moteurInference === 'chatgpt' ? 'chatgpt'
+      : settings.moteurInference === 'openai' ? 'openai'
+      : settings.moteurInference === 'serveur'
+        ? (!settings.serveurLocalUrl || settings.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL ? 'runpod' : 'serveur')
+        : 'openrouter'
+  );
+  if (mode === 'chatgpt') {
     return { fournisseur: 'chatgpt', url: 'https://elyndor-chatgpt-plus-gateway.onrender.com/chat', model: settings.chatgptModel || '', apiKey: '' };
   }
-  if (settings.moteurInference === 'openai' || settings.fournisseurNarration === 'openai') {
+  if (mode === 'openai') {
     return {
       fournisseur: 'openai',
       url: 'https://api.openai.com/v1/chat/completions',
@@ -35,7 +44,7 @@ export function resoudreRouteTexte(settings: AppSettings): RouteTexte {
       apiKey: settings.openAiApiKey || '',
     };
   }
-  if (settings.moteurInference === 'openrouter' || !settings.moteurInference) {
+  if (mode === 'openrouter') {
     return {
       fournisseur: 'openrouter',
       url: 'https://openrouter.ai/api/v1/chat/completions',
@@ -43,9 +52,8 @@ export function resoudreRouteTexte(settings: AppSettings): RouteTexte {
       apiKey: settings.openRouterApiKey || '',
     };
   }
-  if (settings.moteurInference === 'serveur') {
-    const nuage = !settings.serveurLocalUrl ||
-      settings.serveurLocalUrl === ELYNDOR_CLOUD_REGLAGE_URL;
+  if (mode === 'serveur' || mode === 'runpod') {
+    const nuage = mode === 'runpod';
     return {
       fournisseur: nuage ? 'runpod' : 'serveur',
       url: nuage ? urlNarrationElyndorCloud() + '/chat/completions' :
