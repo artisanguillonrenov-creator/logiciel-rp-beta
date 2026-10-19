@@ -23,12 +23,9 @@ import type {
   RythmeHistoire,
   TonHistoire,
 } from '../types';
-import { listerMondes } from '../mondes';
-import { RACES_ELYNDOR } from '../mondes/elyndor/races';
-import { obtenirPortrait } from '../mondes';
-import { LIEUX_DEPART } from '../mondes/elyndor/lieuxDepart';
-import { SITUATIONS_PAR_LIEU } from '../mondes/elyndor/situationsDepart';
+import { obtenirPortrait, racesDuMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
+import { useMondeActif } from '../mondes/useMondeActif';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
@@ -61,9 +58,13 @@ const IMAGES_ETAPES = [
   require('../../assets/scenes/creation-histoire.png'),
 ];
 
-const LORE_ELYNDOR = donneesMonde('elyndor').lore;
-const MONDES = listerMondes().map((p) => ({ id: p.id, ...p.carte, image: p.carte.image }));
-const ETAPES = ['Monde', 'Personnage', 'Départ', 'Style', 'Résumé'] as const;
+// Le monde se choisit avant l'accueil (ChoixMondeScreen) : la création lit le
+// monde actif. Les choix liés à un module absent du paquet (races, lieux et
+// situations de départ) sont masqués ; sans module de départ en mode liste, le
+// joueur écrit librement son lieu et sa situation.
+const ETAPES = ['Personnage', 'Départ', 'Style', 'Résumé'] as const;
+// Illustration de chaque étape (index d'ETAPES) dans IMAGES_ETAPES.
+const IMAGE_DE_L_ETAPE = [1, 2, 3, 4];
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;
 type Option<T extends string> = { valeur: T; label: string };
@@ -202,10 +203,15 @@ export default function CreateScreenStudio({ navigation }: Props) {
 
   const [etape, setEtape] = useState(0);
   const [profilContenu, setProfilContenu] = useState<ProfilContenu | undefined>(undefined);
-  const [mondeSelectionne, setMondeSelectionne] = useState(MONDES[0]?.id ?? '');
+  const paquet = useMondeActif();
+  const races = racesDuMonde(paquet);
+  const avecRaces = races.length > 0;
+  const moduleDepart = paquet.modules?.depart;
+  const departListe = moduleDepart?.mode === 'liste' && !!moduleDepart.lieux?.length;
+  const lieuxDepart = departListe ? moduleDepart?.lieux ?? [] : [];
   const [nom, setNom] = useState('');
   const [sexe, setSexe] = useState('Femme');
-  const [raceOrigine, setRaceOrigine] = useState(RACES_ELYNDOR[0]?.nom ?? '');
+  const [raceOrigine, setRaceOrigine] = useState(races[0]?.nom ?? '');
   const [age, setAge] = useState('');
   const [apparence, setApparence] = useState('');
   const [description, setDescription] = useState('');
@@ -245,11 +251,10 @@ export default function CreateScreenStudio({ navigation }: Props) {
     return () => { vivant = false; };
   }, []);
 
-  const mondeActif = MONDES.find((m) => m.id === mondeSelectionne) ?? MONDES[0];
-  const raceActive = RACES_ELYNDOR.find((r) => r.nom === raceOrigine) ?? RACES_ELYNDOR[0];
-  const portraitActif = obtenirPortrait(raceActive?.id, sexe);
-  const lieuActif = LIEUX_DEPART.find((l) => l.nom === lieu);
-  const situationsDisponibles = lieuActif ? SITUATIONS_PAR_LIEU[lieuActif.id] ?? [] : [];
+  const raceActive = avecRaces ? races.find((r) => r.nom === raceOrigine) ?? races[0] : undefined;
+  const portraitActif = obtenirPortrait(raceActive?.id, sexe, paquet.id);
+  const lieuActif = lieuxDepart.find((l) => l.nom === lieu);
+  const situationsDisponibles = lieuActif ? moduleDepart?.situationsParLieu?.[lieuActif.id] ?? [] : [];
   const situationActive = situationsDisponibles.find((s) => s.nom === situationDepart);
   const violenceAutorisee = valeursAutoriseesViolence(profilContenu);
   const romanceAutorisee = valeursAutoriseesRomance(profilContenu);
@@ -262,17 +267,16 @@ export default function CreateScreenStudio({ navigation }: Props) {
   }, [profilContenu]);
 
   const etapeValide = useMemo(() => {
-    if (etape === 0) return !!mondeActif;
-    if (etape === 1) return !!nom.trim() && !!raceOrigine.trim() && !!description.trim();
-    if (etape === 2) return !!lieu.trim();
+    if (etape === 0) return !!nom.trim() && (!avecRaces || !!raceOrigine.trim()) && !!description.trim();
+    if (etape === 1) return !!lieu.trim();
     return true;
-  }, [etape, mondeActif, nom, raceOrigine, description, lieu]);
+  }, [etape, nom, avecRaces, raceOrigine, description, lieu]);
 
   function choisirPersona(persona: Persona) {
     setNom(persona.nom);
     setDescription(persona.description);
     setSexe(persona.sexe ?? 'Femme');
-    setRaceOrigine(persona.raceOrigine ?? RACES_ELYNDOR[0]?.nom ?? '');
+    setRaceOrigine(avecRaces ? persona.raceOrigine ?? races[0]?.nom ?? '' : '');
     setAge(persona.age ?? '');
     setApparence(persona.apparence ?? '');
     setModalPersonasOuvert(false);
@@ -317,6 +321,11 @@ export default function CreateScreenStudio({ navigation }: Props) {
 
   function composerPointDeDepart(): string {
     if (scenario.trim()) return scenario.trim();
+    if (!departListe) {
+      const situation = situationDepart.trim();
+      return `${nom.trim() || 'Le personnage'} arrive à ${lieu.trim()}.`
+        + (situation ? ` ${situation}${/[.!?…»]$/.test(situation) ? '' : '.'}` : '');
+    }
     const morceauLieu = lieuActif
       ? `à ${lieuActif.nom}${lieuActif.description ? ` (${lieuActif.description.replace(/\.$/, '')})` : ''}`
       : '';
@@ -325,16 +334,18 @@ export default function CreateScreenStudio({ navigation }: Props) {
   }
 
   async function genererScenario() {
-    if (generationEnCours || !lieuActif) return;
+    const lieuNom = lieuActif?.nom ?? (departListe ? '' : lieu.trim());
+    if (generationEnCours || !lieuNom) return;
     setGenerationEnCours(true);
     setErreurGeneration('');
     try {
       const settings = await getSettings();
-      const extraitLore = LORE_ELYNDOR.find((e) => e.titre.toLowerCase() === lieuActif.nom.toLowerCase())?.contenu;
+      const extraitLore = donneesMonde(paquet.id).lore.find((e) => e.titre.toLowerCase() === lieuNom.toLowerCase())?.contenu;
       const texte = await genererScenarioDepart({
         appSettings: settings,
-        mondeNom: mondeActif?.nom,
-        mondeDescription: mondeActif?.description,
+        mondeId: paquet.id,
+        mondeNom: paquet.carte.nom,
+        mondeDescription: paquet.carte.description,
         personnageNom: nom.trim(),
         sexe: sexe || undefined,
         raceNom: raceActive?.nom,
@@ -342,9 +353,9 @@ export default function CreateScreenStudio({ navigation }: Props) {
         age: age.trim() || undefined,
         apparence: apparence.trim() || undefined,
         description: description.trim() || undefined,
-        lieuNom: lieuActif.nom,
-        lieuDescription: lieuActif.description,
-        situationNom: situationActive?.nom,
+        lieuNom,
+        lieuDescription: lieuActif?.description,
+        situationNom: situationActive?.nom ?? (departListe ? undefined : situationDepart.trim() || undefined),
         situationDescription: situationActive?.description,
         extraitLore,
         villeDepart: raceActive?.sousTitre.split('—').pop()?.trim() || undefined,
@@ -358,8 +369,8 @@ export default function CreateScreenStudio({ navigation }: Props) {
   }
 
   function texteLibreEtape(index: number): string {
-    if (index === 1) return [nom, apparence, description].join('\n');
-    if (index === 2) return scenario;
+    if (index === 0) return [nom, apparence, description].join('\n');
+    if (index === 1) return departListe ? scenario : [lieu, situationDepart, scenario].join('\n');
     return '';
   }
 
@@ -376,7 +387,8 @@ export default function CreateScreenStudio({ navigation }: Props) {
 
   async function valider() {
     if (enregistrement) return;
-    const controle = validerEntreeUtilisateur([nom, apparence, description, scenario].join('\n'), profilContenu);
+    const textesLibres = departListe ? [nom, apparence, description, scenario] : [nom, apparence, description, lieu, situationDepart, scenario];
+    const controle = validerEntreeUtilisateur(textesLibres.join('\n'), profilContenu);
     if (!controle.ok) {
       setErreur(controle.motif);
       return;
@@ -390,13 +402,14 @@ export default function CreateScreenStudio({ navigation }: Props) {
         pointDeDepart: composerPointDeDepart(),
         contexte: {
           lieu: lieu.trim(),
-          ambiance: mondeActif?.genre ?? '',
+          ambiance: paquet.carte.genre,
           dateChronique: '',
           objectifs: '',
         },
         settings: { ton, creativite, longueur, violence, romance, humour, liberteJoueur, rythme },
         raceOrigineId: raceActive?.id,
         sexe: sexe || undefined,
+        mondeId: paquet.id,
       });
       try {
         const settings = await getSettings();
@@ -415,14 +428,14 @@ export default function CreateScreenStudio({ navigation }: Props) {
   }
 
   return (
-    <FondAtmospherique style={styles.ecran} densiteEtoiles="discrete" imageFond={IMAGES_ETAPES[etape]}>
+    <FondAtmospherique style={styles.ecran} densiteEtoiles="discrete" imageFond={IMAGES_ETAPES[IMAGE_DE_L_ETAPE[etape]]}>
       <View style={styles.voile} pointerEvents="none" />
       <View style={styles.page}>
         <View style={styles.barreSuperieure}>
           <Pressable onPress={() => etape === 0 ? navigation.goBack() : setEtape((v) => Math.max(0, v - 1))} style={styles.retourCompact}>
             <Text style={styles.texteRetour}>‹ {etape === 0 ? t('Accueil') : t('Retour')}</Text>
           </Pressable>
-          <Text style={styles.marqueMini}>ELYNDOR</Text>
+          <Text style={styles.marqueMini}>{paquet.marque.titre}</Text>
           <View style={styles.espaceBarre} />
         </View>
 
@@ -442,40 +455,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
         >
           {etape === 0 && (
             <View>
-              <TitreEtape index={0} titre="Choisis ton monde" sousTitre="Une porte d’entrée visuelle, pas un formulaire." />
-              <View style={[styles.deuxColonnes, !tablette && styles.colonneUnique]}>
-                <View style={[styles.colonneIllustration, tablette && styles.colonneIllustrationHaut]}>
-                  <Image source={mondeActif?.image ?? IMAGES_ETAPES[0]} style={styles.imageHero} resizeMode="cover" />
-                  <View style={styles.cartoucheHero}>
-                    <Text style={styles.nomHero}>{mondeActif?.nom ?? 'Elyndor'}</Text>
-                    <Text style={styles.metaHero}>{t(mondeActif?.genre ?? '')}</Text>
-                  </View>
-                </View>
-                <View style={styles.colonneChoix}>
-                  {MONDES.map((monde) => (
-                    <Pressable
-                      key={monde.id}
-                      onPress={() => setMondeSelectionne(monde.id)}
-                      style={[styles.carteChoixLarge, monde.id === mondeSelectionne && styles.carteChoixActive]}
-                    >
-                      <Image source={monde.image} style={styles.miniatureCarteLarge} resizeMode="cover" />
-                      <View style={styles.texteCarteLarge}>
-                        <Text style={styles.titreCarteLarge}>{monde.nom}</Text>
-                        <Text style={styles.descriptionCarteLarge}>{t(monde.description)}</Text>
-                        <View style={styles.tags}>
-                          {monde.tags.slice(0, 4).map((tag) => <Text key={tag} style={styles.tag}>{t(tag)}</Text>)}
-                        </View>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {etape === 1 && (
-            <View>
-              <TitreEtape index={1} titre="Crée ton personnage" sousTitre="Un visage, une origine et quelques lignes suffisent pour commencer." />
+              <TitreEtape index={0} titre="Crée ton personnage" sousTitre="Un visage, une origine et quelques lignes suffisent pour commencer." />
               <View style={[styles.deuxColonnes, !tablette && styles.colonneUnique]}>
                 <View style={styles.colonnePortrait}>
                   {portraitActif ? (
@@ -485,7 +465,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
                   )}
                   <View style={styles.cartouchePortrait}>
                     <Text style={styles.nomHero}>{raceActive?.nom ?? t('Personnage')}</Text>
-                    <Text style={styles.metaHero}>{raceActive?.sousTitre ? t(raceActive.sousTitre) : t('Choisis une origine')}</Text>
+                    <Text style={styles.metaHero}>{raceActive?.sousTitre ? t(raceActive.sousTitre) : avecRaces ? t('Choisis une origine') : paquet.carte.nom}</Text>
                   </View>
                 </View>
 
@@ -497,10 +477,11 @@ export default function CreateScreenStudio({ navigation }: Props) {
                   <Text style={styles.label}>{t('Sexe')}</Text>
                   <GroupeOptions options={OPTIONS_SEXE} valeur={sexe} onChange={setSexe} />
 
+                  {avecRaces && <>
                   <Text style={styles.label}>{t('Race / origine')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.racesHorizontales}>
-                    {RACES_ELYNDOR.map((race) => {
-                      const miniature = obtenirPortrait(race.id, sexe || 'Femme');
+                    {races.map((race) => {
+                      const miniature = obtenirPortrait(race.id, sexe || 'Femme', paquet.id);
                       const actif = race.nom === raceOrigine;
                       return (
                         <Pressable key={race.id} onPress={() => setRaceOrigine(race.nom)} style={[styles.carteRace, actif && styles.carteRaceActive]}>
@@ -511,6 +492,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
                       );
                     })}
                   </ScrollView>
+                  </>}
 
                   <Champ label={t('Nom du personnage')} value={nom} onChangeText={setNom} placeholder={t('Ex : Aelis Corvenn')} conteneurStyle={styles.espaceChamp} />
                   <View style={styles.deuxPetitsChamps}>
@@ -532,14 +514,15 @@ export default function CreateScreenStudio({ navigation }: Props) {
             </View>
           )}
 
-          {etape === 2 && (
+          {etape === 1 && (
             <View>
-              <TitreEtape index={2} titre="Choisis ton point de départ" sousTitre="L’histoire commence dans un lieu, avec une situation immédiatement jouable." />
+              <TitreEtape index={1} titre="Choisis ton point de départ" sousTitre="L’histoire commence dans un lieu, avec une situation immédiatement jouable." />
               <Image source={IMAGES_ETAPES[2]} style={styles.banniereDepart} resizeMode="cover" />
 
+              {departListe ? <>
               <Text style={styles.label}>{t('Lieu de départ')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lieuxHorizontaux}>
-                {LIEUX_DEPART.map((option, index) => {
+                {lieuxDepart.map((option, index) => {
                   const actif = lieu === option.nom;
                   const symboles = ['✦', '◇', '△', '☾', '⚔'];
                   return (
@@ -568,6 +551,10 @@ export default function CreateScreenStudio({ navigation }: Props) {
                   </View>
                 </>
               )}
+              </> : <>
+                <Champ label={t('Lieu de départ')} value={lieu} onChangeText={setLieu} placeholder={t('Où commence ton histoire ?')} conteneurStyle={styles.espaceChamp} />
+                <Champ label={t('Situation initiale')} value={situationDepart} onChangeText={setSituationDepart} multiligne placeholder={t('Ce qui se passe quand tu arrives…')} conteneurStyle={styles.espaceChamp} />
+              </>}
 
               <View style={styles.blocScenario}>
                 <View style={styles.ligneLabelScenario}>
@@ -581,7 +568,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
                   titre={generationEnCours ? t('Génération…') : t('✦ Générer une ouverture')}
                   variante="arcane"
                   onPress={genererScenario}
-                  desactive={generationEnCours || !lieuActif}
+                  desactive={generationEnCours || !(departListe ? lieuActif : lieu.trim())}
                   style={{ marginTop: espacement.sm }}
                 />
                 {erreurGeneration ? <Text style={styles.erreur}>{t(erreurGeneration)}</Text> : null}
@@ -589,9 +576,9 @@ export default function CreateScreenStudio({ navigation }: Props) {
             </View>
           )}
 
-          {etape === 3 && (
+          {etape === 2 && (
             <View>
-              <TitreEtape index={3} titre="Donne un style au récit" sousTitre="Commence simplement. Les réglages détaillés restent optionnels." />
+              <TitreEtape index={2} titre="Donne un style au récit" sousTitre="Commence simplement. Les réglages détaillés restent optionnels." />
               <View style={styles.grilleStyles}>
                 {STYLES_RECIT.map((styleRecit) => {
                   const actif = ton === styleRecit.valeur;
@@ -638,12 +625,12 @@ export default function CreateScreenStudio({ navigation }: Props) {
             </View>
           )}
 
-          {etape === 4 && (
+          {etape === 3 && (
             <View>
-              <TitreEtape index={4} titre="Ton histoire est prête" sousTitre="Vérifie l’essentiel, puis entre dans Elyndor." />
+              <TitreEtape index={3} titre="Ton histoire est prête" sousTitre={`Vérifie l’essentiel, puis entre dans ${paquet.carte.nom}.`} />
               <View style={[styles.deuxColonnes, !tablette && styles.colonneUnique]}>
                 <View style={styles.colonnePortrait}>
-                  {portraitActif ? <Image source={portraitActif} style={styles.portraitRecap} resizeMode="cover" /> : <Image source={mondeActif?.image ?? IMAGES_ETAPES[4]} style={styles.portraitRecap} resizeMode="cover" />}
+                  {portraitActif ? <Image source={portraitActif} style={styles.portraitRecap} resizeMode="cover" /> : <Image source={paquet.carte.image ?? IMAGES_ETAPES[4]} style={styles.portraitRecap} resizeMode="cover" />}
                 </View>
                 <View style={styles.ficheRecap}>
                   <Text style={styles.recapNom}>{nom || t('Personnage sans nom')}</Text>
@@ -670,7 +657,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
             {etape < ETAPES.length - 1 ? (
               <Bouton titre={t('Suivant →')} onPress={suivant} desactive={!etapeValide} style={styles.boutonNav} />
             ) : (
-              <Bouton titre={enregistrement ? t('Création…') : t('Entrer dans Elyndor')} onPress={valider} desactive={enregistrement} style={styles.boutonNav} />
+              <Bouton titre={enregistrement ? t('Création…') : t(`Entrer dans ${paquet.carte.nom}`)} onPress={valider} desactive={enregistrement} style={styles.boutonNav} />
             )}
           </View>
         </ScrollView>

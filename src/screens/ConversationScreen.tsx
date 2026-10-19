@@ -52,6 +52,8 @@ import BoutonDictee from '../components/BoutonDictee';
 import { useLangue } from '../i18n/LangueProvider';
 import { definirPuitsJournal } from '../engine/journalDiagnostic';
 import { ajouterAuJournal } from '../storage/journalDiagnosticStore';
+import { monde, mondeIdDe } from '../mondes';
+import { memoriserMondeActif } from '../mondes/memorisation';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/cour-des-serments.png');
 
@@ -172,6 +174,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setStory(s);
       setAppSettings(settings);
       if (!s) setErreur('Cette histoire est introuvable.');
+      // Une histoire garde son monde : l'ouvrir bascule le monde actif sur le sien.
+      if (s && mondeIdDe(s.meta) !== monde.actifId()) {
+        memoriserMondeActif(mondeIdDe(s.meta)).catch(() => monde.definirActif(mondeIdDe(s.meta)));
+      }
       if (s && s.messages.length > 0 && s.memoire.resume.trim() && Date.now() - s.meta.updatedAt > SEUIL_PAUSE_MS) {
         setDerniereFoisVisible(true);
       }

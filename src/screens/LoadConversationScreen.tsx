@@ -8,7 +8,8 @@ import type { StoryMeta } from '../types';
 import { deleteStory, getStoriesIndex, renommerStory } from '../storage/storage';
 import { useEtatCloud } from '../cloud/useEtatCloud';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
-import { obtenirPortrait } from '../mondes';
+import { deNomMonde, histoiresDuMonde, mondeIdDe, obtenirPortrait } from '../mondes';
+import { useMondeActif } from '../mondes/useMondeActif';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';
@@ -47,14 +48,17 @@ export default function LoadConversationScreen({ navigation }: Props) {
   const [suppressionId, setSuppressionId] = useState<string | null>(null);
   const swipeablesRef = useRef<Map<string, Swipeable>>(new Map());
   const { revision } = useEtatCloud();
+  // Seules les histoires du monde actif sont listées : changer de monde change la liste.
+  const paquet = useMondeActif();
+  const trier = useCallback((liste: StoryMeta[]) => histoiresDuMonde(liste, paquet.id).sort((a, b) => b.updatedAt - a.updatedAt), [paquet.id]);
 
   const recharger = useCallback(() => {
     setChargement(true);
     setErreur('');
-    getStoriesIndex().then((liste) => setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt)))
+    getStoriesIndex().then((liste) => setHistoires(trier(liste)))
       .catch((e) => setErreur(e instanceof Error ? e.message : 'Impossible de lire les histoires.'))
       .finally(() => setChargement(false));
-  }, []);
+  }, [trier]);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,13 +66,13 @@ export default function LoadConversationScreen({ navigation }: Props) {
       setChargement(true);
       setErreur('');
       getStoriesIndex().then((liste) => {
-        if (actif) setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt));
+        if (actif) setHistoires(trier(liste));
       }).catch((e) => { if (actif) setErreur(e instanceof Error ? e.message : 'Impossible de lire les histoires.'); })
         .finally(() => { if (actif) setChargement(false); });
       return () => {
         actif = false;
       };
-    }, [revision]),
+    }, [revision, trier]),
   );
 
   function ouvrirRenommage(meta: StoryMeta) {
@@ -105,7 +109,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
     <FondAtmospherique style={{ flex: 1 }} densiteEtoiles="discrete" imageFond={IMAGE_CHARGER}>
       <View style={styles.container}>
         <View style={styles.entetePage}>
-          <Text style={styles.surtitre}>{t('ARCHIVES D’ELYNDOR')}</Text>
+          <Text style={styles.surtitre}>{t(`ARCHIVES ${deNomMonde(paquet).replace("'", '’').toLocaleUpperCase('fr')}`)}</Text>
           <Text style={styles.titre}>{t('Vos histoires')}</Text>
           <Text style={styles.sousTitre}>
             {histoires.length > 0
@@ -135,7 +139,7 @@ export default function LoadConversationScreen({ navigation }: Props) {
             </Panneau>
           )}
           renderItem={({ item }) => {
-            const portrait = obtenirPortrait(item.raceOrigineId, item.sexe);
+            const portrait = obtenirPortrait(item.raceOrigineId, item.sexe, mondeIdDe(item));
             const lieu = item.contexte?.lieu?.trim();
             const dateChronique = item.contexte?.dateChronique?.trim();
             return (

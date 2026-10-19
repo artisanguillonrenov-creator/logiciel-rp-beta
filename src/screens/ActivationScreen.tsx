@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { getSettings, saveSettings } from '../storage/storage';
+import { routeDeDepart } from '../navigation/routeDepart';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import { VERSION_APP } from '../version';
 import Bouton from '../components/Bouton';
@@ -24,8 +25,9 @@ export default function ActivationScreen({ navigation }: Props) {
     setErreur('');
     try {
       const settingsActuelles = await getSettings();
-      await saveSettings({ ...settingsActuelles, betaAcceptee: true });
-      navigation.replace('Demarrage');
+      const settings = { ...settingsActuelles, betaAcceptee: true };
+      await saveSettings(settings);
+      navigation.replace(routeDeDepart(settings));
     } catch {
       setErreur("Impossible d'enregistrer l'activation. Vérifie que le stockage de l'appareil ou du navigateur est disponible, puis réessaie.");
     } finally {

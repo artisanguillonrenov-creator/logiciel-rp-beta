@@ -2,6 +2,7 @@ import type { FicheEditable } from '../concepteur/lorebookModele';
 
 export type RootStackParamList = {
   Activation: undefined;
+  ChoixMonde: undefined;
   Demarrage: undefined;
   Creation: undefined;
   Conversation: { storyId: string };

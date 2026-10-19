@@ -55,6 +55,11 @@ export const monde = {
   },
 };
 
+/** Histoires du monde donné (une histoire sans mondeId est d'Elyndor). */
+export function histoiresDuMonde<T extends { mondeId?: string }>(liste: readonly T[], mondeId: string): T[] {
+  return liste.filter((meta) => mondeIdDe(meta) === mondeId);
+}
+
 /** Titre du bloc de lore du prompt : celui du paquet, sinon dérivé du nom. */
 export function titreLoreDe(paquet: PaquetMonde): string {
   return paquet.titreLore ?? `LORE ${paquet.carte.nom.toUpperCase()} PERTINENT`;

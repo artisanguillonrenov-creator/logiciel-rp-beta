@@ -502,6 +502,10 @@ export interface AppSettings {
   // l'écran d'activation — pas une vraie clé de licence vérifiée côté
   // serveur, juste la marche à suivre d'une activation.
   betaAcceptee?: boolean;
+  // Monde actif (identifiant de paquet, voir src/mondes/) choisi à l'écran
+  // ChoixMonde. Réglage de l'appareil, non synchronisé. undefined tant que
+  // rien n'est choisi : l'écran de choix s'affiche, Elyndor reste le défaut.
+  mondeActif?: string;
   // Réglages concepteur (Ajouts_A_Integrer.md #6) : accès direct pendant la
   // phase de test, sans code ni protection — un mécanisme de déverrouillage
   // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
