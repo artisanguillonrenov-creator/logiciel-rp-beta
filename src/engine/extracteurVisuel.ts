@@ -1,9 +1,9 @@
 import type { AppSettings, StoryState } from '../types';
 import { appellerModele, configurationLLM } from './elyndorCloudClient';
-import { canonRace, detecterRacePnj, traitsVisuelsRace } from './racePnj';
-import { ROLES_CANON } from './canonElyndor';
+import { canonRace, detecterRacePnj, racePnjDepuisId, traitsVisuelsRace } from './racePnj';
+import { mondeIdDe } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { prenomRole } from './rolesCanon';
-import { RACES_ELYNDOR } from '../data/races';
 import { filtrerTextePourProfil } from './contenuAdulte';
 import {
   analyserExtraction,
@@ -138,7 +138,8 @@ function decrireEtatVisuel(etat: EtatVisuelHistoire): string {
  * personnages de la scène avec leur canon, l'état visuel et les derniers messages.
  */
 export function construireContexteExtraction(story: StoryState, settings: AppSettings, etat: EtatVisuelHistoire, allege = false): string {
-  const raceJoueur = RACES_ELYNDOR.find((r) => r.id === story.meta.raceOrigineId);
+  const mondeId = mondeIdDe(story.meta);
+  const raceJoueur = racePnjDepuisId(story.meta.raceOrigineId, 'Autre', mondeId);
   const recents = story.messages.slice(allege ? -MESSAGES_CONTEXTE_ALLEGE : -MESSAGES_CONTEXTE).map((m) => {
     const auteur = m.role === 'assistant' ? 'NARRATEUR' : story.meta.personnageNom.toUpperCase();
     return `${auteur} : ${texteSur(texteProfil(m.content, settings), LONGUEUR_MESSAGE_CONTEXTE)}`;
@@ -150,18 +151,18 @@ export function construireContexteExtraction(story: StoryState, settings: AppSet
   const pnjScene = listerPnjVisuels(story)
     .filter((e) => allege ? nomCiteDans(e.titre, texteScene) : true)
     .map((e) => {
-      const race = detecterRacePnj(e.titre, e.contenu);
+      const race = detecterRacePnj(e.titre, e.contenu, mondeId);
       return `- ${e.titre} : ${texteSur(texteProfil(e.contenu, settings), allege ? 400 : 300)}${race ? `\n  ${canonRace(race)}` : ''}`;
     })
     .join('\n');
-  const canon = ROLES_CANON
+  const canon = donneesMonde(mondeId).rolesCanon
     .filter((r) => nomCiteDans(prenomRole(r), texteScene))
     .map((r) => `- ${r.nom} (${r.libelle}, ${r.ville}) : ${r.description}`)
     .join('\n');
   const joueur = allege
-    ? (raceJoueur ? `[RACE DE ${story.meta.personnageNom}]\n${canonRace({ race: raceJoueur, sexe: 'Autre' })}` : '')
+    ? (raceJoueur ? `[RACE DE ${story.meta.personnageNom}]\n${canonRace(raceJoueur)}` : '')
     : `[PERSONNAGE DU JOUEUR — ${story.meta.personnageNom}]\n${texteProfil(story.meta.personnageDescription || 'Aucune fiche.', settings)}`
-      + (raceJoueur ? `\n${canonRace({ race: raceJoueur, sexe: 'Autre' })}` : '');
+      + (raceJoueur ? `\n${canonRace(raceJoueur)}` : '');
   const cadre = !allege && story.meta.contexte?.lieu ? `[CADRE DE L'HISTOIRE]\nLieu : ${story.meta.contexte.lieu}` : '';
   return [
     joueur,

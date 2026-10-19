@@ -1,4 +1,3 @@
-import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import type { ParametresAtelier } from '../concepteur/configuration';
 import { reglagesNarrateurDefaut, samplersPourRequete } from '../concepteur/reglagesNarrateur';
@@ -8,7 +7,6 @@ import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
 import {
-  chargerLoreElyndor,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
@@ -41,7 +39,9 @@ import { construirePassages, selectionnerPassagesDetaille, type RapportSelection
 import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
-import { ROLES_CANON } from './canonElyndor';
+import { histoiresDuMonde, mondeIdDe, paquetMonde, titreLoreDe } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
+import type { ElyndorEntryChargee } from './loreLoader';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererNarrationAvecCloture } from './clotureNarration';
 import { genererDeltaEtatSepare } from './deltaEtatSepare';
@@ -69,7 +69,6 @@ import {
   type Souvenir,
 } from './searchHistorique';
 import {
-  ENTREES_ADULTE_UNIQUEMENT,
   ErreurProfilContenu,
   instructionRegistreAdulte,
   filtrerTextePourProfil,
@@ -98,16 +97,17 @@ async function parametresDeLaSession(settings: AppSettings): Promise<ParametresA
   const config = await lireConfigurationAtelier().catch(() => null);
   return config?.profils[settings.modeConcepteur ? config.profilActif : 'production'];
 }
-const LORE_ELYNDOR_BASE = chargerLoreElyndor(elyndorRaw as any);
-let LORE_ELYNDOR = LORE_ELYNDOR_BASE;
+// Dernier lore publié lu pour chaque monde (canon du paquet + éditions de l'Atelier).
+const lorePublieParMonde = new Map<string, ElyndorEntryChargee[]>();
 
-/** Charge les fiches réellement publiées avant CHAQUE sélection narrative. */
-async function assurerLorePublie() {
+/** Charge les fiches réellement publiées du monde de l'histoire avant CHAQUE sélection narrative. */
+async function assurerLorePublie(mondeId: string) {
   // Synonymes de recherche saisis dans l'Atelier (lecture unique, mise en cache).
   await (require('../concepteur/synonymesStore') as typeof import('../concepteur/synonymesStore')).chargerSynonymesPersonnalises().catch(() => undefined);
-  const etat = await lireLoreAtelier();
-  LORE_ELYNDOR = appliquerLorePublie(LORE_ELYNDOR_BASE, etat);
-  return LORE_ELYNDOR;
+  const etat = await lireLoreAtelier(mondeId);
+  const lore = appliquerLorePublie(donneesMonde(mondeId).lore, etat);
+  lorePublieParMonde.set(mondeId, lore);
+  return lore;
 }
 
 /**
@@ -128,7 +128,8 @@ function budgetConversationPourApp(appSettings: AppSettings): number {
 
 /** Corpus canon (lore statique compris) pour verifierEntitesCanoniques. */
 export function corpusCanonHistoire(story: StoryState, messageJoueur: string): string {
-  return corpusCanon(story, messageJoueur, LORE_ELYNDOR);
+  const mondeId = mondeIdDe(story.meta);
+  return corpusCanon(story, messageJoueur, lorePublieParMonde.get(mondeId) ?? donneesMonde(mondeId).lore);
 }
 
 function genererId(): string {
@@ -228,7 +229,9 @@ export async function calculerSelectionLore(
   reglagesAtelier?: ParametresAtelier,
 ): Promise<SelectionLore> {
   const debutRecherche = Date.now();
-  const loreCourant = await assurerLorePublie();
+  const paquet = paquetMonde(mondeIdDe(story.meta));
+  const loreCourant = await assurerLorePublie(paquet.id);
+  const entreesAdulte = paquet.entreesAdulteUniquement ?? [];
   const profil = appSettings.profilContenu;
   const profilAdulte = profil === 'adulte';
   const texteRequete = construireTexteRequete(story, messageJoueur, appSettings);
@@ -237,12 +240,13 @@ export async function calculerSelectionLore(
   const poolElyndorBrut = [
     ...loreCourant,
     ...convertirLoreEmergentPourSelection(story.loreEmergent),
-    ...convertirPluginsPourSelection(plugins),
+    // Seuls les packs installés pour le monde de l'histoire rejoignent son lore.
+    ...convertirPluginsPourSelection(histoiresDuMonde(plugins, paquet.id)),
   ];
   const poolElyndor = profilAdulte
     ? poolElyndorBrut
     : poolElyndorBrut.filter(
-        (e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
+        (e) => !entreesAdulte.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil),
       );
 
   // Moteur de recherche du lore : tous les passages de toutes les entrées
@@ -402,7 +406,10 @@ export function construireCtxBase(
     detecterStagnation(story.directeur, story.messages.length),
   );
 
+  const paquet = paquetMonde(mondeIdDe(story.meta));
   return {
+    loreCore: paquet.core,
+    titreLore: titreLoreDe(paquet),
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
     stylesNarratifs: reglagesAtelier?.narrateur.styles,
@@ -510,6 +517,7 @@ async function mettreAJourLoreEmergentSeul(
     depuisIndex: story.loreEmergentDernierIndex ?? 0,
     personnageNom,
     storyId: story.meta.id,
+    nomMonde: paquetMonde(mondeIdDe(story.meta)).nomPourExtractionLore,
   });
   return { loreEmergent, loreEmergentDernierIndex: messages.length };
 }
@@ -654,12 +662,13 @@ async function genererTourInterne(
   // c'est ce qui permet de vérifier que le modèle suit les règles codées.
   // Étape 8 : rôles fixés de la ville en cours et gestes du joueur.
   const preparationTour = preparerTour(storyCourante, messageJoueur);
-  const rolesVille = rolesDeLaVille(ROLES_CANON, preparationTour.ville);
+  const rolesCanonMonde = donneesMonde(mondeIdDe(storyCourante.meta)).rolesCanon;
+  const rolesVille = rolesDeLaVille(rolesCanonMonde, preparationTour.ville);
   const nomsConnus = [
     storyCourante.meta.personnageNom,
     ...(storyCourante.scene?.presents ?? []),
     ...storyCourante.loreEmergent.map((e) => e.titre),
-    ...ROLES_CANON.map((r) => prenomRole(r)),
+    ...rolesCanonMonde.map((r) => prenomRole(r)),
   ];
   const verdictsLocaux: Array<[string, RapportValidation]> = [
     ['Autonomie du joueur (règles 1 et 7)', validerAgentiviteHeuristique(reponse, storyCourante.meta.personnageNom)],
@@ -769,7 +778,7 @@ async function genererTourInterne(
 
   // Corrections déterministes, mesure facultative de longueur, validations
   // de cohérence, puis stockage. La longueur ne bloque jamais la publication.
-  const nomsPourEtiquettes = [...nomsConnus, ...ROLES_CANON.map((r) => r.nom)];
+  const nomsPourEtiquettes = [...nomsConnus, ...rolesCanonMonde.map((r) => r.nom)];
   const avantMesure = preparerNarrationPourPublication(
     reponse, canon, storyCourante.meta.personnageNom, nomsPourEtiquettes,
   );
@@ -825,6 +834,7 @@ async function genererTourInterne(
       contexteCanonique: [ctxBase.etatMonde, ctxBase.engagementsEtRelations, ctxBase.ficheScene]
         .filter(Boolean).join('\n\n'),
       storyId: storyCourante.meta.id,
+      nomMonde: paquetMonde(mondeIdDe(storyCourante.meta)).nomPourExtractionLore,
     }));
 
   const messageUtilisateur: Message = {

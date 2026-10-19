@@ -1,8 +1,8 @@
 import type { StoryState } from '../types';
-import { RACES_ELYNDOR } from '../data/races';
-import { ROLES_CANON } from './canonElyndor';
+import { mondeIdDe } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { prenomRole } from './rolesCanon';
-import { detecterRacePnj, negatifVisuelRace, traitsVisuelsRace, type RacePnj } from './racePnj';
+import { detecterRacePnj, negatifVisuelRace, racePnjDepuisId, traitsVisuelsRace, type RacePnj } from './racePnj';
 import { contientExpression, normaliserTexte } from './texteRecherche';
 import {
   CADRAGE_PORTRAIT,
@@ -244,26 +244,24 @@ export function nomCiteDans(nom: string, texte: string): boolean {
   return mots.length > 1 && mots[0].length > 2 && !TITRES.test(mots[0]) && contientExpression(texte, mots[0]);
 }
 
-function roleCanonPour(nom: string) {
+function roleCanonPour(story: StoryState, nom: string) {
   const cle = normaliserTexte(nom);
-  return ROLES_CANON.find((r) => normaliserTexte(r.nom) === cle || normaliserTexte(prenomRole(r)) === cle.split(' ')[0]);
+  return donneesMonde(mondeIdDe(story.meta)).rolesCanon.find((r) => normaliserTexte(r.nom) === cle || normaliserTexte(prenomRole(r)) === cle.split(' ')[0]);
 }
 
 /** Race connue d'un personnage, depuis la création (joueur), sa fiche ou le canon du lore. */
 export function raceDuPersonnage(story: StoryState, personnage: Pick<PersonnageContrat, 'type' | 'assetId' | 'nom'>): RacePnj | null {
   if (personnage.type === 'joueur') {
-    const race = RACES_ELYNDOR.find((r) => r.id === story.meta.raceOrigineId);
-    if (!race) return detecterRacePnj(story.meta.personnageNom, story.meta.personnageDescription ?? '');
-    const sexe = story.meta.sexe === 'Homme' || story.meta.sexe === 'Femme' ? story.meta.sexe : 'Autre';
-    return { race, sexe };
+    return racePnjDepuisId(story.meta.raceOrigineId, story.meta.sexe, mondeIdDe(story.meta))
+      ?? detecterRacePnj(story.meta.personnageNom, story.meta.personnageDescription ?? '', mondeIdDe(story.meta));
   }
   if (personnage.type === 'pnj') {
     const fiche = listerPnjVisuels(story).find((p) => p.id === personnage.assetId);
-    return fiche ? detecterRacePnj(fiche.titre, fiche.contenu) : null;
+    return fiche ? detecterRacePnj(fiche.titre, fiche.contenu, mondeIdDe(story.meta)) : null;
   }
   if (personnage.type === 'canon') {
-    const role = roleCanonPour(personnage.nom);
-    return role ? detecterRacePnj(role.nom, role.description) : null;
+    const role = roleCanonPour(story, personnage.nom);
+    return role ? detecterRacePnj(role.nom, role.description, mondeIdDe(story.meta)) : null;
   }
   return null;
 }
@@ -272,7 +270,7 @@ export function raceDuPersonnage(story: StoryState, personnage: Pick<PersonnageC
 export function ficheDuPersonnage(story: StoryState, personnage: Pick<PersonnageContrat, 'type' | 'assetId' | 'nom'>): string {
   if (personnage.type === 'joueur') return story.meta.personnageDescription ?? '';
   if (personnage.type === 'pnj') return listerPnjVisuels(story).find((p) => p.id === personnage.assetId)?.contenu ?? '';
-  if (personnage.type === 'canon') return roleCanonPour(personnage.nom)?.description ?? '';
+  if (personnage.type === 'canon') return roleCanonPour(story, personnage.nom)?.description ?? '';
   return '';
 }
 
@@ -365,8 +363,8 @@ export function appliquerCanonPersonnage(
   return { personnage: sortie, negatif };
 }
 
-function versContrat(resolu: PersonnageVisibleResolu, extrait?: PersonnageExtrait, source: SourceFait = 'extraction'): PersonnageContrat {
-  const canon = resolu.type === 'figurant' ? roleCanonPour(resolu.nom) : undefined;
+function versContrat(story: StoryState, resolu: PersonnageVisibleResolu, extrait?: PersonnageExtrait, source: SourceFait = 'extraction'): PersonnageContrat {
+  const canon = resolu.type === 'figurant' ? roleCanonPour(story, resolu.nom) : undefined;
   const type: PersonnageContrat['type'] = canon ? 'canon' : resolu.type;
   return {
     cle: resolu.assetId ?? (canon ? `canon:${normaliserVisuel(canon.nom)}` : `figurant:${normaliserVisuel(resolu.nom)}`),
@@ -429,7 +427,7 @@ export function consoliderContratScene(e: EntreesConsolidation): { contrat: Cont
       mentionnes.push(resolu.nom);
       continue;
     }
-    const contrat = versContrat(resolu, extrait, e.parModele ? 'extraction' : 'repli');
+    const contrat = versContrat(story, resolu, extrait, e.parModele ? 'extraction' : 'repli');
     if (personnages.some((p) => p.cle === contrat.cle)) continue;
     const { personnage, negatif } = appliquerCanonPersonnage(contrat, story, etat, provenance, rejets);
     if (negatif) negatifCanon.push(negatif);
@@ -496,7 +494,7 @@ export function contratPortrait(params: {
   const provenance: string[] = [params.parModele ? 'mots-clés extraits par le narrateur depuis la fiche' : 'repli local : mots-clés de la fiche'];
   const rejets: string[] = [...(params.rejetsExtraction ?? [])];
   const extrait = params.extraction?.personnagesVisibles[0];
-  const base = versContrat(params.sujet, extrait ? { ...extrait, action: [], position: [] } : undefined, params.parModele ? 'extraction' : 'repli');
+  const base = versContrat(params.story, params.sujet, extrait ? { ...extrait, action: [], position: [] } : undefined, params.parModele ? 'extraction' : 'repli');
   const { personnage, negatif } = appliquerCanonPersonnage(base, params.story, params.etat, provenance, rejets);
   return {
     contrat: {

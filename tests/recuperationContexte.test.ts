@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor, type ElyndorEntryChargee } from '../src/engine/loreLoader';
+import { CTX_ELYNDOR } from './aidesMonde';
+import type { ElyndorEntryChargee } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import {
   construirePassages,
   selectionnerPassagesDetaille,
@@ -22,7 +23,7 @@ import { construireSystemPromptDetaille } from '../src/engine/promptBuilder';
 import { creerNouvelleHistoire } from '../src/engine/story';
 import type { LoreEntry, Message, StoryState } from '../src/types';
 
-const LORE = chargerLoreElyndor(elyndorRaw as any);
+const LORE = donneesMonde('elyndor').lore;
 const PASSAGES = construirePassages(LORE);
 const REGLAGES = { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'aucun', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' } as const;
 
@@ -335,6 +336,7 @@ function ctxPrompt(extra: Record<string, unknown> = {}) {
     ...Array.from({ length: 10 }, (_, i) => ({ id: `x${i}`, titre: `[MONDE] Détail ${i}`, contenu: `Détail anecdotique ${i}. `.repeat(80), score: 0.4, niveau: 'P2' as const })),
   ];
   return {
+    ...CTX_ELYNDOR,
     meta: story.meta, settings: story.settings, resume: 'Résumé de l’histoire. '.repeat(100), faits: [], loreElyndor: lore,
     messagesRecents: [], messageJoueur: 'Je me promène.',
     contexteP0: '- [scene | scene | P100] Lieu actuel: Paris.',

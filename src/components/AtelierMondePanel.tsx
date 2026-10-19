@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getStoriesIndex, getStory, updateStoryIf } from '../storage/storage';
+import { histoiresDuMonde, monde } from '../mondes';
 import type { StoryMeta, StoryState, EntreeLoreEmergent, ProfilMonde } from '../types';
 import type { FicheEditable } from '../concepteur/lorebookModele';
 import Bouton from './Bouton';
@@ -33,7 +34,8 @@ export default function AtelierMondePanel({ promouvoir }: { promouvoir: (p: { so
   const [charge, setCharge] = useState(false);
   useEffect(() => {
     let active = true;
-    getStoriesIndex().then(items => { if (active) { setHistoires(items); setHistoireId(items[0]?.id ?? ''); } }).catch(e => { if (active) setMessage(erreur(e)); });
+    // Histoires du monde actif seulement : la promotion vise le lorebook de ce monde.
+    getStoriesIndex().then(index => histoiresDuMonde(index, monde.actifId())).then(items => { if (active) { setHistoires(items); setHistoireId(items[0]?.id ?? ''); } }).catch(e => { if (active) setMessage(erreur(e)); });
     return () => { active = false; };
   }, []);
   useEffect(() => {

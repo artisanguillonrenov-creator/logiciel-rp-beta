@@ -1,12 +1,8 @@
 // Situations de départ proposées à l'étape "Point de départ" — dépendent du
-// lieu de départ choisi (src/data/lieuxDepart.ts), grounded dans le lore
-// dédié à chaque lieu (src/data/elyndorLore.json) plutôt qu'une liste
+// lieu de départ choisi (lieuxDepart.ts), grounded dans le lore
+// dédié à chaque lieu (lorebook.json) plutôt qu'une liste
 // générique unique.
-export interface SituationDepart {
-  id: string;
-  nom: string;
-  description: string;
-}
+import type { SituationDepart } from '../types';
 
 export const SITUATIONS_PAR_LIEU: Record<string, SituationDepart[]> = {
   'marches-esclaves': [

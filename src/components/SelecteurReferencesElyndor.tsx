@@ -3,12 +3,11 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type Image
 import { getStoriesIndex, getStory } from '../storage/storage';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { obtenirAssetVisuel } from '../storage/assetsVisuelsStore';
-import { obtenirPortrait } from '../data/portraits';
-import { RACES_ELYNDOR } from '../data/races';
+import { histoiresDuMonde, monde, mondeIdDe, obtenirPortrait, racesDuMonde } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { lireAssetsLore } from '../concepteur/assetsLoreStore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
-import { LORE_ELYNDOR_CANON } from '../engine/canonElyndor';
 import { listerPnjVisuels, ID_ASSET_JOUEUR } from '../engine/visualState';
 import { obtenirPortraitRace, obtenirPortraitReferenceJoueur } from '../engine/images';
 import { preparerImageReference } from '../storage/pnjAvatarsStore';
@@ -45,7 +44,7 @@ const SEXES = ['Homme', 'Femme', 'Autre'] as const;
 
 async function chargerHistoire(story: StoryState): Promise<ReferenceElyndor[]> {
   const sortie: ReferenceElyndor[] = [];
-  const portrait = obtenirPortrait(story.meta.raceOrigineId, story.meta.sexe);
+  const portrait = obtenirPortrait(story.meta.raceOrigineId, story.meta.sexe, mondeIdDe(story.meta));
   if (portrait) {
     sortie.push({
       id: `portrait-creation:${story.meta.id}`, type: 'joueur-portrait', role: 'identite',
@@ -75,8 +74,9 @@ async function chargerHistoire(story: StoryState): Promise<ReferenceElyndor[]> {
 
 export async function chargerReferencesLore(): Promise<ReferenceElyndor[]> {
   const etat = await lireAssetsLore();
-  let pool = LORE_ELYNDOR_CANON;
-  try { pool = appliquerLorePublie(LORE_ELYNDOR_CANON, await lireLoreAtelier()); } catch { /* lore de l'Atelier illisible : canon seul */ }
+  const canon = donneesMonde(monde.actifId()).lore;
+  let pool = canon;
+  try { pool = appliquerLorePublie(canon, await lireLoreAtelier()); } catch { /* lore de l'Atelier illisible : canon seul */ }
   const titres = new Map(pool.map((f) => [f.id, f.titre]));
   const sortie: ReferenceElyndor[] = [];
   for (const [ficheId, liens] of Object.entries(etat.liens)) {
@@ -114,7 +114,7 @@ export default function SelecteurReferencesElyndor({ selection, onBasculer, hist
     let actif = true;
     getStoriesIndex().then((index) => {
       if (!actif) return;
-      const liste = index.slice(0, 30).map((h: any) => ({ id: h.id, titre: h.titre ?? h.personnageNom ?? h.id }));
+      const liste = histoiresDuMonde(index, monde.actifId()).slice(0, 30).map((h: any) => ({ id: h.id, titre: h.titre ?? h.personnageNom ?? h.id }));
       setHistoires(liste);
       setHistoireId((courant) => courant ?? liste[0]?.id);
     }).catch(() => undefined);
@@ -136,7 +136,7 @@ export default function SelecteurReferencesElyndor({ selection, onBasculer, hist
   const portraitsRace: ReferenceElyndor[] = race
     ? SEXES.flatMap((sexe) => {
         const source = obtenirPortrait(race, sexe);
-        const nom = RACES_ELYNDOR.find((r) => r.id === race)?.nom ?? race;
+        const nom = racesDuMonde(monde.actif()).find((r) => r.id === race)?.nom ?? race;
         return source ? [{
           id: `race:${race}-${sexe}`, type: 'race' as const, role: 'race' as const,
           libelle: `Race ${nom} (${sexe})`, apercu: source, charger: () => obtenirPortraitRace(race, sexe),
@@ -152,7 +152,7 @@ export default function SelecteurReferencesElyndor({ selection, onBasculer, hist
     {!chargement && histoireId && !refsHistoire.length ? <Text style={st.aide}>Aucun portrait enregistré pour cette histoire.</Text> : null}
     <View style={st.grille}>{refsHistoire.map((r) => <Vignette key={r.id} item={r} actif={selection.has(r.id)} onPress={() => onBasculer(r)} />)}</View>
     <Text style={st.label}>Portraits de races</Text>
-    <View style={st.ligne}>{RACES_ELYNDOR.map((r) => <Pressable key={r.id} onPress={() => setRace(race === r.id ? '' : r.id)}
+    <View style={st.ligne}>{racesDuMonde(monde.actif()).map((r) => <Pressable key={r.id} onPress={() => setRace(race === r.id ? '' : r.id)}
       style={[st.puce, race === r.id && st.actif]}><Text style={st.nom}>{r.nom}</Text></Pressable>)}</View>
     <View style={st.grille}>{portraitsRace.map((r) => <Vignette key={r.id} item={r} actif={selection.has(r.id)} onPress={() => onBasculer(r)} />)}</View>
     {!sansLore ? <>

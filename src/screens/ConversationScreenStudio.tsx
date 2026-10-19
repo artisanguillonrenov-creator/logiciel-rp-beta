@@ -6,6 +6,7 @@ import type { StoryState } from '../types';
 import { getStory } from '../storage/storage';
 import { abonnerSauvegardesStory } from '../automation/storyEvents';
 import ConversationScreen from './ConversationScreen';
+import { mondeIdDe, paquetMonde } from '../mondes';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
@@ -53,14 +54,16 @@ export default function ConversationScreenStudio(props: Props) {
     return [date, ambiance].filter(Boolean).join(' · ') || story.meta.personnageNom;
   }, [story]);
 
-  const lieu = story?.meta.contexte.lieu?.trim() || 'ELYNDOR';
+  // Marque du monde de l'histoire (« ELYNDOR » pour Elyndor).
+  const marque = paquetMonde(mondeIdDe(story?.meta)).marque.titre;
+  const lieu = story?.meta.contexte.lieu?.trim() || marque;
 
   return (
     <View style={styles.ecran}>
       <View style={styles.enteteScene}>
         <View style={[styles.enteteInterieur, tablette && styles.enteteInterieurTablette]}>
           <View style={styles.identiteScene}>
-            <Text style={styles.surtitre}>ELYNDOR</Text>
+            <Text style={styles.surtitre}>{marque}</Text>
             <Text style={styles.lieu} numberOfLines={1}>{lieu}</Text>
             {!!sousTitre && <Text style={styles.sousTitre} numberOfLines={1}>{sousTitre}</Text>}
           </View>

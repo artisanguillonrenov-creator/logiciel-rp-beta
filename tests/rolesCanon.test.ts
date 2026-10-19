@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
-import { construireRolesCanon, prenomRole, rolesDeLaVille } from '../src/engine/rolesCanon';
+import { donneesMonde } from '../src/mondes/donnees';
+import { prenomRole, rolesDeLaVille } from '../src/engine/rolesCanon';
 
-const ROLES = construireRolesCanon(chargerLoreElyndor(elyndorRaw as any));
+const ROLES = donneesMonde('elyndor').rolesCanon;
 
 test('l’annuaire lit les rôles fixés de Paris dans les fiches récurrentes', () => {
   const paris = rolesDeLaVille(ROLES, 'Paris');

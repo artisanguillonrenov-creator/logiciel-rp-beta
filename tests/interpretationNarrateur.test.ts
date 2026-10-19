@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { CTX_ELYNDOR } from './aidesMonde';
 import {
   CLES_STYLES, NOMS_STYLES, comparerStyles, defautsAventure,
   instructionStyle, stylesNarratifsDefaut, validerDefautsAventure, validerStylesNarratifs,
@@ -24,6 +25,7 @@ test('un réglage de style modifie une unique consigne Ton, sans changer le cano
   const base = stylesNarratifsDefaut();
   const modifie = { ...base, sombre_realiste: { ...base.sombre_realiste, densite: 'sobre' as const } };
   const contexte = {
+    ...CTX_ELYNDOR,
     meta: { id: 'scene-test', createdAt: 1, updatedAt: 1, personnageNom: 'Joueur', personnageDescription: '', pointDeDepart: '', contexte: { lieu: '', ambiance: '', dateChronique: '', objectifs: '' } },
     settings: { ...defautsAventure(), ton: 'sombre_realiste' },
     faits: [], resume: '', loreElyndor: [], messagesRecents: [], messageJoueur: 'Je regarde autour de moi.',

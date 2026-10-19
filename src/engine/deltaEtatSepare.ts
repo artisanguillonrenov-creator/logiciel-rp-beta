@@ -1,3 +1,4 @@
+import { complementDe } from '../mondes';
 import { appellerModele, type AppelModeleOptions } from './elyndorCloudClient';
 import { extraireEnveloppeEtat } from './noyauNarratif';
 
@@ -13,6 +14,13 @@ export interface EntreeDeltaEtat {
   messageJoueur: string;
   contexteCanonique: string;
   storyId?: string;
+  /** Nom du monde cité dans la consigne (nomPourExtractionLore du paquet) ; absent : aucun nom. */
+  nomMonde?: string;
+}
+
+/** Désignation du monde dans la consigne : « d'Elyndor », ou rien sans nom de monde. */
+function mondeDeLaConsigne(nomMonde?: string): string {
+  return nomMonde ? ` ${complementDe(nomMonde)}` : '';
 }
 
 export function optionsDeltaEtatSepare(entree: EntreeDeltaEtat): AppelModeleOptions {
@@ -26,7 +34,7 @@ export function optionsDeltaEtatSepare(entree: EntreeDeltaEtat): AppelModeleOpti
     messages: [
       {
         role: 'system',
-        content: `Tu es le moteur d'extraction d'état d'Elyndor, pas son narrateur.
+        content: `Tu es le moteur d'extraction d'état${mondeDeLaConsigne(entree.nomMonde)}, pas son narrateur.
 La narration a déjà été validée : tu ne dois ni la réécrire, ni la continuer.
 Retourne exclusivement un objet JSON compact, sans balises ni Markdown.
 Décris UNIQUEMENT les faits établis par l'action du joueur et la narration validée.

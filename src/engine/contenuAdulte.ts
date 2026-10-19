@@ -22,11 +22,8 @@ const VOCABULAIRE_VIOLENCE_GRAPHIQUE = [
     'organes a l\'air', 'vide ses tripes', 'agonise dans son sang'
 ];
 
-export const ENTREES_ADULTE_UNIQUEMENT = [
-    '[MONDE] Mœurs Vestimentaires Féminines',
-    '[MONDE] Mœurs Sexuelles d\'Elyndor',
-    '[PHYSIQUE] Canon Féminin d\'Elyndor'
-];
+// Les fiches réservées au profil Adulte sont listées par chaque paquet monde
+// (PaquetMonde.entreesAdulteUniquement).
 
 // 1. Directives pour le profil restrictif (Grand Public)
 export const INSTRUCTION_REGISTRE_GRAND_PUBLIC = `[RÈGLE DE REGISTRE - PROFIL GRAND PUBLIC]

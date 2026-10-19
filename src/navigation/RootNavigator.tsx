@@ -5,6 +5,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import ActivationScreen from '../screens/ActivationScreen';
+import ChoixMondeScreen from '../screens/ChoixMondeScreen';
 import StartScreenStudio from '../screens/StartScreenStudio';
 import CreateScreenStudio from '../screens/CreateScreenStudio';
 import ConversationScreenStudio from '../screens/ConversationScreenStudio';
@@ -14,6 +15,8 @@ import DesignerSettingsScreen from '../screens/DesignerSettingsScreen';
 import LoadConversationScreen from '../screens/LoadConversationScreen';
 import CompteScreen from '../screens/CompteScreen';
 import { getSettings } from '../storage/storage';
+import { MONDE_PAR_DEFAUT, monde } from '../mondes';
+import { routeDeDepart, type RouteDepart } from './routeDepart';
 import { couleurs, polices } from '../theme/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,13 +35,15 @@ const theme = {
 
 export default function RootNavigator() {
   const [pret, setPret] = useState(false);
-  const [betaAcceptee, setBetaAcceptee] = useState(false);
+  const [routeInitiale, setRouteInitiale] = useState<RouteDepart>('Activation');
   const [erreurChargement, setErreurChargement] = useState(false);
 
   function charger() {
     setErreurChargement(false);
     getSettings().then((settings) => {
-      setBetaAcceptee(!!settings.betaAcceptee);
+      // Toute l'application lit le monde actif : il est appliqué avant le premier écran.
+      monde.definirActif(settings.mondeActif ?? MONDE_PAR_DEFAUT);
+      setRouteInitiale(routeDeDepart(settings));
       setPret(true);
     }).catch(() => setErreurChargement(true));
   }
@@ -56,7 +61,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer theme={theme}>
       <Stack.Navigator
-        initialRouteName={betaAcceptee ? 'Demarrage' : 'Activation'}
+        initialRouteName={routeInitiale}
         screenOptions={{
           headerStyle: { backgroundColor: '#030814' },
           headerTintColor: couleurs.doreClair,
@@ -67,6 +72,7 @@ export default function RootNavigator() {
         }}
       >
         <Stack.Screen name="Activation" component={ActivationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ChoixMonde" component={ChoixMondeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Demarrage" component={StartScreenStudio} options={{ headerShown: false }} />
         <Stack.Screen name="Creation" component={CreateScreenStudio} options={{ headerShown: false }} />
         {/* ConversationScreen monte ses actions (recherche, export, concepteur,

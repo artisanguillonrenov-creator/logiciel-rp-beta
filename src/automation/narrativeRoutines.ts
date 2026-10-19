@@ -6,7 +6,8 @@ import { mettreAJourSocial } from '../engine/socialDynamics';
 import { mettreAJourLoreEmergent } from '../engine/emergentLore';
 import { consoliderRegistrePnj } from '../engine/registrePnj';
 import { filtrerTextePourProfil } from '../engine/contenuAdulte';
-import { CAPITALES } from '../engine/canonElyndor';
+import { mondeIdDe, paquetMonde } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { avancerHorloge } from '../engine/noyauNarratif';
 import { lireEtatScene, releverEtatScene } from '../engine/etatScene';
 import { enqueueAutomation, registerAutomationHandler } from './kernel';
@@ -126,6 +127,7 @@ export async function calculerRattrapageNarratif(
         messages: messagesSecurises,
         depuisIndex: loreDepuisIndex,
         personnageNom,
+        nomMonde: paquetMonde(mondeIdDe(story.meta)).nomPourExtractionLore,
       }))
     : null;
 
@@ -135,9 +137,9 @@ export async function calculerRattrapageNarratif(
     ? mesurer('État de scène', () => releverEtatScene({
         appSettings,
         storyId: story.meta.id,
-        actuel: lireEtatScene(story, CAPITALES),
+        actuel: lireEtatScene(story, donneesMonde(mondeIdDe(story.meta)).capitales),
         messages: messagesSecurises,
-        capitales: CAPITALES,
+        capitales: donneesMonde(mondeIdDe(story.meta)).capitales,
         personnageNom,
       })).catch(() => null)
     : null;

@@ -13,6 +13,7 @@ export function creerNouvelleHistoire(params: {
   settings: StorySettings;
   raceOrigineId?: string;
   sexe?: string;
+  mondeId?: string;
 }): StoryState {
   const maintenant = Date.now();
   return {
@@ -27,6 +28,8 @@ export function creerNouvelleHistoire(params: {
       updatedAt: maintenant,
       raceOrigineId: params.raceOrigineId,
       sexe: params.sexe,
+      // Absent plutôt qu'indéfini : une histoire sans mondeId reste d'Elyndor.
+      ...(params.mondeId ? { mondeId: params.mondeId } : {}),
     },
     messages: [],
     memoire: {

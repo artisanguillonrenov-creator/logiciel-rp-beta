@@ -244,8 +244,11 @@ dans [`docs/fiabilite-et-immersion.md`](docs/fiabilite-et-immersion.md).
 
 ```
 src/
-  data/            metamoteurs.json (15), elyndorLore.json (102 entrées),
-                    races/mondes/lieux/situations de départ, portraits
+  data/            metamoteurs.json (15)
+  mondes/          paquets monde (contrat, registre, monde actif) :
+                    elyndor/ (lorebook de 102 entrées, Lore Core, synopsis,
+                    races, portraits, lieux et situations de départ) et
+                    monde-test/ — voir docs/MULTI_MONDES.md
   engine/          orchestration du tour, mémoire, lore, direction
                     narrative, simulation du monde, dynamiques sociales,
                     validation, fournisseurs LLM

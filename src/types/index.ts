@@ -66,12 +66,16 @@ export interface StoryMeta {
   titre?: string;
   // Race (id, ex. "elfes-noirs") et sexe choisis à la création — dupliqués
   // ici hors de personnageDescription (simple texte) pour retrouver le
-  // portrait peint correspondant (src/data/portraits.ts) et l'envoyer comme
+  // portrait peint correspondant (module races du paquet monde, voir src/mondes/) et l'envoyer comme
   // image de référence prioritaire au générateur d'illustration de scène
   // (voir src/engine/images.ts). Optionnels : sans eux, l'avatar généré du
   // joueur reste la seule référence de son visage.
   raceOrigineId?: string;
   sexe?: string;
+  // Monde de l'histoire (identifiant de paquet monde, voir src/mondes/).
+  // Optionnel comme les autres champs ajoutés après coup : une histoire sans
+  // mondeId est d'Elyndor, sans migration ni bump de VERSION_SCHEMA_HISTOIRE.
+  mondeId?: string;
 }
 
 // Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit
@@ -498,6 +502,10 @@ export interface AppSettings {
   // l'écran d'activation — pas une vraie clé de licence vérifiée côté
   // serveur, juste la marche à suivre d'une activation.
   betaAcceptee?: boolean;
+  // Monde actif (identifiant de paquet, voir src/mondes/) choisi à l'écran
+  // ChoixMonde. Réglage de l'appareil, non synchronisé. undefined tant que
+  // rien n'est choisi : l'écran de choix s'affiche, Elyndor reste le défaut.
+  mondeActif?: string;
   // Réglages concepteur (Ajouts_A_Integrer.md #6) : accès direct pendant la
   // phase de test, sans code ni protection — un mécanisme de déverrouillage
   // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
@@ -534,6 +542,9 @@ export interface Plugin {
   nom: string;
   entrees: PluginEntree[];
   installeLe: number;
+  // Monde pour lequel le pack a été installé (paquet monde). Absent sur les
+  // packs installés avant le chantier multi-mondes : ils sont d'Elyndor.
+  mondeId?: string;
 }
 
 export interface LoreEntry {

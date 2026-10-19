@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LORE_CORE, LORE_CORE_TAILLE } from '../src/data/loreCore';
+import { CTX_ELYNDOR } from './aidesMonde';
+import { LORE_CORE, LORE_CORE_TAILLE } from '../src/mondes/elyndor/core';
 import { BUDGET_SYSTEM_LOCAL, construireMessages } from '../src/engine/promptBuilder';
 import { creerNouvelleHistoire } from '../src/engine/story';
 
@@ -17,6 +18,7 @@ function contexte() {
   });
 
   return {
+    ...CTX_ELYNDOR,
     meta: story.meta,
     settings: story.settings,
     resume: 'Résumé saturant. '.repeat(500),

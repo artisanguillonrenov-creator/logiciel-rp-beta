@@ -26,6 +26,7 @@ const REGLAGES_EXPORTABLES = [
   'serveurLocalModele',
   'profilContenu',
   'betaAcceptee',
+  'mondeActif',
   'modeConcepteur',
   'langueInterface',
 ] as const;

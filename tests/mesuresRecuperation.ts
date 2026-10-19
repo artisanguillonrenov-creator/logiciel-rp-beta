@@ -3,8 +3,8 @@
 //   node .test-dist/tests/mesuresRecuperation.js
 // Il reconstitue, avec les fonctions pures du jeu, ce qui part au narrateur
 // pour quelques scènes, avec les budgets des moteurs local et distant.
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
+import { CTX_ELYNDOR } from './aidesMonde';
 import { construirePassages, selectionnerPassages, selectionnerPassagesDetaille } from '../src/engine/passagesLore';
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { BUDGET_SYSTEM_DISTANT, BUDGET_SYSTEM_LOCAL, construireSystemPromptDetaille } from '../src/engine/promptBuilder';
@@ -15,7 +15,7 @@ import { assurerNoyau, construireContexteNoyau } from '../src/engine/noyauNarrat
 import { construireContratNarratifNatif } from '../src/engine/narrativeBehaviorKernel';
 import type { StoryState } from '../src/types';
 
-const LORE = chargerLoreElyndor(elyndorRaw as any);
+const LORE = donneesMonde('elyndor').lore;
 const REGLAGES = { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'aucun', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' } as const;
 
 function histoire(tours: number): StoryState {
@@ -75,7 +75,7 @@ function mesurerScene(story: StoryState, message: string, budgetSysteme: number)
   const blocs = construireBlocsContexte(story, message, evenements, { exclureMessageIds: idsNoyau });
   const contrat = construireContratNarratifNatif(noyauStory, message, 'adulte');
   const { texte: prompt, rapport: rapportPrompt } = construireSystemPromptDetaille({
-    meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: lore, messagesRecents: [], messageJoueur: message,
+    ...CTX_ELYNDOR, meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: lore, messagesRecents: [], messageJoueur: message,
     contratNarratif: contrat.texte,
     contexteP0: formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau === 'P0')),
     blocsContexte: [noyau.texte, formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau !== 'P0'), false)].filter(Boolean).join('\n\n'),

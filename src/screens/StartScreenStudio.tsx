@@ -16,9 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackParamList } from '../navigation/types';
 import type { StoryMeta } from '../types';
 import { getStoriesIndex } from '../storage/storage';
-import { obtenirPortrait } from '../data/portraits';
-import { RACES_ELYNDOR } from '../data/races';
-import { SYNOPSIS_ELYNDOR } from '../data/synopsisElyndor';
+import { deNomMonde, histoiresDuMonde, mondeIdDe, obtenirPortrait, racesDuMonde, type PaquetMonde } from '../mondes';
+import { useMondeActif } from '../mondes/useMondeActif';
 import { LANGUES_SUGGEREES, useLangue } from '../i18n/LangueProvider';
 import { VERSION_APP } from '../version';
 import FondAtmospherique from '../components/FondAtmospherique';
@@ -63,6 +62,8 @@ export default function StartScreenStudio({ navigation }: Props) {
   const [modalSynopsisOuvert, setModalSynopsisOuvert] = useState(false);
   const cloud = useEtatCloud();
   const compteCloud = !!cloud.utilisateur;
+  // Accueil du monde actif : marque, synopsis, peuples et histoires de ce monde seulement.
+  const paquet = useMondeActif();
 
   // La révision change quand la synchronisation a rapatrié des histoires.
   useFocusEffect(
@@ -71,24 +72,24 @@ export default function StartScreenStudio({ navigation }: Props) {
       getStoriesIndex()
         .then((liste) => {
           if (!actif) return;
-          setHistoires([...liste].sort((a, b) => b.updatedAt - a.updatedAt));
+          setHistoires(histoiresDuMonde(liste, paquet.id).sort((a, b) => b.updatedAt - a.updatedAt));
           setErreurHistoires('');
         })
         .catch(() => {
           if (actif) setErreurHistoires('Impossible de lire tes histoires.');
         });
       return () => { actif = false; };
-    }, [cloud.revision]),
+    }, [cloud.revision, paquet.id]),
   );
 
   const derniereHistoire = histoires[0];
   const portraitDerniere = useMemo(
-    () => obtenirPortrait(derniereHistoire?.raceOrigineId, derniereHistoire?.sexe),
+    () => obtenirPortrait(derniereHistoire?.raceOrigineId, derniereHistoire?.sexe, mondeIdDe(derniereHistoire)),
     [derniereHistoire],
   );
 
   return (
-    <FondAtmospherique style={styles.container} imageFond={IMAGE_ACCUEIL}>
+    <FondAtmospherique style={styles.container} imageFond={paquet.marque.fond ?? IMAGE_ACCUEIL}>
       <View style={[styles.voile, compact && styles.voileCompact]} pointerEvents="none" />
 
       <View style={[styles.page, { paddingTop: Math.max(insets.top, espacement.md), paddingBottom: Math.max(insets.bottom, espacement.md) }]}>
@@ -99,7 +100,7 @@ export default function StartScreenStudio({ navigation }: Props) {
 
         <View style={[styles.marque, compact && styles.marqueCompact]}>
           <BoussoleOrnement largeur={compact ? 110 : 132} style={styles.boussole} />
-          <Text style={[styles.titre, compact && styles.titreCompact]}>ELYNDOR</Text>
+          <Text style={[styles.titre, compact && styles.titreCompact]}>{paquet.marque.titre}</Text>
           <Text style={styles.sousTitre}>{t('Vos décisions laissent des traces.')}</Text>
           <Separateur style={styles.separateurTitre} />
         </View>
@@ -131,7 +132,7 @@ export default function StartScreenStudio({ navigation }: Props) {
           ) : (
             <View style={styles.invitationPremiere}>
               <Text style={styles.invitationTitre}>{t('Ton histoire commence ici.')}</Text>
-              <Text style={styles.invitationTexte}>{t('Crée un personnage, choisis ton point de départ et entre dans Elyndor.')}</Text>
+              <Text style={styles.invitationTexte}>{t(`Crée un personnage, choisis ton point de départ et entre dans ${paquet.carte.nom}.`)}</Text>
             </View>
           )}
 
@@ -151,7 +152,8 @@ export default function StartScreenStudio({ navigation }: Props) {
           <LienBas titre={t('Paramètres')} symbole="⚙" onPress={() => navigation.navigate('Reglages')} />
           <LienBas titre={compteCloud ? t('Compte') : t('Se connecter')} symbole="✦" onPress={() => navigation.navigate('Compte')} />
           <LienBas titre={t('Guide')} symbole="◇" onPress={() => setModalGuideOuvert(true)} />
-          <LienBas titre={t("Monde d'Elyndor")} symbole="✧" onPress={() => setModalSynopsisOuvert(true)} />
+          <LienBas titre={t(`Monde ${deNomMonde(paquet)}`)} symbole="✧" onPress={() => setModalSynopsisOuvert(true)} />
+          <LienBas titre={t('Changer de monde')} symbole="⇄" onPress={() => navigation.navigate('ChoixMonde')} />
         </View>
 
         <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>
@@ -159,7 +161,7 @@ export default function StartScreenStudio({ navigation }: Props) {
 
       <SelecteurLangue visible={modalLangueOuvert} onFermer={() => setModalLangueOuvert(false)} />
       <ModalGuide visible={modalGuideOuvert} onFermer={() => setModalGuideOuvert(false)} />
-      <ModalSynopsis visible={modalSynopsisOuvert} onFermer={() => setModalSynopsisOuvert(false)} />
+      <ModalSynopsis paquet={paquet} visible={modalSynopsisOuvert} onFermer={() => setModalSynopsisOuvert(false)} />
     </FondAtmospherique>
   );
 }
@@ -247,22 +249,25 @@ function BlocGuide({ titre, texte }: { titre: string; texte: string }) {
   );
 }
 
-function ModalSynopsis({ visible, onFermer }: { visible: boolean; onFermer: () => void }) {
+function ModalSynopsis({ paquet, visible, onFermer }: { paquet: PaquetMonde; visible: boolean; onFermer: () => void }) {
   const { t } = useLangue();
+  const races = racesDuMonde(paquet);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onFermer}>
       <CadreModal onFermer={onFermer}>
-        <Text style={styles.titreModal}>{t("Le monde d'Elyndor")}</Text>
+        <Text style={styles.titreModal}>{t(`Le monde ${deNomMonde(paquet)}`)}</Text>
         <ScrollView style={styles.scrollModal} showsVerticalScrollIndicator={false}>
-          {SYNOPSIS_ELYNDOR.map((paragraphe, i) => <Text key={i} style={styles.texteSynopsis}>{t(paragraphe)}</Text>)}
-          <Separateur style={{ marginVertical: espacement.md }} />
-          <Text style={styles.titreGuide}>{t("Peuples d'Elyndor")}</Text>
-          {RACES_ELYNDOR.map((race) => (
-            <View key={race.id} style={styles.raceLigne}>
-              <Text style={styles.raceNom}>{t(race.nom)}</Text>
-              <Text style={styles.raceDescription}>{t(race.description)}</Text>
-            </View>
-          ))}
+          {paquet.synopsis.map((paragraphe, i) => <Text key={i} style={styles.texteSynopsis}>{t(paragraphe)}</Text>)}
+          {races.length > 0 && <>
+            <Separateur style={{ marginVertical: espacement.md }} />
+            <Text style={styles.titreGuide}>{t(`Peuples ${deNomMonde(paquet)}`)}</Text>
+            {races.map((race) => (
+              <View key={race.id} style={styles.raceLigne}>
+                <Text style={styles.raceNom}>{t(race.nom)}</Text>
+                <Text style={styles.raceDescription}>{t(race.description)}</Text>
+              </View>
+            ))}
+          </>}
         </ScrollView>
         <Bouton titre={t('Fermer')} variante="secondaire" onPress={onFermer} style={{ marginTop: espacement.md }} />
       </CadreModal>

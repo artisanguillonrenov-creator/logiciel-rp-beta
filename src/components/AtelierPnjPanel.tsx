@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getStoriesIndex, getStory, updateStoryIf } from '../storage/storage';
+import { deNomMonde, histoiresDuMonde, monde } from '../mondes';
 import type { StoryMeta, StoryState, ProfilPnj } from '../types';
 import type { FicheEditable } from '../concepteur/lorebookModele';
 import { consoliderRegistrePnj, rechercherPnjLexical } from '../engine/registrePnj';
@@ -45,7 +46,8 @@ export default function AtelierPnjPanel({ promouvoir }: { promouvoir: (p: Promot
   const [charge, setCharge] = useState(false);
   useEffect(() => {
     let active = true;
-    getStoriesIndex().then(items => { if (active) { setHistoires(items); setHistoireId(items[0]?.id ?? ''); } })
+    // Histoires du monde actif seulement : la promotion vise le lorebook de ce monde.
+    getStoriesIndex().then(index => histoiresDuMonde(index, monde.actifId())).then(items => { if (active) { setHistoires(items); setHistoireId(items[0]?.id ?? ''); } })
       .catch(e => { if (active) setMessage(messageErreur(e)); });
     return () => { active = false; };
   }, []);
@@ -116,7 +118,7 @@ export default function AtelierPnjPanel({ promouvoir }: { promouvoir: (p: Promot
         {fiche.souvenirs.length ? fiche.souvenirs.slice(-30).map(s =>
           <Text key={s.evenementId} style={styles.info}>• {s.resume}</Text>)
           : <Text style={styles.info}>Aucun souvenir direct confirmé pour le moment.</Text>}
-        <Bouton titre="Ajouter au lorebook d'Elyndor" onPress={promotion} desactive={charge}/>
+        <Bouton titre={`Ajouter au lorebook ${deNomMonde(monde.actif())}`} onPress={promotion} desactive={charge}/>
         <Text style={styles.info}>Ouvre directement l'éditeur de fiche générale avec les champs préremplis ; rien n'est publié sans validation.</Text>
       </View> : null}
       <Text style={styles.titre}>Diagnostic du troisième moteur lexical</Text>

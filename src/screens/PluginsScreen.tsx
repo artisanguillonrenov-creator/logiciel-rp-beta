@@ -5,6 +5,8 @@ import type { RootStackParamList } from '../navigation/types';
 import type { Plugin } from '../types';
 import { getPlugins, getSettings, installerPlugin, supprimerPlugin } from '../storage/storage';
 import { analyserPackJson } from '../engine/plugins';
+import { histoiresDuMonde } from '../mondes';
+import { useMondeActif } from '../mondes/useMondeActif';
 import { validerEntreeUtilisateur } from '../engine/contenuAdulte';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
 import Bouton from '../components/Bouton';
@@ -22,6 +24,8 @@ const EXEMPLE_JSON = `[
 ]`;
 
 export default function PluginsScreen({}: Props) {
+  // Packs du monde actif : un pack est installé pour un monde et ne nourrit que lui.
+  const paquet = useMondeActif();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [nom, setNom] = useState('');
   const [texteJson, setTexteJson] = useState('');
@@ -31,16 +35,16 @@ export default function PluginsScreen({}: Props) {
   useEffect(() => {
     let actif = true;
     getPlugins()
-      .then((liste) => { if (actif) setPlugins(liste); })
+      .then((liste) => { if (actif) setPlugins(histoiresDuMonde(liste, paquet.id)); })
       .catch(() => { if (actif) setErreur('Impossible de lire les packs installés.'); });
     return () => { actif = false; };
-  }, []);
+  }, [paquet.id]);
 
   async function ajouter() {
     setErreur('');
     setMessage('');
     try {
-      const plugin = analyserPackJson(nom, texteJson);
+      const plugin = { ...analyserPackJson(nom, texteJson), mondeId: paquet.id };
       const settings = await getSettings();
       const textePack = [plugin.nom, ...plugin.entrees.flatMap((entree) => [entree.titre, entree.contenu])].join('\n');
       const controle = validerEntreeUtilisateur(textePack, settings.profilContenu);
@@ -80,7 +84,7 @@ export default function PluginsScreen({}: Props) {
               <Text style={styles.surtitre}>EXTENSIONS DU MONDE</Text>
               <Text style={styles.titre}>Packs de contenu</Text>
               <Text style={styles.sousTitre}>
-                Enrichissez Elyndor avec du lore supplémentaire sans modifier le moteur narratif.
+                Enrichissez {paquet.carte.nom} avec du lore supplémentaire sans modifier le moteur narratif.
               </Text>
             </View>
 
@@ -125,7 +129,7 @@ export default function PluginsScreen({}: Props) {
               <Panneau style={styles.etatVide}>
                 <Text style={styles.etatVideTitre}>Aucune extension installée</Text>
                 <Text style={styles.aide}>
-                  Elyndor utilise actuellement uniquement son lore principal. Vous pourrez ajouter des packs ici
+                  {paquet.carte.nom} utilise actuellement uniquement son lore principal. Vous pourrez ajouter des packs ici
                   sans toucher à vos histoires sauvegardées.
                 </Text>
               </Panneau>

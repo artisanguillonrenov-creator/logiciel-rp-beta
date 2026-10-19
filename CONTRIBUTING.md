@@ -57,9 +57,11 @@ c'est plus rapide que d'attendre le retour de la CI.
 - Les commentaires expliquent le *pourquoi* (une contrainte non évidente,
   un correctif à un cas précis), jamais le *quoi* — le code déjà présent
   dans ce dépôt suit cette convention, garde-la.
-- Si ta contribution touche `src/data/elyndorLore.json` ou
-  `src/data/metamoteurs.json`, vérifie que le format (entrées Elyndor ou
-  format RISU, voir `src/engine/loreLoader.ts`) reste valide.
+- Si ta contribution touche un lorebook de paquet monde
+  (`src/mondes/<monde>/lorebook.json`) ou `src/data/metamoteurs.json`,
+  vérifie que le format (entrées de lorebook ou format RISU, voir
+  `src/engine/loreLoader.ts`) reste valide, et que `npm test` (dont
+  l'instantané du prompt d'Elyndor) reste vert.
 
 ## Domaines où une contribution est particulièrement utile
 

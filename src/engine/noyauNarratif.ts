@@ -1,4 +1,5 @@
 import type { StoryState } from '../types';
+import { mondeIdDe, paquetMonde } from '../mondes';
 
 // Noyau narratif V12 (repris de la V13, elyndor-narrative-core.js) : l'état
 // narratif structuré qui fait autorité sur le récit.
@@ -628,7 +629,8 @@ export function construireContexteNoyau(story: HistoireAvecNoyau, messageJoueur:
   const noms = nomsCites(story, requete);
   const croyances = c.beliefs.filter((b) => noms.some((n) => norm(n) === norm(b.knower))).slice(-8);
   const lignes = [
-    '[ELYNDOR V12 — CANON STRUCTURÉ AUTORITAIRE]',
+    // Titre de la marque du monde de l'histoire (« ELYNDOR » pour Elyndor).
+    `[${paquetMonde(mondeIdDe(story.meta)).marque.titre} V12 — CANON STRUCTURÉ AUTORITAIRE]`,
     `Temps: ${horloge(c.clock)}.`,
     'Le canon structuré ci-dessous prime sur les souvenirs résumés et sur toute supposition. Si une information manque, considère-la comme inconnue au lieu de l’inventer.',
   ];

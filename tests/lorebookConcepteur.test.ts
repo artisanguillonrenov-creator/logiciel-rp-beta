@@ -5,7 +5,7 @@ import {
   creerEtatLore, ficheOrigine, enregistrerFicheLore, listerFichesLore,
   appliquerLorePublie, publierBrouillonLore, abandonnerBrouillonLore,
   restaurerRevisionLore, supprimerAjoutLore, creerExportLore, analyserImportLore,
-  signalerDoublonsLore,
+  signalerDoublonsLore, cleLoreAtelier, idFicheLoreValide, validerEtatLore, ficheProtegee,
 } from '../src/concepteur/lorebookModele';
 
 const base: ElyndorEntryChargee[] = [
@@ -65,4 +65,32 @@ test('un brouillon abandonné ne change pas le canon publié',()=>{
   const next=abandonnerBrouillonLore(draft,'elyndor-0');
   assert.equal(Object.keys(next.brouillons).length,0);
   assert.equal(appliquerLorePublie(base,next)[0].contenu,base[0].contenu);
+});
+
+test('multi-mondes : la clé de stockage d’Elyndor est inchangée, chaque autre monde a la sienne', () => {
+  assert.equal(cleLoreAtelier('elyndor'), '@elyndor/concepteur/lorebook-v1');
+  assert.equal(cleLoreAtelier('monde-test'), '@elyndor/concepteur/lorebook-v1/monde-test');
+});
+
+test('multi-mondes : identifiants <mondeId>-<n> et atelier-… acceptés, ceux d’un autre monde refusés', () => {
+  assert.ok(idFicheLoreValide('elyndor-12', 'elyndor'));
+  assert.ok(idFicheLoreValide('atelier-abcdefgh', 'elyndor'));
+  assert.ok(idFicheLoreValide('monde-test-3', 'monde-test'));
+  assert.equal(idFicheLoreValide('elyndor-12', 'monde-test'), false);
+  assert.equal(idFicheLoreValide('atelier-3', 'atelier'), false);
+  const fiche = ficheOrigine(base[1]);
+  const etatElyndor = { ...creerEtatLore(), changements: { 'elyndor-14': fiche } };
+  assert.doesNotThrow(() => validerEtatLore(etatElyndor, 'elyndor'));
+  assert.throws(() => validerEtatLore(etatElyndor, 'monde-test'), /Identifiant de fiche invalide/);
+  // Un export d'Elyndor ne s'importe pas dans un autre monde.
+  assert.throws(() => analyserImportLore(creerExportLore(etatElyndor), 'monde-test'));
+  assert.doesNotThrow(() => analyserImportLore(creerExportLore(etatElyndor), 'elyndor'));
+});
+
+test('multi-mondes : le socle historique 0-13 ne protège que les fiches d’Elyndor', () => {
+  const ordinaire = { ...ficheOrigine(base[1]), constant: false, category: 'MONDE', titre: 'Magie' };
+  assert.equal(ficheProtegee(ordinaire, 'elyndor-3'), true);
+  assert.equal(ficheProtegee(ordinaire, 'monde-test-3'), false);
+  assert.equal(ficheProtegee({ ...ordinaire, constant: true }, 'monde-test-3'), true);
+  assert.equal(ficheProtegee(ordinaire, 'elyndor-14'), false);
 });
