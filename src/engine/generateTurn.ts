@@ -1,4 +1,3 @@
-import elyndorRaw from '../data/elyndorLore.json';
 import type { AppSettings, DiagnosticTour, LoreEntry, Message, StoryState } from '../types';
 import type { ParametresAtelier } from '../concepteur/configuration';
 import { reglagesNarrateurDefaut, samplersPourRequete } from '../concepteur/reglagesNarrateur';
@@ -8,7 +7,6 @@ import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
 import {
-  chargerLoreElyndor,
   type OptionsSelectionLore,
 } from './loreLoader';
 import {
@@ -42,6 +40,7 @@ import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { ROLES_CANON } from './canonElyndor';
+import { donneesMonde } from '../mondes/donnees';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
 import { genererNarrationAvecCloture } from './clotureNarration';
 import { genererDeltaEtatSepare } from './deltaEtatSepare';
@@ -98,7 +97,7 @@ async function parametresDeLaSession(settings: AppSettings): Promise<ParametresA
   const config = await lireConfigurationAtelier().catch(() => null);
   return config?.profils[settings.modeConcepteur ? config.profilActif : 'production'];
 }
-const LORE_ELYNDOR_BASE = chargerLoreElyndor(elyndorRaw as any);
+const LORE_ELYNDOR_BASE = donneesMonde('elyndor').lore;
 let LORE_ELYNDOR = LORE_ELYNDOR_BASE;
 
 /** Charge les fiches réellement publiées avant CHAQUE sélection narrative. */

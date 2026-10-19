@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor, type ElyndorEntryChargee } from '../src/engine/loreLoader';
+import type { ElyndorEntryChargee } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import {
   construirePassages,
   selectionnerPassagesDetaille,
@@ -22,7 +22,7 @@ import { construireSystemPromptDetaille } from '../src/engine/promptBuilder';
 import { creerNouvelleHistoire } from '../src/engine/story';
 import type { LoreEntry, Message, StoryState } from '../src/types';
 
-const LORE = chargerLoreElyndor(elyndorRaw as any);
+const LORE = donneesMonde('elyndor').lore;
 const PASSAGES = construirePassages(LORE);
 const REGLAGES = { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'aucun', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' } as const;
 

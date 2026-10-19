@@ -8,7 +8,7 @@ import type { StoryMeta } from '../types';
 import { deleteStory, getStoriesIndex, renommerStory } from '../storage/storage';
 import { useEtatCloud } from '../cloud/useEtatCloud';
 import { couleurs, espacement, polices, stylePetitesCapitales } from '../theme/theme';
-import { obtenirPortrait } from '../data/portraits';
+import { obtenirPortrait } from '../mondes';
 import Bouton from '../components/Bouton';
 import Champ from '../components/Champ';
 import FondAtmospherique from '../components/FondAtmospherique';

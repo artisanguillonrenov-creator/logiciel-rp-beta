@@ -1,4 +1,5 @@
 import type { LoreEntry } from '../types';
+import type { EntreeLoreBrute } from '../mondes/types';
 import { similariteCosinus } from './embeddings';
 import { calculerScoreHybrideLore, infererScopeLore, MAX_LORE_CONTEXTUEL, SEUIL_LORE_HYBRIDE, type ScopeLore } from './loreScoring';
 import { contientExpression, distanceEdition, ecartTolere, MOTS_VIDES, normaliserTexte, positionExpression } from './texteRecherche';
@@ -87,23 +88,6 @@ export function selectionnerMetamoteursSemantique(
 // V3 étape 10 : les métadonnées positives du lore sont conservées au
 // chargement et participent réellement au classement hybride.
 
-interface ElyndorEntryBrute {
-  id: number;
-  category: string;
-  title: string;
-  primary_keys?: string[];
-  secondary_keys?: string[];
-  negative_keys?: string[];
-  content: string;
-  priority: number;
-  constant: boolean;
-  scope?: ScopeLore;
-}
-
-interface ElyndorLorebook {
-  entries: ElyndorEntryBrute[];
-}
-
 export interface ElyndorEntryChargee {
   id: string;
   titre: string;
@@ -120,13 +104,14 @@ export interface ElyndorEntryChargee {
   scope?: ScopeLore;
 }
 
-export function chargerLoreElyndor(raw: ElyndorLorebook): ElyndorEntryChargee[] {
+/** Charge le lorebook d'un monde : chaque entrée « n » devient « <mondeId>-<n> » (elyndor-<n> pour Elyndor). */
+export function chargerLoreMonde(raw: { entries: EntreeLoreBrute[] }, mondeId: string): ElyndorEntryChargee[] {
   return raw.entries.map((entry) => {
     const primaryKeys = (entry.primary_keys ?? []).map(normalise);
     const secondaryKeys = (entry.secondary_keys ?? []).map(normalise);
     const negativeKeys = (entry.negative_keys ?? []).map(normalise);
     return {
-      id: `elyndor-${entry.id}`,
+      id: `${mondeId}-${entry.id}`,
       titre: `[${entry.category}] ${entry.title}`,
       contenu: entry.content,
       motsClesPrimaires: primaryKeys,

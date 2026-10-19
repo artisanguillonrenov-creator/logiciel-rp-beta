@@ -1,10 +1,6 @@
 // Lieux de départ proposés à l'étape Personnage — factions et institutions
 // d'Elyndor fournies par le porteur de projet.
-export interface LieuDepart {
-  id: string;
-  nom: string;
-  description: string;
-}
+import type { LieuDepart } from '../types';
 
 export const LIEUX_DEPART: LieuDepart[] = [
   {

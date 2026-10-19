@@ -3,7 +3,7 @@ import { appellerModele, configurationLLM } from './elyndorCloudClient';
 import { canonRace, detecterRacePnj, traitsVisuelsRace } from './racePnj';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole } from './rolesCanon';
-import { RACES_ELYNDOR } from '../data/races';
+import { RACES_ELYNDOR } from '../mondes/elyndor/races';
 import { filtrerTextePourProfil } from './contenuAdulte';
 import {
   analyserExtraction,

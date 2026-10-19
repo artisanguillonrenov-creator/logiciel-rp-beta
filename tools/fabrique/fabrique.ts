@@ -23,11 +23,11 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import elyndorRaw from '../../src/data/elyndorLore.json';
 import type { Message, StorySettings, StoryState } from '../../src/types';
 import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite, type ContexteConstruction } from '../../src/engine/promptBuilder';
 import { construirePassages, selectionnerPassages } from '../../src/engine/passagesLore';
-import { chargerLoreElyndor, type ElyndorEntryChargee } from '../../src/engine/loreLoader';
+import type { ElyndorEntryChargee } from '../../src/engine/loreLoader';
+import { donneesMonde } from '../../src/mondes/donnees';
 import { construireContratNarratifNatif } from '../../src/engine/narrativeBehaviorKernel';
 import { instructionRegistreAdulte } from '../../src/engine/contenuAdulte';
 import { corrigerEtiquettes, trouverEchoDuJoueur, validerGestesDuJoueur, validerRolesCanon } from '../../src/engine/controlesCoherence';
@@ -73,7 +73,7 @@ export function chargerMondes(dossier = process.env.FABRIQUE_MONDES ?? path.join
   return fs.readdirSync(dossier).filter((f) => f.endsWith('.json')).sort().map((f) => JSON.parse(fs.readFileSync(path.join(dossier, f), 'utf8')));
 }
 
-const LORE_ELYNDOR = chargerLoreElyndor(elyndorRaw as any);
+const LORE_ELYNDOR = donneesMonde('elyndor').lore;
 
 function entreesDuMonde(monde: Monde): ElyndorEntryChargee[] {
   if (monde.id === 'elyndor') return LORE_ELYNDOR;

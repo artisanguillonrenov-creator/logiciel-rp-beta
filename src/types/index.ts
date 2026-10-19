@@ -66,7 +66,7 @@ export interface StoryMeta {
   titre?: string;
   // Race (id, ex. "elfes-noirs") et sexe choisis à la création — dupliqués
   // ici hors de personnageDescription (simple texte) pour retrouver le
-  // portrait peint correspondant (src/data/portraits.ts) et l'envoyer comme
+  // portrait peint correspondant (module races du paquet monde, voir src/mondes/) et l'envoyer comme
   // image de référence prioritaire au générateur d'illustration de scène
   // (voir src/engine/images.ts). Optionnels : sans eux, l'avatar généré du
   // joueur reste la seule référence de son visage.

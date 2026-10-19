@@ -3,8 +3,7 @@
 //   node .test-dist/tests/mesuresRecuperation.js
 // Il reconstitue, avec les fonctions pures du jeu, ce qui part au narrateur
 // pour quelques scènes, avec les budgets des moteurs local et distant.
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import { construirePassages, selectionnerPassages, selectionnerPassagesDetaille } from '../src/engine/passagesLore';
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { BUDGET_SYSTEM_DISTANT, BUDGET_SYSTEM_LOCAL, construireSystemPromptDetaille } from '../src/engine/promptBuilder';
@@ -15,7 +14,7 @@ import { assurerNoyau, construireContexteNoyau } from '../src/engine/noyauNarrat
 import { construireContratNarratifNatif } from '../src/engine/narrativeBehaviorKernel';
 import type { StoryState } from '../src/types';
 
-const LORE = chargerLoreElyndor(elyndorRaw as any);
+const LORE = donneesMonde('elyndor').lore;
 const REGLAGES = { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'aucun', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' } as const;
 
 function histoire(tours: number): StoryState {

@@ -23,13 +23,12 @@ import type {
   RythmeHistoire,
   TonHistoire,
 } from '../types';
-import { MONDES } from '../data/mondes';
-import { RACES_ELYNDOR } from '../data/races';
-import { obtenirPortrait } from '../data/portraits';
-import { LIEUX_DEPART } from '../data/lieuxDepart';
-import { SITUATIONS_PAR_LIEU } from '../data/situationsDepart';
-import elyndorLoreRaw from '../data/elyndorLore.json';
-import { chargerLoreElyndor } from '../engine/loreLoader';
+import { listerMondes } from '../mondes';
+import { RACES_ELYNDOR } from '../mondes/elyndor/races';
+import { obtenirPortrait } from '../mondes';
+import { LIEUX_DEPART } from '../mondes/elyndor/lieuxDepart';
+import { SITUATIONS_PAR_LIEU } from '../mondes/elyndor/situationsDepart';
+import { donneesMonde } from '../mondes/donnees';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
@@ -62,7 +61,8 @@ const IMAGES_ETAPES = [
   require('../../assets/scenes/creation-histoire.png'),
 ];
 
-const LORE_ELYNDOR = chargerLoreElyndor(elyndorLoreRaw as any);
+const LORE_ELYNDOR = donneesMonde('elyndor').lore;
+const MONDES = listerMondes().map((p) => ({ id: p.id, ...p.carte, image: p.carte.image }));
 const ETAPES = ['Monde', 'Personnage', 'Départ', 'Style', 'Résumé'] as const;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Creation'>;

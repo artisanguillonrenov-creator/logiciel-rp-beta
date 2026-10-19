@@ -1,4 +1,5 @@
-import { RACES_ELYNDOR, type RaceElyndor } from '../data/races';
+import { RACES_ELYNDOR } from '../mondes/elyndor/races';
+import type { RaceMonde as RaceElyndor } from '../mondes/types';
 
 // Race et sexe d'un PNJ déduits de sa fiche, pour lui donner le portrait
 // prédéfini de sa race comme référence visuelle et rappeler le canon au

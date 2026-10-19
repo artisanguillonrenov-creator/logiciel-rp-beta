@@ -1,13 +1,8 @@
 // Races jouables d'Elyndor, résumées depuis le lore complet
-// (src/data/elyndorLore.json) pour le sélecteur de l'étape Personnage.
-export interface RaceElyndor {
-  id: string;
-  nom: string;
-  sousTitre: string;
-  description: string;
-}
+// (lorebook.json) pour le sélecteur de l'étape Personnage.
+import type { RaceMonde } from '../types';
 
-export const RACES_ELYNDOR: RaceElyndor[] = [
+export const RACES_ELYNDOR: RaceMonde[] = [
   {
     id: 'humains',
     nom: 'Humains',

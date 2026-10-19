@@ -3,8 +3,8 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type Image
 import { getStoriesIndex, getStory } from '../storage/storage';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { obtenirAssetVisuel } from '../storage/assetsVisuelsStore';
-import { obtenirPortrait } from '../data/portraits';
-import { RACES_ELYNDOR } from '../data/races';
+import { obtenirPortrait } from '../mondes';
+import { RACES_ELYNDOR } from '../mondes/elyndor/races';
 import { lireAssetsLore } from '../concepteur/assetsLoreStore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';

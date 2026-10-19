@@ -3,7 +3,7 @@ import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
 import { obtenirAssetVisuel } from '../storage/assetsVisuelsStore';
-import { obtenirPortrait } from '../data/portraits';
+import { obtenirPortrait } from '../mondes';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import { lireAssetsLore } from '../concepteur/assetsLoreStore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';

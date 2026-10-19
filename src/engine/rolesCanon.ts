@@ -1,9 +1,11 @@
 import type { ElyndorEntryChargee } from './loreLoader';
+import type { FicheRoleCanon } from '../mondes/types';
 
 /**
- * Annuaire des rôles fixés par le lore : pour chaque capitale, qui tient la
- * guilde, l'accueil, la taverne, la forge, la Porte Astra et le trône. Lu
- * dans les fiches « [RÉCURRENT] » (lignes « Paris : Séraphine Duvall — … »),
+ * Annuaire des rôles fixés par le lore : pour chaque ville, qui tient un rôle
+ * récurrent (pour Elyndor : la guilde, l'accueil, la taverne, la forge, la
+ * Porte Astra et le trône). Lu dans les fiches « [RÉCURRENT] » désignées par
+ * le module rolesCanon du paquet monde (lignes « Paris : Séraphine Duvall — … »),
  * pour que le narrateur utilise ces personnages au lieu d'en inventer.
  */
 export type TypeRole = 'maitresse_guilde' | 'receptionniste' | 'taverniere' | 'forgeronne' | 'passeuse' | 'souverain';
@@ -16,24 +18,15 @@ export interface RoleCanon {
   description: string;
 }
 
-const FICHES: { motif: RegExp; role: TypeRole; libelle: string }[] = [
-  { motif: /ma[iî]tresses de guilde/i, role: 'maitresse_guilde', libelle: 'Maîtresse de la Guilde des Aventuriers' },
-  { motif: /r[ée]ceptionnistes/i, role: 'receptionniste', libelle: 'Réceptionniste de la Guilde des Aventuriers' },
-  { motif: /taverni[èe]res/i, role: 'taverniere', libelle: 'Tavernière' },
-  { motif: /forgeronnes/i, role: 'forgeronne', libelle: 'Forgeronne' },
-  { motif: /passeuses astra/i, role: 'passeuse', libelle: 'Passeuse de la Porte Astra' },
-  { motif: /souverains/i, role: 'souverain', libelle: 'Souverain' },
-];
-
 function normaliser(texte: string): string {
   return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-export function construireRolesCanon(entrees: ElyndorEntryChargee[]): RoleCanon[] {
+export function construireRolesCanon(entrees: ElyndorEntryChargee[], fiches: FicheRoleCanon[]): RoleCanon[] {
   const roles: RoleCanon[] = [];
   for (const entree of entrees) {
     if (!/r[ée]current/i.test(entree.category ?? entree.titre)) continue;
-    const fiche = FICHES.find((f) => f.motif.test(entree.titre));
+    const fiche = fiches.find((f) => f.motif.test(entree.titre));
     if (!fiche) continue;
     for (const ligne of entree.contenu.split('\n')) {
       // « Paris : Séraphine Duvall — Humaine, 45 ans… » ; titres éventuels

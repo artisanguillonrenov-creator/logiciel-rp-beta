@@ -1,5 +1,5 @@
 import type { StoryState } from '../types';
-import { RACES_ELYNDOR } from '../data/races';
+import { RACES_ELYNDOR } from '../mondes/elyndor/races';
 import { ROLES_CANON } from './canonElyndor';
 import { prenomRole } from './rolesCanon';
 import { detecterRacePnj, negatifVisuelRace, traitsVisuelsRace, type RacePnj } from './racePnj';

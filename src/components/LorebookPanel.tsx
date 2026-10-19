@@ -3,9 +3,8 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInpu
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import loreBrut from '../data/elyndorLore.json';
-import { LORE_CORE } from '../data/loreCore';
-import { chargerLoreElyndor } from '../engine/loreLoader';
+import { LORE_CORE } from '../mondes/elyndor/core';
+import { donneesMonde } from '../mondes/donnees';
 import { construirePassages, selectionnerPassages } from '../engine/passagesLore';
 import { infererScopeLore, type ScopeLore } from '../engine/loreScoring';
 import { getStoriesIndex, getStory } from '../storage/storage';
@@ -23,7 +22,7 @@ import { dossiersNavigationLore } from '../concepteur/navigationLore';
 import { assisterFicheLore, type ActionAI, type TailleAI, type FideliteAI, type PropositionLoreIA } from '../concepteur/lorebookAssistant';
 import { importerLoreAtelier, lireLoreAtelier, modifierLoreAtelier, restaurerLoreAtelier } from '../concepteur/lorebookStore';
 
-const BASE = chargerLoreElyndor(loreBrut as any);
+const BASE = donneesMonde('elyndor').lore;
 const SCOPES: ScopeLore[] = ['GLOBAL', 'CONTINENT', 'REGION', 'CITY', 'FACTION', 'CHARACTER', 'SCENE'];
 const MODES: Array<{ id: ActionAI; titre: string }> = [
   { id: 'creer', titre: 'Créer' }, { id: 'enrichir', titre: 'Enrichir' },

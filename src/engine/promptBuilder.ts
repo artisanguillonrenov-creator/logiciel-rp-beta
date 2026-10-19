@@ -3,7 +3,7 @@ import { reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/regl
 import { BUDGET_LORE_PASSAGES } from './passagesLore';
 import { instructionStyle, type StylesNarratifs } from '../concepteur/interpretationNarrative';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
-import { LORE_CORE } from '../data/loreCore';
+import { LORE_CORE } from '../mondes/elyndor/core';
 import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';

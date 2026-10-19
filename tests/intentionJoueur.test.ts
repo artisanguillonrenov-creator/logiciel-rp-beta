@@ -1,11 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import { analyserIntention } from '../src/engine/intentionJoueur';
-import { construireRolesCanon } from '../src/engine/rolesCanon';
 
-const ROLES = construireRolesCanon(chargerLoreElyndor(elyndorRaw as any));
+const ROLES = donneesMonde('elyndor').rolesCanon;
 
 test('« Ok allons à la guilde » : déplacement vers la Guilde des Aventuriers', () => {
   const i = analyserIntention('Ok allons à la guilde', ROLES);

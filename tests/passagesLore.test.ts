@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import { BUDGET_LORE_PASSAGES, construirePassages, decouperEnPassages, selectionnerPassages } from '../src/engine/passagesLore';
 
-const LORE = chargerLoreElyndor(elyndorRaw as any);
+const LORE = donneesMonde('elyndor').lore;
 const PASSAGES = construirePassages(LORE);
 
 test('le découpage garde tout le texte en passages de 600 caractères au plus', () => {

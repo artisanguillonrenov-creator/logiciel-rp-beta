@@ -4,8 +4,7 @@
 // éléments qui dépendent du monde : Lore Core, bloc et titre du lore, fiche de
 // scène et rôles canon. Aucun élément variable : dates et identifiants fixés,
 // pas de bruit aléatoire dans la sélection.
-import elyndorRaw from '../src/data/elyndorLore.json';
-import { chargerLoreElyndor } from '../src/engine/loreLoader';
+import { donneesMonde } from '../src/mondes/donnees';
 import { construirePassages, selectionnerPassagesDetaille, viderIndexPassages } from '../src/engine/passagesLore';
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { preparerTour } from '../src/engine/ficheScene';
@@ -66,7 +65,7 @@ export function promptTourType(tour: TourType): string {
   viderIndexPassages();
   const story = histoire(tour);
   const profil = tour.profil;
-  const lore = chargerLoreElyndor(elyndorRaw as any);
+  const lore = donneesMonde('elyndor').lore;
   const pool = profil === 'adulte'
     ? lore
     : lore.filter((e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil));
