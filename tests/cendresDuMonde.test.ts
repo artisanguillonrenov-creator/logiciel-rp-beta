@@ -5,6 +5,7 @@ import { donneesMonde } from '../src/mondes/donnees';
 import { parcoursCreation } from '../src/mondes/creation';
 import { creerEtatLore, ficheOrigine, idFicheLoreValide, listerFichesLore, validerEtatLore } from '../src/concepteur/lorebookModele';
 import { mettreAJourLoreEmergent } from '../src/engine/emergentLore';
+import { genererScenarioDepart } from '../src/engine/scenarioGenerator';
 import { selectionTourType } from './promptElyndorTours';
 
 // Second monde réel : « Les Cendres du Monde ». Lore Core et 34 entrées
@@ -110,4 +111,20 @@ test('Cendres du Monde : libellés et consigne d’extraction accordés à l’a
     });
   } finally { globalThis.fetch = sauvegarde; }
   assert.match(consigne, /^Tu es le job du LORE ÉMERGENT DU MONDE des Cendres du Monde\. /);
+});
+
+test('Cendres du Monde : le scénario de départ libre reçoit le Lore Core du monde, Elyndor reste inchangé', async () => {
+  const sauvegarde = globalThis.fetch;
+  const contextes: string[] = [];
+  globalThis.fetch = async (_input, init) => {
+    contextes.push(JSON.parse(String(init?.body)).messages[1].content);
+    return Response.json({ choices: [{ message: { content: 'Tu arrives à la ferme. VOISIN : « Pose ton sac. »' } }] });
+  };
+  const appSettings = { openRouterApiKey: 'cle-test', model: 'fiction/modele:free', moteurInference: 'serveur' as const, fournisseurNarration: 'openrouter' as const, profilContenu: 'grand_public' as const };
+  try {
+    await genererScenarioDepart({ appSettings, mondeId: ID, personnageNom: 'Ael', lieuNom: 'une ferme près de Lyon' });
+    await genererScenarioDepart({ appSettings, mondeId: 'elyndor', personnageNom: 'Ael', lieuNom: 'Guilde des Aventuriers', villeDepart: 'Paris' });
+  } finally { globalThis.fetch = sauvegarde; }
+  assert.ok(contextes[0].includes(`CANON DU MONDE (fait autorité, ne le contredis jamais) :\n${paquetMonde(ID).core}`));
+  assert.doesNotMatch(contextes[1], /CANON DU MONDE|LORE CORE/);
 });
