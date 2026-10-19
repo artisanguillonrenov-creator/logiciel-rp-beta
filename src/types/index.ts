@@ -72,6 +72,10 @@ export interface StoryMeta {
   // joueur reste la seule référence de son visage.
   raceOrigineId?: string;
   sexe?: string;
+  // Monde de l'histoire (identifiant de paquet monde, voir src/mondes/).
+  // Optionnel comme les autres champs ajoutés après coup : une histoire sans
+  // mondeId est d'Elyndor, sans migration ni bump de VERSION_SCHEMA_HISTOIRE.
+  mondeId?: string;
 }
 
 // Bibliothèque de personas (brief Phase 2) : un persona réutilisable décrit

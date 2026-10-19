@@ -3,12 +3,12 @@ import type { AppSettings, EntreeLoreEmergent, StoryState } from '../types';
 import { enregistrerAvatarPnj, obtenirAvatarPnj, preparerImageReference } from '../storage/pnjAvatarsStore';
 import { obtenirIllustrationScene } from '../storage/sceneImagesStore';
 import { obtenirAssetVisuel } from '../storage/assetsVisuelsStore';
-import { obtenirPortrait } from '../mondes';
+import { monde, mondeIdDe, obtenirPortrait } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { lireReglagesVisuels } from '../concepteur/reglagesVisuelsStore';
 import { lireAssetsLore } from '../concepteur/assetsLoreStore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
-import { LORE_ELYNDOR_CANON } from './canonElyndor';
 import { ErreurImagesIndisponibles } from './elyndorCloudImages';
 import { referenceRaceFiable } from './racePnj';
 import { contratPortrait, raceDuPersonnage, type ContratVisuel } from './contratVisuel';
@@ -52,12 +52,12 @@ async function assetVersDataUrl(source: ReturnType<typeof obtenirPortrait>): Pro
 }
 
 export async function obtenirPortraitReferenceJoueur(story: StoryState): Promise<string | null> {
-  return assetVersDataUrl(obtenirPortrait(story.meta.raceOrigineId, story.meta.sexe));
+  return assetVersDataUrl(obtenirPortrait(story.meta.raceOrigineId, story.meta.sexe, mondeIdDe(story.meta)));
 }
 
 /** Portrait prédéfini d'une race (création de personnage), en data URL. */
-export async function obtenirPortraitRace(raceId: string, sexe?: string): Promise<string | null> {
-  return assetVersDataUrl(obtenirPortrait(raceId, sexe));
+export async function obtenirPortraitRace(raceId: string, sexe?: string, mondeId: string = monde.actifId()): Promise<string | null> {
+  return assetVersDataUrl(obtenirPortrait(raceId, sexe, mondeId));
 }
 
 async function versReference(uri: string | null): Promise<string | null> {
@@ -70,11 +70,12 @@ async function versReference(uri: string | null): Promise<string | null> {
 }
 
 /** Lorebook publié (canon + fiches de l'Atelier), pour rattacher les images de référence. */
-async function poolLorePublie() {
+async function poolLorePublie(mondeId: string) {
+  const canon = donneesMonde(mondeId).lore;
   try {
-    return appliquerLorePublie(LORE_ELYNDOR_CANON, await lireLoreAtelier());
+    return appliquerLorePublie(canon, await lireLoreAtelier(mondeId));
   } catch {
-    return LORE_ELYNDOR_CANON;
+    return canon;
   }
 }
 
@@ -91,7 +92,7 @@ async function candidatsLore(story: StoryState | null, contrat: ContratVisuel): 
       }
     }
     const sortie: ReferenceCandidate[] = [];
-    for (const c of candidatsLorePourContrat(contrat, await poolLorePublie(), etat, races)) {
+    for (const c of candidatsLorePourContrat(contrat, await poolLorePublie(story ? mondeIdDe(story.meta) : monde.actifId()), etat, races)) {
       sortie.push({ ...c, uri: await versReference(await obtenirAssetVisuel(c.assetId).catch(() => null)) });
     }
     return sortie;
@@ -119,7 +120,7 @@ async function candidatsPersonnage(story: StoryState, p: ContratVisuel['personna
   const race = raceDuPersonnage(story, p);
   if (race && referenceRaceFiable(race)) {
     sortie.push({ id: `race:${race.race.id}-${race.sexe}`, type: 'race', role: 'race', entite: p.cle,
-      libelle: `portrait de race ${race.race.nom} (${p.nom})`, uri: await obtenirPortraitRace(race.race.id, race.sexe) });
+      libelle: `portrait de race ${race.race.nom} (${p.nom})`, uri: await obtenirPortraitRace(race.race.id, race.sexe, race.mondeId) });
   }
   return sortie;
 }

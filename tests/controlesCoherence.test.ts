@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ROLES_CANON } from '../src/engine/canonElyndor';
+import { donneesMonde } from '../src/mondes/donnees';
 import { corrigerEtiquettes, trouverEchoDuJoueur, trouverGestesDuJoueur, trouverRolesUsurpes, validerRolesCanon } from '../src/engine/controlesCoherence';
 import { determinerStrategie } from '../src/engine/validator';
 import { rolesDeLaVille } from '../src/engine/rolesCanon';
 
+const ROLES_CANON = donneesMonde('elyndor').rolesCanon;
 const PARIS = rolesDeLaVille(ROLES_CANON, 'Paris');
 
 test('« le chef de la Guilde, Maître Kael » est un rôle usurpé : régénération complète', () => {

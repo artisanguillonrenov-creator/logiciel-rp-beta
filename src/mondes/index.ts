@@ -64,9 +64,14 @@ export function racesDuMonde(paquet: PaquetMonde): RaceMonde[] {
   return paquet.modules?.races?.liste ?? [];
 }
 
-/** « d'Elyndor », « de Valcourt » : pour les libellés de l'interface. */
+/** « d'Elyndor », « de Valcourt » : complément de nom avec élision. */
+export function complementDe(nom: string): string {
+  return /^[aeiouyhàâéèêëîïôûü]/i.test(nom) ? `d'${nom}` : `de ${nom}`;
+}
+
+/** « d'Elyndor » : pour les libellés de l'interface. */
 export function deNomMonde(paquet: PaquetMonde): string {
-  return /^[aeiouyhàâéèêëîïôûü]/i.test(paquet.carte.nom) ? `d'${paquet.carte.nom}` : `de ${paquet.carte.nom}`;
+  return complementDe(paquet.carte.nom);
 }
 
 /**

@@ -3,7 +3,6 @@ import { reglagesNarrateurDefaut, type PlagesLongueur } from '../concepteur/regl
 import { BUDGET_LORE_PASSAGES } from './passagesLore';
 import { instructionStyle, type StylesNarratifs } from '../concepteur/interpretationNarrative';
 import type { Fact, LoreEntry, Message, StoryMeta, StorySettings } from '../types';
-import { LORE_CORE } from '../mondes/elyndor/core';
 import { REGLES_IMMUABLES } from './rules';
 import { IDENTITE_NARRATIVE } from './identiteNarrative';
 import { INSTRUCTION_REGISTRE_GRAND_PUBLIC, INSTRUCTION_REGISTRE_ADULTE } from './contenuAdulte';
@@ -192,10 +191,10 @@ export interface ContexteConstruction {
   ficheScene?: string;
   // Consigne machine ajoutée juste après les règles (noyau narratif V12).
   directiveEtat?: string;
-  // Autre monde qu'Elyndor (mondes.ts prévoit d'en accueillir) : son canon
-  // garanti et le titre de son bloc de lore. Absents : Elyndor.
-  loreCore?: string;
-  titreLore?: string;
+  // Monde de l'histoire (paquet monde) : son canon garanti (Lore Core) et le
+  // titre de son bloc de lore (titreLoreDe). Toujours fournis par l'appelant.
+  loreCore: string;
+  titreLore: string;
 }
 
 export interface OptionsPrompt {
@@ -291,7 +290,7 @@ export function construireSystemPromptDetaille(ctx: ContexteConstruction, option
   // Rien de variable ne doit s'y glisser.
   const prefixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
-${ctx.loreCore ?? LORE_CORE}
+${ctx.loreCore}
 
 ${IDENTITE_NARRATIVE}
 
@@ -341,7 +340,7 @@ Narration/action restent hors de ces lignes (entre astérisques si besoin). N'ut
   const avertissements: string[] = [];
 
   // Sections variables, au format final, avant toute coupe.
-  const titreLore = ctx.titreLore ?? 'LORE ELYNDOR PERTINENT';
+  const titreLore = ctx.titreLore;
   const enteteLore = ctx.loreElyndor.length ? `\n\n[${titreLore}]\n`.length : 0;
   const loreComplet = formaterLoreAlloue(ctx.loreElyndor, titreLore, { P0: Infinity, P1: Infinity, P2: Infinity }, []);
   const loreDemande = { ...loreComplet.transmis };

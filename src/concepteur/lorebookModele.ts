@@ -1,7 +1,7 @@
 import type { ElyndorEntryChargee } from '../engine/loreLoader';
 import { infererScopeLore, normaliserLore, type ScopeLore } from '../engine/loreScoring';
 
-/** Les 102 fiches d'origine restent intactes ; seules les différences sont enregistrées. */
+/** Les fiches d'origine du monde restent intactes ; seules les différences sont enregistrées. */
 export const LORE_SCHEMA = 1 as const;
 export interface FicheEditable {
   titre: string;
@@ -81,24 +81,34 @@ export function validerFiche(x: unknown): FicheEditable {
 export function creerEtatLore(): EtatLore {
   return { schema: LORE_SCHEMA, numero: 1, date: Date.now(), changements: {}, ajouts: {}, brouillons: {}, historique: [] };
 }
-function lireFiches(raw: unknown, maximum: number): Record<string, FicheEditable> {
+/**
+ * Identifiant de fiche : « <mondeId>-<n> » pour une fiche canonique (elyndor-<n>
+ * pour Elyndor), « atelier-… » pour une fiche ajoutée par le concepteur. Avec
+ * mondeId, seules les fiches canoniques de ce monde sont acceptées.
+ */
+export function idFicheLoreValide(id: string, mondeId?: string): boolean {
+  if (/^atelier-[a-z0-9-]{8,75}$/.test(id)) return true;
+  const canonique = id.match(/^([a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*)-\d{1,6}$/);
+  return !!canonique && canonique[1] !== 'atelier' && (!mondeId || canonique[1] === mondeId);
+}
+function lireFiches(raw: unknown, maximum: number, mondeId?: string): Record<string, FicheEditable> {
   if (!estObjet(raw) || Object.keys(raw).length > maximum) throw new Error('Trop de fiches ou données incorrectes.');
   const v: Record<string, FicheEditable> = {};
   for (const [id, data] of Object.entries(raw)) {
-    if (!/^(elyndor-\d{1,6}|atelier-[a-z0-9-]{8,75})$/.test(id) || id === '__proto__') {
+    if (!idFicheLoreValide(id, mondeId) || id === '__proto__') {
       throw new Error('Identifiant de fiche invalide.');
     }
     Object.defineProperty(v, id, { value: validerFiche(data), enumerable: true, writable: true, configurable: true });
   }
   return v;
 }
-export function validerEtatLore(raw: unknown): EtatLore {
+export function validerEtatLore(raw: unknown, mondeId?: string): EtatLore {
   if (!estObjet(raw) || raw.schema !== LORE_SCHEMA || !Number.isSafeInteger(raw.numero) || Number(raw.numero) < 1) {
     throw new Error('Version de Lorebook incompatible. Aucun changement appliqué.');
   }
-  const changements = lireFiches(raw.changements, 300);
-  const ajouts = lireFiches(raw.ajouts, 250);
-  const brouillons = lireFiches(raw.brouillons, 350);
+  const changements = lireFiches(raw.changements, 300, mondeId);
+  const ajouts = lireFiches(raw.ajouts, 250, mondeId);
+  const brouillons = lireFiches(raw.brouillons, 350, mondeId);
   if (Object.keys(ajouts).some(id => !id.startsWith('atelier-'))) throw new Error('Ajout de fiche incorrect.');
   const historique: RevisionLore[] = [];
   if (Array.isArray(raw.historique)) {
@@ -107,8 +117,8 @@ export function validerEtatLore(raw: unknown): EtatLore {
           typeof h.motif !== 'string' || h.motif.length > 120) continue;
       try {
         historique.push({ numero: Number(h.numero), date: h.date, motif: h.motif,
-          changements: lireFiches(h.changements, 300), ajouts: lireFiches(h.ajouts, 250),
-          brouillons: lireFiches(h.brouillons, 350) });
+          changements: lireFiches(h.changements, 300, mondeId), ajouts: lireFiches(h.ajouts, 250, mondeId),
+          brouillons: lireFiches(h.brouillons, 350, mondeId) });
       } catch { /* anciennes révisions invalides ignorées, courant conservé */ }
     }
   }
@@ -151,9 +161,10 @@ export function ficheOrigine(e: ElyndorEntryChargee): FicheEditable {
 }
 export function ficheProtegee(f: FicheEditable, id: string): boolean {
   const cat = normaliserLore(f.category);
-  return id.startsWith('elyndor-') && (f.constant ||
-    // Le socle historique du monde contient aussi des fiches non constantes.
-    (Number(id.slice(8)) >= 0 && Number(id.slice(8)) <= 13) ||
+  const canonique = id.startsWith('atelier-') ? null : id.match(/^(.+)-(\d{1,6})$/);
+  return !!canonique && (f.constant ||
+    // Le socle historique d'Elyndor (fiches 0 à 13) contient aussi des fiches non constantes.
+    (canonique[1] === 'elyndor' && Number(canonique[2]) <= 13) ||
     ['royaume', 'recurrent', 'profil', 'profil racial', 'physique'].some(s => cat.includes(s)) ||
     /^(presentation d elyndor|parametres d elyndor)/.test(normaliserLore(f.titre)));
 }
@@ -234,11 +245,11 @@ export function creerExportLore(etat: EtatLore): string {
   return JSON.stringify({ format: 'elyndor-lorebook-atelier', schema: LORE_SCHEMA,
     exporteLe: new Date().toISOString(), etat: { ...etat, historique: [] } }, null, 2);
 }
-export function analyserImportLore(texteJson: string): EtatLore {
+export function analyserImportLore(texteJson: string, mondeId?: string): EtatLore {
   if (texteJson.length > 1_500_000) throw new Error('Import trop volumineux.');
   let brut: unknown;
   try { brut = JSON.parse(texteJson); } catch { throw new Error('JSON invalide.'); }
   if (!estObjet(brut) || brut.format !== 'elyndor-lorebook-atelier' || brut.schema !== LORE_SCHEMA)
     throw new Error('Export de Lorebook incompatible.');
-  return validerEtatLore(brut.etat);
+  return validerEtatLore(brut.etat, mondeId);
 }

@@ -1,7 +1,8 @@
 import type { AppSettings } from '../types';
 import { configurationLLM, appellerModele } from './openrouter';
 import { ErreurProfilContenu, INSTRUCTION_REGISTRE_GRAND_PUBLIC, validerProfilContenuHeuristique } from './contenuAdulte';
-import { ROLES_CANON } from './canonElyndor';
+import { monde, paquetMonde, type PaquetMonde } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { analyserIntention } from './intentionJoueur';
 
 export interface ParametresGenerationScenario {
@@ -22,29 +23,38 @@ export interface ParametresGenerationScenario {
   extraitLore?: string;
   /** Capitale de la race du personnage (« Paris » pour les Humains) : la scène s'y situe. */
   villeDepart?: string;
+  /** Monde de la future histoire ; défaut : monde actif. */
+  mondeId?: string;
 }
 
 /**
- * Consigne type du scénario de départ : il sert de fil conducteur au
+ * Consigne générique du scénario de départ, pour un monde dont le paquet ne
+ * fournit pas la sienne (consigneScenario) : il sert de fil conducteur au
  * narrateur pour la première scène, et nomme le premier interlocuteur que
- * l'ouverture doit utiliser (controleOuverture.ts).
+ * l'ouverture doit utiliser (controleOuverture.ts). Aucune capitale imposée.
  */
-export const CONSIGNE_SCENARIO = `Tu écris le scénario de départ d'une histoire de jeu de rôle dans Elyndor, à partir du monde, du personnage, du lieu, de la situation et du lore fournis. Ce scénario sert de fil conducteur au narrateur pour la première scène.
+export const CONSIGNE_SCENARIO_GENERIQUE = `Tu écris le scénario de départ d'une histoire de jeu de rôle, à partir du monde, du personnage, du lieu, de la situation et du lore fournis. Ce scénario sert de fil conducteur au narrateur pour la première scène.
 
 Écris 4 à 6 phrases au total (900 caractères au plus), au présent, à la deuxième personne (« tu »), qui posent :
-1. Le lieu exact : la VILLE DE DÉPART fournie, nommée dans le texte, et l'endroit précis, avec un ou deux détails d'ambiance.
+1. Le lieu exact : le LIEU DE DÉPART fourni, nommé dans le texte (avec la VILLE DE DÉPART si elle est fournie), et l'endroit précis, avec un ou deux détails d'ambiance.
 2. La raison de ta présence : ce qui t'amène ici, tiré de la situation choisie et du personnage.
 3. La situation déjà en cours quand tu arrives : quelque chose se passe, une tension, une affaire, un danger.
-4. Le premier interlocuteur, celui qui va t'interpeller : si le lore fixe quelqu'un pour ce lieu dans cette ville (voir PERSONNAGES FIXÉS PAR LE LORE), c'est lui, avec son nom exact ; sinon un personnage local mineur (marchand, garde, habitant…) avec un nom simple et une raison concrète de te parler.
+4. Le premier interlocuteur, celui qui va t'interpeller : si le lore fixe quelqu'un pour ce lieu (voir PERSONNAGES FIXÉS PAR LE LORE), c'est lui, avec son nom exact ; sinon un personnage local mineur (marchand, garde, habitant…) avec un nom simple et une raison concrète de te parler.
 5. Une amorce de dialogue autorisée : une seule courte réplique de ce personnage, sur sa propre ligne, au format NOM EN MAJUSCULES : « … ». Le scénario s'arrête sur cette réplique.
 
-Interdits : terminer par une question au joueur (« Que fais-tu ? ») ; décider à ta place ce que tu dis, fais ou penses au-delà de ton arrivée ; résoudre la situation ; inventer un royaume, une grande guilde, un souverain ou une religion absents du lore. Réponds uniquement avec le texte du scénario, sans titre ni préambule.`;
+Interdits : terminer par une question au joueur (« Que fais-tu ? ») ; décider à ta place ce que tu dis, fais ou penses au-delà de ton arrivée ; résoudre la situation ; inventer un royaume, une grande organisation, un souverain ou une religion absents du lore. Réponds uniquement avec le texte du scénario, sans titre ni préambule.`;
 
-/** Personnages fixés par le lore pour le lieu choisi (maîtresses de guilde, réceptionnistes…), par capitale. */
-export function personnagesFixesDuLieu(lieuNom: string | undefined): string {
+/** Consigne du scénario de départ d'un monde : la sienne, sinon la consigne générique. */
+export function consigneScenarioDe(paquet: PaquetMonde): string {
+  return paquet.consigneScenario ?? CONSIGNE_SCENARIO_GENERIQUE;
+}
+
+/** Personnages fixés par le lore pour le lieu choisi (maîtresses de guilde, réceptionnistes…), par ville. */
+export function personnagesFixesDuLieu(lieuNom: string | undefined, mondeId: string = monde.actifId()): string {
   if (!lieuNom) return '';
-  const { roles } = analyserIntention(lieuNom, ROLES_CANON);
-  return ROLES_CANON
+  const rolesCanon = donneesMonde(mondeId).rolesCanon;
+  const { roles } = analyserIntention(lieuNom, rolesCanon);
+  return rolesCanon
     .filter((r) => roles.includes(r.role))
     .map((r) => `- ${r.ville} — ${r.libelle} : ${r.nom} (${r.description.slice(0, 110)}…)`)
     .join('\n');
@@ -55,7 +65,7 @@ export function personnagesFixesDuLieu(lieuNom: string | undefined): string {
  * parcours de création — le joueur déclenche lui-même la génération (bouton
  * "Générer avec l'IA"), qui reprend tout ce qu'il a déjà renseigné
  * (personnage, monde, lieu, situation) plus un extrait du lorebook dédié au
- * lieu choisi, pour rester ancré dans Elyndor plutôt que générique.
+ * lieu choisi, pour rester ancré dans le monde plutôt que générique.
  */
 /**
  * Question générique finale (« Que fais-tu ? ») retirée ; étiquette de
@@ -71,6 +81,8 @@ export function nettoyerScenario(brut: string): string {
 }
 
 export async function genererScenarioDepart(p: ParametresGenerationScenario): Promise<string> {
+  const mondeId = p.mondeId ?? monde.actifId();
+  const personnagesFixes = personnagesFixesDuLieu(p.lieuNom, mondeId);
   const lignesPersonnage = [
     `Nom : ${p.personnageNom || 'non précisé'}`,
     p.sexe && `Sexe : ${p.sexe}`,
@@ -89,7 +101,7 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
     p.lieuNom && `LIEU DE DÉPART : ${p.lieuNom}${p.lieuDescription ? ` — ${p.lieuDescription}` : ''}`,
     p.situationNom && `SITUATION DE DÉPART : ${p.situationNom}${p.situationDescription ? ` — ${p.situationDescription}` : ''}`,
     p.extraitLore && `EXTRAIT DU LOREBOOK SUR CE LIEU :\n${p.extraitLore}`,
-    personnagesFixesDuLieu(p.lieuNom) && `PERSONNAGES FIXÉS PAR LE LORE POUR CE LIEU (prends celui de la ville de départ) :\n${personnagesFixesDuLieu(p.lieuNom)}`,
+    personnagesFixes && `PERSONNAGES FIXÉS PAR LE LORE POUR CE LIEU (prends celui de la ville de départ) :\n${personnagesFixes}`,
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -104,7 +116,7 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
     messages: [
       {
         role: 'system',
-        content: CONSIGNE_SCENARIO + instructionRegistre,
+        content: consigneScenarioDe(paquetMonde(mondeId)) + instructionRegistre,
       },
       { role: 'user', content: contexte },
     ],

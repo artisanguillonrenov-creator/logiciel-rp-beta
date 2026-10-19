@@ -28,6 +28,7 @@ import { construireMessages, maxTokensPourLongueur, temperaturePourCreativite, t
 import { construirePassages, selectionnerPassages } from '../../src/engine/passagesLore';
 import type { ElyndorEntryChargee } from '../../src/engine/loreLoader';
 import { donneesMonde } from '../../src/mondes/donnees';
+import { paquetMonde, titreLoreDe } from '../../src/mondes';
 import { construireContratNarratifNatif } from '../../src/engine/narrativeBehaviorKernel';
 import { instructionRegistreAdulte } from '../../src/engine/contenuAdulte';
 import { corrigerEtiquettes, trouverEchoDuJoueur, validerGestesDuJoueur, validerRolesCanon } from '../../src/engine/controlesCoherence';
@@ -35,7 +36,6 @@ import { validerAgentiviteHeuristique } from '../../src/engine/validator';
 import { INSTRUCTION_OUVERTURE, ecartsContratOuverture } from '../../src/engine/controleOuverture';
 import { couperALaDernierePhraseComplete } from '../../src/engine/completionReponse';
 import { preparerTour } from '../../src/engine/ficheScene';
-import { ROLES_CANON } from '../../src/engine/canonElyndor';
 import { prenomRole, rolesDeLaVille } from '../../src/engine/rolesCanon';
 
 const executer = promisify(execFile);
@@ -74,6 +74,7 @@ export function chargerMondes(dossier = process.env.FABRIQUE_MONDES ?? path.join
 }
 
 const LORE_ELYNDOR = donneesMonde('elyndor').lore;
+const ROLES_CANON = donneesMonde('elyndor').rolesCanon;
 
 function entreesDuMonde(monde: Monde): ElyndorEntryChargee[] {
   if (monde.id === 'elyndor') return LORE_ELYNDOR;
@@ -317,8 +318,9 @@ export function contexte(partie: Partie, monde: Monde, messageJoueur: string, el
     registreAdulte: instructionRegistreAdulte(partie.settings),
     noteCorrection,
     ficheScene: preparation?.fiche,
-    loreCore: monde.core ?? undefined,
-    titreLore: monde.id === 'elyndor' ? undefined : `LORE ${monde.nom.toUpperCase()} PERTINENT`,
+    // Un monde sans Lore Core propre reçoit celui d'Elyndor, comme avant le chantier multi-mondes.
+    loreCore: monde.core ?? paquetMonde('elyndor').core,
+    titreLore: monde.id === 'elyndor' ? titreLoreDe(paquetMonde('elyndor')) : `LORE ${monde.nom.toUpperCase()} PERTINENT`,
   };
 }
 

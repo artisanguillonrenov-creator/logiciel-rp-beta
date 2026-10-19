@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { CTX_ELYNDOR } from './aidesMonde';
 import {
   BUDGET_CONVERSATION_DISTANT,
   BUDGET_CONVERSATION_LOCAL,
@@ -22,6 +23,7 @@ function contexte() {
     },
   });
   return {
+    ...CTX_ELYNDOR,
     meta: story.meta,
     settings: story.settings,
     resume: 'Résumé '.repeat(500),

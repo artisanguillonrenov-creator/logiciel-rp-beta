@@ -1,3 +1,4 @@
+import { complementDe } from '../mondes';
 import type { AppSettings, CategorieLoreEmergent, EntreeLoreEmergent, Message, ProfilMonde } from '../types';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { configurationLLM, appellerModele } from './openrouter';
@@ -36,6 +37,7 @@ async function extraireCandidats(
   existants: EntreeLoreEmergent[],
   personnageNom: string,
   storyId?: string,
+  nomMonde?: string,
 ): Promise<CandidatLoreEmergent[]> {
   const existantsVisibles = appSettings.profilContenu === 'adulte'
     ? existants
@@ -54,7 +56,7 @@ async function extraireCandidats(
       messages: [
         {
           role: 'system',
-          content: `Tu es le job du LORE ÉMERGENT DU MONDE d'Elyndor. Les PNJ et leurs fiches sont gérés par un registre distinct : ne crée JAMAIS de candidat de catégorie pnj. Identifie uniquement les éléments de monde pertinents, durables et nommés introduits dans l'extrait : lieux, objets, factions, événements importants, créatures, ressources et coutumes. Ignore les détails anecdotiques et les figurants.
+          content: `Tu es le job du LORE ÉMERGENT DU MONDE${mondeDeLaConsigne(nomMonde)}. Les PNJ et leurs fiches sont gérés par un registre distinct : ne crée JAMAIS de candidat de catégorie pnj. Identifie uniquement les éléments de monde pertinents, durables et nommés introduits dans l'extrait : lieux, objets, factions, événements importants, créatures, ressources et coutumes. Ignore les détails anecdotiques et les figurants.
 Réponds UNIQUEMENT avec un JSON strict : {"candidats":[{"categorie":"lieu|objet|faction|evenement|creature|ressource|coutume","entreeExistanteId":null,"titre":"Nom précis","contenu":"Faits établis dans le récit","profilMonde":{"localisation":"","origine":"","apparence":"","architecture":"","dimensions":"","acces":"","activites":"","occupants":"","materiaux":"","proprietes":"","fabrication":"","rarete":"","organisation":"","hierarchie":"","objectifs":"","territoire":"","ressources":"","alliances":"","habitat":"","comportement":"","capacites":"","faiblesses":"","traditions":"","croyances":"","histoire":"","referencesPnj":""}}]}.
 Complète les champs spécialisés pertinents dès la première apparition avec des caractéristiques plausibles et cohérentes, sans contredire les faits déjà établis. Laisse vides les champs non pertinents ou réellement inconnus. Le champ contenu ne rapporte QUE les faits narrés, jamais les inventions de complétion. N'invente jamais un événement vécu, une découverte du joueur ou une conséquence d'action. Les changements provoqués par le joueur restent propres à cette histoire. Les PNJ liés sont référencés par identifiant confirmé dans referencesPnj ; n'invente pas d'identifiant.
 Pour enrichir un élément existant, indique son entreeExistanteId exact et conserve son titre et ses caractéristiques. Ne fusionne pas des homonymes sans identité confirmée. Éléments existants :
@@ -93,6 +95,13 @@ export interface MiseAJourLoreEmergentOptions {
   personnageNom: string;
   /** Histoire concernée (journal de diagnostic). */
   storyId?: string;
+  /** Nom du monde cité dans la consigne (nomPourExtractionLore du paquet) ; absent : aucun nom. */
+  nomMonde?: string;
+}
+
+/** Désignation du monde dans la consigne : « d'Elyndor », ou rien sans nom de monde. */
+function mondeDeLaConsigne(nomMonde?: string): string {
+  return nomMonde ? ` ${complementDe(nomMonde)}` : '';
 }
 
 export async function mettreAJourLoreEmergent({
@@ -102,6 +111,7 @@ export async function mettreAJourLoreEmergent({
   depuisIndex,
   personnageNom,
   storyId,
+  nomMonde,
 }: MiseAJourLoreEmergentOptions): Promise<EntreeLoreEmergent[]> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return existants;
@@ -110,7 +120,7 @@ export async function mettreAJourLoreEmergent({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom, storyId);
+  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom, storyId, nomMonde);
   if (candidats.length === 0) return fusionnerDoublonsLore(existants);
 
   const entrees = fusionnerDoublonsLore(existants);

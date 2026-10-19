@@ -10,7 +10,8 @@ import { modifierAssetsLore } from '../concepteur/assetsLoreStore';
 import { ajouterLienAsset, nouvelIdentifiantAsset, ROLES_ASSET_LORE, LIBELLES_ROLE_ASSET, type RoleAssetLore } from '../concepteur/assetsLore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
 import { appliquerLorePublie } from '../concepteur/lorebookModele';
-import { LORE_ELYNDOR_CANON } from '../engine/canonElyndor';
+import { monde } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { normaliserTexte } from '../engine/texteRecherche';
 import { couleurs, polices } from '../theme/theme';
 import Bouton from './Bouton';
@@ -28,7 +29,7 @@ function AssocierAuLorebook({ image }: { image: string }) {
   const [message, setMessage] = useState('');
   useEffect(() => {
     let actif = true;
-    lireLoreAtelier().then((etat) => appliquerLorePublie(LORE_ELYNDOR_CANON, etat)).catch(() => LORE_ELYNDOR_CANON)
+    lireLoreAtelier().then((etat) => appliquerLorePublie(donneesMonde(monde.actifId()).lore, etat)).catch(() => donneesMonde(monde.actifId()).lore)
       .then((pool) => { if (actif) setFiches(pool.map((f) => ({ id: f.id, titre: f.titre }))); });
     return () => { actif = false; };
   }, []);

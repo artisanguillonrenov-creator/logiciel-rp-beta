@@ -4,6 +4,7 @@
 // Il reconstitue, avec les fonctions pures du jeu, ce qui part au narrateur
 // pour quelques scènes, avec les budgets des moteurs local et distant.
 import { donneesMonde } from '../src/mondes/donnees';
+import { CTX_ELYNDOR } from './aidesMonde';
 import { construirePassages, selectionnerPassages, selectionnerPassagesDetaille } from '../src/engine/passagesLore';
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { BUDGET_SYSTEM_DISTANT, BUDGET_SYSTEM_LOCAL, construireSystemPromptDetaille } from '../src/engine/promptBuilder';
@@ -74,7 +75,7 @@ function mesurerScene(story: StoryState, message: string, budgetSysteme: number)
   const blocs = construireBlocsContexte(story, message, evenements, { exclureMessageIds: idsNoyau });
   const contrat = construireContratNarratifNatif(noyauStory, message, 'adulte');
   const { texte: prompt, rapport: rapportPrompt } = construireSystemPromptDetaille({
-    meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: lore, messagesRecents: [], messageJoueur: message,
+    ...CTX_ELYNDOR, meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: lore, messagesRecents: [], messageJoueur: message,
     contratNarratif: contrat.texte,
     contexteP0: formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau === 'P0')),
     blocsContexte: [noyau.texte, formaterBlocsContexte(blocs.blocs.filter((b) => b.niveau !== 'P0'), false)].filter(Boolean).join('\n\n'),

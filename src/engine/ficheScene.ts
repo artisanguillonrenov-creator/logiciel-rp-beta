@@ -1,5 +1,6 @@
 import type { StoryState } from '../types';
-import { CAPITALES, ROLES_CANON } from './canonElyndor';
+import { mondeIdDe } from '../mondes';
+import { donneesMonde } from '../mondes/donnees';
 import { detecterCapitale, lireEtatScene } from './etatScene';
 import { analyserIntention, decrireIntention, type IntentionJoueur } from './intentionJoueur';
 import { horloge } from './noyauNarratif';
@@ -21,6 +22,8 @@ export interface PreparationTour {
 const MAX_DESCRIPTION_ROLE = 220;
 
 export function preparerTour(story: StoryState, messageJoueur: string): PreparationTour {
+  // Rôles fixés et capitales du monde de l'histoire (vides sans module rolesCanon).
+  const { rolesCanon: ROLES_CANON, capitales: CAPITALES } = donneesMonde(mondeIdDe(story.meta));
   const scene = lireEtatScene(story, CAPITALES);
   const intention = analyserIntention(messageJoueur, ROLES_CANON);
   const ville = detecterCapitale(messageJoueur, CAPITALES) ?? scene.ville;

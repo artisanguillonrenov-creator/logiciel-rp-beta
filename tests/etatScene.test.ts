@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CAPITALES } from '../src/engine/canonElyndor';
+import { donneesMonde } from '../src/mondes/donnees';
 import { detecterCapitale, interpreterReleve } from '../src/engine/etatScene';
 
+const CAPITALES = donneesMonde('elyndor').capitales;
 const ACTUEL = { ville: 'Paris', lieu: 'Marché aux Esclaves', presents: ['Greffier'], majMessageIndex: 4 };
 
 test('les capitales du lore sont reconnues', () => {

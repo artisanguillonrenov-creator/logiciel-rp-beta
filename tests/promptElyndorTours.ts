@@ -9,8 +9,9 @@ import { construirePassages, selectionnerPassagesDetaille, viderIndexPassages } 
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { preparerTour } from '../src/engine/ficheScene';
 import { construireSystemPrompt } from '../src/engine/promptBuilder';
-import { ENTREES_ADULTE_UNIQUEMENT, texteCompatibleAvecProfil } from '../src/engine/contenuAdulte';
-import { CONSIGNE_SCENARIO } from '../src/engine/scenarioGenerator';
+import { texteCompatibleAvecProfil } from '../src/engine/contenuAdulte';
+import { consigneScenarioDe } from '../src/engine/scenarioGenerator';
+import { paquetMonde, titreLoreDe } from '../src/mondes';
 import { creerNouvelleHistoire } from '../src/engine/story';
 import type { Message, ProfilContenu, StoryState } from '../src/types';
 
@@ -65,10 +66,12 @@ export function promptTourType(tour: TourType): string {
   viderIndexPassages();
   const story = histoire(tour);
   const profil = tour.profil;
-  const lore = donneesMonde('elyndor').lore;
+  const paquet = paquetMonde(story.meta.mondeId);
+  const lore = donneesMonde(paquet.id).lore;
+  const entreesAdulte = paquet.entreesAdulteUniquement ?? [];
   const pool = profil === 'adulte'
     ? lore
-    : lore.filter((e) => !ENTREES_ADULTE_UNIQUEMENT.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil));
+    : lore.filter((e) => !entreesAdulte.includes(e.titre) && texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, profil));
   const passages = construirePassages(pool);
   const preparation = preparerTour(story, tour.message);
   const { ville, intention } = preparation;
@@ -94,6 +97,8 @@ export function promptTourType(tour: TourType): string {
     raisonsAncres: resolution.raisons,
   });
   return construireSystemPrompt({
+    loreCore: paquet.core,
+    titreLore: titreLoreDe(paquet),
     meta: story.meta,
     settings: story.settings,
     resume: '',
@@ -109,6 +114,6 @@ export function promptTourType(tour: TourType): string {
 export function instantaneElyndor(): Record<string, string> {
   const sortie: Record<string, string> = {};
   for (const tour of TOURS_TYPES) sortie[tour.nom] = promptTourType(tour);
-  sortie['consigne-scenario'] = CONSIGNE_SCENARIO;
+  sortie['consigne-scenario'] = consigneScenarioDe(paquetMonde('elyndor'));
   return sortie;
 }

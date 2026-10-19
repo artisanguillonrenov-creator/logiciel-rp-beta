@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CONSIGNE_SCENARIO, genererScenarioDepart, nettoyerScenario, personnagesFixesDuLieu } from '../src/engine/scenarioGenerator';
+import { paquetMonde } from '../src/mondes';
+import { CONSIGNE_SCENARIO_GENERIQUE, consigneScenarioDe, genererScenarioDepart, nettoyerScenario, personnagesFixesDuLieu } from '../src/engine/scenarioGenerator';
 
 test('la Guilde des Aventuriers fournit ses maîtresses et réceptionnistes officielles au scénario', () => {
   const liste = personnagesFixesDuLieu('Guilde des Aventuriers');
@@ -13,8 +14,15 @@ test('le Marché aux esclaves n’a pas de personnage fixé : le scénario crée
 });
 
 test('la consigne type nomme le premier interlocuteur et autorise une seule réplique', () => {
-  assert.match(CONSIGNE_SCENARIO, /premier interlocuteur/);
-  assert.match(CONSIGNE_SCENARIO, /une seule courte réplique/);
+  for (const consigne of [consigneScenarioDe(paquetMonde('elyndor')), CONSIGNE_SCENARIO_GENERIQUE]) {
+    assert.match(consigne, /premier interlocuteur/);
+    assert.match(consigne, /une seule courte réplique/);
+  }
+});
+
+test('la consigne générique ne cite aucun monde et n’impose aucune capitale', () => {
+  assert.doesNotMatch(CONSIGNE_SCENARIO_GENERIQUE, /Elyndor|capitale/i);
+  assert.match(consigneScenarioDe(paquetMonde('elyndor')), /dans Elyndor/);
 });
 
 test('le scénario finit sans question générique et avec une étiquette en majuscules', () => {

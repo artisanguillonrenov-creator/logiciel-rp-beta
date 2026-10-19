@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { CTX_ELYNDOR } from './aidesMonde';
 import { preparerTour } from '../src/engine/ficheScene';
 import { construireMessages } from '../src/engine/promptBuilder';
 import { creerNouvelleHistoire } from '../src/engine/story';
@@ -29,7 +30,7 @@ test('« Ok allons à la guilde » : la fiche donne Paris, la destination et les
 test('la fiche et le protocole du tour ferment le prompt système, avant le rappel de format', () => {
   const story = histoire();
   const [systeme] = construireMessages({
-    meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: [], messagesRecents: [], messageJoueur: 'Ok allons à la guilde',
+    ...CTX_ELYNDOR, meta: story.meta, settings: story.settings, resume: '', faits: [], loreElyndor: [], messagesRecents: [], messageJoueur: 'Ok allons à la guilde',
     contratNarratif: '[CONTRAT NARRATIF NATIF V2.1 — RESPONSABILITÉS ACTIVES]\nM01 Production de la réponse',
     ficheScene: preparerTour(story, 'Ok allons à la guilde').fiche,
   });
