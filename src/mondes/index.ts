@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 import type { PaquetMonde, RaceMonde } from './types';
 import { PAQUET_ELYNDOR } from './elyndor';
+import { PAQUET_CENDRES_DU_MONDE } from './cendres-du-monde';
 import { PAQUET_MONDE_TEST } from './monde-test';
 
 export type { PaquetMonde } from './types';
@@ -13,7 +14,7 @@ export type { PaquetMonde } from './types';
 export const MONDE_PAR_DEFAUT = 'elyndor';
 
 // Le monde de test (phase 5 du chantier) est jetable : le retirer d'ici suffit.
-const PAQUETS: readonly PaquetMonde[] = [PAQUET_ELYNDOR, PAQUET_MONDE_TEST];
+const PAQUETS: readonly PaquetMonde[] = [PAQUET_ELYNDOR, PAQUET_CENDRES_DU_MONDE, PAQUET_MONDE_TEST];
 
 export function listerMondes(): readonly PaquetMonde[] {
   return PAQUETS;
@@ -76,8 +77,15 @@ export function racesDuMonde(paquet: PaquetMonde): RaceMonde[] {
   return paquet.modules?.races?.liste ?? [];
 }
 
-/** « d'Elyndor », « de Valcourt » : complément de nom avec élision. */
+/** « d'Elyndor », « de Valcourt », « des Cendres du Monde » : complément de nom avec élision et article contracté. */
 export function complementDe(nom: string): string {
+  // Article suivi d'une espace (« Les Cendres », pas « Léandre ») ou élidé (« L'Aube »).
+  const article = nom.match(/^(?:(les|le|la)\s+|(l['’]))(.+)$/i);
+  if (article) {
+    const reste = article[3];
+    const a = (article[1] ?? 'l').toLowerCase();
+    return a === 'les' ? `des ${reste}` : a === 'le' ? `du ${reste}` : a === 'la' ? `de la ${reste}` : `de l'${reste}`;
+  }
   return /^[aeiouyhàâéèêëîïôûü]/i.test(nom) ? `d'${nom}` : `de ${nom}`;
 }
 

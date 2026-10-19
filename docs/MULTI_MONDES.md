@@ -57,5 +57,9 @@ d'Elyndor).
    - priorité 0-10 invariants, 20-30 canon de scène, 40-50 conséquences,
      60-100 contexte.
 
+Paquets actuels : `elyndor/`, `cendres-du-monde/` (Les Cendres du Monde,
+survie post-apocalyptique sur la Terre réelle en 2046, départ libre, sans
+races ni rôles canon) et `monde-test/`.
+
 `src/mondes/monde-test/` est un paquet fictif et jetable qui sert de
 modèle minimal et aux tests ; le retirer de `PAQUETS` suffit à le masquer.

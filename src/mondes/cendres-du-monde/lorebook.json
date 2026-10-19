@@ -1,0 +1,1047 @@
+{
+  "source": "Les Cendres du Monde — lorebook général v1.0 réécrit pour le moteur (fondations)",
+  "entry_count": 34,
+  "entries": [
+    {
+      "id": 1,
+      "category": "MONDE",
+      "title": "Les Cendres du Monde — la Terre vingt ans après la chute",
+      "primary_keys": [
+        "Cendres du Monde",
+        "2046",
+        "effondrement",
+        "post-apocalypse",
+        "apocalypse",
+        "survivants",
+        "monde d'avant",
+        "fin du monde",
+        "ancien monde"
+      ],
+      "secondary_keys": [
+        "survie",
+        "civilisation",
+        "quête principale"
+      ],
+      "negative_keys": [],
+      "content": "Les Cendres du Monde est une version post-apocalyptique de la Terre, vingt ans après l'effondrement de la civilisation moderne. En 2046, environ 1 % de l'humanité subsiste, soit environ 80 millions de personnes. Les anciennes nations ont perdu leur capacité à gouverner leurs territoires, et les réseaux mondiaux de communication, de transport, d'énergie et d'approvisionnement ne fonctionnent plus.\n\nDans Les Cendres du Monde, l'humanité survit surtout dans des habitations isolées, des fermes, des hameaux et de petits villages. Il n'existe aucune quête principale universelle : les histoires peuvent porter sur la survie, l'exploration, la famille, l'amour, le commerce, la politique locale, la reconstruction ou les conflits.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 2,
+      "category": "MONDE",
+      "title": "Lois fondamentales — un monde réaliste",
+      "primary_keys": [
+        "magie",
+        "surnaturel",
+        "fantastique",
+        "miracle",
+        "résurrection",
+        "ressusciter",
+        "mutation",
+        "mutant",
+        "pouvoir",
+        "impossible",
+        "réaliste"
+      ],
+      "secondary_keys": [
+        "loi",
+        "physique",
+        "biologie"
+      ],
+      "negative_keys": [],
+      "content": "Les lois fondamentales de Les Cendres du Monde sont les lois physiques et biologiques réelles. Aucune magie, aucun pouvoir surnaturel, aucune résurrection et aucune mutation fantastique n'existent dans ce monde.\n\nLes humains et les animaux ont besoin de nourriture, d'eau, de repos et de conditions compatibles avec leur survie. Les maladies, blessures, pénuries, températures et distances ont des conséquences réalistes. Les événements exceptionnels restent possibles, mais exigent des causes et des moyens crédibles.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 3,
+      "category": "MONDE",
+      "title": "Géographie terrestre — la Terre réelle",
+      "primary_keys": [
+        "géographie",
+        "carte",
+        "continent",
+        "pays",
+        "planète",
+        "fleuve",
+        "montagne",
+        "côte",
+        "commencer",
+        "partir de",
+        "lieu de départ"
+      ],
+      "secondary_keys": [
+        "Europe",
+        "Asie",
+        "Afrique",
+        "Amérique",
+        "Océanie"
+      ],
+      "negative_keys": [],
+      "content": "La géographie de Les Cendres du Monde est celle de la Terre réelle : continents, pays, villes, villages, fleuves, montagnes, côtes et distances gardent leurs positions. Le joueur peut commencer son histoire n'importe où sur la planète.\n\nL'état post-apocalyptique d'un lieu dépend de son histoire, de son climat, de ses ressources et des catastrophes subies. Un territoire n'est jamais déclaré détruit, contaminé ou habité uniquement pour faciliter une scène.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 10,
+      "category": "HISTOIRE",
+      "title": "L'Année Zéro — 2026",
+      "primary_keys": [
+        "Année Zéro",
+        "2026",
+        "début de l'Effondrement",
+        "première crise",
+        "crise sanitaire",
+        "tout a commencé",
+        "la chute",
+        "avant l'Effondrement"
+      ],
+      "secondary_keys": [
+        "2025",
+        "hôpitaux",
+        "approvisionnement"
+      ],
+      "negative_keys": [],
+      "content": "L'Année Zéro, 2026, marque le début de l'Effondrement : une grave crise sanitaire liée à une infection neurologique apparaît. L'origine exacte de cette infection demeure inconnue. Jusqu'à la fin de 2025, le monde était identique au nôtre ; aucun événement réel postérieur à 2025 n'existe.\n\nEn 2026 et 2027, la crise s'accompagne progressivement de ruptures d'approvisionnement, de violences, de mouvements de population et de défaillances institutionnelles : c'est la chute, avec des hôpitaux saturés et des chaînes d'approvisionnement rompues.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 11,
+      "category": "HISTOIRE",
+      "title": "Les guerres de l'Effondrement",
+      "primary_keys": [
+        "guerre",
+        "guerres",
+        "nucléaire",
+        "frappe nucléaire",
+        "bombardement",
+        "bombe",
+        "atomique",
+        "conflit armé",
+        "accident industriel"
+      ],
+      "secondary_keys": [
+        "armée",
+        "destruction",
+        "dévasté"
+      ],
+      "negative_keys": [],
+      "content": "Les guerres de l'Effondrement, surtout entre 2027 et 2030, aggravent la désorganisation mondiale. Des frappes nucléaires ciblées touchent certains objectifs stratégiques, et des guerres conventionnelles, des bombardements et des accidents industriels provoquent d'importantes destructions.\n\nIl n'y a pas eu de guerre nucléaire mondiale totale : certaines régions sont dévastées, d'autres restent physiquement préservées. La liste exacte des sites frappés n'est pas établie dans le lorebook général ; chaque histoire peut la préciser pour elle-même.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 12,
+      "category": "HISTOIRE",
+      "title": "Disparition de l'ordre mondial",
+      "primary_keys": [
+        "gouvernement",
+        "gouvernements",
+        "État",
+        "administration",
+        "armée",
+        "institution",
+        "police",
+        "autorité",
+        "ordre mondial",
+        "président"
+      ],
+      "secondary_keys": [
+        "loi",
+        "pays",
+        "vestiges"
+      ],
+      "negative_keys": [],
+      "content": "La disparition de l'ordre mondial est progressive : les gouvernements, administrations, armées et institutions ne disparaissent pas tous en même temps, mais leur capacité d'action se réduit à mesure que les infrastructures, les ressources et les chaînes de commandement s'effondrent.\n\nEn 2046, aucun État ne dispose d'une autorité effective sur l'ensemble de son ancien territoire. Des vestiges administratifs ou militaires peuvent subsister localement, sans autorité au-delà de leur région.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 13,
+      "category": "HISTOIRE",
+      "title": "Le monde vingt ans plus tard — la génération d'après",
+      "primary_keys": [
+        "vingt ans",
+        "génération",
+        "enfant",
+        "jeunes",
+        "ancien monde",
+        "avant l'Effondrement",
+        "souvenirs",
+        "anciens",
+        "nés après",
+        "né après"
+      ],
+      "secondary_keys": [
+        "vestiges",
+        "ruines",
+        "archives"
+      ],
+      "negative_keys": [],
+      "content": "En 2046, vingt ans après l'Effondrement, les survivants se sont adaptés à une existence fragmentée. De nombreux enfants et jeunes adultes n'ont jamais connu la civilisation d'avant l'Effondrement ; les survivants les plus âgés conservent parfois des souvenirs et des compétences de l'ancien monde.\n\nDans le monde de 2046, les ruines, les archives, les machines et les objets modernes sont les vestiges matériels de l'ancien monde. Les jeunes nés après l'Effondrement savent chasser, soigner à la main et lire le paysage, mais ignorent parfois les villes, l'électricité courante et les objets du quotidien d'avant : les anciens racontent, les jeunes ne comprennent pas toujours.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 20,
+      "category": "INFECTION",
+      "title": "Syndrome neuro-hémorragique de l'Effondrement (SNHE)",
+      "primary_keys": [
+        "SNHE",
+        "infection",
+        "infecté",
+        "infectés",
+        "maladie",
+        "épidémie",
+        "syndrome",
+        "contaminé",
+        "virus",
+        "fièvre"
+      ],
+      "secondary_keys": [
+        "neurologique",
+        "hémorragique",
+        "mortelle"
+      ],
+      "negative_keys": [],
+      "content": "Le syndrome neuro-hémorragique de l'Effondrement, ou SNHE, est le nom provisoire donné à une maladie infectieuse fictive apparue pendant les événements de 2026. Le SNHE provoque de la fièvre, des troubles neurologiques, de la confusion et, dans certains cas, des comportements agressifs.\n\nLe SNHE peut entraîner des défaillances organiques et la mort : la maladie est presque toujours mortelle chez les personnes qui développent une infection grave. Les malades du SNHE restent des humains vivants, pas des morts-vivants.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 21,
+      "category": "INFECTION",
+      "title": "Transmission du SNHE",
+      "primary_keys": [
+        "morsure",
+        "mordu",
+        "sang",
+        "plaie",
+        "contamination",
+        "contagion",
+        "transmission",
+        "contagieux",
+        "muqueuse",
+        "blessure ouverte"
+      ],
+      "secondary_keys": [
+        "air",
+        "salive",
+        "peau"
+      ],
+      "negative_keys": [],
+      "content": "La transmission du SNHE se produit principalement par morsure, quand de la salive infectieuse entre dans une plaie, par contact direct de sang contaminé avec une blessure ouverte, ou par contact de sang contaminé avec certaines muqueuses.\n\nLe SNHE ne se transmet ni par simple proximité ni par voie aérienne, et le contact avec une peau intacte n'est pas une voie habituelle de contamination. Une exposition au SNHE ne provoque pas systématiquement une infection.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 22,
+      "category": "INFECTION",
+      "title": "Incubation et symptômes du SNHE",
+      "primary_keys": [
+        "incubation",
+        "symptômes",
+        "symptôme",
+        "fièvre",
+        "délire",
+        "confusion",
+        "désorienté",
+        "agressif",
+        "violent",
+        "malade"
+      ],
+      "secondary_keys": [
+        "jours",
+        "douleurs",
+        "neurologique"
+      ],
+      "negative_keys": [],
+      "content": "L'incubation du SNHE dure généralement plusieurs jours, avec une variabilité individuelle. Les symptômes du SNHE comprennent une fièvre importante, des douleurs, une désorientation, des troubles du comportement et une atteinte neurologique progressive.\n\nL'agressivité n'est pas systématique chez un malade du SNHE. Une personne contaminée ne devient pas instantanément violente après une morsure : les signes apparaissent progressivement, après la période d'incubation.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 23,
+      "category": "INFECTION",
+      "title": "Mortalité du SNHE et survivants",
+      "primary_keys": [
+        "mort",
+        "mourir",
+        "mortel",
+        "survivant",
+        "guérison",
+        "guérir",
+        "cadavre",
+        "zombie",
+        "mort-vivant",
+        "réanimer",
+        "séquelles"
+      ],
+      "secondary_keys": [
+        "décès",
+        "cadavres",
+        "déshydratation"
+      ],
+      "negative_keys": [],
+      "content": "La majorité des malades gravement atteints du SNHE décèdent, en général en une à trois semaines sans soins. Quelques personnes peuvent exceptionnellement survivre au SNHE, avec ou sans séquelles.\n\nLes malades du SNHE restent des êtres humains vivants : ils peuvent mourir de blessures, de déshydratation, de malnutrition ou d'autres maladies. Un cadavre ne peut jamais se réanimer, et il n'existe ni zombie ni mort-vivant dans Les Cendres du Monde.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 24,
+      "category": "INFECTION",
+      "title": "Foyers infectieux en 2046 et relais de contamination",
+      "primary_keys": [
+        "foyer",
+        "foyers",
+        "infectés",
+        "relais",
+        "porteur",
+        "porteur chronique",
+        "réservoir",
+        "rongeurs",
+        "charognards",
+        "hôpital",
+        "abri scellé",
+        "charnier"
+      ],
+      "secondary_keys": [
+        "horde",
+        "cave",
+        "cadavres"
+      ],
+      "negative_keys": [],
+      "content": "Les foyers infectieux du SNHE en 2046 sont régionaux, petits (un à dix infectés), récents et inégalement répartis : certaines zones sont sûres, d'autres présentent des foyers actifs ou intermittents. Une maladie aussi mortelle s'éteint vite sans relais, donc tout foyer persistant s'explique par une chaîne de transmission plausible.\n\nTrois relais maintiennent le SNHE en 2046 : des porteurs chroniques, survivants guéris contagieux par le sang pendant des années et parfois sans symptômes graves ; un réservoir animal, charognards et rongeurs qui mordent près des ruines et des charniers anciens ; et des lieux clos contaminés, hôpitaux, abris et caves scellés contenant du sang ou des cadavres encore infectieux.\n\nLe narrateur n'invente pas d'autre relais : pas de horde de dizaines d'infectés, et aucun infecté ne survit vingt ans en phase terminale.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 25,
+      "category": "INFECTION",
+      "title": "Origine inconnue du SNHE",
+      "primary_keys": [
+        "origine",
+        "cause",
+        "d'où vient",
+        "laboratoire",
+        "arme biologique",
+        "théorie",
+        "rumeur",
+        "complot",
+        "accident scientifique",
+        "pourquoi"
+      ],
+      "secondary_keys": [
+        "hypothèse",
+        "preuve",
+        "épidémies"
+      ],
+      "negative_keys": [],
+      "content": "L'origine du SNHE est inconnue : aucune origine définitive de la maladie n'est établie. Plusieurs théories circulent chez les survivants : apparition naturelle, accident scientifique, arme biologique ou confusion entre plusieurs épidémies.\n\nCes théories sur l'origine du SNHE sont des croyances et des hypothèses, pas des faits. Un témoignage, une archive ou une accusation ne devient pas automatiquement une preuve.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 30,
+      "category": "SOCIÉTÉ",
+      "title": "Les 80 millions — population et densité",
+      "primary_keys": [
+        "80 millions",
+        "population",
+        "habitants",
+        "densité",
+        "démographie",
+        "combien de survivants",
+        "désert",
+        "déserté",
+        "rencontre",
+        "croiser"
+      ],
+      "secondary_keys": [
+        "1 %",
+        "refuge",
+        "nomades"
+      ],
+      "negative_keys": [],
+      "content": "Environ 80 millions de personnes vivent sur Terre en 2046, soit environ 1 % de l'humanité d'avant et une moyenne d'environ 0,5 personne par km². Ce chiffre est une référence générale, pas une répartition uniforme : certains territoires sont totalement déserts, d'autres regroupent plusieurs communautés dans une région favorable.\n\nRépartition de référence des survivants : environ 40 % dans les vallées fertiles et plaines tempérées, 25 % sur les côtes et îles, 15 % dans les montagnes et plateaux isolés, 10 % dans les anciennes villes et banlieues, 10 % dans les déserts, taïgas, zones polluées et chez les nomades. La densité dépend de l'eau, des ressources alimentaires, du climat, de la sécurité et de l'histoire locale.\n\nRythme des rencontres : en zone de refuge, une rencontre humaine reste possible chaque jour de marche ; ailleurs, plusieurs jours à plusieurs semaines peuvent s'écouler sans croiser personne.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 31,
+      "category": "SOCIÉTÉ",
+      "title": "Les communautés — échelles de regroupement",
+      "primary_keys": [
+        "communauté",
+        "communautés",
+        "village",
+        "hameau",
+        "ferme",
+        "famille",
+        "cité",
+        "groupe",
+        "dirigeant",
+        "chef",
+        "coutumes"
+      ],
+      "secondary_keys": [
+        "règles",
+        "autonome",
+        "isolé"
+      ],
+      "negative_keys": [],
+      "content": "Les regroupements humains de 2046 vont des individus et familles isolés aux fermes autonomes, aux hameaux, aux villages de quelques dizaines à quelques centaines d'habitants, et à de rares petites cités de plusieurs centaines à quelques milliers de personnes. Au-delà de mille habitants, une cité est exceptionnelle et toujours fragile.\n\nChaque communauté possède ses propres coutumes, règles, ressources et dirigeants éventuels. Aucun modèle politique unique ne s'applique à toute la planète.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 32,
+      "category": "SOCIÉTÉ",
+      "title": "Catégories de groupes organisés",
+      "primary_keys": [
+        "faction",
+        "factions",
+        "groupe",
+        "pillards",
+        "pillard",
+        "bandits",
+        "militaires",
+        "soldats",
+        "scientifiques",
+        "secte",
+        "religieux",
+        "communauté indépendante"
+      ],
+      "secondary_keys": [
+        "enclave",
+        "extorsion",
+        "doctrine"
+      ],
+      "negative_keys": [],
+      "content": "Cinq grandes catégories de groupes organisés, ou factions, peuvent apparaître. Les communautés indépendantes (villages, familles étendues, alliances locales) reposent sur l'entraide et l'agriculture. Les vestiges militaires (anciens soldats, unités fragmentées) gardent une discipline et un équipement rares, avec une fidélité locale. Les pillards sont des bandes qui vivent de vols, d'extorsions ou de violences, souvent des survivants poussés par la faim plutôt que des monstres.\n\nLes enclaves scientifiques sont de petits groupes qui préservent un savoir ou un équipement spécialisé (médecine, énergie, archives). Les groupes religieux ou idéologiques sont des communautés organisées autour d'une croyance ou d'une doctrine, de l'entraide au fanatisme.\n\nCes catégories ne sont pas cinq factions mondiales : chaque faction locale doit posséder sa propre identité et sa propre histoire, inventées par l'histoire en cours.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 33,
+      "category": "SOCIÉTÉ",
+      "title": "Relations humaines",
+      "primary_keys": [
+        "relation",
+        "amitié",
+        "amour",
+        "amoureux",
+        "famille",
+        "couple",
+        "rivalité",
+        "alliance",
+        "consentement",
+        "confiance",
+        "PNJ"
+      ],
+      "secondary_keys": [
+        "volonté",
+        "objectifs",
+        "mentir"
+      ],
+      "negative_keys": [],
+      "content": "Les relations humaines sont libres : les personnages peuvent développer des amitiés, relations amoureuses, familles, rivalités, alliances, conflits et engagements. Les relations intimes reposent sur le consentement des personnes concernées.\n\nLes personnages non joueurs (PNJ) ont leur propre volonté, leurs connaissances, leurs besoins et leurs objectifs. Ils peuvent accepter, refuser, négocier, mentir, changer d'avis ou quitter une relation, y compris quand le joueur n'est pas là.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 34,
+      "category": "SOCIÉTÉ",
+      "title": "Reconstruction limitée",
+      "primary_keys": [
+        "reconstruire",
+        "reconstruction",
+        "rebâtir",
+        "réparer",
+        "puits",
+        "défenses",
+        "mur",
+        "industrie",
+        "usine",
+        "construire",
+        "cultiver"
+      ],
+      "secondary_keys": [
+        "élevage",
+        "électricité",
+        "infrastructure"
+      ],
+      "negative_keys": [],
+      "content": "La reconstruction reste locale et limitée : les communautés peuvent cultiver, élever des animaux, réparer des bâtiments, aménager des puits, construire des défenses et rétablir de petites installations électriques.\n\nLa reconstruction de grandes infrastructures exige une main-d'œuvre, des compétences, des ressources et une organisation adaptées. Une petite communauté ne peut pas recréer spontanément une industrie moderne, et une reconstruction industrielle massive dépasse ses moyens.",
+      "priority": 50,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 40,
+      "category": "RESSOURCES",
+      "title": "Nourriture et eau",
+      "primary_keys": [
+        "eau",
+        "boire",
+        "soif",
+        "faim",
+        "manger",
+        "nourriture",
+        "récolte",
+        "chasse",
+        "pêche",
+        "cueillette",
+        "réserves",
+        "conserves"
+      ],
+      "secondary_keys": [
+        "agriculture",
+        "élevage",
+        "sommeil"
+      ],
+      "negative_keys": [],
+      "content": "L'accès à l'eau potable et à la nourriture est essentiel pour survivre dans Les Cendres du Monde. Une personne a besoin d'environ 2 litres d'eau potable par jour, d'une nourriture suffisante et de plusieurs heures de sommeil ; un effort long sans repas ni repos augmente la fatigue, réduit l'efficacité et expose aux accidents.\n\nLes survivants pratiquent selon les régions l'agriculture, l'élevage, la pêche, la chasse, la cueillette et la récupération. Les récoltes dépendent des saisons, du climat, des sols et du travail disponible, et les réserves sont limitées et peuvent se détériorer.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 41,
+      "category": "RESSOURCES",
+      "title": "Médecine",
+      "primary_keys": [
+        "médecin",
+        "médecine",
+        "soigner",
+        "soins",
+        "médicament",
+        "antibiotique",
+        "blessure",
+        "plaie",
+        "pansement",
+        "désinfectant",
+        "fracture",
+        "plantes"
+      ],
+      "secondary_keys": [
+        "pharmacie",
+        "dysenterie",
+        "tétanos"
+      ],
+      "negative_keys": [],
+      "content": "La médecine est réduite en 2046 : les médicaments modernes, les équipements stériles et les compétences médicales spécialisées sont devenus rares. Les soins reposent sur les connaissances disponibles, les plantes utilisables, les stocks anciens encore valides et les outils récupérés.\n\nSans désinfectant ni antibiotiques, une blessure banale peut devenir grave en quelques jours, et les maladies ordinaires (dysenterie, grippe, tétanos, parasites) frappent vite. Les blessures et maladies peuvent entraîner des complications, et les traitements ne sont jamais miraculeux.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 42,
+      "category": "RESSOURCES",
+      "title": "Armes et défense",
+      "primary_keys": [
+        "arme",
+        "armes",
+        "fusil",
+        "pistolet",
+        "munitions",
+        "balle",
+        "couteau",
+        "arc",
+        "arbalète",
+        "lance",
+        "combat",
+        "tirer"
+      ],
+      "secondary_keys": [
+        "défense",
+        "blessure",
+        "violence"
+      ],
+      "negative_keys": [],
+      "content": "Les armes à feu fonctionnelles sont très rares en 2046, et les munitions compatibles et correctement conservées sont difficiles à obtenir. Les survivants utilisent surtout des outils, couteaux, lances, arcs, arbalètes et dispositifs défensifs improvisés.\n\nLes combats présentent des risques importants de blessures, d'infections et de décès : un affrontement est dangereux, une blessure laisse des séquelles, et la violence n'est jamais gratuite ni décrite pour le spectacle.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 43,
+      "category": "RESSOURCES",
+      "title": "Technologies survivantes",
+      "primary_keys": [
+        "électricité",
+        "panneau solaire",
+        "batterie",
+        "radio",
+        "générateur",
+        "voiture",
+        "véhicule",
+        "carburant",
+        "essence",
+        "ordinateur",
+        "internet",
+        "panne"
+      ],
+      "secondary_keys": [
+        "téléphone",
+        "réseau",
+        "pièces"
+      ],
+      "negative_keys": [],
+      "content": "Des panneaux solaires, batteries, radios, générateurs, véhicules et ordinateurs peuvent encore fonctionner lorsqu'ils ont été préservés et entretenus. Leur usage dépend de l'énergie, des pièces de rechange et des compétences disponibles ; rien ne dure indéfiniment : un outil s'use, une batterie perd sa capacité, un véhicule tombe en panne faute de pièces.\n\nIl n'existe plus d'Internet mondial opérationnel, mais des réseaux locaux isolés et des radios locales peuvent exister. Les véhicules sont rares, remis en état un par un, avec un carburant et des pièces limités.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 44,
+      "category": "RESSOURCES",
+      "title": "Commerce et étalons d'échange",
+      "primary_keys": [
+        "troc",
+        "commerce",
+        "marchand",
+        "marché",
+        "prix",
+        "acheter",
+        "vendre",
+        "échanger",
+        "monnaie",
+        "argent",
+        "sel",
+        "caravane"
+      ],
+      "secondary_keys": [
+        "itinérant",
+        "valeur",
+        "rareté"
+      ],
+      "negative_keys": [],
+      "content": "Le troc domine les échanges de proximité dans Les Cendres du Monde. Des marchés locaux, des marchands itinérants et des caravanes régionales relient certaines communautés ; le commerce à longue distance est rare et risqué.\n\nIl n'existe aucune monnaie universelle, et la valeur d'une marchandise dépend de son utilité, de sa rareté et des conditions locales. Chaque région a ses valeurs de référence, par ordre de fréquence : sel, médicaments et antibiotiques, munitions, carburant, outils en bon état, nourriture conservée. Un marchand itinérant adapte ses prix à la région où il se trouve.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 45,
+      "category": "RESSOURCES",
+      "title": "Savoirs perdus et compétences d'avant",
+      "primary_keys": [
+        "savoir",
+        "connaissance",
+        "compétence",
+        "métier",
+        "profession",
+        "ingénieur",
+        "école",
+        "livre",
+        "apprendre",
+        "enseigner",
+        "âge",
+        "ancien médecin"
+      ],
+      "secondary_keys": [
+        "spécialiste",
+        "théorie",
+        "pratique"
+      ],
+      "negative_keys": [],
+      "content": "La majorité des communautés a perdu une grande partie des connaissances scientifiques et techniques modernes. L'enseignement repose surtout sur la transmission orale, l'observation et l'apprentissage pratique ; les écoles structurées sont rares, et livres, archives et supports numériques subsistent sans garantie de conservation ni de compréhension.\n\nUn métier exercé avant l'Effondrement suppose d'avoir au moins une vingtaine d'années en 2026, donc environ 45 ans ou plus en 2046 (une quarantaine pour un métier sans longues études) ; un personnage plus jeune a appris auprès des survivants, avec des savoirs pratiques et locaux. Sans matériel, un spécialiste conseille mais ne fabrique pas, et vingt ans sans pratique érodent les gestes. Quelques spécialistes peuvent encore maîtriser des savoirs avancés.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 50,
+      "category": "ENVIRONNEMENT",
+      "title": "Le retour de la nature",
+      "primary_keys": [
+        "nature",
+        "végétation",
+        "forêt",
+        "animaux",
+        "faune",
+        "sangliers",
+        "ours",
+        "chiens",
+        "loups",
+        "herbe",
+        "broussaille",
+        "saison"
+      ],
+      "secondary_keys": [
+        "climat",
+        "écologie",
+        "reboisé"
+      ],
+      "negative_keys": [],
+      "content": "La nature reprend progressivement sa place dans Les Cendres du Monde : la végétation envahit les routes, les champs abandonnés et les zones urbaines, et les animaux sauvages recolonisent certains territoires. Après vingt ans, les routes sont fissurées, les jardins et banlieues reboisés, les structures en bois effondrées, tandis que le béton et l'acier tiennent.\n\nLes changements écologiques restent compatibles avec le climat et les espèces locales : la nature ne transforme pas toutes les régions en forêts. La faune respecte la géographie réelle (meutes de chiens, sangliers, ours selon la région), sans créature inventée.",
+      "priority": 50,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 51,
+      "category": "ENVIRONNEMENT",
+      "title": "Ruines et infrastructures",
+      "primary_keys": [
+        "ruines",
+        "bâtiment",
+        "immeuble",
+        "pont",
+        "route",
+        "tunnel",
+        "effondrement",
+        "usine",
+        "fouiller",
+        "récupérer",
+        "ville abandonnée"
+      ],
+      "secondary_keys": [
+        "gaz",
+        "instable",
+        "banlieue"
+      ],
+      "negative_keys": [],
+      "content": "Les bâtiments abandonnés présentent des risques d'effondrement : les constructions vieilles de vingt ans sont instables, avec des gaz et des produits chimiques possibles. Les ponts, routes, tunnels et installations industrielles peuvent être endommagés ou impraticables.\n\nL'état d'une ruine ou d'une infrastructure dépend des destructions initiales, de l'entretien et de vingt années de dégradation. Les anciennes villes et banlieues offrent des ressources à récupérer, mais aussi des ruines instables et des risques sanitaires.",
+      "priority": 50,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 52,
+      "category": "ENVIRONNEMENT",
+      "title": "Contaminations chimiques, industrielles et radioactives",
+      "primary_keys": [
+        "radiation",
+        "radioactif",
+        "nucléaire",
+        "contamination",
+        "toxique",
+        "chimique",
+        "centrale",
+        "déchets",
+        "zone interdite",
+        "compteur Geiger"
+      ],
+      "secondary_keys": [
+        "industrie",
+        "charnier",
+        "frappe"
+      ],
+      "negative_keys": [],
+      "content": "Certains sites présentent encore des dangers chimiques, industriels ou radioactifs, notamment des industries, des centrales et des charniers. Ces contaminations ne sont pas uniformes et sont signalées localement.\n\nUne ancienne frappe nucléaire ne rend pas automatiquement toute une région inhabitable vingt ans plus tard : l'état d'un site contaminé dépend de la nature de la contamination, du lieu et du temps écoulé.",
+      "priority": 50,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 53,
+      "category": "ENVIRONNEMENT",
+      "title": "Dangers autres que l'infection",
+      "primary_keys": [
+        "danger",
+        "menace",
+        "risque",
+        "accident",
+        "incendie",
+        "tempête",
+        "froid",
+        "canicule",
+        "famine",
+        "animal dangereux",
+        "intempéries"
+      ],
+      "secondary_keys": [
+        "maladies ordinaires",
+        "violence",
+        "affamé"
+      ],
+      "negative_keys": [],
+      "content": "L'infection n'est qu'une menace parmi d'autres : la plupart des morts viennent de causes ordinaires, devenues mortelles faute de soins. Les dangers comprennent les intempéries, incendies, accidents, maladies ordinaires, famine, animaux dangereux selon les régions et violences humaines.\n\nUn danger ne frappe pas par hasard : il découle du lieu, de la saison, de l'état du personnage et de ses choix, et le narrateur peut annoncer un risque sérieux avant qu'il se réalise. Le danger humain le plus fréquent est une personne affamée ou effrayée.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 3,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 60,
+      "category": "RÈGLES",
+      "title": "Liberté du joueur — identité, départ et compétences",
+      "primary_keys": [
+        "créer",
+        "début",
+        "départ",
+        "commencer",
+        "identité",
+        "passé",
+        "compétences",
+        "possessions",
+        "classe",
+        "niveau",
+        "quête",
+        "but"
+      ],
+      "secondary_keys": [
+        "histoire",
+        "situation",
+        "liberté"
+      ],
+      "negative_keys": [],
+      "content": "Le joueur définit librement son identité, son passé, son lieu de départ, ses compétences, ses relations et ses possessions, sous réserve de compatibilité avec les lois du monde. Aucune classe, progression par niveaux ou quête principale n'est imposée.\n\nLe narrateur commence l'histoire dans la situation choisie par le joueur, n'importe où sur la planète, et ne joue ni ne décide à la place du joueur pour ses actions, ses paroles ou ses pensées.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 61,
+      "category": "RÈGLES",
+      "title": "Connaissances limitées et rumeurs",
+      "primary_keys": [
+        "savoir",
+        "connaître",
+        "rumeur",
+        "information",
+        "informations",
+        "secret",
+        "renseignement",
+        "mentir",
+        "témoignage",
+        "archive",
+        "ignorer"
+      ],
+      "secondary_keys": [
+        "faux",
+        "incomplet",
+        "ancien"
+      ],
+      "negative_keys": [],
+      "content": "Chaque personnage ne connaît que les informations auxquelles il a raisonnablement accès. Une rumeur ne constitue pas un fait établi, et un PNJ peut disposer d'informations fausses, incomplètes ou anciennes.\n\nUn personnage ne détient jamais une connaissance impossible pour son âge, son passé ou son matériel. Un témoignage ou une archive reste une source à croiser, jamais une preuve automatique.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 62,
+      "category": "RÈGLES",
+      "title": "Persistance du monde et continuité",
+      "primary_keys": [
+        "continuité",
+        "cohérence",
+        "persistance",
+        "distance",
+        "durée",
+        "voyage",
+        "trajet",
+        "jours de marche",
+        "à pied",
+        "cheval",
+        "vélo",
+        "temps"
+      ],
+      "secondary_keys": [
+        "blessure",
+        "engagement",
+        "établi"
+      ],
+      "negative_keys": [],
+      "content": "Les lieux, objets importants, ressources, blessures, relations, engagements et événements établis persistent dans l'histoire. Une jambe cassée au chapitre 3 handicape encore le personnage au chapitre 5.\n\nLe narrateur ne modifie pas arbitrairement les faits déjà confirmés, et les déplacements, distances et durées restent cohérents : à pied, 20 à 25 km par jour en terrain facile et chargé, 8 à 15 km en terrain difficile ou dans les ruines, 50 à 80 km à vélo, 30 à 40 km à cheval.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 63,
+      "category": "RÈGLES",
+      "title": "Lore émergent — mémoire propre à chaque histoire",
+      "primary_keys": [
+        "lore émergent",
+        "lorebook",
+        "canon",
+        "découverte",
+        "histoires",
+        "mémoire"
+      ],
+      "secondary_keys": [
+        "validation",
+        "transfert"
+      ],
+      "negative_keys": [],
+      "content": "Chaque histoire possède son propre lore émergent : les lieux découverts, objets importants, événements et autres informations pertinentes peuvent enrichir automatiquement ce lore, tandis que les profils des PNJ évoluent dans leur système dédié.\n\nLes événements d'une histoire ne modifient pas automatiquement les autres histoires. Le transfert d'une information du lore émergent vers le lorebook général nécessite une validation manuelle, et le lore de l'histoire en cours prime sur le lorebook général pour cette histoire seulement.",
+      "priority": 80,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 64,
+      "category": "RÈGLES",
+      "title": "Conséquences et protection du joueur",
+      "primary_keys": [
+        "mort",
+        "mourir",
+        "conséquence",
+        "blessé",
+        "danger de mort",
+        "trahison",
+        "perdre",
+        "consentement",
+        "tuer",
+        "survivre"
+      ],
+      "secondary_keys": [
+        "séquelles",
+        "rupture",
+        "maladie"
+      ],
+      "negative_keys": [],
+      "content": "Les décisions peuvent produire des conséquences graves : blessures, pertes matérielles, ruptures et maladies. Le narrateur fait payer les choix, en bien comme en mal : une aide offerte peut être rendue des semaines plus tard, une trahison laisse des traces.\n\nLa mort définitive du personnage joueur nécessite son consentement explicite. Cette protection n'annule pas les conséquences réalistes des événements : le narrateur peut mettre le personnage en danger de mort réel et laisser le joueur choisir.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 70,
+      "category": "RÈGLES",
+      "title": "Éléments volontairement ouverts",
+      "primary_keys": [
+        "frappes nucléaires",
+        "cause réelle",
+        "factions régionales",
+        "dirigeants",
+        "routes commerciales",
+        "état de la ville",
+        "inventer",
+        "précision"
+      ],
+      "secondary_keys": [
+        "ouvert",
+        "indéfini"
+      ],
+      "negative_keys": [],
+      "content": "Certains éléments restent volontairement ouverts pour ne pas imposer une histoire unique à toute la planète : l'emplacement exact des frappes nucléaires, le nombre de survivants par pays, l'état détaillé de chaque ville en 2046, l'identité des factions régionales, la cause réelle de l'infection, les routes commerciales locales, les dirigeants et coutumes des communautés.\n\nQuand un de ces éléments est établi dans une histoire, il reste cohérent dans cette histoire. Une information ne devient un fait du monde général que si elle est explicitement ajoutée au lorebook général.",
+      "priority": 60,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 2,
+      "scope": "GLOBAL"
+    }
+  ]
+}

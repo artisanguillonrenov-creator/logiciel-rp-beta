@@ -97,6 +97,11 @@ export function nettoyerScenario(brut: string): string {
 
 export async function genererScenarioDepart(p: ParametresGenerationScenario): Promise<string> {
   const mondeId = p.mondeId ?? monde.actifId();
+  // Départ libre : aucune fiche de lieu n'est garantie, le Lore Core du monde
+  // est alors le seul canon transmis au scénario (sans lui, l'ouverture peut
+  // établir des faits contraires au monde avant que la narration ne démarre).
+  const paquet = paquetMonde(mondeId);
+  const canonDepartLibre = paquet.modules?.depart?.mode !== 'liste' ? paquet.core : '';
   const personnagesFixes = personnagesFixesDuLieu(p.lieuNom, mondeId);
   const lignesPersonnage = [
     `Nom : ${p.personnageNom || 'non précisé'}`,
@@ -112,6 +117,7 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
   const contexte = [
     p.villeDepart && `VILLE DE DÉPART : ${p.villeDepart} (capitale de la race du personnage : la scène s'y déroule)`,
     p.mondeNom && `MONDE : ${p.mondeNom}${p.mondeDescription ? ` — ${p.mondeDescription}` : ''}`,
+    canonDepartLibre && `CANON DU MONDE (fait autorité, ne le contredis jamais) :\n${canonDepartLibre}`,
     `PERSONNAGE :\n${lignesPersonnage}`,
     p.lieuNom && `LIEU DE DÉPART : ${p.lieuNom}${p.lieuDescription ? ` — ${p.lieuDescription}` : ''}`,
     p.situationNom && `SITUATION DE DÉPART : ${p.situationNom}${p.situationDescription ? ` — ${p.situationDescription}` : ''}`,
@@ -131,7 +137,7 @@ export async function genererScenarioDepart(p: ParametresGenerationScenario): Pr
     messages: [
       {
         role: 'system',
-        content: consigneScenarioDe(paquetMonde(mondeId)) + instructionRegistre,
+        content: consigneScenarioDe(paquet) + instructionRegistre,
       },
       { role: 'user', content: contexte },
     ],
