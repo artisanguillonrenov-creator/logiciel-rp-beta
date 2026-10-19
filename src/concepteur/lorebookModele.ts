@@ -1,5 +1,12 @@
 import type { ElyndorEntryChargee } from '../engine/loreLoader';
 import { infererScopeLore, normaliserLore, type ScopeLore } from '../engine/loreScoring';
+import { MONDE_PAR_DEFAUT } from '../mondes';
+
+// Une clé de stockage par monde. Celle d'Elyndor reste la clé historique, sans migration.
+const CLE_LORE_ELYNDOR = '@elyndor/concepteur/lorebook-v1';
+export function cleLoreAtelier(mondeId: string): string {
+  return mondeId === MONDE_PAR_DEFAUT ? CLE_LORE_ELYNDOR : `${CLE_LORE_ELYNDOR}/${mondeId}`;
+}
 
 /** Les fiches d'origine du monde restent intactes ; seules les différences sont enregistrées. */
 export const LORE_SCHEMA = 1 as const;

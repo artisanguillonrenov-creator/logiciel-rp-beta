@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type Image
 import { getStoriesIndex, getStory } from '../storage/storage';
 import { obtenirAvatarPnj } from '../storage/pnjAvatarsStore';
 import { obtenirAssetVisuel } from '../storage/assetsVisuelsStore';
-import { monde, mondeIdDe, obtenirPortrait, racesDuMonde } from '../mondes';
+import { histoiresDuMonde, monde, mondeIdDe, obtenirPortrait, racesDuMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import { lireAssetsLore } from '../concepteur/assetsLoreStore';
 import { lireLoreAtelier } from '../concepteur/lorebookStore';
@@ -114,7 +114,7 @@ export default function SelecteurReferencesElyndor({ selection, onBasculer, hist
     let actif = true;
     getStoriesIndex().then((index) => {
       if (!actif) return;
-      const liste = index.slice(0, 30).map((h: any) => ({ id: h.id, titre: h.titre ?? h.personnageNom ?? h.id }));
+      const liste = histoiresDuMonde(index, monde.actifId()).slice(0, 30).map((h: any) => ({ id: h.id, titre: h.titre ?? h.personnageNom ?? h.id }));
       setHistoires(liste);
       setHistoireId((courant) => courant ?? liste[0]?.id);
     }).catch(() => undefined);

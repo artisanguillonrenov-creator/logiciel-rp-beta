@@ -1,16 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { creerFileSerie } from '../storage/serialQueue';
-import { MONDE_PAR_DEFAUT, monde } from '../mondes';
+import { monde } from '../mondes';
 import {
-  creerEtatLore, validerEtatLore, modifierEtatLore, restaurerRevisionLore, analyserImportLore,
+  cleLoreAtelier, creerEtatLore, validerEtatLore, modifierEtatLore, restaurerRevisionLore, analyserImportLore,
   type EtatLore,
 } from './lorebookModele';
-
-// Une clé par monde. Celle d'Elyndor reste la clé historique, sans migration.
-const CLE_ELYNDOR = '@elyndor/concepteur/lorebook-v1';
-export function cleLoreAtelier(mondeId: string): string {
-  return mondeId === MONDE_PAR_DEFAUT ? CLE_ELYNDOR : `${CLE_ELYNDOR}/${mondeId}`;
-}
 
 const queue = creerFileSerie();
 const caches = new Map<string, EtatLore>();

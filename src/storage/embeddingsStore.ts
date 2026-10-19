@@ -45,6 +45,8 @@ function lireEntree(valeur: string): { entree: EntreeCache; ancienFormat: boolea
     : null;
 }
 
+// Les fiches de lore sont identifiées par monde (« <mondeId>-<n> », atelier-…,
+// emergent-…) : deux mondes ne partagent jamais une entrée du cache.
 function cleEntree(id: string): string {
   return `${PREFIXE_ENTREE}${id}`;
 }

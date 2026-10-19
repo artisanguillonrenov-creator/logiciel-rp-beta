@@ -3,8 +3,9 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInpu
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { LORE_CORE } from '../mondes/elyndor/core';
+import { deNomMonde, histoiresDuMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
+import { useMondeActif } from '../mondes/useMondeActif';
 import { construirePassages, selectionnerPassages } from '../engine/passagesLore';
 import { infererScopeLore, type ScopeLore } from '../engine/loreScoring';
 import { getStoriesIndex, getStory } from '../storage/storage';
@@ -22,7 +23,6 @@ import { dossiersNavigationLore } from '../concepteur/navigationLore';
 import { assisterFicheLore, type ActionAI, type TailleAI, type FideliteAI, type PropositionLoreIA } from '../concepteur/lorebookAssistant';
 import { importerLoreAtelier, lireLoreAtelier, modifierLoreAtelier, restaurerLoreAtelier } from '../concepteur/lorebookStore';
 
-const BASE = donneesMonde('elyndor').lore;
 const SCOPES: ScopeLore[] = ['GLOBAL', 'CONTINENT', 'REGION', 'CITY', 'FACTION', 'CHARACTER', 'SCENE'];
 const MODES: Array<{ id: ActionAI; titre: string }> = [
   { id: 'creer', titre: 'Créer' }, { id: 'enrichir', titre: 'Enrichir' },
@@ -36,6 +36,10 @@ interface LoreProposition { id: string; titre: string; contenu: string; categori
 
 export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourceId: string; avatarSource?: { storyId: string; pnjId: string }; fiche: Partial<FicheEditable> } }) {
   const dernierePromotion = useRef('');
+  // Lorebook du monde actif : canon du paquet et éditions de l'Atelier propres à ce monde.
+  const paquet = useMondeActif();
+  const mondeId = paquet.id;
+  const BASE = useMemo(() => donneesMonde(mondeId).lore, [mondeId]);
   const [etat, setEtat] = useState<EtatLore | null>(null);
   const [charge, setCharge] = useState(true);
   const [occupe, setOccupe] = useState(false);
@@ -64,15 +68,15 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
 
   useEffect(() => {
     let present = true;
-    lireLoreAtelier().then(v => { if (present) setEtat(v); })
+    lireLoreAtelier(mondeId).then(v => { if (present) setEtat(v); })
       .catch(e => { if (present) setErreur(erreurTexte(e)); })
       .finally(() => { if (present) setCharge(false); });
     return () => { present = false; };
-  }, []);
+  }, [mondeId]);
 
-  const fiches = useMemo(() => etat ? listerFichesLore(BASE, etat) : [], [etat]);
+  const fiches = useMemo(() => etat ? listerFichesLore(BASE, etat) : [], [BASE, etat]);
   const courante = useMemo(() => fiches.find(f => f.id === id), [fiches, id]);
-  const originales = useMemo(() => id ? BASE.find(f => f.id === id) : undefined, [id]);
+  const originales = useMemo(() => id ? BASE.find(f => f.id === id) : undefined, [BASE, id]);
   const baseEdition = useMemo(() => {
     if (!id || !etat) return null;
     return etat.brouillons[id] ?? courante ?? null;
@@ -154,7 +158,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
   };
   async function transaction(action: (avant: EtatLore) => EtatLore, succes: string): Promise<boolean> {
     setOccupe(true); setErreur(''); setMessage('');
-    try { setEtat(await modifierLoreAtelier(action)); setMessage(succes); return true; }
+    try { setEtat(await modifierLoreAtelier(action, mondeId)); setMessage(succes); return true; }
     catch (e) { setErreur(erreurTexte(e)); return false; }
     finally { setOccupe(false); }
   }
@@ -200,7 +204,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
     setOccupe(true); setErreur(''); setMessage(''); setProposition(null);
     try {
       const resultat = await assisterFicheLore(edition, action, taille, fidelite,
-        appliquerLorePublie(BASE, etat ?? creerEtatLore()), id);
+        appliquerLorePublie(BASE, etat ?? creerEtatLore()), id, paquet.carte.nom);
       setProposition(resultat);
       setMessage(action === 'coherence'
         ? 'Avis IA disponible (non exhaustif, ne garantit pas le canon).'
@@ -222,7 +226,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
     try {
       const texte = creerExportLore(etat);
       if (await Sharing.isAvailableAsync() && FileSystem.documentDirectory) {
-        const chemin = FileSystem.documentDirectory + 'Elyndor-Lorebook-' + new Date().toISOString().slice(0, 10) + '.json';
+        const chemin = FileSystem.documentDirectory + paquet.carte.nom.replace(/[^a-zA-Z0-9_-]+/g, '-') + '-Lorebook-' + new Date().toISOString().slice(0, 10) + '.json';
         await FileSystem.writeAsStringAsync(chemin, texte, { encoding: FileSystem.EncodingType.UTF8 });
         await Sharing.shareAsync(chemin, { mimeType: 'application/json', dialogTitle: 'Exporter le Lorebook' });
         setMessage('Export proposé dans le partage Android.');
@@ -242,7 +246,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         [{ text: 'Annuler', style: 'cancel' }, { text: 'Importer', onPress: () => {
           void (async () => {
             setOccupe(true);
-            try { setEtat(await importerLoreAtelier(texte)); setMessage('Import réussi : vérifie les brouillons.'); }
+            try { setEtat(await importerLoreAtelier(texte, mondeId)); setMessage('Import réussi : vérifie les brouillons.'); }
             catch (e) { setErreur(erreurTexte(e)); }
             finally { setOccupe(false); }
           })();
@@ -252,7 +256,8 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
   async function chargerEmergents() {
     setOccupe(true); setErreur('');
     try {
-      const index = await getStoriesIndex();
+      // Seules les histoires du monde de ce lorebook proposent leur lore émergent.
+      const index = histoiresDuMonde(await getStoriesIndex(), mondeId);
       const trouvés: LoreProposition[] = [];
       for (const h of index.slice(0, 30)) {
         const story = await getStory(h.id);
@@ -391,12 +396,12 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         onPress={confirmerSuppression} style={styles.bouton}/>}
       {originales && <Text style={styles.aide}>Fiche d’origine conservée dans l’application. ID : {id}.</Text>}
     </View> : <View>
-      <Text style={styles.titre}>Bibliothèque d'Elyndor</Text>
+      <Text style={styles.titre}>Bibliothèque {deNomMonde(paquet)}</Text>
       <Bouton titre={voirCore ? 'Masquer le Lore Core protégé' : 'Consulter le Lore Core protégé'}
         variante="secondaire" onPress={() => setVoirCore(!voirCore)} style={styles.bouton}/>
       {voirCore && <View style={styles.proposition}>
         <Text style={styles.label}>LORE CORE — LECTURE SEULE</Text>
-        <Text selectable style={styles.texte}>{LORE_CORE}</Text>
+        <Text selectable style={styles.texte}>{paquet.core}</Text>
         <Text style={styles.aide}>Ce texte appartient au noyau du logiciel et ne peut pas être modifié ici.</Text>
       </View>}
       <Text style={styles.aide}>{BASE.length} fiches canoniques d’origine · {Object.keys(etat.ajouts).length} ajout(s) publié(s) · {Object.keys(etat.brouillons).length} brouillon(s) · révision {etat.numero}.</Text>
@@ -453,7 +458,7 @@ export default function LorebookPanel({ promotionPnj }: { promotionPnj?: { sourc
         Alert.alert('Restaurer la révision ' + r.numero + ' ?',
           'La configuration actuelle sera conservée dans l’historique.',
           [{ text:'Annuler',style:'cancel' },{ text:'Restaurer',onPress:()=>{
-            void (async()=>{setOccupe(true);try{setEtat(await restaurerLoreAtelier(r.numero));setMessage('Révision restaurée.');}
+            void (async()=>{setOccupe(true);try{setEtat(await restaurerLoreAtelier(r.numero, mondeId));setMessage('Révision restaurée.');}
               catch(e){setErreur(erreurTexte(e));}finally{setOccupe(false);}})();
           }}])}>
         <Text style={styles.texte}>Révision {r.numero} · {new Date(r.date).toLocaleString('fr-FR')} · {r.motif}</Text>
