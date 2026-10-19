@@ -27,7 +27,7 @@ import { obtenirPortrait, racesDuMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import { useMondeActif } from '../mondes/useMondeActif';
 import { ETAPES_CREATION, parcoursCreation } from '../mondes/creation';
-import { genererScenarioDepart } from '../engine/scenarioGenerator';
+import { ficheDuLieu, genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
 import { creerNouvelleHistoire } from '../engine/story';
@@ -340,7 +340,7 @@ export default function CreateScreenStudio({ navigation }: Props) {
     setErreurGeneration('');
     try {
       const settings = await getSettings();
-      const extraitLore = donneesMonde(paquet.id).lore.find((e) => e.titre.toLowerCase() === lieuNom.toLowerCase())?.contenu;
+      const extraitLore = ficheDuLieu(donneesMonde(paquet.id).lore, lieuNom)?.contenu;
       const texte = await genererScenarioDepart({
         appSettings: settings,
         mondeId: paquet.id,

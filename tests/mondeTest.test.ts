@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { listerMondes, paquetMonde, racesDuMonde, titreLoreDe } from '../src/mondes';
+import { histoiresDuMonde, listerMondes, mondeIndisponible, paquetMonde, racesDuMonde, titreLoreDe } from '../src/mondes';
 import { donneesMonde } from '../src/mondes/donnees';
 import { ETAPES_CREATION, parcoursCreation } from '../src/mondes/creation';
 import { promptTourType } from './promptElyndorTours';
 import { preparerTour } from '../src/engine/ficheScene';
 import { construireContexteNoyau, assurerNoyau } from '../src/engine/noyauNarratif';
 import { detecterRacePnj, racePnjDepuisId } from '../src/engine/racePnj';
-import { CONSIGNE_SCENARIO_GENERIQUE, genererScenarioDepart, personnagesFixesDuLieu } from '../src/engine/scenarioGenerator';
+import { CONSIGNE_SCENARIO_GENERIQUE, ficheDuLieu, genererScenarioDepart, personnagesFixesDuLieu } from '../src/engine/scenarioGenerator';
 import { mettreAJourLoreEmergent } from '../src/engine/emergentLore';
 import { optionsDeltaEtatSepare } from '../src/engine/deltaEtatSepare';
 import { creerNouvelleHistoire } from '../src/engine/story';
@@ -137,4 +137,26 @@ test('lore émergent et état séparé : le nom du monde vient du paquet, aucun 
   assert.match(optionsDeltaEtatSepare(entree).messages[0].content, /^Tu es le moteur d'extraction d'état, pas son narrateur\./);
   assert.match(optionsDeltaEtatSepare({ ...entree, nomMonde: 'Elyndor' }).messages[0].content,
     /^Tu es le moteur d'extraction d'état d'Elyndor, pas son narrateur\./);
+});
+
+test('extrait du lore pour le lieu de départ : titre sans catégorie ou nom propre avant le tiret long', () => {
+  assert.equal(ficheDuLieu(donneesMonde('monde-test').lore, 'port-essai')?.id, 'monde-test-1');
+  assert.equal(ficheDuLieu(donneesMonde('monde-test').lore, 'Auberge du Pivot')?.id, 'monde-test-2');
+  assert.match(ficheDuLieu(donneesMonde('elyndor').lore, 'Guilde des Aventuriers')?.titre ?? '', /^\[GUILDE\] Guilde des Aventuriers$/);
+  assert.equal(ficheDuLieu(donneesMonde('monde-test').lore, 'Lieu inconnu'), undefined);
+});
+
+test('packs de contenu : seuls ceux du monde de l’histoire sont retenus, les anciens sont d’Elyndor', () => {
+  const packs = [
+    { id: 'ancien', nom: 'Ancien', entrees: [], installeLe: 1 },
+    { id: 'test', nom: 'Test', entrees: [], installeLe: 1, mondeId: 'monde-test' },
+  ];
+  assert.deepEqual(histoiresDuMonde(packs, 'elyndor').map((p) => p.id), ['ancien']);
+  assert.deepEqual(histoiresDuMonde(packs, 'monde-test').map((p) => p.id), ['test']);
+});
+
+test('une histoire d’un monde retiré est signalée indisponible, une ancienne histoire reste d’Elyndor', () => {
+  assert.equal(mondeIndisponible({ mondeId: 'monde-retire' }), true);
+  assert.equal(mondeIndisponible({ mondeId: 'monde-test' }), false);
+  assert.equal(mondeIndisponible({}), false);
 });

@@ -4,6 +4,7 @@ import { ErreurProfilContenu, INSTRUCTION_REGISTRE_GRAND_PUBLIC, validerProfilCo
 import { monde, paquetMonde, type PaquetMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import { analyserIntention } from './intentionJoueur';
+import { normaliserTexte } from './texteRecherche';
 
 export interface ParametresGenerationScenario {
   appSettings: AppSettings;
@@ -47,6 +48,20 @@ Interdits : terminer par une question au joueur (« Que fais-tu ? ») ; décider
 /** Consigne du scénario de départ d'un monde : la sienne, sinon la consigne générique. */
 export function consigneScenarioDe(paquet: PaquetMonde): string {
   return paquet.consigneScenario ?? CONSIGNE_SCENARIO_GENERIQUE;
+}
+
+/**
+ * Fiche du lorebook consacrée au lieu de départ : son titre sans catégorie
+ * (« [GUILDE] Guilde des Aventuriers ») ou son nom propre avant le tiret long
+ * (« [LIEU] Port-Essai — ville fluviale ») correspond au lieu choisi.
+ */
+export function ficheDuLieu<T extends { titre: string }>(lore: readonly T[], lieuNom: string): T | undefined {
+  const cle = normaliserTexte(lieuNom);
+  if (!cle) return undefined;
+  return lore.find((e) => {
+    const titre = e.titre.replace(/^\[[^\]]*\]\s*/, '');
+    return normaliserTexte(titre) === cle || normaliserTexte(titre.split(/\s+[—–]\s+/)[0]) === cle;
+  });
 }
 
 /** Personnages fixés par le lore pour le lieu choisi (maîtresses de guilde, réceptionnistes…), par ville. */

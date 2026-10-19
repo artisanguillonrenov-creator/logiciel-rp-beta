@@ -39,7 +39,7 @@ import { construirePassages, selectionnerPassagesDetaille, type RapportSelection
 import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
-import { mondeIdDe, paquetMonde, titreLoreDe } from '../mondes';
+import { histoiresDuMonde, mondeIdDe, paquetMonde, titreLoreDe } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
@@ -240,7 +240,8 @@ export async function calculerSelectionLore(
   const poolElyndorBrut = [
     ...loreCourant,
     ...convertirLoreEmergentPourSelection(story.loreEmergent),
-    ...convertirPluginsPourSelection(plugins),
+    // Seuls les packs installés pour le monde de l'histoire rejoignent son lore.
+    ...convertirPluginsPourSelection(histoiresDuMonde(plugins, paquet.id)),
   ];
   const poolElyndor = profilAdulte
     ? poolElyndorBrut

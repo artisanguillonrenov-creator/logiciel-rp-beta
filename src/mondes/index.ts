@@ -57,9 +57,14 @@ export const monde = {
   },
 };
 
-/** Histoires du monde donné (une histoire sans mondeId est d'Elyndor). */
+/** Éléments (histoires, packs de contenu) du monde donné ; sans mondeId : Elyndor. */
 export function histoiresDuMonde<T extends { mondeId?: string }>(liste: readonly T[], mondeId: string): T[] {
   return liste.filter((meta) => mondeIdDe(meta) === mondeId);
+}
+
+/** Vrai pour une histoire d'un monde explicitement nommé mais absent de ce build (paquet retiré ou renommé). */
+export function mondeIndisponible(meta: { mondeId?: string } | null | undefined): boolean {
+  return !!meta?.mondeId && !trouverMonde(meta.mondeId);
 }
 
 /** Titre du bloc de lore du prompt : celui du paquet, sinon dérivé du nom. */

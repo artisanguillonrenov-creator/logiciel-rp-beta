@@ -542,6 +542,9 @@ export interface Plugin {
   nom: string;
   entrees: PluginEntree[];
   installeLe: number;
+  // Monde pour lequel le pack a été installé (paquet monde). Absent sur les
+  // packs installés avant le chantier multi-mondes : ils sont d'Elyndor.
+  mondeId?: string;
 }
 
 export interface LoreEntry {

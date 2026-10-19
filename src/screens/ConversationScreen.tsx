@@ -52,7 +52,7 @@ import BoutonDictee from '../components/BoutonDictee';
 import { useLangue } from '../i18n/LangueProvider';
 import { definirPuitsJournal } from '../engine/journalDiagnostic';
 import { ajouterAuJournal } from '../storage/journalDiagnosticStore';
-import { monde, mondeIdDe } from '../mondes';
+import { monde, mondeIdDe, mondeIndisponible } from '../mondes';
 import { memoriserMondeActif } from '../mondes/memorisation';
 
 const IMAGE_CONVERSATION = require('../../assets/scenes/cour-des-serments.png');
@@ -171,6 +171,11 @@ export default function ConversationScreen({ route, navigation }: Props) {
     setErreur('');
     Promise.all([getStory(storyId), getSettings()]).then(([s, settings]) => {
       if (!actif) return;
+      // Monde retiré ou renommé : l'histoire n'est pas rejouée avec le lore d'un autre monde.
+      if (mondeIndisponible(s?.meta)) {
+        setErreur(`Le monde de cette histoire (« ${s?.meta.mondeId} ») n'est pas disponible dans cette version de l'application.`);
+        return;
+      }
       setStory(s);
       setAppSettings(settings);
       if (!s) setErreur('Cette histoire est introuvable.');
