@@ -20,8 +20,10 @@ const REGLAGES = {
   romance: 'modere', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal',
 } as const;
 
-interface TourType {
+export interface TourType {
   nom: string;
+  /** Monde de l'histoire ; absent : histoire sans mondeId (Elyndor). */
+  mondeId?: string;
   lieu: string;
   profil: ProfilContenu;
   message: string;
@@ -49,8 +51,9 @@ function histoire(tour: TourType): StoryState {
     pointDeDepart: `${tour.lieu}, à l’aube.`,
     contexte: { lieu: tour.lieu, ambiance: 'Dark fantasy politique et aventure', dateChronique: '', objectifs: '' },
     settings: { ...REGLAGES },
-    raceOrigineId: 'humains',
+    raceOrigineId: tour.mondeId ? undefined : 'humains',
     sexe: 'Femme',
+    mondeId: tour.mondeId,
   });
   story.meta.id = `histoire-${tour.nom}`;
   story.meta.createdAt = 1;

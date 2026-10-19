@@ -26,6 +26,7 @@ import type {
 import { obtenirPortrait, racesDuMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import { useMondeActif } from '../mondes/useMondeActif';
+import { ETAPES_CREATION, parcoursCreation } from '../mondes/creation';
 import { genererScenarioDepart } from '../engine/scenarioGenerator';
 import { genererMessageOuverture } from '../engine/openingGenerator';
 import { lireConfigurationAtelier } from '../concepteur/depotConfiguration';
@@ -62,7 +63,7 @@ const IMAGES_ETAPES = [
 // monde actif. Les choix liés à un module absent du paquet (races, lieux et
 // situations de départ) sont masqués ; sans module de départ en mode liste, le
 // joueur écrit librement son lieu et sa situation.
-const ETAPES = ['Personnage', 'Départ', 'Style', 'Résumé'] as const;
+const ETAPES = ETAPES_CREATION;
 // Illustration de chaque étape (index d'ETAPES) dans IMAGES_ETAPES.
 const IMAGE_DE_L_ETAPE = [1, 2, 3, 4];
 
@@ -205,9 +206,8 @@ export default function CreateScreenStudio({ navigation }: Props) {
   const [profilContenu, setProfilContenu] = useState<ProfilContenu | undefined>(undefined);
   const paquet = useMondeActif();
   const races = racesDuMonde(paquet);
-  const avecRaces = races.length > 0;
+  const { choixRace: avecRaces, departListe } = parcoursCreation(paquet);
   const moduleDepart = paquet.modules?.depart;
-  const departListe = moduleDepart?.mode === 'liste' && !!moduleDepart.lieux?.length;
   const lieuxDepart = departListe ? moduleDepart?.lieux ?? [] : [];
   const [nom, setNom] = useState('');
   const [sexe, setSexe] = useState('Femme');

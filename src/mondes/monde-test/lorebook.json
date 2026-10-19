@@ -1,0 +1,126 @@
+{
+  "source": "Monde de test — paquet fictif et jetable du chantier multi-mondes (phase 5). Sert uniquement aux tests ; peut être supprimé.",
+  "entry_count": 10,
+  "entries": [
+    {
+      "id": 0,
+      "category": "MONDE",
+      "title": "Plaine de Brumeval — région d'essai",
+      "primary_keys": ["Brumeval", "plaine", "plaine de Brumeval", "région", "campagne", "champs", "brume"],
+      "secondary_keys": ["route", "village"],
+      "negative_keys": ["brume de mer"],
+      "content": "La Plaine de Brumeval est une région agricole couverte de brume chaque matin. La Plaine de Brumeval compte quelques villages, une rivière lente et une seule ville, Port-Essai.\n\nLa Plaine de Brumeval n'a ni roi ni armée : un conseil de bourgs règle les litiges une fois par saison.",
+      "priority": 5,
+      "constant": true,
+      "scope": "CITY"
+    },
+    {
+      "id": 1,
+      "category": "VILLE",
+      "title": "Port-Essai — ville fluviale",
+      "primary_keys": ["Port-Essai", "port", "ville", "quai", "quais", "rivière", "docks", "bateliers"],
+      "secondary_keys": ["marché", "pont"],
+      "negative_keys": ["port de mer"],
+      "content": "Port-Essai est la seule ville de la Plaine de Brumeval, bâtie sur les deux rives d'une rivière lente. Port-Essai vit du commerce des bateliers qui descendent le grain vers l'aval.\n\nLes quais de Port-Essai ferment au coucher du soleil ; une cloche de bronze annonce leur fermeture.",
+      "priority": 22,
+      "constant": false,
+      "scope": "CITY"
+    },
+    {
+      "id": 2,
+      "category": "LIEU",
+      "title": "Auberge du Pivot — auberge des quais",
+      "primary_keys": ["Auberge du Pivot", "Pivot", "auberge", "taverne", "chambre", "repas", "bière"],
+      "secondary_keys": ["quais", "Port-Essai"],
+      "negative_keys": [],
+      "content": "L'Auberge du Pivot est l'auberge principale des quais de Port-Essai. L'Auberge du Pivot loue six chambres et sert une soupe de poisson réputée.\n\nL'Auberge du Pivot sert aussi de bureau de poste : les lettres des bateliers y attendent leur destinataire.",
+      "priority": 25,
+      "constant": false,
+      "scope": "CITY"
+    },
+    {
+      "id": 3,
+      "category": "PERSONNAGE",
+      "title": "Odile Marsac — aubergiste du Pivot",
+      "primary_keys": ["Odile Marsac", "Odile", "Marsac", "aubergiste", "patronne", "hôtesse"],
+      "secondary_keys": ["Auberge du Pivot"],
+      "negative_keys": [],
+      "content": "Odile Marsac tient l'Auberge du Pivot depuis vingt ans. Odile Marsac connaît chaque batelier de Port-Essai par son prénom et n'oublie jamais une dette.\n\nOdile Marsac refuse de servir quiconque porte une arme dégainée dans sa salle.",
+      "priority": 28,
+      "constant": false,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 4,
+      "category": "FACTION",
+      "title": "Compagnie des Lanternes — guet de nuit",
+      "primary_keys": ["Compagnie des Lanternes", "Lanternes", "guet", "garde", "gardes", "patrouille", "lanterne"],
+      "secondary_keys": ["nuit", "Port-Essai"],
+      "negative_keys": ["lanterne magique"],
+      "content": "La Compagnie des Lanternes assure le guet de nuit à Port-Essai. La Compagnie des Lanternes compte une douzaine de membres qui portent chacun une lanterne verte.\n\nLa Compagnie des Lanternes n'arrête personne : elle escorte les égarés et signale les incendies.",
+      "priority": 30,
+      "constant": false,
+      "scope": "FACTION"
+    },
+    {
+      "id": 5,
+      "category": "LIEU",
+      "title": "Moulin de la Rive — moulin à eau",
+      "primary_keys": ["Moulin de la Rive", "moulin", "meunier", "farine", "roue", "grain"],
+      "secondary_keys": ["rivière", "Brumeval"],
+      "negative_keys": ["moulin à vent"],
+      "content": "Le Moulin de la Rive est un moulin à eau en amont de Port-Essai. Le Moulin de la Rive moud tout le grain de la Plaine de Brumeval avant son départ par bateau.\n\nLa roue du Moulin de la Rive s'arrête chaque hiver quand la rivière gèle.",
+      "priority": 45,
+      "constant": false,
+      "scope": "CITY"
+    },
+    {
+      "id": 6,
+      "category": "OBJET",
+      "title": "Jeton de passage — monnaie des quais",
+      "primary_keys": ["jeton de passage", "jeton", "jetons", "monnaie", "payer", "pièce"],
+      "secondary_keys": ["bateliers", "quais"],
+      "negative_keys": [],
+      "content": "Le jeton de passage est un disque de cuivre percé utilisé comme monnaie sur les quais de Port-Essai. Un jeton de passage paie une traversée de la rivière ou un repas simple.\n\nLe jeton de passage n'a aucune valeur hors de la Plaine de Brumeval.",
+      "priority": 60,
+      "constant": false,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 7,
+      "category": "COUTUME",
+      "title": "Fête des Brumes — fête d'automne",
+      "primary_keys": ["Fête des Brumes", "fête", "festival", "automne", "célébration", "danse"],
+      "secondary_keys": ["Brumeval"],
+      "negative_keys": [],
+      "content": "La Fête des Brumes célèbre la fin des moissons dans la Plaine de Brumeval. Pendant la Fête des Brumes, chaque foyer pose une bougie sur la rivière.\n\nLa Fête des Brumes dure trois nuits ; la Compagnie des Lanternes double alors ses patrouilles.",
+      "priority": 70,
+      "constant": false,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 8,
+      "category": "LIEU",
+      "title": "Pont des Deux Rives — pont de pierre",
+      "primary_keys": ["Pont des Deux Rives", "pont", "pont de pierre", "traversée", "rive", "rives"],
+      "secondary_keys": ["Port-Essai", "rivière"],
+      "negative_keys": [],
+      "content": "Le Pont des Deux Rives relie les deux moitiés de Port-Essai. Le Pont des Deux Rives est le seul pont de pierre de la Plaine de Brumeval.\n\nUn péage d'un jeton de passage est demandé aux charrettes qui empruntent le Pont des Deux Rives.",
+      "priority": 50,
+      "constant": false,
+      "scope": "CITY"
+    },
+    {
+      "id": 9,
+      "category": "MONDE",
+      "title": "Règles du monde de test — invariants",
+      "primary_keys": ["règles", "invariants", "technologie", "magie", "époque", "monde"],
+      "secondary_keys": [],
+      "negative_keys": [],
+      "content": "Le monde de test n'a pas de magie et une technologie de petite ville rurale : bateaux à rames, moulins, lanternes à huile. Aucune créature surnaturelle n'existe dans le monde de test.\n\nLes nouvelles circulent à pied ou par bateau : un message met une journée à traverser la Plaine de Brumeval.",
+      "priority": 8,
+      "constant": true,
+      "scope": "GLOBAL"
+    }
+  ]
+}

@@ -4,11 +4,11 @@
 L'écran « Réglages concepteur » n'affiche plus les détails des catégories sous les cartes. Il sert d'accueil. Chacune des 14 cartes ouvre sa propre page native React Navigation, avec retour Android. Les catégories « À développer » restent distinctes des fonctions actives.
 
 ## Lorebook
-- Les 102 entrées de \`src/data/elyndorLore.json\` sont une base immuable. Les différences éditées, nouvelles fiches et brouillons sont conservés localement dans la clé AsyncStorage \`@elyndor/concepteur/lorebook-v1\`.
+- Les 102 entrées de \`src/mondes/elyndor/lorebook.json\` sont une base immuable. Les différences éditées, nouvelles fiches et brouillons sont conservés localement dans la clé AsyncStorage \`@elyndor/concepteur/lorebook-v1\`.
 - Bibliothèque mixte : dossiers/sous-dossiers virtuels, catégories, filtres de statut, recherche intégrale et écran de fiche.
 - Fiche : quatre onglets Contenu, Activation, Avancé, Diagnostic. Saisie du texte, clés principales/secondaires/négatives, priorité, portée, activation et dossiers.
 - Fiches ordinaires : sauvegarde immédiate. Fiches constantes / royaumes / profils / personnages officiels : brouillon obligatoire suivi d'une confirmation de publication. Les nouvelles fiches débutent également en brouillon.
-- Le Lore Core du code \`src/data/loreCore.ts\` n'est jamais modifié. Les métamoteurs V2.1 restent séparés.
+- Le Lore Core du code \`src/mondes/elyndor/core.ts\` n'est jamais modifié. Les métamoteurs V2.1 restent séparés.
 - Historique borné à huit états, possibilité de restauration. Export JSON différentiel sans secrets ; import depuis le presse-papier dans les brouillons uniquement.
 - Un bouton Assistant IA rédige, enrichit, réécrit ou vérifie la cohérence. Paramètres : court/détaillé/encyclopédique et fidélité stricte/créative. La proposition est **prévisualisée** ; « Accepter dans le formulaire » ne publie pas la fiche. L'IA ne peut pas transformer une fiche en « constante ».
 - Lore émergent : explorer des entrées permanentes des 30 histoires locales récentes et en proposer une copie dans un brouillon de fiche. Les faits propres à la partie ne changent jamais automatiquement le canon global.
