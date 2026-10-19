@@ -5,7 +5,7 @@
 // scène et rôles canon. Aucun élément variable : dates et identifiants fixés,
 // pas de bruit aléatoire dans la sélection.
 import { donneesMonde } from '../src/mondes/donnees';
-import { construirePassages, selectionnerPassagesDetaille, viderIndexPassages } from '../src/engine/passagesLore';
+import { construirePassages, selectionnerPassagesDetaille, viderIndexPassages, type RapportSelectionLore } from '../src/engine/passagesLore';
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { preparerTour } from '../src/engine/ficheScene';
 import { construireSystemPrompt } from '../src/engine/promptBuilder';
@@ -13,7 +13,7 @@ import { texteCompatibleAvecProfil } from '../src/engine/contenuAdulte';
 import { consigneScenarioDe } from '../src/engine/scenarioGenerator';
 import { paquetMonde, titreLoreDe } from '../src/mondes';
 import { creerNouvelleHistoire } from '../src/engine/story';
-import type { Message, ProfilContenu, StoryState } from '../src/types';
+import type { LoreEntry, Message, ProfilContenu, StoryState } from '../src/types';
 
 const REGLAGES = {
   creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere',
@@ -49,7 +49,8 @@ function histoire(tour: TourType): StoryState {
     personnageNom: 'Ael',
     personnageDescription: 'Voyageuse humaine, ancienne messagère.',
     pointDeDepart: `${tour.lieu}, à l’aube.`,
-    contexte: { lieu: tour.lieu, ambiance: 'Dark fantasy politique et aventure', dateChronique: '', objectifs: '' },
+    // Une histoire d'un autre monde prend le genre de son paquet comme ambiance.
+    contexte: { lieu: tour.lieu, ambiance: tour.mondeId ? paquetMonde(tour.mondeId).carte.genre : 'Dark fantasy politique et aventure', dateChronique: '', objectifs: '' },
     settings: { ...REGLAGES },
     raceOrigineId: tour.mondeId ? undefined : 'humains',
     sexe: 'Femme',
@@ -65,7 +66,8 @@ function histoire(tour: TourType): StoryState {
   return story;
 }
 
-export function promptTourType(tour: TourType): string {
+/** Lore retenu pour un tour type et prompt système qui en résulte. */
+export function selectionTourType(tour: TourType): { entrees: LoreEntry[]; prompt: string; rapport: RapportSelectionLore } {
   viderIndexPassages();
   const story = histoire(tour);
   const profil = tour.profil;
@@ -94,12 +96,12 @@ export function promptTourType(tour: TourType): string {
     memoire: [story.memoire.resume, ...story.memoire.faits.map((f) => f.texte)],
     presents: story.scene?.presents ?? [],
   });
-  const { entrees } = selectionnerPassagesDetaille(passages, requeteScene, {
+  const { entrees, rapport } = selectionnerPassagesDetaille(passages, requeteScene, {
     requeteMessage,
     ancres: resolution.ancresP0,
     raisonsAncres: resolution.raisons,
   });
-  return construireSystemPrompt({
+  const prompt = construireSystemPrompt({
     loreCore: paquet.core,
     titreLore: titreLoreDe(paquet),
     meta: story.meta,
@@ -111,6 +113,11 @@ export function promptTourType(tour: TourType): string {
     messageJoueur: tour.message,
     ficheScene: preparation.fiche,
   });
+  return { entrees, prompt, rapport };
+}
+
+export function promptTourType(tour: TourType): string {
+  return selectionTourType(tour).prompt;
 }
 
 /** Instantané complet : prompts des tours types et consigne du scénario de départ. */

@@ -49,7 +49,7 @@ async function capturerAppel(reponse: string, fn: () => Promise<unknown>): Promi
 }
 
 test('le monde de test est enregistré à côté d’Elyndor, sans aucun module de races ni de rôles canon', () => {
-  assert.deepEqual(listerMondes().map((p) => p.id), ['elyndor', 'monde-test']);
+  assert.deepEqual(listerMondes().map((p) => p.id), ['elyndor', 'cendres-du-monde', 'monde-test']);
   const paquet = paquetMonde('monde-test');
   assert.equal(paquet.carte.nom, 'Monde de test');
   assert.equal(paquet.carte.genre, 'Test');
