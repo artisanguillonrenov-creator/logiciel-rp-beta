@@ -144,6 +144,8 @@ export interface DiagnosticEtape {
   dureeMs?: number;
   raison?: string;
   details?: string[];
+  /** Post-traitement : analyse obtenue par l'appel groupé ou par son appel séparé. */
+  mode?: 'groupé' | 'séparé';
 }
 
 export interface DiagnosticAppelIA {
@@ -538,6 +540,10 @@ export interface AppSettings {
   // (même esprit que codeDeverrouillage) viendra plus tard, une fois sorti
   // de cette phase.
   modeConcepteur?: boolean;
+  // Post-traitement narratif : regroupe état de scène + lore émergent, puis
+  // mémoire + directeur + monde + social, en un appel IA chacun, avec repli
+  // automatique sur les appels séparés. Absent : activé.
+  extractionGroupee?: boolean;
   // Langue de l'interface et de la conversation (Ajouts_A_Integrer.md,
   // sélecteur de langue) — code libre ('fr', 'en', 'es', 'ja', ...).
   // undefined ou 'fr' = comportement historique, aucune traduction. Le

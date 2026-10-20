@@ -31,6 +31,44 @@ function nettoyerProfilMonde(brut: unknown): ProfilMonde | undefined {
   return Object.keys(profil).length ? profil : undefined;
 }
 
+/** Consigne du lore émergent ; les entrées existantes visibles respectent le profil de contenu. */
+export function consigneLoreEmergent(appSettings: AppSettings, existants: EntreeLoreEmergent[], nomMonde?: string): string {
+  const existantsVisibles = appSettings.profilContenu === 'adulte'
+    ? existants
+    : existants.filter((e) => texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, appSettings.profilContenu));
+  const existantsTexte = existantsVisibles.filter(e => e.categorie !== 'pnj').length
+    ? existantsVisibles.filter(e => e.categorie !== 'pnj').map((e) => `- [${e.categorie}] ID=${e.id} ${e.titre}${e.categorie === 'pnj' ? ` (${e.profilPnj?.profession ?? 'rôle inconnu'})` : ''}`).join('\n')
+    : 'Aucun.';
+  return `Tu es le job du LORE ÉMERGENT DU MONDE${mondeDeLaConsigne(nomMonde)}. Les PNJ et leurs fiches sont gérés par un registre distinct : ne crée JAMAIS de candidat de catégorie pnj. Identifie uniquement les éléments de monde pertinents, durables et nommés introduits dans l'extrait : lieux, objets, factions, événements importants, créatures, ressources et coutumes. Ignore les détails anecdotiques et les figurants.
+Réponds UNIQUEMENT avec un JSON strict : {"candidats":[{"categorie":"lieu|objet|faction|evenement|creature|ressource|coutume","entreeExistanteId":null,"titre":"Nom précis","contenu":"Faits établis dans le récit","profilMonde":{"localisation":"","origine":"","apparence":"","architecture":"","dimensions":"","acces":"","activites":"","occupants":"","materiaux":"","proprietes":"","fabrication":"","rarete":"","organisation":"","hierarchie":"","objectifs":"","territoire":"","ressources":"","alliances":"","habitat":"","comportement":"","capacites":"","faiblesses":"","traditions":"","croyances":"","histoire":"","referencesPnj":""}}]}.
+Complète les champs spécialisés pertinents dès la première apparition avec des caractéristiques plausibles et cohérentes, sans contredire les faits déjà établis. Laisse vides les champs non pertinents ou réellement inconnus. Le champ contenu ne rapporte QUE les faits narrés, jamais les inventions de complétion. N'invente jamais un événement vécu, une découverte du joueur ou une conséquence d'action. Les changements provoqués par le joueur restent propres à cette histoire. Les PNJ liés sont référencés par identifiant confirmé dans referencesPnj ; n'invente pas d'identifiant.
+Pour enrichir un élément existant, indique son entreeExistanteId exact et conserve son titre et ses caractéristiques. Ne fusionne pas des homonymes sans identité confirmée. Éléments existants :
+${existantsTexte}`;
+}
+
+export type CandidatsLoreEmergent = CandidatLoreEmergent[];
+
+/** Valide la sortie JSON (déjà parsée) ; null si la liste « candidats » est absente. */
+export function interpreterCandidatsLore(
+  parsed: unknown,
+  appSettings: AppSettings,
+  personnageNom: string,
+): CandidatsLoreEmergent | null {
+  if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { candidats?: unknown }).candidats)) return null;
+  const nomJoueurNormalise = personnageNom.trim().toLowerCase();
+  return (parsed as { candidats: any[] }).candidats
+    .filter((c: any) => c && CATEGORIES.includes(c.categorie) && typeof c.titre === 'string' && c.titre.trim())
+    .filter((c: any) => String(c.titre).trim().toLowerCase() !== nomJoueurNormalise)
+    .map((c: any): CandidatLoreEmergent => ({
+      categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'objet',
+      titre: String(c.titre).trim(),
+      contenu: String(c.contenu ?? '').trim(),
+      profilMonde: c.categorie !== 'pnj' ? nettoyerProfilMonde(c.profilMonde) : undefined,
+      entreeExistanteId: typeof c.entreeExistanteId === 'string' ? c.entreeExistanteId.trim() || undefined : undefined,
+    }))
+    .filter((c: CandidatLoreEmergent) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
+}
+
 async function extraireCandidats(
   appSettings: AppSettings,
   transcript: string,
@@ -39,13 +77,6 @@ async function extraireCandidats(
   storyId?: string,
   nomMonde?: string,
 ): Promise<CandidatLoreEmergent[]> {
-  const existantsVisibles = appSettings.profilContenu === 'adulte'
-    ? existants
-    : existants.filter((e) => texteCompatibleAvecProfil(`${e.titre}\n${e.contenu}`, appSettings.profilContenu));
-  const existantsTexte = existantsVisibles.filter(e => e.categorie !== 'pnj').length
-    ? existantsVisibles.filter(e => e.categorie !== 'pnj').map((e) => `- [${e.categorie}] ID=${e.id} ${e.titre}${e.categorie === 'pnj' ? ` (${e.profilPnj?.profession ?? 'rôle inconnu'})` : ''}`).join('\n')
-    : 'Aucun.';
-
   try {
     const sortie = await appellerModele({
       ...configurationLLM(appSettings),
@@ -56,11 +87,7 @@ async function extraireCandidats(
       messages: [
         {
           role: 'system',
-          content: `Tu es le job du LORE ÉMERGENT DU MONDE${mondeDeLaConsigne(nomMonde)}. Les PNJ et leurs fiches sont gérés par un registre distinct : ne crée JAMAIS de candidat de catégorie pnj. Identifie uniquement les éléments de monde pertinents, durables et nommés introduits dans l'extrait : lieux, objets, factions, événements importants, créatures, ressources et coutumes. Ignore les détails anecdotiques et les figurants.
-Réponds UNIQUEMENT avec un JSON strict : {"candidats":[{"categorie":"lieu|objet|faction|evenement|creature|ressource|coutume","entreeExistanteId":null,"titre":"Nom précis","contenu":"Faits établis dans le récit","profilMonde":{"localisation":"","origine":"","apparence":"","architecture":"","dimensions":"","acces":"","activites":"","occupants":"","materiaux":"","proprietes":"","fabrication":"","rarete":"","organisation":"","hierarchie":"","objectifs":"","territoire":"","ressources":"","alliances":"","habitat":"","comportement":"","capacites":"","faiblesses":"","traditions":"","croyances":"","histoire":"","referencesPnj":""}}]}.
-Complète les champs spécialisés pertinents dès la première apparition avec des caractéristiques plausibles et cohérentes, sans contredire les faits déjà établis. Laisse vides les champs non pertinents ou réellement inconnus. Le champ contenu ne rapporte QUE les faits narrés, jamais les inventions de complétion. N'invente jamais un événement vécu, une découverte du joueur ou une conséquence d'action. Les changements provoqués par le joueur restent propres à cette histoire. Les PNJ liés sont référencés par identifiant confirmé dans referencesPnj ; n'invente pas d'identifiant.
-Pour enrichir un élément existant, indique son entreeExistanteId exact et conserve son titre et ses caractéristiques. Ne fusionne pas des homonymes sans identité confirmée. Éléments existants :
-${existantsTexte}`,
+          content: consigneLoreEmergent(appSettings, existants, nomMonde),
         },
         { role: 'user', content: transcript },
       ],
@@ -68,20 +95,7 @@ ${existantsTexte}`,
 
     const match = sortie.match(/\{[\s\S]*\}/);
     if (!match) return [];
-    const parsed = JSON.parse(match[0]);
-    if (!Array.isArray(parsed.candidats)) return [];
-    const nomJoueurNormalise = personnageNom.trim().toLowerCase();
-    return parsed.candidats
-      .filter((c: any) => c && CATEGORIES.includes(c.categorie) && typeof c.titre === 'string' && c.titre.trim())
-      .filter((c: any) => String(c.titre).trim().toLowerCase() !== nomJoueurNormalise)
-      .map((c: any): CandidatLoreEmergent => ({
-        categorie: CATEGORIES.includes(c.categorie) ? c.categorie : 'objet',
-        titre: String(c.titre).trim(),
-        contenu: String(c.contenu ?? '').trim(),
-        profilMonde: c.categorie !== 'pnj' ? nettoyerProfilMonde(c.profilMonde) : undefined,
-        entreeExistanteId: typeof c.entreeExistanteId === 'string' ? c.entreeExistanteId.trim() || undefined : undefined,
-      }))
-      .filter((c: CandidatLoreEmergent) => texteCompatibleAvecProfil(`${c.titre}\n${c.contenu}`, appSettings.profilContenu));
+    return interpreterCandidatsLore(JSON.parse(match[0]), appSettings, personnageNom) ?? [];
   } catch {
     return [];
   }
@@ -104,15 +118,11 @@ function mondeDeLaConsigne(nomMonde?: string): string {
   return nomMonde ? ` ${complementDe(nomMonde)}` : '';
 }
 
-export async function mettreAJourLoreEmergent({
-  appSettings,
-  existants,
-  messages,
-  depuisIndex,
-  personnageNom,
-  storyId,
-  nomMonde,
-}: MiseAJourLoreEmergentOptions): Promise<EntreeLoreEmergent[]> {
+export async function mettreAJourLoreEmergent(
+  { appSettings, existants, messages, depuisIndex, personnageNom, storyId, nomMonde }: MiseAJourLoreEmergentOptions,
+  // Candidats déjà obtenus par l'appel groupé : fusion et rattachement identiques.
+  candidatsPrecalcules?: CandidatsLoreEmergent,
+): Promise<EntreeLoreEmergent[]> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return existants;
 
@@ -120,7 +130,7 @@ export async function mettreAJourLoreEmergent({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const candidats = await extraireCandidats(appSettings, transcript, existants, personnageNom, storyId, nomMonde);
+  const candidats = candidatsPrecalcules ?? await extraireCandidats(appSettings, transcript, existants, personnageNom, storyId, nomMonde);
   if (candidats.length === 0) return fusionnerDoublonsLore(existants);
 
   const entrees = fusionnerDoublonsLore(existants);

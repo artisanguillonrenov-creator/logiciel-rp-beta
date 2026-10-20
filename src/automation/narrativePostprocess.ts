@@ -9,6 +9,7 @@ import { filtrerTextePourProfil } from '../engine/contenuAdulte';
 import { mondeIdDe, paquetMonde } from '../mondes';
 import { donneesMonde } from '../mondes/donnees';
 import { lireEtatScene, releverEtatScene } from '../engine/etatScene';
+import { extrairePeriodiqueGroupe, extraireTourGroupe } from '../engine/extractionGroupee';
 
 /**
  * Post-traitement narratif pur (sans le noyau d'automatismes) : calcule
@@ -54,17 +55,26 @@ function messagesPourProfil(messages: Message[], appSettings: AppSettings): Mess
   }));
 }
 
+type ModeExtraction = NonNullable<DiagnosticEtape['mode']>;
+
 export async function calculerRattrapageNarratif(
   story: StoryState,
   appSettings: AppSettings,
 ): Promise<NarrativeDerivedPatch | null> {
   const debutPostTraitement = Date.now();
   const etapesDiagnostic: DiagnosticEtape[] = [];
-  const mesurer = async <T>(nom: string, action: () => Promise<T>): Promise<T> => {
+  const mesurer = async <T>(nom: string, mode: ModeExtraction, action: () => Promise<T>, raisonRepli?: string): Promise<T> => {
     const debut = Date.now();
     try {
       const resultat = await action();
-      etapesDiagnostic.push({ nom, categorie: 'post-traitement', statut: 'ok', dureeMs: Date.now() - debut });
+      etapesDiagnostic.push({
+        nom,
+        categorie: 'post-traitement',
+        statut: raisonRepli ? 'repli' : 'ok',
+        dureeMs: Date.now() - debut,
+        raison: raisonRepli,
+        mode,
+      });
       return resultat;
     } catch (erreur) {
       etapesDiagnostic.push({
@@ -73,9 +83,45 @@ export async function calculerRattrapageNarratif(
         statut: 'erreur',
         dureeMs: Date.now() - debut,
         raison: erreur instanceof Error ? erreur.message : 'Erreur inconnue',
+        mode,
       });
       throw erreur;
     }
+  };
+  // Un bloc valide de l'appel groupé est appliqué tel quel ; sinon l'appel
+  // séparé du module prend le relais, si bien qu'aucun état n'est perdu.
+  const executer = <B, T>(nom: string, bloc: B | null | undefined, appliquer: (bloc?: B) => Promise<T>, raisonRepli?: string) =>
+    bloc !== null && bloc !== undefined
+      ? mesurer(nom, 'groupé', () => appliquer(bloc))
+      : mesurer(nom, 'séparé', () => appliquer(undefined), raisonRepli);
+  const appelGroupe = async <B>(nom: string, action: () => Promise<B | null>): Promise<B | null> => {
+    const debut = Date.now();
+    try {
+      const blocs = await action();
+      etapesDiagnostic.push({
+        nom,
+        categorie: 'post-traitement',
+        statut: blocs ? 'ok' : 'repli',
+        dureeMs: Date.now() - debut,
+        raison: blocs ? undefined : 'Réponse groupée inexploitable : appels séparés.',
+        mode: 'groupé',
+      });
+      return blocs;
+    } catch (erreur) {
+      etapesDiagnostic.push({
+        nom,
+        categorie: 'post-traitement',
+        statut: 'repli',
+        dureeMs: Date.now() - debut,
+        raison: `${erreur instanceof Error ? erreur.message : 'Appel groupé impossible'} : appels séparés.`,
+        mode: 'groupé',
+      });
+      return null;
+    }
+  };
+  const raisonRepli = (groupeTente: boolean, blocs: object | null) => {
+    if (!groupeTente) return undefined;
+    return blocs ? 'Bloc groupé absent ou invalide : repli sur l’appel séparé.' : 'Appel groupé échoué : repli sur l’appel séparé.';
   };
 
   const periodicDue = doitMettreAJourMemoire(story.messages, story.memoire.dernierMessageIndexMaj);
@@ -91,66 +137,106 @@ export async function calculerRattrapageNarratif(
   let loreEmergent = story.loreEmergent;
   let loreEmergentDernierIndex = loreDepuisIndex;
 
+  const groupee = appSettings.extractionGroupee !== false;
   const messagesSecurises = messagesPourProfil(story.messages, appSettings);
   const personnageNom = filtrerTextePourProfil(story.meta.personnageNom, appSettings.profilContenu) || 'Personnage';
+  const paquet = paquetMonde(mondeIdDe(story.meta));
+  const capitales = donneesMonde(mondeIdDe(story.meta)).capitales;
+  const depuisIndex = story.memoire.dernierMessageIndexMaj;
 
   const periodicPromise = periodicDue
-    ? Promise.all([
-        mesurer('Mémoire L0-L5', () => mettreAJourMemoire({
-          appSettings,
-          storyId: story.meta.id,
-          memoireActuelle: story.memoire,
-          messages: messagesSecurises,
-          personnageNom,
-        })),
-        mesurer('Directeur narratif', () => mettreAJourDirecteur({
-          appSettings,
-          storyId: story.meta.id,
-          directeurActuel: story.directeur,
-          messages: messagesSecurises,
-          depuisIndex: story.memoire.dernierMessageIndexMaj,
-        })),
-        mesurer('Simulation du monde', () => mettreAJourMonde({
-          appSettings,
-          storyId: story.meta.id,
-          mondeActuel: story.monde,
-          chapitres: paquetMonde(mondeIdDe(story.meta)).chapitres,
-          messages: messagesSecurises,
-          depuisIndex: story.memoire.dernierMessageIndexMaj,
-        })),
-        mesurer('Social / engagements', () => mettreAJourSocial({
-          appSettings,
-          storyId: story.meta.id,
-          socialActuel: story.social,
-          messages: messagesSecurises,
-          depuisIndex: story.memoire.dernierMessageIndexMaj,
-        })),
-      ])
+    ? (async () => {
+        const blocs = groupee
+          ? await appelGroupe('Extraction groupée — périodique', () => extrairePeriodiqueGroupe({
+              appSettings,
+              storyId: story.meta.id,
+              messages: messagesSecurises,
+              depuisIndex,
+              personnageNom,
+              memoire: story.memoire,
+              directeur: story.directeur,
+              monde: story.monde,
+              social: story.social,
+              chapitres: paquet.chapitres,
+            }))
+          : null;
+        const repli = raisonRepli(groupee, blocs);
+        return Promise.all([
+          executer('Mémoire L0-L5', blocs?.memoire, (extraction) => mettreAJourMemoire({
+            appSettings,
+            storyId: story.meta.id,
+            memoireActuelle: story.memoire,
+            messages: messagesSecurises,
+            personnageNom,
+          }, extraction), repli),
+          executer('Directeur narratif', blocs?.directeur, (analyse) => mettreAJourDirecteur({
+            appSettings,
+            storyId: story.meta.id,
+            directeurActuel: story.directeur,
+            messages: messagesSecurises,
+            depuisIndex,
+          }, analyse), repli),
+          executer('Simulation du monde', blocs?.monde, (appels) => mettreAJourMonde({
+            appSettings,
+            storyId: story.meta.id,
+            mondeActuel: story.monde,
+            chapitres: paquet.chapitres,
+            messages: messagesSecurises,
+            depuisIndex,
+          }, appels), repli),
+          executer('Social / engagements', blocs?.social, (appels) => mettreAJourSocial({
+            appSettings,
+            storyId: story.meta.id,
+            socialActuel: story.social,
+            messages: messagesSecurises,
+            depuisIndex,
+          }, appels), repli),
+        ] as const);
+      })()
     : null;
 
+  const sceneActuelle = lireEtatScene(story, capitales);
+  // L'appel « tour » ne regroupe que lorsque les deux analyses sont dues et
+  // que l'extrait du lore couvre les nouveaux messages de la scène ; sinon
+  // l'état de scène garde son appel dédié, comme avant.
+  const tourGroupe = groupee && sceneDue && loreDue && sceneActuelle.majMessageIndex >= loreDepuisIndex;
+  const tourPromise = tourGroupe
+    ? appelGroupe('Extraction groupée — tour', () => extraireTourGroupe({
+        appSettings,
+        storyId: story.meta.id,
+        messages: messagesSecurises,
+        loreDepuisIndex,
+        personnageNom,
+        loreExistant: story.loreEmergent,
+        nomMonde: paquet.nomPourExtractionLore,
+        sceneActuelle,
+        capitales,
+      }))
+    : Promise.resolve(null);
+
   const lorePromise = loreDue
-    ? mesurer('Lore émergent', () => mettreAJourLoreEmergent({
+    ? tourPromise.then((blocs) => executer('Lore émergent', blocs?.lore, (candidats) => mettreAJourLoreEmergent({
         appSettings,
         storyId: story.meta.id,
         existants: story.loreEmergent,
         messages: messagesSecurises,
         depuisIndex: loreDepuisIndex,
         personnageNom,
-        nomMonde: paquetMonde(mondeIdDe(story.meta)).nomPourExtractionLore,
-      }))
+        nomMonde: paquet.nomPourExtractionLore,
+      }, candidats), raisonRepli(tourGroupe, blocs)))
     : null;
 
   // État de scène (ville, lieu, présents, temps écoulé) : à chaque tour,
   // en parallèle et sans retarder l'affichage.
   const scenePromise = sceneDue
-    ? mesurer('État de scène', () => releverEtatScene({
+    ? tourPromise.then((blocs) => executer('État de scène', blocs?.scene, async (releve) => releve ?? releverEtatScene({
         appSettings,
         storyId: story.meta.id,
-        actuel: lireEtatScene(story, donneesMonde(mondeIdDe(story.meta)).capitales),
+        actuel: sceneActuelle,
         messages: messagesSecurises,
-        capitales: donneesMonde(mondeIdDe(story.meta)).capitales,
+        capitales,
         personnageNom,
-      })).catch(() => null)
+      }), raisonRepli(tourGroupe, blocs))).catch(() => null)
     : null;
 
   if (!periodicDue) {
@@ -200,4 +286,3 @@ export async function calculerRattrapageNarratif(
     },
   };
 }
-

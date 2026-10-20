@@ -21,17 +21,47 @@ interface SortieDirecteur {
   beatsResolus: string[];
 }
 
+export type AnalyseDirecteur = SortieDirecteur;
+
+export function consigneDirecteur(directeurActuel: DirecteurState): string {
+  const beatsOuvertsTexte = directeurActuel.beats
+    .filter((b) => !b.paye)
+    .map((b) => `- (id: ${b.id}) ${b.description}`)
+    .join('\n') || 'Aucun.';
+  return `Tu es le directeur narratif d'un jeu de rôle textuel : tu n'écris rien pour le joueur, tu observes la scène récente pour évaluer où en est l'histoire. Réponds UNIQUEMENT avec un JSON strict :
+{"arcActuel": "résumé en une phrase de ce qui pousse l'histoire en ce moment", "tension": "calme|montante|climax|retombee", "beatMajeur": true/false, "nouveauxBeats": ["élément planté à payer plus tard, en une phrase", ...], "beatsResolus": ["id des éléments en attente ci-dessous qui viennent d'être payés", ...]}
+
+"beatMajeur" est vrai seulement si un développement significatif fait avancer l'intrigue (révélation, décision qui engage, complication, tournant) — pas une simple réplique ou description.
+"nouveauxBeats" : uniquement des éléments explicitement plantés dans le texte (un secret évoqué, une menace annoncée, une promesse) qui appellent une suite. Liste vide si rien.
+"beatsResolus" : reprends les id ci-dessous seulement si le texte règle explicitement cet élément.
+
+Éléments en attente de payoff :
+${beatsOuvertsTexte}`;
+}
+
+/** Valide la sortie JSON (déjà parsée) du directeur ; null si ce n'est pas un objet. */
+export function interpreterDirecteur(parsed: unknown, directeurActuel: DirecteurState): AnalyseDirecteur | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const objet = parsed as Record<string, any>;
+  return {
+    arcActuel: typeof objet.arcActuel === 'string' ? objet.arcActuel.trim() : directeurActuel.arcActuel,
+    tension: NIVEAUX_TENSION.includes(objet.tension) ? objet.tension : directeurActuel.tension,
+    beatMajeur: objet.beatMajeur === true,
+    nouveauxBeats: Array.isArray(objet.nouveauxBeats)
+      ? objet.nouveauxBeats.filter((b: unknown) => typeof b === 'string' && b.trim())
+      : [],
+    beatsResolus: Array.isArray(objet.beatsResolus)
+      ? objet.beatsResolus.filter((b: unknown) => typeof b === 'string')
+      : [],
+  };
+}
+
 async function analyserDirecteur(
   appSettings: AppSettings,
   transcript: string,
   directeurActuel: DirecteurState,
   storyId?: string,
 ): Promise<SortieDirecteur | null> {
-  const beatsOuvertsTexte = directeurActuel.beats
-    .filter((b) => !b.paye)
-    .map((b) => `- (id: ${b.id}) ${b.description}`)
-    .join('\n') || 'Aucun.';
-
   try {
     const sortie = await appellerModele({
       ...configurationLLM(appSettings),
@@ -42,15 +72,7 @@ async function analyserDirecteur(
       messages: [
         {
           role: 'system',
-          content: `Tu es le directeur narratif d'un jeu de rôle textuel : tu n'écris rien pour le joueur, tu observes la scène récente pour évaluer où en est l'histoire. Réponds UNIQUEMENT avec un JSON strict :
-{"arcActuel": "résumé en une phrase de ce qui pousse l'histoire en ce moment", "tension": "calme|montante|climax|retombee", "beatMajeur": true/false, "nouveauxBeats": ["élément planté à payer plus tard, en une phrase", ...], "beatsResolus": ["id des éléments en attente ci-dessous qui viennent d'être payés", ...]}
-
-"beatMajeur" est vrai seulement si un développement significatif fait avancer l'intrigue (révélation, décision qui engage, complication, tournant) — pas une simple réplique ou description.
-"nouveauxBeats" : uniquement des éléments explicitement plantés dans le texte (un secret évoqué, une menace annoncée, une promesse) qui appellent une suite. Liste vide si rien.
-"beatsResolus" : reprends les id ci-dessous seulement si le texte règle explicitement cet élément.
-
-Éléments en attente de payoff :
-${beatsOuvertsTexte}`,
+          content: consigneDirecteur(directeurActuel),
         },
         { role: 'user', content: transcript },
       ],
@@ -58,18 +80,7 @@ ${beatsOuvertsTexte}`,
 
     const match = sortie.match(/\{[\s\S]*\}/);
     if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    return {
-      arcActuel: typeof parsed.arcActuel === 'string' ? parsed.arcActuel.trim() : directeurActuel.arcActuel,
-      tension: NIVEAUX_TENSION.includes(parsed.tension) ? parsed.tension : directeurActuel.tension,
-      beatMajeur: parsed.beatMajeur === true,
-      nouveauxBeats: Array.isArray(parsed.nouveauxBeats)
-        ? parsed.nouveauxBeats.filter((b: unknown) => typeof b === 'string' && b.trim())
-        : [],
-      beatsResolus: Array.isArray(parsed.beatsResolus)
-        ? parsed.beatsResolus.filter((b: unknown) => typeof b === 'string')
-        : [],
-    };
+    return interpreterDirecteur(JSON.parse(match[0]), directeurActuel);
   } catch {
     return null;
   }
@@ -91,13 +102,11 @@ export interface MiseAJourDirecteurOptions {
  * narratif lui-même, seulement l'état qui orientera la prochaine réponse
  * (voir formaterDirection dans ce fichier, injecté par generateTurn.ts).
  */
-export async function mettreAJourDirecteur({
-  appSettings,
-  directeurActuel,
-  messages,
-  depuisIndex,
-  storyId,
-}: MiseAJourDirecteurOptions): Promise<DirecteurState> {
+export async function mettreAJourDirecteur(
+  { appSettings, directeurActuel, messages, depuisIndex, storyId }: MiseAJourDirecteurOptions,
+  // Analyse déjà obtenue par l'appel groupé : l'application reste identique.
+  analysePrecalculee?: AnalyseDirecteur,
+): Promise<DirecteurState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return directeurActuel;
 
@@ -105,7 +114,7 @@ export async function mettreAJourDirecteur({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const analyse = await analyserDirecteur(appSettings, transcript, directeurActuel, storyId);
+  const analyse = analysePrecalculee ?? await analyserDirecteur(appSettings, transcript, directeurActuel, storyId);
   if (!analyse) return directeurActuel;
 
   const beats: BeatNarratif[] = directeurActuel.beats.map((b) =>

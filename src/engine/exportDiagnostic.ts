@@ -29,6 +29,7 @@ const REGLAGES_EXPORTABLES = [
   'mondeActif',
   'modeConcepteur',
   'langueInterface',
+  'extractionGroupee',
 ] as const;
 
 /** Réglages utiles à l'analyse, sans aucune valeur sensible. */

@@ -121,6 +121,8 @@ const REGLAGES_APP = {
   serveurLocalUrl: 'elyndor-cloud',
   serveurLocalModele: 'cydonia-24b-elyndor',
   profilContenu: 'adulte' as const,
+  // Ces tests portent sur la cadence ; l'extraction groupée a ses propres tests.
+  extractionGroupee: false,
 };
 
 /** Remplace le réseau : chaque appel est reconnu par sa consigne système. */

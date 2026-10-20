@@ -77,6 +77,8 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
   const [messageCache, setMessageCache] = useState('');
   const [messageJobs, setMessageJobs] = useState('');
   const [messageMode, setMessageMode] = useState('');
+  const [extractionGroupee, setExtractionGroupee] = useState(true);
+  const [messageExtraction, setMessageExtraction] = useState('');
   const automation = useAutomationDiagnostics();
 
   function charger() {
@@ -84,6 +86,7 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
     setErreurChargement('');
     getSettings().then((settings) => {
       setModeConcepteur(!!settings.modeConcepteur);
+      setExtractionGroupee(settings.extractionGroupee !== false);
       const route = resoudreRouteTexte(settings);
       const nom = route.fournisseur === 'runpod' ? 'Elyndor Cloud (RunPod)'
         : route.fournisseur === 'openrouter' ? 'OpenRouter'
@@ -109,6 +112,20 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
       setMessageMode(e instanceof Error ? e.message : 'Impossible d’enregistrer le mode concepteur.');
     }
     setTimeout(() => setMessageMode(''), 4000);
+  }
+
+  async function basculerExtractionGroupee() {
+    const nouvelleValeur = !extractionGroupee;
+    setMessageExtraction('');
+    try {
+      const settingsActuelles = await getSettings();
+      await saveSettings({ ...settingsActuelles, extractionGroupee: nouvelleValeur });
+      setExtractionGroupee(nouvelleValeur);
+      setMessageExtraction(nouvelleValeur ? 'Extraction groupée activée.' : 'Extraction groupée désactivée : appels séparés.');
+    } catch (e) {
+      setMessageExtraction(e instanceof Error ? e.message : 'Impossible d’enregistrer ce réglage.');
+    }
+    setTimeout(() => setMessageExtraction(''), 4000);
   }
 
   async function viderCache() {
@@ -232,6 +249,20 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
             <Panneau style={styles.bloc}>
               <Text style={styles.label}>ANALYSE DU CONTEXTE ET DE LA MÉMOIRE</Text>
               <AtelierContexteMemoirePanel />
+              <Text style={[styles.label, { marginTop: espacement.lg }]}>RÉGLAGE AVANCÉ</Text>
+              <Text style={styles.titreBloc}>Extraction groupée des analyses : {extractionGroupee ? 'activée' : 'désactivée'}</Text>
+              <Text style={styles.texteBloc}>
+                Regroupe en un seul appel IA l’état de scène et le lore émergent, puis la mémoire, le directeur
+                narratif, la simulation du monde et le social. Un bloc invalide repasse automatiquement par son
+                appel séparé. Désactivée : chaque analyse garde son propre appel.
+              </Text>
+              <Bouton
+                titre={extractionGroupee ? 'Utiliser les appels séparés' : 'Activer l’extraction groupée'}
+                variante="secondaire"
+                onPress={basculerExtractionGroupee}
+                style={styles.boutonAction}
+              />
+              {messageExtraction ? <Text style={styles.statut}>{messageExtraction}</Text> : null}
             </Panneau>
           ) : null}
 

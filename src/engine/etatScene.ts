@@ -61,7 +61,7 @@ export function interpreterReleve(brut: string, actuel: EtatScene, capitales: st
   };
 }
 
-const CONSIGNE_RELEVE = `Tu tiens l'état de la scène d'un jeu de rôle. À partir de l'état précédent et des derniers échanges, donne l'état À LA FIN du dernier message du narrateur.
+export const CONSIGNE_RELEVE = `Tu tiens l'état de la scène d'un jeu de rôle. À partir de l'état précédent et des derniers échanges, donne l'état À LA FIN du dernier message du narrateur.
 Réponds UNIQUEMENT avec ce JSON strict :
 {"ville": "capitale où se trouve le personnage du joueur", "lieu": "lieu précis actuel (ex. comptoir de la Guilde des Aventuriers, chambre de l'auberge)", "presents": ["personnages présents dans la scène, hors personnage du joueur"], "minutesEcoulees": 0}
 - Change le lieu seulement si le récit établit un déplacement.

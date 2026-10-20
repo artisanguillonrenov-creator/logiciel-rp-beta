@@ -54,6 +54,21 @@ function normalise(texte: string): string {
  * appel est validé/réparé individuellement, un appel invalide ne fait pas
  * échouer les autres.
  */
+export function consigneMonde(monde: MondeState, chapitre?: EtatChapitre): string {
+  const declencheursEnAttente = monde.declencheurs
+    .filter((d) => d.declenche && !d.resolu)
+    .map((d) => `- (id: ${d.id}) ${d.effet}`)
+    .join('\n') || 'Aucun.';
+  const flagsConnus = Object.keys(monde.flags).length ? Object.keys(monde.flags).join(', ') : 'Aucun.';
+  const compteursConnus = Object.keys(monde.compteurs).length ? Object.keys(monde.compteurs).join(', ') : 'Aucun.';
+  return `Tu observes un extrait de jeu de rôle pour tenir à jour l'état du monde. Appelle les outils appropriés pour chaque changement d'état EXPLICITEMENT établi par le texte (lieu de la scène, drapeaux, compteurs, règles "si X alors Y" plantées, déclencheurs déjà activés dont la conséquence vient d'être racontée). N'invente rien, n'appelle aucun outil si rien de notable n'est établi.
+
+Flags déjà connus : ${flagsConnus}
+Compteurs déjà connus : ${compteursConnus}
+Conséquences déclenchées en attente d'être racontées (à résoudre via resoudre_declencheur si le texte les raconte) :
+${declencheursEnAttente}${chapitre?.suivant ? `\nChapitre en cours : ${chapitre.enCours.id} — ${chapitre.enCours.titre}. N'appelle avancer_chapitre que si tous ses jalons sont explicitement atteints dans l'extrait.` : ''}`;
+}
+
 async function extraireAppelsMonde(
   appSettings: AppSettings,
   transcript: string,
@@ -61,13 +76,6 @@ async function extraireAppelsMonde(
   storyId?: string,
   chapitre?: EtatChapitre,
 ): Promise<AppelOutil[]> {
-  const declencheursEnAttente = monde.declencheurs
-    .filter((d) => d.declenche && !d.resolu)
-    .map((d) => `- (id: ${d.id}) ${d.effet}`)
-    .join('\n') || 'Aucun.';
-  const flagsConnus = Object.keys(monde.flags).length ? Object.keys(monde.flags).join(', ') : 'Aucun.';
-  const compteursConnus = Object.keys(monde.compteurs).length ? Object.keys(monde.compteurs).join(', ') : 'Aucun.';
-
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
       ...configurationLLM(appSettings),
@@ -79,12 +87,7 @@ async function extraireAppelsMonde(
       messages: [
         {
           role: 'system',
-          content: `Tu observes un extrait de jeu de rôle pour tenir à jour l'état du monde. Appelle les outils appropriés pour chaque changement d'état EXPLICITEMENT établi par le texte (lieu de la scène, drapeaux, compteurs, règles "si X alors Y" plantées, déclencheurs déjà activés dont la conséquence vient d'être racontée). N'invente rien, n'appelle aucun outil si rien de notable n'est établi.
-
-Flags déjà connus : ${flagsConnus}
-Compteurs déjà connus : ${compteursConnus}
-Conséquences déclenchées en attente d'être racontées (à résoudre via resoudre_declencheur si le texte les raconte) :
-${declencheursEnAttente}${chapitre?.suivant ? `\nChapitre en cours : ${chapitre.enCours.id} — ${chapitre.enCours.titre}. N'appelle avancer_chapitre que si tous ses jalons sont explicitement atteints dans l'extrait.` : ''}`,
+          content: consigneMonde(monde, chapitre),
         },
         { role: 'user', content: transcript },
       ],
@@ -130,14 +133,22 @@ export interface MiseAJourMondeOptions {
  * nouvelles règles) tourne à la même cadence que la mémoire ; l'évaluation
  * des déclencheurs, elle, est un calcul local et n'attend pas ce cycle.
  */
-export async function mettreAJourMonde({
-  appSettings,
-  mondeActuel,
-  messages,
-  depuisIndex,
-  storyId,
-  chapitres,
-}: MiseAJourMondeOptions): Promise<MondeState> {
+/**
+ * Chapitre montré à l'extracteur pour ce cycle : une avancée en attente dont
+ * le délai est écoulé est d'abord enregistrée. Partagé avec l'appel groupé
+ * pour qu'il propose exactement le même outil avancer_chapitre.
+ */
+export function chapitreAvantExtraction(mondeActuel: MondeState, nbMessages: number, chapitres?: readonly ChapitreMonde[]) {
+  const etatChapitres = chapitres?.length ? fixerChapitre(chapitres, mondeActuel, nbMessages) : champsChapitre(mondeActuel);
+  return { etatChapitres, chapitre: etatChapitre(chapitres, etatChapitres, nbMessages) };
+}
+
+export async function mettreAJourMonde(
+  { appSettings, mondeActuel, messages, depuisIndex, storyId, chapitres }: MiseAJourMondeOptions,
+  // Appels d'outils déjà obtenus par l'appel groupé : ils passent par la même
+  // validation (validerEtReparerArguments, délai minimal des chapitres).
+  appelsPrecalcules?: AppelOutil[],
+): Promise<MondeState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   const nbMessages = messages.length;
 
@@ -147,14 +158,13 @@ export async function mettreAJourMonde({
   let declencheurs = mondeActuel.declencheurs;
   // Chapitre en cours : une avancée en attente dont le délai est écoulé est
   // enregistrée ; le reste ne change qu'à une avancée relevée ci-dessous.
-  let etatChapitres = chapitres?.length ? fixerChapitre(chapitres, mondeActuel, nbMessages) : champsChapitre(mondeActuel);
-  let chapitre = etatChapitre(chapitres, etatChapitres, nbMessages);
+  let { etatChapitres, chapitre } = chapitreAvantExtraction(mondeActuel, nbMessages, chapitres);
 
   if (nouveauxMessages.length > 0) {
     const transcript = nouveauxMessages
       .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
       .join('\n');
-    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId, chapitre);
+    const appelsBruts = appelsPrecalcules ?? await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId, chapitre);
     const outilsMonde = outilsPourComposant('monde', chapitre);
     // Chapitre montré à l'extracteur : seule une avancée vers SON suivant peut
     // être mise en attente, et seulement si rien n'a avancé dans ce cycle.

@@ -41,17 +41,23 @@ interface AjustementRelation {
  * produire un JSON en prose — chaque appel est validé/réparé
  * individuellement.
  */
+export function consigneSocial(social: SocialState): string {
+  const engagementsOuverts = social.engagements
+    .filter((e) => !e.honore && !e.rompu)
+    .map((e) => `- (id: ${e.id}, ${e.type}) ${e.description} — envers ${e.partie}`)
+    .join('\n') || 'Aucun.';
+  return `Tu observes un extrait de jeu de rôle pour suivre les engagements pris par {{user}} et l'évolution de ses relations avec les personnages non-joueurs. Appelle les outils appropriés pour chaque changement EXPLICITEMENT établi par le texte. N'invente pas de personnage ni d'engagement, n'appelle aucun outil si rien de notable n'est établi.
+
+Engagements en cours :
+${engagementsOuverts}`;
+}
+
 async function extraireAppelsSocial(
   appSettings: AppSettings,
   transcript: string,
   social: SocialState,
   storyId?: string,
 ): Promise<AppelOutil[]> {
-  const engagementsOuverts = social.engagements
-    .filter((e) => !e.honore && !e.rompu)
-    .map((e) => `- (id: ${e.id}, ${e.type}) ${e.description} — envers ${e.partie}`)
-    .join('\n') || 'Aucun.';
-
   try {
     const { appelsOutils } = await appellerModeleAvecOutils({
       ...configurationLLM(appSettings),
@@ -63,10 +69,7 @@ async function extraireAppelsSocial(
       messages: [
         {
           role: 'system',
-          content: `Tu observes un extrait de jeu de rôle pour suivre les engagements pris par {{user}} et l'évolution de ses relations avec les personnages non-joueurs. Appelle les outils appropriés pour chaque changement EXPLICITEMENT établi par le texte. N'invente pas de personnage ni d'engagement, n'appelle aucun outil si rien de notable n'est établi.
-
-Engagements en cours :
-${engagementsOuverts}`,
+          content: consigneSocial(social),
         },
         { role: 'user', content: transcript },
       ],
@@ -121,13 +124,11 @@ export interface MiseAJourSocialOptions {
  * limitée aux autres personnages d'une même faction plutôt qu'un effet
  * isolé au seul PNJ concerné.
  */
-export async function mettreAJourSocial({
-  appSettings,
-  socialActuel,
-  messages,
-  depuisIndex,
-  storyId,
-}: MiseAJourSocialOptions): Promise<SocialState> {
+export async function mettreAJourSocial(
+  { appSettings, socialActuel, messages, depuisIndex, storyId }: MiseAJourSocialOptions,
+  // Appels d'outils déjà obtenus par l'appel groupé : même validation.
+  appelsPrecalcules?: AppelOutil[],
+): Promise<SocialState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   if (nouveauxMessages.length === 0) return socialActuel;
 
@@ -135,7 +136,7 @@ export async function mettreAJourSocial({
     .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
     .join('\n');
 
-  const appelsBruts = await extraireAppelsSocial(appSettings, transcript, socialActuel, storyId);
+  const appelsBruts = appelsPrecalcules ?? await extraireAppelsSocial(appSettings, transcript, socialActuel, storyId);
   const outilsSocial = outilsPourComposant('social');
 
   const engagements: Engagement[] = [...socialActuel.engagements];

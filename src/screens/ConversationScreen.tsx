@@ -820,7 +820,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
                     <Text style={styles.ligneDebug}>Temps hors attente joueur : {formaterDureeGeneration(debugLore.diagnosticTour.postTraitement.dureeTotaleMs)}</Text>
                     {debugLore.diagnosticTour.postTraitement.etapes.map((etape, index) => (
                       <Text key={`${etape.nom}-post-${index}`} style={styles.ligneDebug}>
-                        {symboleDiagnostic(etape.statut)} {etape.nom}{typeof etape.dureeMs === 'number' ? ` — ${formaterDureeGeneration(etape.dureeMs)}` : ''}{etape.raison ? ` · ${etape.raison}` : ''}
+                        {symboleDiagnostic(etape.statut)} {etape.nom}{etape.mode ? ` [${etape.mode}]` : ''}{typeof etape.dureeMs === 'number' ? ` — ${formaterDureeGeneration(etape.dureeMs)}` : ''}{etape.raison ? ` · ${etape.raison}` : ''}
                       </Text>
                     ))}
                   </>

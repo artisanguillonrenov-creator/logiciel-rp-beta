@@ -75,6 +75,44 @@ interface FaitCandidat {
   contreditUnFaitExistant: boolean;
 }
 
+export type ExtractionMemoire = { resume: string; candidats: FaitCandidat[] };
+
+export const CONSIGNE_EXTRACTION_MEMOIRE = `Tu es le module de mémoire d'un logiciel de jeu de rôle. Tu ne racontes rien : tu maintiens une mémoire structurée. Réponds UNIQUEMENT avec un objet JSON strict de la forme :
+{"resume": "...", "faits": [{"type": "personnage|lieu|promesse|autre", "texte": "...", "resolue": false, "contredit_un_fait_existant": false}]}
+
+Règles :
+- "resume" : résumé glissant de l'histoire jusqu'ici (quelques phrases denses), en partant du résumé précédent et en intégrant les nouveaux événements.
+- "faits" : les faits clés de la période récente (personnages rencontrés, lieux visités, promesses/engagements faits ou non tenus, changements d'état). N'inclus que les faits nouveaux ou modifiés — pas besoin de relister ceux qui n'ont pas changé.
+- "contredit_un_fait_existant" : true UNIQUEMENT si ce fait contredit littéralement un fait de la liste ci-dessous (ex. un personnage donné mort puis vivant sans explication). Dans le doute, false.
+- Reste factuel, sans interprétation ni ajout non présent dans le texte.`;
+
+/** Résumé et faits actifs transmis au modèle comme point de départ de l'extraction. */
+export function contexteExtractionMemoire(memoireActuelle: MemoryState): string {
+  const faitsActifs = memoireActuelle.faits.filter((f) => f.niveau !== 'archive');
+  const faitsActuelsTexte = faitsActifs.length
+    ? faitsActifs.map((f) => `- [${f.type}]${f.resolue ? ' (résolu)' : ''} ${f.texte}`).join('\n')
+    : 'Aucun.';
+  return `RÉSUMÉ PRÉCÉDENT :\n${memoireActuelle.resume || '(aucun)'}\n\nFAITS CONNUS :\n${faitsActuelsTexte}`;
+}
+
+/** Valide la sortie JSON (déjà parsée) de l'extraction ; null si ce n'est pas un objet, lève sur un fait mal formé. */
+export function interpreterExtractionMemoire(parsed: unknown, memoireActuelle: MemoryState): ExtractionMemoire | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const objet = parsed as { resume?: unknown; faits?: unknown };
+  const candidats: FaitCandidat[] = Array.isArray(objet.faits)
+    ? objet.faits.map((f: any) => ({
+        type: ['personnage', 'lieu', 'promesse', 'autre'].includes(f.type) ? f.type : 'autre',
+        texte: String(f.texte ?? ''),
+        resolue: Boolean(f.resolue),
+        contreditUnFaitExistant: Boolean(f.contredit_un_fait_existant),
+      }))
+    : [];
+  return {
+    resume: typeof objet.resume === 'string' ? objet.resume : memoireActuelle.resume,
+    candidats,
+  };
+}
+
 /**
  * L2 — extraction épisodique : un seul appel modèle qui produit à la fois
  * le résumé (L1) mis à jour et les faits candidats de la période récente,
@@ -88,16 +126,11 @@ async function extraireCandidats({
   messages,
   personnageNom,
   storyId,
-}: MiseAJourMemoireOptions): Promise<{ resume: string; candidats: FaitCandidat[] } | null> {
+}: MiseAJourMemoireOptions): Promise<ExtractionMemoire | null> {
   const nouveauxMessages = messages.slice(memoireActuelle.dernierMessageIndexMaj);
   const transcript = nouveauxMessages
     .map((m) => `${m.role === 'user' ? personnageNom : 'Narrateur'} : ${m.content}`)
     .join('\n');
-
-  const faitsActifs = memoireActuelle.faits.filter((f) => f.niveau !== 'archive');
-  const faitsActuelsTexte = faitsActifs.length
-    ? faitsActifs.map((f) => `- [${f.type}]${f.resolue ? ' (résolu)' : ''} ${f.texte}`).join('\n')
-    : 'Aucun.';
 
   try {
     const sortie = await appellerModele({
@@ -109,38 +142,18 @@ async function extraireCandidats({
       messages: [
         {
           role: 'system',
-          content: `Tu es le module de mémoire d'un logiciel de jeu de rôle. Tu ne racontes rien : tu maintiens une mémoire structurée. Réponds UNIQUEMENT avec un objet JSON strict de la forme :
-{"resume": "...", "faits": [{"type": "personnage|lieu|promesse|autre", "texte": "...", "resolue": false, "contredit_un_fait_existant": false}]}
-
-Règles :
-- "resume" : résumé glissant de l'histoire jusqu'ici (quelques phrases denses), en partant du résumé précédent et en intégrant les nouveaux événements.
-- "faits" : les faits clés de la période récente (personnages rencontrés, lieux visités, promesses/engagements faits ou non tenus, changements d'état). N'inclus que les faits nouveaux ou modifiés — pas besoin de relister ceux qui n'ont pas changé.
-- "contredit_un_fait_existant" : true UNIQUEMENT si ce fait contredit littéralement un fait de la liste ci-dessous (ex. un personnage donné mort puis vivant sans explication). Dans le doute, false.
-- Reste factuel, sans interprétation ni ajout non présent dans le texte.`,
+          content: CONSIGNE_EXTRACTION_MEMOIRE,
         },
         {
           role: 'user',
-          content: `RÉSUMÉ PRÉCÉDENT :\n${memoireActuelle.resume || '(aucun)'}\n\nFAITS CONNUS :\n${faitsActuelsTexte}\n\nNOUVEAUX ÉCHANGES À INTÉGRER :\n${transcript}`,
+          content: `${contexteExtractionMemoire(memoireActuelle)}\n\nNOUVEAUX ÉCHANGES À INTÉGRER :\n${transcript}`,
         },
       ],
     });
 
     const match = sortie.match(/\{[\s\S]*\}/);
     if (!match) return null;
-    const parsed = JSON.parse(match[0]);
-    const candidats: FaitCandidat[] = Array.isArray(parsed.faits)
-      ? parsed.faits.map((f: any) => ({
-          type: ['personnage', 'lieu', 'promesse', 'autre'].includes(f.type) ? f.type : 'autre',
-          texte: String(f.texte ?? ''),
-          resolue: Boolean(f.resolue),
-          contreditUnFaitExistant: Boolean(f.contredit_un_fait_existant),
-        }))
-      : [];
-
-    return {
-      resume: typeof parsed.resume === 'string' ? parsed.resume : memoireActuelle.resume,
-      candidats,
-    };
+    return interpreterExtractionMemoire(JSON.parse(match[0]), memoireActuelle);
   } catch {
     return null;
   }
@@ -229,8 +242,13 @@ async function consoliderEtCanoniser(
  * (consolidation/déduplication), L4 (canonisation avec détection de
  * contradiction) et L5 (décroissance) s'enchaînent ici à chaque mise à jour.
  */
-export async function mettreAJourMemoire(options: MiseAJourMemoireOptions): Promise<MemoryState> {
-  const resultat = await extraireCandidats(options);
+export async function mettreAJourMemoire(
+  options: MiseAJourMemoireOptions,
+  // Extraction déjà obtenue par l'appel groupé : seul l'appel modèle est évité,
+  // consolidation, canonisation et décroissance restent identiques.
+  extractionPrecalculee?: ExtractionMemoire,
+): Promise<MemoryState> {
+  const resultat = extractionPrecalculee ?? await extraireCandidats(options);
   if (!resultat) {
     // Échec d'extraction : mémoire inchangée, on retentera à la prochaine
     // occasion (l'index n'avance pas).
