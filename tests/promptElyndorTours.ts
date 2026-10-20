@@ -9,7 +9,8 @@ import { construirePassages, selectionnerPassagesDetaille, viderIndexPassages, t
 import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { preparerTour } from '../src/engine/ficheScene';
 import { construireSystemPrompt } from '../src/engine/promptBuilder';
-import { texteCompatibleAvecProfil } from '../src/engine/contenuAdulte';
+import { instructionRegistreAdulte, texteCompatibleAvecProfil } from '../src/engine/contenuAdulte';
+import { etatChapitre, formaterChapitre } from '../src/engine/chapitres';
 import { consigneScenarioDe } from '../src/engine/scenarioGenerator';
 import { paquetMonde, titreLoreDe } from '../src/mondes';
 import { creerNouvelleHistoire } from '../src/engine/story';
@@ -24,6 +25,10 @@ export interface TourType {
   nom: string;
   /** Monde de l'histoire ; absent : histoire sans mondeId (Elyndor). */
   mondeId?: string;
+  /** Chapitre en cours (monde à chapitres) ; absent : premier chapitre. */
+  chapitreId?: string;
+  /** Profil Adulte : ajoute le registre Adulte comme construireCtxBase (hors instantané). */
+  avecRegistreAdulte?: boolean;
   lieu: string;
   profil: ProfilContenu;
   message: string;
@@ -56,6 +61,7 @@ function histoire(tour: TourType): StoryState {
     sexe: 'Femme',
     mondeId: tour.mondeId,
   });
+  if (tour.chapitreId) story.monde = { ...story.monde, chapitreId: tour.chapitreId };
   story.meta.id = `histoire-${tour.nom}`;
   story.meta.createdAt = 1;
   story.meta.updatedAt = 1;
@@ -104,6 +110,8 @@ export function selectionTourType(tour: TourType): { entrees: LoreEntry[]; promp
   const prompt = construireSystemPrompt({
     loreCore: paquet.core,
     titreLore: titreLoreDe(paquet),
+    chapitre: formaterChapitre(etatChapitre(paquet.chapitres, story.monde, story.messages.length)) || undefined,
+    registreAdulte: tour.avecRegistreAdulte && profil === 'adulte' ? instructionRegistreAdulte(story.settings) : undefined,
     meta: story.meta,
     settings: story.settings,
     resume: '',

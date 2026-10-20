@@ -106,6 +106,7 @@ export async function calculerRattrapageNarratif(
           appSettings,
           storyId: story.meta.id,
           mondeActuel: story.monde,
+          chapitres: paquetMonde(mondeIdDe(story.meta)).chapitres,
           messages: messagesSecurises,
           depuisIndex: story.memoire.dernierMessageIndexMaj,
         })),

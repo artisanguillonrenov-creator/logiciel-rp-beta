@@ -20,6 +20,12 @@ Facultatifs : `titreLore` (défaut « LORE <NOM> PERTINENT »),
   (lieu et situation saisis). Sans module : départ libre.
 - `modules.rolesCanon` : fiches « [RÉCURRENT] » qui fixent un rôle par
   ville. Sans module : ni rôles fixés ni capitales.
+- `chapitres` : trame en chapitres (`id`, `titre`, `fiche`, `jalons`,
+  `suivant`). Seule la fiche du chapitre en cours (`MondeState.chapitreId`,
+  absent = premier) est injectée à chaque tour, avec ses jalons et le titre
+  du précédent. L'outil `avancer_chapitre` de la simulation du monde passe
+  au suivant immédiat, jamais par saut, et pas avant
+  `DELAI_MIN_AVANCEE_CHAPITRE` messages (10) depuis la dernière avancée.
 
 Les images sont des accesseurs (`get image() { return require(...) }`) :
 Metro les embarque, les tests Node ne les chargent pas. Toutes les images
@@ -57,7 +63,8 @@ d'Elyndor).
    - priorité 0-10 invariants, 20-30 canon de scène, 40-50 conséquences,
      60-100 contexte.
 
-Paquets actuels : `elyndor/`, `cendres-du-monde/` (Les Cendres du Monde,
+Paquets actuels : `elyndor/`, `gardiens-de-la-galaxie/` (space opera des
+films, 8 chapitres, départ au Kyln), `cendres-du-monde/` (Les Cendres du Monde,
 survie post-apocalyptique sur la Terre réelle en 2046, départ libre, sans
 races ni rôles canon) et `monde-test/`.
 

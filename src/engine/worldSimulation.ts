@@ -8,6 +8,8 @@ import type {
 } from '../types';
 import { configurationLLM, appellerModeleAvecOutils, type AppelOutil } from './openrouter';
 import { outilsPourComposant, validerEtReparerArguments } from './tools';
+import { etatChapitre, type EtatChapitre } from './chapitres';
+import type { ChapitreMonde } from '../mondes/types';
 
 // Mêmes paliers d'écart (en nombre de messages depuis le dernier accès)
 // pour les quatre niveaux d'activité d'une zone — au-delà du dernier
@@ -49,6 +51,7 @@ async function extraireAppelsMonde(
   transcript: string,
   monde: MondeState,
   storyId?: string,
+  chapitre?: EtatChapitre,
 ): Promise<AppelOutil[]> {
   const declencheursEnAttente = monde.declencheurs
     .filter((d) => d.declenche && !d.resolu)
@@ -64,7 +67,7 @@ async function extraireAppelsMonde(
       temperature: 0.2,
       maxTokens: 500,
       diagnosticLabel: 'Monde',
-      outils: outilsPourComposant('monde'),
+      outils: outilsPourComposant('monde', chapitre),
       messages: [
         {
           role: 'system',
@@ -73,7 +76,7 @@ async function extraireAppelsMonde(
 Flags déjà connus : ${flagsConnus}
 Compteurs déjà connus : ${compteursConnus}
 Conséquences déclenchées en attente d'être racontées (à résoudre via resoudre_declencheur si le texte les raconte) :
-${declencheursEnAttente}`,
+${declencheursEnAttente}${chapitre?.suivant ? `\nChapitre en cours : ${chapitre.enCours.id} — ${chapitre.enCours.titre}. N'appelle avancer_chapitre que si tous ses jalons sont explicitement atteints dans l'extrait.` : ''}`,
         },
         { role: 'user', content: transcript },
       ],
@@ -106,6 +109,8 @@ export interface MiseAJourMondeOptions {
   depuisIndex: number;
   /** Histoire concernée (journal de diagnostic). */
   storyId?: string;
+  /** Chapitres du paquet monde de l'histoire ; absents : aucune logique de chapitre. */
+  chapitres?: readonly ChapitreMonde[];
 }
 
 /**
@@ -123,6 +128,7 @@ export async function mettreAJourMonde({
   messages,
   depuisIndex,
   storyId,
+  chapitres,
 }: MiseAJourMondeOptions): Promise<MondeState> {
   const nouveauxMessages = messages.slice(depuisIndex);
   const nbMessages = messages.length;
@@ -131,13 +137,17 @@ export async function mettreAJourMonde({
   let flags = mondeActuel.flags;
   let compteurs = mondeActuel.compteurs;
   let declencheurs = mondeActuel.declencheurs;
+  // Chapitre en cours : conservé tel quel, sauf avancée validée ci-dessous.
+  let chapitreId = mondeActuel.chapitreId;
+  let chapitreDepuisMessage = mondeActuel.chapitreDepuisMessage;
+  let chapitre = etatChapitre(chapitres, mondeActuel, nbMessages);
 
   if (nouveauxMessages.length > 0) {
     const transcript = nouveauxMessages
       .map((m) => `${m.role === 'user' ? 'Joueur' : 'Narrateur'} : ${m.content}`)
       .join('\n');
-    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId);
-    const outilsMonde = outilsPourComposant('monde');
+    const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId, chapitre);
+    const outilsMonde = outilsPourComposant('monde', chapitre);
 
     zones = [...zones];
     declencheurs = [...declencheurs];
@@ -159,13 +169,19 @@ export async function mettreAJourMonde({
     for (const appelBrut of appelsBruts) {
       const outil = outilsMonde.find((o) => o.nom === appelBrut.nom);
       if (!outil) continue; // permissions différenciées par composant : un outil hors périmètre est ignoré.
-      const args = validerEtReparerArguments(outil, appelBrut.arguments);
+      const args = validerEtReparerArguments(outil, appelBrut.arguments, { chapitre });
       if (!args) continue;
 
       if (appelBrut.nom === 'definir_zone') {
         toucherZone(args.nom as string, args.description as string);
       } else if (appelBrut.nom === 'poser_flag') {
         flags = { ...flags, [args.nom as string]: args.valeur as boolean };
+      } else if (appelBrut.nom === 'avancer_chapitre') {
+        // Validé (suivant immédiat, délai respecté) : une seconde avancée dans
+        // le même cycle échoue sur le délai, aucun saut n'est possible.
+        chapitreId = args.vers as string;
+        chapitreDepuisMessage = nbMessages;
+        chapitre = etatChapitre(chapitres, { chapitreId, chapitreDepuisMessage }, nbMessages);
       } else if (appelBrut.nom === 'ajuster_compteur') {
         compteurs = { ...compteurs, [args.nom as string]: (compteurs[args.nom as string] ?? 0) + (args.delta as number) };
       } else if (appelBrut.nom === 'resoudre_declencheur') {
@@ -210,7 +226,14 @@ export async function mettreAJourMonde({
   const mondeAvantDeclencheurs: MondeState = { zones: zonesActualisees, flags, compteurs, declencheurs };
   const declencheursEvalues = evaluerDeclencheurs(declencheurs, mondeAvantDeclencheurs);
 
-  return { zones: zonesActualisees, flags, compteurs, declencheurs: declencheursEvalues };
+  return {
+    zones: zonesActualisees,
+    flags,
+    compteurs,
+    declencheurs: declencheursEvalues,
+    ...(chapitreId !== undefined ? { chapitreId } : {}),
+    ...(chapitreDepuisMessage !== undefined ? { chapitreDepuisMessage } : {}),
+  };
 }
 
 /** Formate l'état du monde pertinent pour le prompt — jamais visible du joueur. */

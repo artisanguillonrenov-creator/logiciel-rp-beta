@@ -195,6 +195,9 @@ export interface ContexteConstruction {
   // titre de son bloc de lore (titreLoreDe). Toujours fournis par l'appelant.
   loreCore: string;
   titreLore: string;
+  // Fiche du chapitre en cours (chapitres.ts), pour un monde à chapitres :
+  // jamais coupée, comme le Lore Core. Absente pour les autres mondes.
+  chapitre?: string;
 }
 
 export interface OptionsPrompt {
@@ -287,10 +290,11 @@ export function construireSystemPromptDetaille(ctx: ContexteConstruction, option
   const budget = options.budgetSysteme ?? BUDGET_SYSTEM_DISTANT;
   // Préfixe identique d'un tour à l'autre : le serveur conserve ces
   // jetons en cache même si les responsabilités natives changent.
-  // Rien de variable ne doit s'y glisser.
+  // Rien de variable ne doit s'y glisser. Seule exception, la fiche du
+  // chapitre en cours : elle ne change qu'à une avancée de chapitre.
   const prefixe = `Tu es le narrateur d'un jeu de rôle textuel. Le logiciel qui t'entoure porte l'autorité sur les règles, la mémoire et l'état du monde ; tu fournis uniquement le langage narratif, dans le respect strict de ce qui suit.
 
-${ctx.loreCore}
+${ctx.loreCore}${ctx.chapitre ? `\n\n${ctx.chapitre}` : ''}
 
 ${IDENTITE_NARRATIVE}
 

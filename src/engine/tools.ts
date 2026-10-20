@@ -1,4 +1,5 @@
 import type { ToolDefinition } from './openrouter';
+import { avanceeChapitreAutorisee, type EtatChapitre } from './chapitres';
 
 // Permissions différenciées par composant (brief Phase 2) : chaque pipeline
 // (monde, social...) ne reçoit que les outils de son propre domaine — voir
@@ -99,10 +100,30 @@ const OUTILS_SOCIAL: ToolDefinition[] = [
   },
 ];
 
+/**
+ * Passage au chapitre suivant, pour un monde qui a des chapitres : la
+ * description porte les jalons du chapitre en cours, seule l'identité du
+ * chapitre suivant est donnée (jamais son contenu).
+ */
+function outilAvancerChapitre(etat: EtatChapitre & { suivant: NonNullable<EtatChapitre['suivant']> }): ToolDefinition {
+  const jalons = etat.enCours.jalons.map((j) => `« ${j} »`).join(' ; ');
+  return {
+    composant: 'monde',
+    nom: 'avancer_chapitre',
+    description: `Fait passer l'histoire du chapitre ${etat.enCours.id} (${etat.enCours.titre}) au chapitre suivant. À appeler uniquement quand TOUS les jalons de fin du chapitre en cours sont explicitement atteints dans le texte : ${jalons}. Jamais pour anticiper, jamais pour sauter un chapitre.`,
+    parametres: {
+      vers: { type: 'string', enum: [etat.suivant.id], description: 'Identifiant du chapitre suivant' },
+    },
+    requis: ['vers'],
+  };
+}
+
 export type ComposantOutils = 'monde' | 'social';
 
-export function outilsPourComposant(composant: ComposantOutils): ToolDefinition[] {
-  return composant === 'monde' ? OUTILS_MONDE : OUTILS_SOCIAL;
+/** Outils d'un composant ; avancer_chapitre n'est proposé que si le monde a un chapitre suivant. */
+export function outilsPourComposant(composant: ComposantOutils, chapitre?: EtatChapitre): ToolDefinition[] {
+  if (composant === 'social') return OUTILS_SOCIAL;
+  return chapitre?.suivant ? [...OUTILS_MONDE, outilAvancerChapitre({ ...chapitre, suivant: chapitre.suivant })] : OUTILS_MONDE;
 }
 
 /**
@@ -115,6 +136,9 @@ export function outilsPourComposant(composant: ComposantOutils): ToolDefinition[
 export function validerEtReparerArguments(
   outil: ToolDefinition,
   args: Record<string, unknown>,
+  // Chapitre en cours, pour valider avancer_chapitre : seul le suivant
+  // immédiat, après le délai minimal, est accepté.
+  contexte: { chapitre?: EtatChapitre } = {},
 ): Record<string, unknown> | null {
   const resultat: Record<string, unknown> = {};
 
@@ -153,5 +177,6 @@ export function validerEtReparerArguments(
   }
 
   if (outil.requis.some((cle) => !(cle in resultat))) return null;
+  if (outil.nom === 'avancer_chapitre' && !avanceeChapitreAutorisee(contexte.chapitre, resultat.vers)) return null;
   return resultat;
 }

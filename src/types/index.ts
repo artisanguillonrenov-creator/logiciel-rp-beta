@@ -344,6 +344,13 @@ export interface MondeState {
   flags: Record<string, boolean>;
   compteurs: Record<string, number>;
   declencheurs: DeclencheurMonde[];
+  // Chapitre en cours, pour un monde dont le paquet a des chapitres (voir
+  // src/engine/chapitres.ts). Optionnels comme les autres ajouts : absent =
+  // premier chapitre du paquet, ou aucune logique de chapitre sans chapitres.
+  chapitreId?: string;
+  // Nombre de messages de l'histoire au moment de la dernière avancée de
+  // chapitre (garde-fou de rythme) ; absent = 0.
+  chapitreDepuisMessage?: number;
 }
 
 // Engagements + dynamiques sociales (brief Phase 2, systèmes narratifs
