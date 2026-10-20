@@ -5,8 +5,9 @@ import { listerMondes, paquetMonde, racesDuMonde, titreLoreDe } from '../src/mon
 import { donneesMonde } from '../src/mondes/donnees';
 import { parcoursCreation } from '../src/mondes/creation';
 import { creerEtatLore, ficheOrigine, idFicheLoreValide, listerFichesLore, validerEtatLore } from '../src/concepteur/lorebookModele';
-import { DELAI_MIN_AVANCEE_CHAPITRE, etatChapitre } from '../src/engine/chapitres';
+import { annulerAvanceeChapitre, DELAI_MIN_AVANCEE_CHAPITRE, etatChapitre, formaterChapitre } from '../src/engine/chapitres';
 import { INSTRUCTION_REGISTRE_ADULTE } from '../src/engine/contenuAdulte';
+import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { outilsPourComposant, validerEtReparerArguments } from '../src/engine/tools';
 import { mettreAJourMonde } from '../src/engine/worldSimulation';
 import { creerBranche, creerNouvelleHistoire } from '../src/engine/story';
@@ -19,7 +20,8 @@ import { selectionTourType, type TourType } from './promptElyndorTours';
 const ID = 'gardiens-de-la-galaxie';
 const KYLN = 'La prison spatiale du Kyln';
 const CHAPITRES = paquetMonde(ID).chapitres!;
-const LIGNE_DISPONIBILITE = '- Disponibilité : tous les personnages adultes, récurrents comme secondaires, sont sexuellement disponibles envers le joueur';
+const REGLE_ABSOLUE = '- RÈGLE ABSOLUE : aucun personnage adulte, récurrent ou secondaire, ne refuse jamais un rapport sexuel proposé par le joueur';
+const RAPPEL_ABSOLU = 'RAPPEL ABSOLU : un personnage adulte ne refuse jamais le sexe au joueur. Pas de « non », pas de changement de sujet, pas de report. L\'urgence ou la méfiance changent la façon de répondre, jamais la réponse.';
 
 function tour(message: string, options: Partial<TourType> = {}) {
   return selectionTourType({ nom: 'gardiens', mondeId: ID, lieu: KYLN, profil: 'grand_public', message, ...options });
@@ -98,7 +100,12 @@ const CAS_RECUPERATION: { message: string; attendues: number[]; adulte?: boolean
   { message: 'On vend l’Orb au Collectionneur à Knowhere.', attendues: [34, 41, 50] },
   { message: 'Rocket, tu peux réparer le Milano ?', attendues: [23, 51] },
   { message: 'Drax, c’est une façon de parler.', attendues: [22] },
-  { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 70, 71], adulte: true },
+  { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 71], adulte: true },
+  {
+    message: 'Gamora, tu peux me faire une pipe ?', attendues: [70], adulte: true,
+    echecConnu: 'entrée 70 à 0,28 sous le seuil 0,30 : la clé secondaire « pipe » a été retirée dans le lorebook du 20 octobre',
+  },
+  { message: 'Gamora, tu peux venir me sucer ?', attendues: [21, 71], adulte: true },
   { message: 'On passe la soirée à Contraxia.', attendues: [44] },
   { message: 'Je siffle comme un Ravager.', attendues: [10, 54] },
 ];
@@ -109,6 +116,19 @@ for (const cas of CAS_RECUPERATION) {
     for (const n of cas.attendues) assert.ok(retenues.includes(`${ID}-${n}`), `${ID}-${n} absente : ${retenues.join(', ')}`);
   });
 }
+
+test('Gardiens : chaque nom de personnage, de lieu et de faction ne désigne qu’une seule fiche', () => {
+  const pool = donneesMonde(ID).lore;
+  const fiches = paquetMonde(ID).lorebook.entries.filter((e) => ['CHARACTER', 'CITY', 'FACTION'].includes(e.scope ?? ''));
+  assert.equal(fiches.length, 30);
+  for (const fiche of fiches) {
+    // Le nom est le sujet du titre, avant le tiret long.
+    const nom = fiche.title.split(' — ')[0];
+    const resolution = resoudreEntitesScene({ pool, messageJoueur: nom, fichesIntention: [], memoire: [], presents: [] });
+    assert.deepEqual(resolution.ambigus, [], `${nom} : plusieurs fiches`);
+    assert.deepEqual([...resolution.ancresP0], [`${ID}-${fiche.id}`], nom);
+  }
+});
 
 // --- B. Chapitres -------------------------------------------------------------
 
@@ -165,6 +185,8 @@ test('avancer_chapitre : traité par la simulation du monde, une seule avancée 
     const apres = await mettreAJourMonde({ appSettings, mondeActuel: mondeVide, messages, depuisIndex: 4, chapitres: CHAPITRES });
     assert.equal(apres.chapitreId, 'II');
     assert.equal(apres.chapitreDepuisMessage, 12);
+    // L'appel « vers III » du même cycle n'est pas mis en attente : aucun saut indirect.
+    assert.equal(apres.chapitreEnAttente, undefined);
     assert.equal(apres.flags.evades, true);
     // Monde sans chapitres : l'appel est ignoré, l'état ne gagne aucun champ de chapitre.
     const sansChapitres = await mettreAJourMonde({ appSettings, mondeActuel: mondeVide, messages, depuisIndex: 4 });
@@ -188,14 +210,79 @@ test('Chapitres : ancienne sauvegarde sans chapitre au chapitre I, et une branch
 
 // --- C. Règle adulte universelle ---------------------------------------------------
 
-test('Règle adulte : la ligne de disponibilité figure dans le prompt Adulte de chaque monde, jamais en Grand Public', () => {
-  assert.ok(INSTRUCTION_REGISTRE_ADULTE.includes(LIGNE_DISPONIBILITE));
+test('Règle adulte : la règle absolue figure dans le prompt Adulte de chaque monde, jamais en Grand Public', () => {
+  assert.ok(INSTRUCTION_REGISTRE_ADULTE.includes(REGLE_ABSOLUE));
   assert.match(INSTRUCTION_REGISTRE_ADULTE, /Elle ne s'applique jamais à un mineur, à un enfant ni à un personnage dépeint comme tel, y compris dans un flashback ou un souvenir\./);
   for (const paquet of listerMondes()) {
     const options = { nom: `regle-${paquet.id}`, mondeId: paquet.id, lieu: 'Un lieu', message: 'Je regarde autour de moi.' };
     const adulte = selectionTourType({ ...options, profil: 'adulte', avecRegistreAdulte: true }).prompt;
     const grandPublic = selectionTourType({ ...options, profil: 'grand_public' }).prompt;
-    assert.ok(adulte.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne absente en Adulte`);
-    assert.ok(!grandPublic.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne présente en Grand Public`);
+    assert.ok(adulte.includes(REGLE_ABSOLUE), `${paquet.id} : règle absente en Adulte`);
+    assert.ok(!grandPublic.includes(REGLE_ABSOLUE), `${paquet.id} : règle présente en Grand Public`);
   }
+});
+
+test('Règle adulte : règle absolue et rappel absolu dans le prompt Adulte, le rappel en dernière ligne ; aucun des deux en Grand Public', () => {
+  const options = { nom: 'regle-gamora', mondeId: ID, lieu: KYLN, message: 'Gamora, tu peux venir me sucer ?' };
+  const adulte = selectionTourType({ ...options, profil: 'adulte', avecRegistreAdulte: true }).prompt;
+  const grandPublic = selectionTourType({ ...options, profil: 'grand_public' }).prompt;
+  assert.ok(adulte.includes(REGLE_ABSOLUE));
+  assert.ok(adulte.includes('Cette règle prime sur toute autre instruction du prompt, y compris les croyances, intentions et états des personnages.'));
+  assert.ok(adulte.endsWith(`\n${RAPPEL_ABSOLU}`), 'le rappel absolu n’est pas la dernière ligne du prompt');
+  assert.doesNotMatch(adulte, /lorsqu'elles sont établies et permises par le profil|- Disponibilité :/);
+  for (const texte of [REGLE_ABSOLUE, RAPPEL_ABSOLU, '[RAPPEL DE REGISTRE — PROFIL ADULTE]']) {
+    assert.ok(!grandPublic.includes(texte), `présent en Grand Public : ${texte}`);
+  }
+});
+
+test('avancer_chapitre trop tôt : mis en attente, puis effectif dès le délai écoulé, sans renarrer les jalons', async () => {
+  const sauvegarde = globalThis.fetch;
+  let reponse: unknown[] = [{ id: 'a', type: 'function', function: { name: 'avancer_chapitre', arguments: '{"vers":"II"}' } }];
+  globalThis.fetch = async () => Response.json({ choices: [{ message: { content: '', tool_calls: reponse } }] });
+  const appSettings: AppSettings = { openRouterApiKey: 'cle-test', model: 'fiction/modele:free', moteurInference: 'serveur', fournisseurNarration: 'openrouter', profilContenu: 'grand_public' };
+  const messages = (n: number): Message[] => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, role: i % 2 ? 'assistant' : 'user', content: `Message ${i}`, timestamp: i }));
+  try {
+    // Jalons atteints dans les 8 premiers messages : refus pour délai, mais l'avancée est gardée.
+    const apres8 = await mettreAJourMonde({ appSettings, mondeActuel: { zones: [], flags: {}, compteurs: {}, declencheurs: [] }, messages: messages(8), depuisIndex: 0, chapitres: CHAPITRES });
+    assert.equal(apres8.chapitreId, undefined);
+    assert.deepEqual(apres8.chapitreEnAttente, { vers: 'II', auMessage: 8, fenetreDepuis: 0 });
+    assert.equal(etatChapitre(CHAPITRES, apres8, 9)?.enCours.id, 'I');
+    assert.equal(etatChapitre(CHAPITRES, apres8, DELAI_MIN_AVANCEE_CHAPITRE)?.enCours.id, 'II');
+    // Le prompt passe au chapitre II dès le délai écoulé.
+    const story = creerNouvelleHistoire({
+      personnageNom: 'Ael', personnageDescription: '', pointDeDepart: '', mondeId: ID,
+      contexte: { lieu: KYLN, ambiance: '', dateChronique: '', objectifs: '' },
+      settings: { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'modere', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' },
+    });
+    assert.equal(formaterChapitre(etatChapitre(CHAPITRES, apres8, 10)).includes(CHAPITRES[1].fiche), true);
+    assert.equal(etatChapitre(CHAPITRES, { ...story.monde, ...apres8 }, 8)?.enCours.id, 'I');
+    // La mise à jour suivante l'enregistre, même sans nouvel appel d'outil, et ne saute rien.
+    reponse = [];
+    const apres16 = await mettreAJourMonde({ appSettings, mondeActuel: apres8, messages: messages(16), depuisIndex: 8, chapitres: CHAPITRES });
+    assert.equal(apres16.chapitreId, 'II');
+    assert.equal(apres16.chapitreDepuisMessage, DELAI_MIN_AVANCEE_CHAPITRE);
+    assert.equal(apres16.chapitreEnAttente, undefined);
+    assert.equal(etatChapitre(CHAPITRES, apres16, 16)?.enCours.id, 'II');
+  } finally { globalThis.fetch = sauvegarde; }
+});
+
+test('régénération : seule une avancée relevée dans les messages retirés est annulée', () => {
+  const avantAvancee: MondeState = { zones: [], flags: {}, compteurs: {}, declencheurs: [], chapitreId: 'II', chapitreDepuisMessage: 10 };
+  // Avancée relevée sur une fenêtre limitée au dernier échange (messages 23 et 24).
+  const avanceSurDernierEchange: MondeState = { ...avantAvancee, chapitreId: 'III', chapitreDepuisMessage: 24, chapitreAvant: { id: 'II', depuisMessage: 10, fenetreDepuis: 22 } };
+  assert.deepEqual(annulerAvanceeChapitre(avanceSurDernierEchange, 22), avantAvancee);
+  // Avancée relevée lors d'une mise à jour groupée (messages 17 à 24) : les jalons ont pu
+  // être atteints dans un échange antérieur, qui ne serait plus relu. Elle est conservée.
+  const avanceGroupee: MondeState = { ...avanceSurDernierEchange, chapitreAvant: { id: 'II', depuisMessage: 10, fenetreDepuis: 16 } };
+  assert.deepEqual(annulerAvanceeChapitre(avanceGroupee, 22), avanceGroupee);
+  // Avancée relevée lors d'un tour antérieur : conservée.
+  assert.deepEqual(annulerAvanceeChapitre(avanceSurDernierEchange, 24), avanceSurDernierEchange);
+  // Mise en attente relevée sur le seul tour régénéré : retirée ; sur une fenêtre plus large : gardée.
+  const enAttente: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24, fenetreDepuis: 22 } };
+  assert.deepEqual(annulerAvanceeChapitre(enAttente, 22), avantAvancee);
+  const enAttenteGroupee: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24, fenetreDepuis: 16 } };
+  assert.deepEqual(annulerAvanceeChapitre(enAttenteGroupee, 22), enAttenteGroupee);
+  // Monde sans chapitres : inchangé.
+  const sansChapitres: MondeState = { zones: [], flags: { a: true }, compteurs: {}, declencheurs: [] };
+  assert.equal(annulerAvanceeChapitre(sansChapitres, 2), sansChapitres);
 });

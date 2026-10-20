@@ -40,7 +40,7 @@ import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { histoiresDuMonde, mondeIdDe, paquetMonde, titreLoreDe } from '../mondes';
-import { etatChapitre, formaterChapitre } from './chapitres';
+import { annulerAvanceeChapitre, etatChapitre, formaterChapitre } from './chapitres';
 import { donneesMonde } from '../mondes/donnees';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
@@ -927,6 +927,8 @@ export async function regenererDernierTour(story: StoryState, appSettings: AppSe
   const storySansDernierEchange: StoryState = {
     ...storyCourante,
     messages: messages.slice(0, -2),
+    // Une avancée de chapitre relevée pendant le tour régénéré est annulée.
+    monde: annulerAvanceeChapitre(storyCourante.monde, messages.length - 2),
     memoire: {
       ...storyCourante.memoire,
       dernierMessageIndexMaj: Math.min(storyCourante.memoire.dernierMessageIndexMaj, messages.length - 2),

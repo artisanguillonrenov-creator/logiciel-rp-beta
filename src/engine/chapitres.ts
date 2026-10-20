@@ -1,4 +1,4 @@
-import type { MondeState } from '../types';
+import type { ChapitreEnAttente, MondeState } from '../types';
 import type { ChapitreMonde } from '../mondes/types';
 
 // Chapitres d'un monde (mécanisme générique, optionnel) : le paquet décrit sa
@@ -12,6 +12,9 @@ import type { ChapitreMonde } from '../mondes/types';
  */
 export const DELAI_MIN_AVANCEE_CHAPITRE = 10;
 
+/** Champs de MondeState propres aux chapitres. */
+export type EtatChapitreStocke = Pick<MondeState, 'chapitreId' | 'chapitreDepuisMessage' | 'chapitreEnAttente' | 'chapitreAvant'>;
+
 export interface EtatChapitre {
   enCours: ChapitreMonde;
   precedent?: ChapitreMonde;
@@ -20,25 +23,118 @@ export interface EtatChapitre {
   messagesDepuisAvancee: number;
 }
 
-/** Chapitre en cours d'une histoire ; undefined pour un monde sans chapitres. Absent ou inconnu : premier chapitre. */
+function sansIndefinis(etat: EtatChapitreStocke): EtatChapitreStocke {
+  return Object.fromEntries(Object.entries(etat).filter(([, v]) => v !== undefined)) as EtatChapitreStocke;
+}
+
+export function champsChapitre(monde: EtatChapitreStocke): EtatChapitreStocke {
+  return sansIndefinis({
+    chapitreId: monde.chapitreId,
+    chapitreDepuisMessage: monde.chapitreDepuisMessage,
+    chapitreEnAttente: monde.chapitreEnAttente,
+    chapitreAvant: monde.chapitreAvant,
+  });
+}
+
+/** Avancée en attente qui a pris effet : relevée au plus tard maintenant, délai écoulé. */
+function attenteEchue(enCours: ChapitreMonde, depuis: number, attente: ChapitreEnAttente | undefined, nbMessages: number): boolean {
+  return !!attente && attente.vers === enCours.suivant && attente.auMessage <= nbMessages
+    && nbMessages - depuis >= DELAI_MIN_AVANCEE_CHAPITRE;
+}
+
+/**
+ * Chapitre en cours d'une histoire ; undefined pour un monde sans chapitres.
+ * Absent ou inconnu : premier chapitre. Une avancée en attente compte dès que
+ * le délai minimal est écoulé.
+ */
 export function etatChapitre(
   chapitres: readonly ChapitreMonde[] | undefined,
-  monde: Pick<MondeState, 'chapitreId' | 'chapitreDepuisMessage'>,
+  monde: EtatChapitreStocke,
   nbMessages: number,
 ): EtatChapitre | undefined {
   if (!chapitres?.length) return undefined;
-  const enCours = chapitres.find((c) => c.id === monde.chapitreId) ?? chapitres[0];
+  let enCours = chapitres.find((c) => c.id === monde.chapitreId) ?? chapitres[0];
+  let depuis = monde.chapitreDepuisMessage ?? 0;
+  if (attenteEchue(enCours, depuis, monde.chapitreEnAttente, nbMessages)) {
+    enCours = chapitres.find((c) => c.id === enCours.suivant) ?? enCours;
+    depuis += DELAI_MIN_AVANCEE_CHAPITRE;
+  }
   return {
     enCours,
     precedent: chapitres.find((c) => c.suivant === enCours.id),
     suivant: enCours.suivant ? chapitres.find((c) => c.id === enCours.suivant) : undefined,
-    messagesDepuisAvancee: nbMessages - (monde.chapitreDepuisMessage ?? 0),
+    messagesDepuisAvancee: nbMessages - depuis,
   };
 }
 
 /** Seul le chapitre suivant immédiat est accepté, et pas avant le délai minimal : aucun saut possible. */
 export function avanceeChapitreAutorisee(etat: EtatChapitre | undefined, vers: unknown): boolean {
   return !!etat?.suivant && vers === etat.suivant.id && etat.messagesDepuisAvancee >= DELAI_MIN_AVANCEE_CHAPITRE;
+}
+
+/** Avancée vers le bon chapitre mais trop tôt : elle sera mise en attente plutôt que perdue. */
+export function avanceeChapitreTropTot(etat: EtatChapitre | undefined, vers: unknown): boolean {
+  return !!etat?.suivant && vers === etat.suivant.id && etat.messagesDepuisAvancee < DELAI_MIN_AVANCEE_CHAPITRE;
+}
+
+/**
+ * État à restaurer si l'avancée est annulée par une régénération, avec le
+ * début de la fenêtre de messages où elle a été relevée.
+ */
+function avant(monde: EtatChapitreStocke, fenetreDepuis: number | undefined): NonNullable<MondeState['chapitreAvant']> {
+  const etat: NonNullable<MondeState['chapitreAvant']> = {};
+  if (monde.chapitreId !== undefined) etat.id = monde.chapitreId;
+  if (monde.chapitreDepuisMessage !== undefined) etat.depuisMessage = monde.chapitreDepuisMessage;
+  if (monde.chapitreEnAttente !== undefined) etat.enAttente = monde.chapitreEnAttente;
+  if (fenetreDepuis !== undefined) etat.fenetreDepuis = fenetreDepuis;
+  return etat;
+}
+
+/** Enregistre dans l'état stocké une avancée en attente qui a pris effet. */
+export function fixerChapitre(chapitres: readonly ChapitreMonde[] | undefined, monde: EtatChapitreStocke, nbMessages: number): EtatChapitreStocke {
+  const etat = etatChapitre(chapitres, monde, nbMessages);
+  const stocke = chapitres?.find((c) => c.id === monde.chapitreId) ?? chapitres?.[0];
+  if (!etat || etat.enCours.id === stocke?.id) return champsChapitre(monde);
+  return sansIndefinis({
+    chapitreId: etat.enCours.id,
+    chapitreDepuisMessage: (monde.chapitreDepuisMessage ?? 0) + DELAI_MIN_AVANCEE_CHAPITRE,
+    chapitreAvant: avant(monde, monde.chapitreEnAttente?.fenetreDepuis),
+  });
+}
+
+/**
+ * Avancée validée : chapitre suivant, l'état précédent est conservé pour une
+ * régénération. fenetreDepuis : premier message de la fenêtre analysée.
+ */
+export function avancerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number, fenetreDepuis: number): EtatChapitreStocke {
+  return sansIndefinis({ chapitreId: vers, chapitreDepuisMessage: nbMessages, chapitreAvant: avant(monde, fenetreDepuis) });
+}
+
+/** Avancée relevée trop tôt : mise en attente (la première relevée est gardée). */
+export function differerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number, fenetreDepuis: number): EtatChapitreStocke {
+  if (monde.chapitreEnAttente?.vers === vers) return champsChapitre(monde);
+  return champsChapitre({ ...monde, chapitreEnAttente: { vers, auMessage: nbMessages, fenetreDepuis } });
+}
+
+/**
+ * Régénération du dernier échange : une avancée (ou une mise en attente) n'est
+ * annulée que si TOUS les messages où elle a été relevée sont retirés. Relevée
+ * sur une fenêtre plus large (mise à jour groupée de plusieurs échanges), sa
+ * source ne peut pas être attribuée au tour régénéré : elle est conservée,
+ * plutôt que perdue alors que ses jalons ne seraient plus relus.
+ */
+export function annulerAvanceeChapitre<T extends EtatChapitreStocke>(monde: T, nbMessagesRestants: number): T {
+  const retiree = (fenetreDepuis: number | undefined) => fenetreDepuis !== undefined && fenetreDepuis >= nbMessagesRestants;
+  let resultat: T = monde;
+  if (resultat.chapitreAvant && retiree(resultat.chapitreAvant.fenetreDepuis)) {
+    const { chapitreAvant, chapitreId: _id, chapitreDepuisMessage: _depuis, chapitreEnAttente: _attente, ...reste } = resultat;
+    resultat = { ...reste, ...sansIndefinis({ chapitreId: chapitreAvant.id, chapitreDepuisMessage: chapitreAvant.depuisMessage, chapitreEnAttente: chapitreAvant.enAttente }) } as T;
+  }
+  if (resultat.chapitreEnAttente && retiree(resultat.chapitreEnAttente.fenetreDepuis)) {
+    const { chapitreEnAttente: _attente, ...reste } = resultat;
+    resultat = reste as T;
+  }
+  return resultat;
 }
 
 /**

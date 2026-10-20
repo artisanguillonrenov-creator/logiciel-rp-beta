@@ -8,7 +8,15 @@ import type {
 } from '../types';
 import { configurationLLM, appellerModeleAvecOutils, type AppelOutil } from './openrouter';
 import { outilsPourComposant, validerEtReparerArguments } from './tools';
-import { etatChapitre, type EtatChapitre } from './chapitres';
+import {
+  avancerChapitre,
+  avanceeChapitreTropTot,
+  champsChapitre,
+  differerChapitre,
+  etatChapitre,
+  fixerChapitre,
+  type EtatChapitre,
+} from './chapitres';
 import type { ChapitreMonde } from '../mondes/types';
 
 // Mêmes paliers d'écart (en nombre de messages depuis le dernier accès)
@@ -137,10 +145,10 @@ export async function mettreAJourMonde({
   let flags = mondeActuel.flags;
   let compteurs = mondeActuel.compteurs;
   let declencheurs = mondeActuel.declencheurs;
-  // Chapitre en cours : conservé tel quel, sauf avancée validée ci-dessous.
-  let chapitreId = mondeActuel.chapitreId;
-  let chapitreDepuisMessage = mondeActuel.chapitreDepuisMessage;
-  let chapitre = etatChapitre(chapitres, mondeActuel, nbMessages);
+  // Chapitre en cours : une avancée en attente dont le délai est écoulé est
+  // enregistrée ; le reste ne change qu'à une avancée relevée ci-dessous.
+  let etatChapitres = chapitres?.length ? fixerChapitre(chapitres, mondeActuel, nbMessages) : champsChapitre(mondeActuel);
+  let chapitre = etatChapitre(chapitres, etatChapitres, nbMessages);
 
   if (nouveauxMessages.length > 0) {
     const transcript = nouveauxMessages
@@ -148,6 +156,9 @@ export async function mettreAJourMonde({
       .join('\n');
     const appelsBruts = await extraireAppelsMonde(appSettings, transcript, mondeActuel, storyId, chapitre);
     const outilsMonde = outilsPourComposant('monde', chapitre);
+    // Chapitre montré à l'extracteur : seule une avancée vers SON suivant peut
+    // être mise en attente, et seulement si rien n'a avancé dans ce cycle.
+    const chapitreExtraction = chapitre;
 
     zones = [...zones];
     declencheurs = [...declencheurs];
@@ -170,6 +181,13 @@ export async function mettreAJourMonde({
       const outil = outilsMonde.find((o) => o.nom === appelBrut.nom);
       if (!outil) continue; // permissions différenciées par composant : un outil hors périmètre est ignoré.
       const args = validerEtReparerArguments(outil, appelBrut.arguments, { chapitre });
+      if (!args && appelBrut.nom === 'avancer_chapitre' && chapitre === chapitreExtraction
+        && avanceeChapitreTropTot(chapitreExtraction, appelBrut.arguments.vers)) {
+        // Jalons atteints mais délai minimal non écoulé : mise en attente,
+        // l'avancée prendra effet seule au lieu d'être perdue.
+        etatChapitres = differerChapitre(etatChapitres, appelBrut.arguments.vers as string, nbMessages, depuisIndex);
+        continue;
+      }
       if (!args) continue;
 
       if (appelBrut.nom === 'definir_zone') {
@@ -179,9 +197,8 @@ export async function mettreAJourMonde({
       } else if (appelBrut.nom === 'avancer_chapitre') {
         // Validé (suivant immédiat, délai respecté) : une seconde avancée dans
         // le même cycle échoue sur le délai, aucun saut n'est possible.
-        chapitreId = args.vers as string;
-        chapitreDepuisMessage = nbMessages;
-        chapitre = etatChapitre(chapitres, { chapitreId, chapitreDepuisMessage }, nbMessages);
+        etatChapitres = avancerChapitre(etatChapitres, args.vers as string, nbMessages, depuisIndex);
+        chapitre = etatChapitre(chapitres, etatChapitres, nbMessages);
       } else if (appelBrut.nom === 'ajuster_compteur') {
         compteurs = { ...compteurs, [args.nom as string]: (compteurs[args.nom as string] ?? 0) + (args.delta as number) };
       } else if (appelBrut.nom === 'resoudre_declencheur') {
@@ -231,8 +248,7 @@ export async function mettreAJourMonde({
     flags,
     compteurs,
     declencheurs: declencheursEvalues,
-    ...(chapitreId !== undefined ? { chapitreId } : {}),
-    ...(chapitreDepuisMessage !== undefined ? { chapitreDepuisMessage } : {}),
+    ...etatChapitres,
   };
 }
 
