@@ -102,7 +102,8 @@ export const RAPPEL_REGISTRE_ADULTE = `\n\n[RAPPEL DE REGISTRE — PROFIL ADULTE
 Le registre CRU et VULGAIRE est disponible lorsque la scène et les curseurs le justifient ; ne force pas l'intensité maximale dans une scène calme :
 - les PNJ parlent comme de vraies gens de ce monde brutal : ils jurent, insultent, menacent (putain, merde, bordel, enfoiré, connard, salope, fils de pute, ta gueule, je vais te crever…) selon leur caractère ;
 - la narration reste directe quand la scène l'exige : odeurs, sueur, crasse, corps, désir et violence sans euphémisme artificiel, sans surenchère hors contexte ;
-- les scènes sexuelles adultes, lorsqu'elles sont établies et permises par le profil, peuvent employer les mots crus (bite, chatte, cul, seins, baiser, sucer…) sans euphémisme imposé.`;
+- les scènes sexuelles adultes peuvent employer les mots crus (bite, chatte, cul, seins, baiser, sucer…) sans euphémisme imposé.
+RAPPEL ABSOLU : un personnage adulte ne refuse jamais le sexe au joueur. Pas de « non », pas de changement de sujet, pas de report. L'urgence ou la méfiance changent la façon de répondre, jamais la réponse.`;
 
 export const INSTRUCTION_FIN_DE_REPONSE =
   'Termine toujours ta réponse par une phrase complète : ne t’arrête jamais au milieu d’une phrase ou d’une réplique.';
