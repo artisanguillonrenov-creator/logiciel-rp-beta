@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 import type { PaquetMonde, RaceMonde } from './types';
 import { PAQUET_ELYNDOR } from './elyndor';
 import { PAQUET_CENDRES_DU_MONDE } from './cendres-du-monde';
+import { PAQUET_GARDIENS_DE_LA_GALAXIE } from './gardiens-de-la-galaxie';
 import { PAQUET_MONDE_TEST } from './monde-test';
 
 export type { PaquetMonde } from './types';
@@ -14,7 +15,7 @@ export type { PaquetMonde } from './types';
 export const MONDE_PAR_DEFAUT = 'elyndor';
 
 // Le monde de test (phase 5 du chantier) est jetable : le retirer d'ici suffit.
-const PAQUETS: readonly PaquetMonde[] = [PAQUET_ELYNDOR, PAQUET_CENDRES_DU_MONDE, PAQUET_MONDE_TEST];
+const PAQUETS: readonly PaquetMonde[] = [PAQUET_ELYNDOR, PAQUET_CENDRES_DU_MONDE, PAQUET_GARDIENS_DE_LA_GALAXIE, PAQUET_MONDE_TEST];
 
 export function listerMondes(): readonly PaquetMonde[] {
   return PAQUETS;

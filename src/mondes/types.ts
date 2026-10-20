@@ -81,6 +81,18 @@ export interface ModuleRolesCanon {
   lieux?: string[];
 }
 
+/** Étape de la trame d'un monde (chantier chapitres). Seule la fiche du chapitre en cours est envoyée au narrateur. */
+export interface ChapitreMonde {
+  id: string;
+  titre: string;
+  /** Ce qui est advenu, connu ou en jeu pendant ce chapitre ; fait autorité. */
+  fiche: string;
+  /** Conditions de fin : le récit ne passe au chapitre suivant qu'une fois atteintes. */
+  jalons: string[];
+  /** Chapitre suivant ; absent ou null pour le dernier. */
+  suivant?: string | null;
+}
+
 export interface PaquetMonde {
   /** Identifiant stable : préfixe des entrées du lorebook (« <id>-<n> »). */
   id: string;
@@ -99,6 +111,8 @@ export interface PaquetMonde {
   nomPourExtractionLore?: string;
   /** Titres complets (« [CATÉGORIE] Titre ») des fiches réservées au profil Adulte. */
   entreesAdulteUniquement?: string[];
+  /** Trame en chapitres, dans l'ordre ; absente : aucune logique de chapitre. */
+  chapitres?: ChapitreMonde[];
   modules?: {
     races?: ModuleRaces;
     depart?: ModuleDepart;
