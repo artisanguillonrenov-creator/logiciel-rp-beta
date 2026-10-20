@@ -40,6 +40,7 @@ import { resoudreEntitesScene, type ResolutionEntites } from './entitesScene';
 import { preparerTour, type PreparationTour } from './ficheScene';
 import { validerGestesDuJoueur, validerRolesCanon } from './controlesCoherence';
 import { histoiresDuMonde, mondeIdDe, paquetMonde, titreLoreDe } from '../mondes';
+import { etatChapitre, formaterChapitre } from './chapitres';
 import { donneesMonde } from '../mondes/donnees';
 import type { ElyndorEntryChargee } from './loreLoader';
 import { prenomRole, rolesDeLaVille } from './rolesCanon';
@@ -410,6 +411,7 @@ export function construireCtxBase(
   return {
     loreCore: paquet.core,
     titreLore: titreLoreDe(paquet),
+    chapitre: formaterChapitre(etatChapitre(paquet.chapitres, story.monde, story.messages.length)) || undefined,
     meta: metaSecurisee,
     settings: plafonnerCurseurs(story.settings, profil),
     stylesNarratifs: reglagesAtelier?.narrateur.styles,
@@ -497,7 +499,7 @@ async function executerMisesAJourPeriodiques(
       storyId: story.meta.id,
     }),
     mettreAJourDirecteur({ appSettings, directeurActuel: story.directeur, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
-    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
+    mettreAJourMonde({ appSettings, mondeActuel: story.monde, messages: messagesSecurises, depuisIndex, storyId: story.meta.id, chapitres: paquetMonde(mondeIdDe(story.meta)).chapitres }),
     mettreAJourSocial({ appSettings, socialActuel: story.social, messages: messagesSecurises, depuisIndex, storyId: story.meta.id }),
   ]);
   return { memoire, directeur, monde, social };

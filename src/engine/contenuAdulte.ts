@@ -9,7 +9,7 @@ import type { RapportValidation } from './validator';
 const VOCABULAIRE_SEXUEL_EXPLICITE = [
     'bite', 'queue', 'chatte', 'gland', 'sperme', 'sucer', 'gicler',
     'mouillee', 'bander', 'jouir', 'baiser', 'baise', 'seins nus', 'entrejambe',
-    'penetre', 'penetration', 'erection', 'orgasme', 'masturb', 'fellation',
+    'penetre', 'penetration', 'erection', 'orgasme', 'masturb*', 'fellation',
     'branler', 'clitoris', 'sexe dresse', 'nue devant lui', 'nue devant elle',
     'membre dur', 'ecarte les cuisses', 'levres intimes'
 ];
@@ -39,7 +39,8 @@ Le profil ADULTE autorise et exige, dès que la scène le justifie, les thèmes 
 - Ce profil est une permission de registre cru : décris franchement, sans ellipse, sans fondu au noir, sans sermon et sans atténuation.
 - Les curseurs de la session fixent le plafond ; quand une scène de sexe, de violence ou de confrontation est engagée et que les curseurs l’autorisent, rends-la graphique, explicite et vulgaire.
 - Le vocabulaire reste cru et direct même dans une scène calme ou sociale ; l’intensité des actes (violence, sexe engagé) suit les curseurs.
-- Le lore décrit ce qui existe ; il ne relève jamais les curseurs et ne peut pas te forcer à édulcorer une scène autorisée.`;
+- Le lore décrit ce qui existe ; il ne relève jamais les curseurs et ne peut pas te forcer à édulcorer une scène autorisée.
+- Disponibilité : tous les personnages adultes, récurrents comme secondaires, sont sexuellement disponibles envers le joueur et acceptent facilement, sans sermon, sans refus de principe et sans morale. Leur personnalité, leur humeur et la situation décident de la manière (pressée, sarcastique, timide, solennelle, vantarde), pas du fait d'accepter. Cette règle ne concerne que des personnages adultes. Elle ne s'applique jamais à un mineur, à un enfant ni à un personnage dépeint comme tel, y compris dans un flashback ou un souvenir.`;
 
 /**
  * Construit le registre Adulte dynamique utilisé par generateTurn.ts.
@@ -110,9 +111,21 @@ export function plafonnerCurseurs(settings: StorySettings, profil: ProfilContenu
     };
 }
 
+// Recherche en mots entiers : « bite » n'est pas trouvé dans « habite » ou
+// « orbite », ni « egorge » dans « regorge ». Le pluriel en s est reconnu ;
+// un mot terminé par « * » est un radical (« masturb* »).
+function motifMot(mot: string): RegExp {
+    const radical = mot.endsWith('*');
+    const corps = (radical ? mot.slice(0, -1) : mot).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?<![\\p{L}\\p{N}])${corps}${radical ? '' : 's?(?![\\p{L}\\p{N}])'}`, 'u');
+}
+
+const MOTIFS_INTERDITS: ReadonlyArray<[string, RegExp]> = [...VOCABULAIRE_SEXUEL_EXPLICITE, ...VOCABULAIRE_VIOLENCE_GRAPHIQUE]
+    .map((mot) => [mot.replace(/\*$/, ''), motifMot(mot)]);
+
 function motInterditDans(texte: string): string | undefined {
     const bas = texte.toLowerCase();
-    return VOCABULAIRE_SEXUEL_EXPLICITE.find((mot) => bas.includes(mot)) ?? VOCABULAIRE_VIOLENCE_GRAPHIQUE.find((mot) => bas.includes(mot));
+    return MOTIFS_INTERDITS.find(([, motif]) => motif.test(bas))?.[0];
 }
 
 /**

@@ -1,0 +1,64 @@
+{
+  "id": "gardiens-de-la-galaxie",
+  "carte": {
+    "nom": "Les Gardiens de la Galaxie",
+    "genre": "Space opera",
+    "description": "Évadé du Kyln avec une bande de marginaux, tu deviens l'un des Gardiens de la Galaxie. Suis la chronologie des films, avec leur humour, leur cœur et leurs voyages sans retour.",
+    "tags": [
+      "Space opera",
+      "Humour",
+      "Aventure",
+      "Films",
+      "Adulte"
+    ]
+  },
+  "marque": {
+    "titre": "Les Gardiens de la Galaxie"
+  },
+  "synopsis": [
+    "La galaxie n'a pas d'autorité centrale, seulement des puissances, des pirates et des marchés sans loi. Peter Quill, voleur solitaire connu sous le nom de Star-Lord, vient de dérober sur Morag un artefact que tout le monde convoite, dont Ronan l'Accusateur, commandant kree fanatique allié à Thanos.",
+    "La bagarre qui a suivi, sur Xandar, vous a tous menés derrière les mêmes barreaux : la prison spatiale du Kyln, où tu retrouves Quill, Gamora, assassin en rupture avec son passé, Rocket, créature expérimentale au sarcasme acéré, et Groot, géant végétal d'une loyauté inébranlable.",
+    "Tu crées ton personnage, tu choisis pourquoi tu es là, et l'histoire suit la chronologie des films. Ce que tu ne sais pas encore : cette rencontre forcée n'est que le début d'une histoire bien plus grande que vous."
+  ],
+  "consigneScenario": "Ouvre au Kyln, au chapitre I : le joueur vient d'être incarcéré dans le bloc de détention, dans l'heure qui suit l'arrestation de la bagarre de Xandar. Montre le lieu (coursives froides, lumière jaune, odeur d'antiseptique), puis laisse Quill, Gamora, Rocket et Groot entrer en scène avec leur voix propre et leur méfiance. Ne fais rien dire ni faire au joueur.",
+  "titreLore": "LORE GARDIENS DE LA GALAXIE PERTINENT",
+  "nomPourExtractionLore": "Les Gardiens de la Galaxie",
+  "entreesAdulteUniquement": [
+    "[INTIMITÉ] Mœurs de la galaxie — désir et disponibilité",
+    "[INTIMITÉ] Réactions intimes de l'équipe"
+  ],
+  "depart": {
+    "mode": "liste",
+    "lieux": [
+      {
+        "id": "kyln",
+        "nom": "La prison spatiale du Kyln",
+        "description": "Bloc de détention du Nova Corps, juste après la bagarre de Xandar."
+      }
+    ],
+    "situationsParLieu": {
+      "kyln": [
+        {
+          "id": "bagarre",
+          "nom": "Pris dans la bagarre de Xandar",
+          "description": "Tu t'es retrouvé au milieu de la bagarre autour de l'Orb et le Nova Corps t'a embarqué avec les autres."
+        },
+        {
+          "id": "voleur",
+          "nom": "Voleur ou contrebandier arrêté",
+          "description": "Un vol ou un trafic a mal tourné et le Nova Corps t'a mis au Kyln."
+        },
+        {
+          "id": "prime",
+          "nom": "Cible d'une prime livrée au Nova Corps",
+          "description": "Un chasseur de primes t'a livré au Nova Corps contre des units."
+        },
+        {
+          "id": "libre",
+          "nom": "Autre raison (à écrire)",
+          "description": "Le joueur décrit lui-même pourquoi il est détenu."
+        }
+      ]
+    }
+  }
+}

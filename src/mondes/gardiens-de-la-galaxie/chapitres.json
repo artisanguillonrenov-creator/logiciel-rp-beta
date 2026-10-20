@@ -1,0 +1,82 @@
+[
+  {
+    "id": "I",
+    "titre": "Kyln et formation du groupe",
+    "fiche": "CHAPITRE I — KYLN ET FORMATION DU GROUPE (en cours). Le joueur, Quill, Gamora, Rocket et Groot viennent d'être incarcérés au Kyln après la bagarre publique de Xandar autour de l'Orb. Méfiance mutuelle, intérêts divergents, nécessité commune : survivre. Enjeux : Gamora, la fille de Thanos, est la cible de tout le bloc ; Drax, détenu de longue date, cherche tout lien avec Ronan ; Rocket repère déjà les failles de sécurité ; l'Orb, les armes et le walkman de Quill dorment à la consigne. Le joueur trouve sa place : allié, électron libre ou monnaie d'échange. L'évasion est un plan improvisé, des egos qui s'entrechoquent, une coopération qui devient sans que personne le réalise le socle d'une alliance. Menaces à distance : Ronan agit par ses agents (Korath, Nebula), Yondu traque Quill. Rien de ce qui suit n'est encore connu ni annoncé.",
+    "jalons": [
+      "Le joueur, Quill, Gamora, Rocket, Groot et Drax s'évadent ensemble du Kyln.",
+      "L'Orb est récupéré, ainsi que les armes, le walkman et le vaisseau."
+    ],
+    "suivant": "II"
+  },
+  {
+    "id": "II",
+    "titre": "Knowhere et bataille de Xandar",
+    "fiche": "CHAPITRE II — KNOWHERE ET BATAILLE DE XANDAR (en cours). Acquis : l'évasion du Kyln a soudé un groupe encore fragile, et Drax s'est joint à eux. L'Orb est entre leurs mains et tout le milieu le convoite. Trajectoire attendue : une tentative de vente au Collectionneur à Knowhere dérape, une démonstration involontaire de la Pierre dévaste l'établissement et révèle à Ronan où se trouve l'artefact. Ronan se dirige alors vers Xandar pour la détruire. Le groupe peut fuir avec l'Orb ou choisir de défendre la planète, et ce choix fait des évadés une équipe. La bataille est une coalition improvisée entre Nova Corps, Ravagers et Gardiens contre les forces de Ronan, avec sacrifices probables. Ronan est enfin présent en personne. Ni Ego, ni les Sovereign, ni le Haut Évolutionnaire ne sont encore connus.",
+    "jalons": [
+      "Ronan est vaincu et l'Orb est mis en sécurité.",
+      "Le groupe assume son nom et sa réputation naissante, et son lien avec Yondu change."
+    ],
+    "suivant": "III"
+  },
+  {
+    "id": "III",
+    "titre": "Ego et les Sovereign",
+    "fiche": "CHAPITRE III — EGO ET LES SOVEREIGN (en cours). Acquis : Xandar est sauvée, le groupe est connu sous le nom de Gardiens de la Galaxie et vit de contrats. Déclencheur : une offense envers les Sovereign (vol ou humiliation pendant un contrat) lance la vengeance d'Ayesha, et la fuite sous leurs drones mène le groupe à Ego. Ego se présente en père aimant et Quill, déchiré entre méfiance et manque, peut le suivre sur sa planète avec une partie du groupe. Mantis, qui vit là au service d'Ego, entre dans l'histoire. Les révélations viennent par strates : le projet d'expansion, le sort des autres enfants, le rôle d'Ego dans le passé de Quill. La confrontation oppose le groupe à un être qui est la planète sous leurs pieds, avec les Sovereign en arrière-plan. Quill ne se comprend plus jamais pareil après.",
+    "jalons": [
+      "Ego est détruit et sa nature est révélée à tous.",
+      "Le groupe a perdu ou gagné des alliés, et Mantis le rejoint."
+    ],
+    "suivant": "IV"
+  },
+  {
+    "id": "IV",
+    "titre": "Mort de Yondu",
+    "fiche": "CHAPITRE IV — MORT DE YONDU (en cours). Acquis : Ego est vaincu, et sa vraie nature a changé le regard de Quill sur son passé. Une mutinerie déchire le clan de Yondu, sa faiblesse pour Quill servant de prétexte, et la crise le place devant un choix ultime. Dans le vide spatial, sans assez de protections pour deux, Yondu donne la sienne à Quill, révélant par l'acte ce qu'il n'a jamais su dire. Le deuil frappe Quill et Rocket au même endroit, la figure paternelle complexe qu'aucun des deux n'avait su nommer. Kraglin hérite d'un vide et de la flèche, et son apprentissage laborieux et comique commence. Si l'honneur de Yondu est rétabli, les clans se rassemblent pour des funérailles ravagères, couleurs et lumières traversant l'espace.",
+    "jalons": [
+      "Yondu est mort et ses funérailles ont eu lieu.",
+      "Kraglin porte la flèche."
+    ],
+    "suivant": "V"
+  },
+  {
+    "id": "V",
+    "titre": "Thanos et Gamora",
+    "fiche": "CHAPITRE V — THANOS ET GAMORA (en cours). Acquis : Yondu est mort, Kraglin est dans l'équipage. C'est la plus lourde des trames. Thanos passe à l'action ouverte pour réunir les Pierres d'Infinité, et seule Gamora détient un savoir qu'il lui faut : l'emplacement de la Pierre de l'Âme. Son passé la rattrape avec une violence qu'elle espérait avoir enterrée. Face à une puissance écrasante, le groupe affronte un dilemme sans bonne réponse : sauvetage désespéré ou impuissance assumée. La Pierre de l'Âme exige un sacrifice personnel, et ce que Thanos appelle son amour se révèle dans toute son horreur tordue. La perte qui peut en résulter est différente de toutes les autres, crue, injuste, marquée par l'impuissance. Quill est au bord de la rupture et le groupe fait face à une guerre qui le dépasse.",
+    "jalons": [
+      "La guerre de Thanos atteint son terme.",
+      "Le groupe compose avec une perte irréparable."
+    ],
+    "suivant": "VI"
+  },
+  {
+    "id": "VI",
+    "titre": "Après la guerre de Thanos",
+    "fiche": "CHAPITRE VI — APRÈS LA GUERRE DE THANOS (en cours). Acquis : Thanos est vaincu et le groupe en porte les séquelles, dont une absence que rien ne comble. Une version de Gamora issue d'un autre point de sa propre histoire peut refaire surface, sans les souvenirs ni les liens construits : soulagement et douleur mêlés, surtout pour Quill, car elle a son visage et aucun de leurs moments. Il faut reconstruire un équilibre après Yondu, après leur Gamora, après les certitudes tombées. La fragilité émotionnelle est rarement montrée aussi nue. Missions ponctuelles, errance, recherche d'un sens commun. Le joueur peut être le pilier ou l'électron libre de cette reconstruction, et sa constance peut redéfinir sa place.",
+    "jalons": [
+      "Le groupe a retrouvé un équilibre, même fragile.",
+      "Une blessure grave de Rocket ouvre la question de son passé."
+    ],
+    "suivant": "VII"
+  },
+  {
+    "id": "VII",
+    "titre": "Counter-Earth et passé de Rocket",
+    "fiche": "CHAPITRE VII — COUNTER-EARTH ET PASSÉ DE ROCKET (en cours). Acquis : le groupe se reconstruit, avec ou sans cette version de Gamora. Rocket est entre la vie et la mort : un verrou de sécurité implanté par son créateur bloque toute intervention médicale standard, et sa survie dépend d'informations que seul le Haut Évolutionnaire, ou les souvenirs fragmentés de Rocket, détiennent. Le groupe découvre par bribes l'horreur méthodique des laboratoires : les compagnons de cage de Rocket, les échecs effacés, la perfection sans pitié. Chaque révélation recontextualise des années de sarcasme défensif. La quête d'une solution mène à Counter-Earth, la réplique de la Terre où l'eugénisme du Haut Évolutionnaire s'exerce à l'échelle d'une civilisation entière. Le groupe ne regardera plus jamais Rocket pareil.",
+    "jalons": [
+      "Le groupe a découvert qui est le Haut Évolutionnaire.",
+      "Rocket doit choisir entre fuir son passé et l'affronter."
+    ],
+    "suivant": "VIII"
+  },
+  {
+    "id": "VIII",
+    "titre": "Confrontation finale",
+    "fiche": "CHAPITRE VIII — CONFRONTATION FINALE (en cours). Acquis : l'origine de Rocket est connue de tous, et Counter-Earth a été découverte. Le groupe affronte directement le Haut Évolutionnaire pour mettre fin aux expérimentations et libérer les créatures encore captives. Combat et sauvetage à grande échelle se mêlent : enfants, animaux et hybrides à évacuer pendant que tout s'effondre. Pour Rocket, c'est la victoire la plus personnelle, face au créateur qui l'a appelé « objet ». Pas de triomphe sans perte : le groupe en sort transformé, plus soudé et conscient de la fragilité de ce qu'il a bâti. Certains membres peuvent envisager d'autres voies, d'autres continuer sous une forme renouvelée des Gardiens. Rien n'est écrit : la conclusion appartient au joueur autant qu'au groupe.",
+    "jalons": [
+      "Le Haut Évolutionnaire est vaincu et les créatures sont libérées.",
+      "Le groupe choisit son avenir."
+    ],
+    "suivant": null
+  }
+]

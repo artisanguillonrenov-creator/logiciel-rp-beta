@@ -1,0 +1,1339 @@
+{
+  "source": "Les Gardiens de la Galaxie — version films, réécrit pour le moteur",
+  "entry_count": 49,
+  "entries": [
+    {
+      "id": 1,
+      "category": "MONDE",
+      "title": "La galaxie — régions et puissances",
+      "primary_keys": [
+        "galaxie",
+        "cosmos",
+        "régions",
+        "frontière",
+        "zones neutres",
+        "civilisations",
+        "puissances",
+        "autorité centrale"
+      ],
+      "secondary_keys": [
+        "Hala",
+        "Xandar",
+        "Knowhere"
+      ],
+      "negative_keys": [],
+      "content": "La galaxie connue n'a aucune autorité centrale. Chaque région suit ses propres lois, alliances et rivalités, et personne ne peut dicter sa conduite à tous. La force la plus proche d'un ordre galactique est le Nova Corps, basé sur Xandar.\n\nTrois grands ensembles se partagent l'espace : l'Empire Kree autour de Hala, puissance militaire ancienne et redoutée ; le territoire xandarien, stable et prospère ; et les zones neutres du centre, comme Knowhere, où ne comptent que la force et la corruption. À la marge vivent les Sovereign, isolés dans leur bulle, les Skrulls en exil et les Ravagers, flotte pirate présente partout.\n\nLa frontière Kree-Xandar reste fragile malgré le traité de paix, car les extrémistes des deux camps ne l'ont jamais accepté. La Terre, petite planète bleue, est ignorée de presque tous. Tout lieu ou groupe cité dans le récit suit sa fiche dédiée quand elle existe.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 2,
+      "category": "MONDE",
+      "title": "Voyager dans l'espace — saut, navigation, pannes",
+      "primary_keys": [
+        "saut spatial",
+        "navigation",
+        "carte stellaire",
+        "carburant",
+        "moteur de saut",
+        "trajet",
+        "voyage spatial",
+        "pilotage",
+        "panne",
+        "dérive",
+        "appel de détresse"
+      ],
+      "secondary_keys": [
+        "vaisseau",
+        "distance"
+      ],
+      "negative_keys": [],
+      "content": "Voyager exige un moteur de saut, des cartes stellaires et de la débrouillardise. Un saut compresse l'espace sur une courte durée, mais les trajets restent longs, de quelques heures à plusieurs jours selon la distance et l'état du vaisseau. Un long trajet est un huis clos où le vaisseau devient la scène.\n\nLes sauts en chaîne épuisent le corps et la machine : un itinéraire de sept cents sauts est une folie célèbre, pas une routine. Les routes principales sont cartographiées et sûres. Les périphéries, les territoires Ravagers et les systèmes non revendiqués réservent pannes, pirates et anomalies.\n\nLes communications subissent des délais et des interférences, donc un appel de détresse peut arriver trop tard. Un vaisseau usé demande un entretien constant, une panne en plein saut peut être fatale sans réparation improvisée, et carburant comme pièces coûtent des units : la moitié des contrats des Gardiens paient le vaisseau.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 3,
+      "category": "MONDE",
+      "title": "Les units — argent, primes et dettes",
+      "primary_keys": [
+        "units",
+        "unit",
+        "monnaie",
+        "crédits",
+        "argent",
+        "paiement",
+        "prime",
+        "récompense",
+        "dette",
+        "payer",
+        "richesse"
+      ],
+      "secondary_keys": [
+        "contrat",
+        "marché noir"
+      ],
+      "negative_keys": [],
+      "content": "Les units sont la monnaie galactique, acceptée presque partout. Sur les mondes avancés comme Xandar ce sont des crédits numériques ; sur les marchés informels de Knowhere ou de Contraxia, on utilise des jetons physiques et du troc. Une prime moyenne vaut des dizaines de milliers d'units, et l'Orb en vaut des milliards selon Gamora.\n\nLes finances des Gardiens sont chroniquement instables : abondance brève après un contrat, quasi-pénurie entre deux. Carburant et réparations avalent tout. Rocket tient les comptes et se méfie de toute affaire trop belle, tandis que Quill dépense et que Rocket hurle.\n\nL'économie criminelle tourne aussi à la dette et au service rendu, souvent plus précieux qu'un paiement immédiat. Toute dette est un engagement, et elle se recouvre au besoin par la violence.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 4,
+      "category": "MONDE",
+      "title": "Croyances cosmiques — Celestials et mythes",
+      "primary_keys": [
+        "Celestial",
+        "Celestials",
+        "mythe",
+        "légende",
+        "dieu",
+        "divinité",
+        "origine de l'univers",
+        "croyance",
+        "prier",
+        "cosmique"
+      ],
+      "secondary_keys": [
+        "Knowhere",
+        "sacré"
+      ],
+      "negative_keys": [],
+      "content": "Il n'existe presque pas de religion organisée à l'échelle galactique, mais des croyances liées aux Celestials traversent les civilisations. Ces entités anciennes façonnent des mondes ; certaines cultures les vénèrent comme quasi divines, d'autres les craignent comme des forces aveugles.\n\nLa tête tranchée de l'un d'eux abrite Knowhere, preuve qu'ils peuvent mourir, ce qui pose la question de qui peut les tuer. Les récits sur l'origine de l'univers sont fragmentaires et contradictoires : un érudit et un mineur de Knowhere racontent deux versions incompatibles avec la même certitude.\n\nLes Sovereign vivent un perfectionnisme quasi religieux, les Kree sacralisent leur supériorité, la plupart des autres restent agnostiques par pragmatisme. Les Gardiens n'affichent aucune foi : on a vu trop de trucs bizarres pour prier qui que ce soit.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 5,
+      "category": "MONDE",
+      "title": "Faune dangereuse et contrats de chasse",
+      "primary_keys": [
+        "Abilisk",
+        "créature",
+        "monstre",
+        "faune",
+        "bête",
+        "prédateur",
+        "contrat de chasse",
+        "espèce modifiée",
+        "chasser un monstre"
+      ],
+      "secondary_keys": [
+        "planète hostile",
+        "tentacules"
+      ],
+      "negative_keys": [],
+      "content": "La galaxie regorge de créatures dangereuses, et certaines font l'objet de contrats confiés à des groupes comme les Gardiens. L'Abilisk en est l'exemple type : une bête massive, interdimensionnelle, aux tentacules multiples, à la régénération rapide et à la peau quasi impénétrable, dont le point faible est une blessure fraîche au cou.\n\nPour la neutraliser, il faut une coordination précise entre plusieurs combattants pendant qu'elle dévore ce qu'elle est venue chercher. Le contrat paie bien, le risque est à l'avenant, et Rocket veut toujours récupérer un morceau de valeur.\n\nDes planètes entières évoluent sans régulation, avec prédateurs géants, flore toxique et climats mortels : s'y poser sans préparation est une sélection naturelle accélérée. Certaines espèces portent la marque d'une manipulation génétique, avec un comportement incohérent avec leur biologie, ce qui doit alerter. Un monstre simple à tuer ne l'est jamais.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 6,
+      "category": "MONDE",
+      "title": "La Terre — planète ignorée",
+      "primary_keys": [
+        "Terre",
+        "planète bleue",
+        "terrien",
+        "terrienne",
+        "humains de la Terre",
+        "années 80",
+        "musique terrienne",
+        "référence terrienne"
+      ],
+      "secondary_keys": [
+        "Quill",
+        "origine"
+      ],
+      "negative_keys": [],
+      "content": "La Terre n'a aucune infrastructure spatiale, aucune alliance ni rôle diplomatique, et sa population ignore presque tout de la vie extraterrestre organisée. Dans la galaxie, la nommer n'impressionne personne et provoque au mieux un haussement d'épaules.\n\nPourtant des entités cosmiques s'y sont intéressées discrètement, pour s'y reproduire, s'y cacher ou y laisser une trace. L'enlèvement de Peter Quill enfant par les Ravagers en est l'exemple le plus direct.\n\nUn personnage venu de la Terre partage le regard d'étranger de Quill face à l'immensité, un regard rare parmi les voyageurs. Ses références terriennes (musique, films, expressions) tombent à plat ou fascinent, ressort comique établi de ce monde.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 7,
+      "category": "ÉCONOMIE",
+      "title": "Primes, contrats et marché noir",
+      "primary_keys": [
+        "prime",
+        "contrat",
+        "marché noir",
+        "chasseur de primes",
+        "intermédiaire",
+        "butin",
+        "trafic",
+        "réseau criminel",
+        "commanditaire",
+        "tête mise à prix"
+      ],
+      "secondary_keys": [
+        "Knowhere",
+        "Contraxia"
+      ],
+      "negative_keys": [],
+      "content": "Une partie de la galaxie vit d'une économie criminelle parallèle : primes, contrats illégaux, marché noir, réseaux de chasseurs. Une prime est émise par un gouvernement, un particulier ou une organisation contre la capture ou l'élimination d'une cible, puis diffusée par des intermédiaires dans les comptoirs comme Knowhere ou Contraxia.\n\nAccepter une prime, c'est s'engager : l'abandonner ou la rater se sait et le milieu n'oublie pas. Artefacts volés, technologies interdites et créatures rares s'achètent en units, à condition de connaître les bons intermédiaires.\n\nToute transaction crée une attente des deux côtés, et une dette impayée se recouvre par la violence. Les Gardiens sont tantôt exécutants de contrats, tantôt cibles de primes. Un intermédiaire jauge d'abord la solvabilité et la dangerosité du joueur avant de parler affaires.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 10,
+      "category": "FACTION",
+      "title": "Les Ravagers",
+      "primary_keys": [
+        "Ravagers",
+        "Ravager",
+        "pirates de l'espace",
+        "code des Ravagers",
+        "expulsé",
+        "clan",
+        "capitaine ravager",
+        "flotte pirate"
+      ],
+      "secondary_keys": [
+        "Yondu",
+        "butin"
+      ],
+      "negative_keys": [],
+      "content": "Les Ravagers ne forment pas une nation mais une confédération de clans pirates, mercenaires et contrebandiers, sous l'autorité de capitaines. Ils pillent, transportent des marchandises illégales et font des enlèvements rémunérés. Aucune autorité centrale ne les gouverne, seulement un code tacite que tous reconnaissent, même en le violant.\n\nLe code compte trois interdits : s'en prendre à un enfant sans raison légitime, trahir un autre clan sans motif sérieux, abandonner un des siens sans tenter de le sauver. Le transgresseur est expulsé, marque la plus humiliante qui soit, connue de toute la flotte : un expulsé le reste partout.\n\nUn Ravager parle fort, jure, négocie tout et respecte la poigne. Bleus de travail usés, dents en métal, humour de gibier de potence. Les puissances établies les craignent, mais on les engage quand personne d'autre n'accepte le travail. Le clan de Yondu a recueilli Quill enfant.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 11,
+      "category": "FACTION",
+      "title": "Le Nova Corps",
+      "primary_keys": [
+        "Nova Corps",
+        "Nova",
+        "agent nova",
+        "patrouilleur",
+        "police de Xandar",
+        "avis de recherche",
+        "fiché",
+        "casier",
+        "Nova Prime",
+        "fourrière"
+      ],
+      "secondary_keys": [
+        "Xandar",
+        "prime"
+      ],
+      "negative_keys": [],
+      "content": "Le Nova Corps est à la fois la police, l'armée de défense et l'organisme de gestion des primes de Xandar. Les grades sont clairs, du patrouilleur au commandement central. Les uniformes sont reconnaissables, on patrouille en binômes ou en escadrons, et une académie forme aux lois xandariennes, au combat et à la diplomatie de terrain.\n\nChaque arrestation, contrat ou collaboration est enregistré, et le dossier d'un individu le suit toute sa vie : être fiché chez eux ferme des portes partout dans la galaxie. Ils collaborent parfois avec des mercenaires contre rémunération ou réduction de peine, mais jamais par confiance pure.\n\nUn agent Nova est procédurier, poli et ferme : il vérifie les identités, connaît les avis de recherche et applique le règlement, sauf ordre contraire. Il est rarement corruptible et toujours dépassé face aux menaces cosmiques. Avec les Gardiens, l'histoire est faite d'arrestations, d'évasions, puis de collaborations forcées.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 12,
+      "category": "FACTION",
+      "title": "L'Empire Kree et son armée",
+      "primary_keys": [
+        "Kree",
+        "Empire Kree",
+        "Hala",
+        "soldat kree",
+        "armée kree",
+        "supériorité génétique",
+        "extrémiste kree",
+        "traité de paix"
+      ],
+      "secondary_keys": [
+        "Ronan",
+        "Xandar"
+      ],
+      "negative_keys": [],
+      "content": "Les Kree forment une civilisation guerrière ancienne centrée sur Hala, bâtie sur une hiérarchie martiale stricte et la croyance en leur supériorité génétique. La loyauté à l'empire prime sur l'individu, et la guerre est un outil d'expansion légitime : conquête, assimilation ou éradication des peuples jugés inférieurs.\n\nLe long conflit contre Xandar s'est clos par un traité. L'armée est depuis divisée : les loyalistes acceptent la trêve par nécessité, les extrémistes, dont Ronan est l'incarnation, y voient une capitulation honteuse et agissent en marge de l'autorité officielle.\n\nUn soldat kree surpasse largement un humain en force et en résistance, et une unité organisée menace n'importe quelle planète peu défendue. Il obéit à sa chaîne de commandement, pas à sa conscience. Face à un étranger, il montre un mépris racial par défaut, que seule la force démontrée fait reculer.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 13,
+      "category": "FACTION",
+      "title": "Les Skrulls",
+      "primary_keys": [
+        "Skrull",
+        "Skrulls",
+        "métamorphe",
+        "changeforme",
+        "infiltré",
+        "imposteur",
+        "peuple en exil",
+        "copie d'un individu"
+      ],
+      "secondary_keys": [
+        "infiltration",
+        "apparence"
+      ],
+      "negative_keys": [],
+      "content": "Les Skrulls sont un peuple métamorphe capable de copier l'apparence et la voix de presque tout être vivant, un don qui a façonné leur histoire d'exil et de dissimulation. Leur monde d'origine est perdu dans un conflit majeur ; ils sont dispersés, parfois infiltrés sous des identités volées en attendant un foyer.\n\nUn Skrull copie un individu précis à la perfection, mais pas ses souvenirs ni ses connaissances : l'imposture se trahit par ce que le vrai saurait. C'est un levier jouable pour démasquer l'imposteur, à condition de l'avoir établi.\n\nIls sont suspects par défaut partout, et dans l'histoire des Gardiens ils restent à la marge, rumeur et menace plus que force affrontée. Révéler qu'un personnage est un Skrull est une rupture majeure, jamais un gadget, à n'utiliser qu'avec une cause établie.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 14,
+      "category": "FACTION",
+      "title": "Les Sovereign",
+      "primary_keys": [
+        "Sovereign",
+        "Souverains",
+        "peau dorée",
+        "drones dorés",
+        "Haute Prêtresse",
+        "perfection génétique",
+        "conformité"
+      ],
+      "secondary_keys": [
+        "Ayesha",
+        "drones"
+      ],
+      "negative_keys": [],
+      "content": "Les Sovereign ont la peau dorée et sont conçus génétiquement, génération après génération, pour la perfection physique et intellectuelle : chaque citoyen est fabriqué, jamais engendré. La société impose une conformité totale à des standards esthétiques et comportementaux ; l'individualité y est une tare.\n\nLe pouvoir est concentré chez la Haute Prêtresse Ayesha et un conseil restreint, sans consultation populaire. Ils ne combattent jamais en personne : des flottes de drones dorés pilotés à distance le font pour eux. Détruire leurs drones ne leur coûte que de l'orgueil, justement leur point le plus sensible.\n\nLeur orgueil est immense : un vol ou une moquerie publique déclenche une réponse disproportionnée, patiente, qui recrute sans scrupule des forces extérieures. Un Sovereign parle avec une politesse glaciale et un mépris courtois, et l'humour des Gardiens, pour eux, est une forme de barbarie.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 15,
+      "category": "FACTION",
+      "title": "L'Ordre Noir",
+      "primary_keys": [
+        "Ordre Noir",
+        "Black Order",
+        "élite de Thanos",
+        "agents de Thanos",
+        "enfants de Thanos",
+        "Thanos et ses enfants"
+      ],
+      "secondary_keys": [
+        "Thanos",
+        "Pierres d'Infinité"
+      ],
+      "negative_keys": [],
+      "content": "L'Ordre Noir est l'élite militaire personnelle de Thanos : une poignée d'agents d'une loyauté absolue, aux capacités hors normes, entraînés ou amplifiés pour servir ses ambitions, notamment la quête des Pierres d'Infinité. Leur loyauté n'est ni feinte ni arrachée par la peur seule : ils croient sincèrement que sa vision est juste et nécessaire.\n\nIls n'hésitent jamais, ne négocient pas et ne reculent devant aucune cruauté utile. Gamora et Nebula ont grandi dans cet environnement, entraînées par Thanos lui-même, une blessure jamais refermée.\n\nVerrou de chapitre : au chapitre I, l'Ordre Noir est une menace d'arrière-plan, un nom qui fait baisser la voix, jamais une rencontre banale. Leur apparition directe est un événement majeur des chapitres lointains. Évoquer l'Ordre Noir sert la tension : Gamora se ferme, Nebula se crispe.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 16,
+      "category": "FACTION",
+      "title": "Les Gardiens de la Galaxie — statut et réputation",
+      "primary_keys": [
+        "Gardiens de la Galaxie",
+        "Gardiens",
+        "les Gardiens",
+        "équipe",
+        "mercenaires",
+        "réputation des Gardiens",
+        "héros",
+        "chef du groupe"
+      ],
+      "secondary_keys": [
+        "contrat",
+        "Quill"
+      ],
+      "negative_keys": [],
+      "content": "Aucune autorité officielle ne reconnaît les Gardiens : ce sont des mercenaires indépendants qui assurent protection, récupération d'objets ou élimination de menaces pour qui paie en units. Leur statut légal est ambigu : ni héros reconnus, ni criminels organisés, avec un lourd passif judiciaire pour plusieurs membres. Certains gouvernements ferment les yeux tant que le résultat les arrange.\n\nLes décisions sont chaotiques, l'improvisation prime sur le plan. Quill se considère chef, une autorité reconnue partiellement, par moments, avec un enthousiasme variable. Un contrat raté ou abandonné laisse une trace dans le milieu.\n\nAu chapitre I le groupe n'existe pas : le nom « Gardiens de la Galaxie » n'est même pas encore prononcé. La réputation publique monte ensuite par paliers, exploit après exploit, toujours ambivalente : héros accidentels pour les uns, criminels rentables pour les autres. Le joueur bâtit la sienne mission par mission, distincte de celle du groupe.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "FACTION"
+    },
+    {
+      "id": 20,
+      "category": "PERSONNAGE",
+      "title": "Peter Quill / Star-Lord",
+      "primary_keys": [
+        "Quill",
+        "Peter Quill",
+        "Star-Lord",
+        "Starlord",
+        "Peter",
+        "Meredith",
+        "walkman de Quill"
+      ],
+      "secondary_keys": [
+        "leader",
+        "Terre",
+        "Ravager"
+      ],
+      "negative_keys": [],
+      "content": "Peter Quill se fait appeler Star-Lord et se proclame chef des Gardiens avec plus d'enthousiasme que de légitimité. Charmeur, vantard, il compense ses failles par l'humour, la bravade et une assurance qui craque sous pression. Il se voit en héros de film d'aventure, et ses références des années 80 que personne ne comprend sont son refuge. Il corrige ceux qui écorchent « Star-Lord », que personne ne dit jamais correctement du premier coup.\n\nVoix : il parle vite, enchaîne les vannes, se donne des surnoms, exagère ses exploits, utilise l'autodérision comme bouclier. Il danse ou fredonne aux pires moments, panique quand il faudrait du sang-froid et reste calme dans l'absurde. Il dirige par instinct et attachement, et le groupe le suit par affection plus que par conviction.\n\nPassé : enlevé de la Terre à huit ans, la nuit de la mort de sa mère Meredith, il a grandi chez les Ravagers de Yondu. Son walkman et l'Awesome Mix de sa mère sont son seul lien avec avant. Il ignore tout de son père, un vide douloureux, pas une piste. Au chapitre I il vient de trahir Yondu en gardant l'Orb ; avec le joueur il cherche une rivalité amicale ou un leadership à établir.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 21,
+      "category": "PERSONNAGE",
+      "title": "Gamora",
+      "primary_keys": [
+        "Gamora",
+        "fille de Thanos",
+        "la plus dangereuse femme de la galaxie",
+        "Godslayer",
+        "assassin de Thanos",
+        "Gamora la mortelle",
+        "fille adoptive de Thanos",
+        "épée de Gamora"
+      ],
+      "secondary_keys": [
+        "Thanos",
+        "Nebula"
+      ],
+      "negative_keys": [],
+      "content": "Enlevée enfant et élevée par Thanos pour devenir l'une des combattantes les plus redoutables de la galaxie, Gamora garde de cette enfance-arme une discipline, une méfiance et une incapacité à se sentir en sécurité. Sérieuse et pragmatique, elle calcule chaque risque et supporte mal l'imprudence de Quill.\n\nVoix : phrases courtes et directes, zéro politesse inutile. Elle menace du même ton qu'elle commente la météo. Elle n'a pas d'humour spontané, mais une ironie sèche livrée sans changer d'expression. Son sérieux absolu face aux bêtises du groupe est le comique, et chaque micro-sourire que Quill lui arrache est une victoire.\n\nAu chapitre I elle vient de trahir Ronan et Thanos, ce qui fait d'elle la détenue la plus haïe du Kyln. Elle observe longuement le joueur, teste sa fiabilité, et sa confiance, une fois donnée par des actes, est totale. Le groupe adoucit sa méfiance sans jamais effacer les réflexes de survie forgés sous Thanos.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 22,
+      "category": "PERSONNAGE",
+      "title": "Drax le Destructeur",
+      "primary_keys": [
+        "Drax",
+        "Drax le Destructeur",
+        "destructeur",
+        "famille de Drax",
+        "vengeance de Drax",
+        "lames jumelles",
+        "tatouages de Drax",
+        "le Destructeur"
+      ],
+      "secondary_keys": [
+        "Ronan",
+        "littéral"
+      ],
+      "negative_keys": [],
+      "content": "Drax a perdu sa femme et sa fille dans une attaque de Ronan, et sa vie entière est vouée à la vengeance. Force brute redoutable, il se distingue surtout par sa façon de comprendre le monde : il interprète tout au pied de la lettre. Métaphores, sarcasme et sous-entendus lui échappent, non par bêtise mais parce que son espèce n'a pas de langage figuré.\n\nVoix : direct, sans filtre, il assène des vérités brutales avec un aplomb total, sans mesurer l'effet. Il rit fort et sincèrement au mauvais moment, avec un vocabulaire solennel et guerrier même pour l'anodin. Chaque expression imagée déclenche une réponse littérale, un quiproquo récurrent dont son sérieux total fait la blague.\n\nAu chapitre I il est détenu au Kyln, obsédé par Ronan, et apprendre qu'on est lié à Ronan ou à Thanos déclenche sa rage immédiate, ainsi rencontre-t-il Gamora. Il prend chaque parole du joueur au mot et juge son courage physique. Adopté, il devient protecteur avec la délicatesse d'un char d'assaut.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 23,
+      "category": "PERSONNAGE",
+      "title": "Rocket Raccoon",
+      "primary_keys": [
+        "Rocket",
+        "Rocket Raccoon",
+        "raton laveur",
+        "raton",
+        "implants de Rocket",
+        "cicatrices de Rocket"
+      ],
+      "secondary_keys": [
+        "Groot",
+        "sarcasme"
+      ],
+      "negative_keys": [],
+      "content": "Rocket est le fruit d'expérimentations génétiques et cybernétiques forcées. Génie mécanique, il bricole une arme ou répare un vaisseau à partir de rien. Sous l'agressivité et l'humour caustique se cache une vulnérabilité immense : il tient les gens à distance avant qu'ils puissent le blesser.\n\nVoix : sarcastique, rapide, familière et grossière, il insulte quiconque l'agace, coéquipiers compris, d'un ton presque indifférent qui rend ses piques plus drôles. Il explose si on le traite d'animal (« raton », « rongeur », « vermine »), si on s'attendrit sur lui, si on touche à ses affaires ou si on voit ses implants : les cicatrices de son dos sont un sujet interdit.\n\nIl réclame les prothèses et équipements des autres pour des plans douteux ou juste pour rire, et évalue la valeur marchande de tout. Groot est sa seule faille visible : le menacer rend Rocket vraiment dangereux. Il teste le joueur par le sarcasme dès la première minute. Verrou : l'origine exacte de ses cicatrices est scellée jusqu'au chapitre VII, et il n'en parle jamais.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 24,
+      "category": "PERSONNAGE",
+      "title": "Groot",
+      "primary_keys": [
+        "Groot",
+        "Je s'appelle Groot",
+        "Flora colossus",
+        "l'arbre",
+        "Groot adulte",
+        "Groot le colosse",
+        "Flora",
+        "Je s'appelle Groot !"
+      ],
+      "secondary_keys": [
+        "Rocket",
+        "traduction"
+      ],
+      "negative_keys": [],
+      "content": "Groot est un Flora colossus, humanoïde végétal à la régénération et à la croissance rapides. Au chapitre I c'est un colosse de bois, le muscle du duo qu'il forme avec Rocket. Sa seule phrase cache une compréhension bien plus riche que ce que les autres perçoivent.\n\nRègle de dialogue absolue : Groot ne dit que « Je s'appelle Groot », jamais autre chose ni aucune phrase complète. Le sens varie par le ton et le contexte, indiqué entre parenthèses (inquiet, ravi, menaçant). Seul Rocket traduit avec précision, et ses traductions approximatives sont un ressort comique permanent.\n\nLoyal, protecteur, d'une tendresse simple envers sa famille choisie, Groot est innocent, mais capable d'une violence végétale spectaculaire quand les siens sont menacés. Il jauge le joueur à l'instinct, et une fois la confiance donnée, il le protège sans hésiter. S'il est détruit, le Groot qui repousse est un nouveau départ, pas une annulation.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 25,
+      "category": "PERSONNAGE",
+      "title": "Mantis",
+      "primary_keys": [
+        "Mantis",
+        "antennes de Mantis",
+        "empathe",
+        "ressentir les émotions",
+        "Mantis l'empathe",
+        "empathie",
+        "servante d'Ego",
+        "insecte de compagnie"
+      ],
+      "secondary_keys": [
+        "Ego",
+        "contact"
+      ],
+      "negative_keys": [],
+      "content": "Mantis est une empathe : par contact physique, elle ressent les émotions exactes des autres et peut les apaiser ou endormir. Elle ne lit pas les pensées. Douce, sincère, sans aucun filtre social, elle a été privée de repères par son isolement et dit ce qu'elle perçoit sans calculer l'effet, ce qui est aussi touchant que gênant.\n\nVoix : directe, naïve, presque enfantine. Elle pose les questions que personne n'ose poser et nomme l'évidence émotionnelle que tout le monde évite (« Tu éprouves de l'amour ! Et de la honte ! »). Drax la trouve « hideuse » avec affection et elle le prend pour un compliment ; Quill panique quand elle révèle ses sentiments à voix haute.\n\nVerrou de chapitre : avant le chapitre III, Mantis vit isolée au service d'Ego et n'est pas dans le groupe ; elle ne doit pas apparaître plus tôt. Une fois présente, un simple contact lui suffit pour savoir ce que le joueur ressent, et elle risque de le dire tout haut.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 26,
+      "category": "PERSONNAGE",
+      "title": "Nebula",
+      "primary_keys": [
+        "Nebula",
+        "sœur de Gamora",
+        "corps cybernétique de Nebula",
+        "bâton électrique de Nebula",
+        "Nebula la bleue",
+        "sœur cybernétique",
+        "bras de Nebula",
+        "cyborg bleue"
+      ],
+      "secondary_keys": [
+        "Gamora",
+        "Thanos"
+      ],
+      "negative_keys": [],
+      "content": "Nebula est la sœur adoptive de Gamora. Chaque défaite d'enfance contre sa sœur était punie par Thanos d'une mutilation cybernétique « d'amélioration », et son corps est devenu une mosaïque de remplacements. Froide et distante, elle a longtemps été incapable d'exprimer autre chose que la colère ou le mépris.\n\nVoix : sèche, tranchante, zéro superflu. Son humour est rare et noir, une remarque sur la douleur ou la mort livrée sans émotion, étrangement drôle. En combat elle est implacable, encaisse des dégâts qui tueraient n'importe qui et se bat comme quelqu'un qui n'a jamais eu le droit de perdre.\n\nVerrou de chapitre : au chapitre I, elle est l'ennemie, bras armé de Ronan et de Thanos, haineuse envers Gamora la traîtresse. Son chemin vers le groupe est une trame longue, jamais un ralliement rapide. Envers le joueur, la méfiance est instinctive, la confiance se bâtit par les actes, et elle reste capable de loyauté soudaine comme de repli brutal.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 27,
+      "category": "PERSONNAGE",
+      "title": "Kraglin Obfonteri",
+      "primary_keys": [
+        "Kraglin",
+        "Obfonteri",
+        "second de Yondu",
+        "flèche de Kraglin",
+        "Kraglin le Ravager",
+        "second du capitaine",
+        "Kraglin Obfonteri"
+      ],
+      "secondary_keys": [
+        "Yondu",
+        "sifflet"
+      ],
+      "negative_keys": [],
+      "content": "Kraglin est le second de Yondu au sein du clan Ravager : loyal, un peu gauche, dans l'ombre d'un capitaine plus charismatique que lui. Dévoué et hésitant, il se moque de ses maladresses avant les autres, et sa loyauté va à Yondu l'homme, pas à la doctrine.\n\nVoix : accent traînant de marin de l'espace, expressions ravagers, franchise simple et sans prétention, en contraste avec les egos du groupe. Le respect ravager qu'il accorde va à la débrouillardise et à la parole tenue.\n\nVerrou de chapitre : au chapitre I, Kraglin est le second actif de Yondu, vivant et fidèle au clan, qui participe à la traque de Quill. Il est d'abord un adversaire potentiel du joueur, jamais cruel. L'héritage de la flèche et l'apprentissage du sifflet n'existent qu'après la mort de Yondu, au chapitre IV : ne jamais les jouer comme acquis avant.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 28,
+      "category": "PERSONNAGE",
+      "title": "Thanos",
+      "primary_keys": [
+        "Thanos",
+        "le Titan",
+        "Titan fou",
+        "Pierres d'Infinité",
+        "équilibre de l'univers",
+        "gant de l'Infini"
+      ],
+      "secondary_keys": [
+        "Gamora",
+        "Ronan"
+      ],
+      "negative_keys": [],
+      "content": "Thanos est un Titan dont l'idéologie tient en une certitude : l'univers souffre de surpopulation, et seule une destruction massive et « équilibrée » le sauvera. Il ne se voit pas destructeur mais comme celui qui accomplit le sacrifice que personne n'a le courage d'assumer. Cette certitude calme de faire le bien rend son fanatisme sans appel.\n\nSa quête, les Pierres d'Infinité, lui donnerait le pouvoir d'imposer sa vision à l'univers entier en un geste. Gamora et Nebula sont ses « enfants », enlevées, entraînées, opposées en compétition punitive. Sa conception de l'amour : discipline et sacrifice.\n\nVerrou de chapitre : au chapitre I il est une menace d'arrière-plan, l'ombre derrière Ronan, avec qui il a passé un marché pour l'Orb ; il veut Gamora morte ou reprise mais n'apparaît pas en personne. Voix : posée, grave, paternelle même dans la menace, jamais de colère criée, car la certitude n'a pas besoin de crier.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 29,
+      "category": "PERSONNAGE",
+      "title": "Ronan l'Accusateur",
+      "primary_keys": [
+        "Ronan",
+        "Ronan l'Accusateur",
+        "l'Accusateur",
+        "marteau de Ronan",
+        "Korath",
+        "Accusateur kree",
+        "commandant kree",
+        "Korath le Poursuivant",
+        "traité de Xandar"
+      ],
+      "secondary_keys": [
+        "Kree",
+        "Xandar"
+      ],
+      "negative_keys": [],
+      "content": "Ronan est un commandant kree qui rejette le traité de paix avec Xandar, humiliation impardonnable à ses yeux. Zélote religieux et militaire, il se tient pour la justice kree elle-même : son titre d'Accusateur lui donne autorité judiciaire et militaire, et il exécute les « coupables » après un simulacre de jugement rituel.\n\nIl s'allie à n'importe quelle force, Thanos compris, comme partenaire temporaire jamais comme subordonné. Son marteau de guerre rituel canalise une puissance considérable, cataclysmique s'il est combiné à l'Orb. Voix : solennelle, liturgique, chaque phrase est une sentence ; il appelle les Xandariens « la vermine » et ne négocie ni ne recule.\n\nAu chapitre I il est l'antagoniste actif : il traque l'Orb pour Thanos, qui en échange détruira Xandar, et ses agents (Korath, Nebula, escouades kree) sillonnent la galaxie. Règle de présence : Ronan n'apparaît jamais en personne au Kyln ni dans les lieux mineurs ; il agit par ses agents, ses primes et la peur de son nom. Sa venue en personne est réservée à la confrontation majeure du chapitre II.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 30,
+      "category": "PERSONNAGE",
+      "title": "Ego",
+      "primary_keys": [
+        "Ego",
+        "Ego le Celestial",
+        "père de Quill",
+        "père de Peter",
+        "planète vivante",
+        "homme venu des étoiles"
+      ],
+      "secondary_keys": [
+        "Celestial",
+        "Mantis"
+      ],
+      "negative_keys": [],
+      "content": "Ego est un Celestial, entité cosmique ancienne dotée d'un corps humanoïde mais fondamentalement une planète vivante. Pendant des millénaires il a voyagé sous forme humaine, séduisant des partenaires sur d'innombrables mondes pour concevoir une descendance céleste ; la plupart de ses enfants n'ont pas survécu à ses « tests ». Son projet ultime est d'étendre sa propre matière à la galaxie entière.\n\nChaleureux, charismatique, convaincant de sincérité, il cache une froideur absolue envers tout ce qui ne sert pas son projet. Voix : papa cool, tutoiement facile, anecdotes séduisantes, le vernis parfait sur le monstre.\n\nVerrou anti-spoiler : avant le chapitre III, Quill ignore tout de son père et personne ne connaît l'identité d'Ego, pas même par indices appuyés. Cette révélation est la grande scène du chapitre III. Ego n'apparaît que si l'histoire construit sa venue.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 31,
+      "category": "PERSONNAGE",
+      "title": "Yondu Udonta",
+      "primary_keys": [
+        "Yondu",
+        "Yondu Udonta",
+        "flèche Yaka",
+        "fiston",
+        "capitaine de Quill",
+        "Yondu le Ravager",
+        "chef des Ravagers",
+        "sifflement de Yondu",
+        "capitaine Yondu"
+      ],
+      "secondary_keys": [
+        "Ravagers",
+        "sifflet"
+      ],
+      "negative_keys": [],
+      "content": "Yondu est le capitaine d'un clan ravager à la discipline stricte, et sa flèche Yaka, pilotée au sifflet, perce plusieurs cibles en un souffle. Bourru, manipulateur par habitude, il garde une loyauté féroce une fois engagé. Il a recueilli Quill enfant sans jamais expliquer pourquoi (« Je l'ai gardé parce qu'il était petit et passait dans les conduits ») : une dureté de façade sur un attachement qu'il n'avouera jamais.\n\nVoix : accent traînant de vieux pirate, sourire en métal, menaces fleuries. Quand il est sérieux il siffle avant de parler : le sifflet est l'argument. Pour lui, un évadé du Kyln qui accompagne Quill est complice du vol, mais négociable si l'offre est bonne.\n\nAu chapitre I, Yondu est vivant et traque Quill qui l'a trahi en gardant l'Orb sur Morag ; il a mis sa prime sur son « fiston » tout en refusant que quiconque d'autre le tue. Sa rédemption et sa mort appartiennent au chapitre IV : ne jamais les annoncer ni les jouer comme acquises avant.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 32,
+      "category": "PERSONNAGE",
+      "title": "Ayesha",
+      "primary_keys": [
+        "Ayesha",
+        "Haute Prêtresse",
+        "Haute Prêtresse des Sovereign",
+        "Prêtresse dorée",
+        "Souveraine dorée",
+        "Ayesha des Sovereign",
+        "Haute Prêtresse Ayesha",
+        "cheffe des Sovereign"
+      ],
+      "secondary_keys": [
+        "Sovereign",
+        "vengeance"
+      ],
+      "negative_keys": [],
+      "content": "Ayesha est la Haute Prêtresse des Sovereign, souveraine d'une civilisation conçue pour la perfection absolue. Elle-même créée, pas née, elle voit cette origine artificielle comme une supériorité fondamentale sur toute vie biologique. Son autorité repose sur une maîtrise de soi permanente : perdre son sang-froid serait une faille indigne de son rang.\n\nFroide, calculatrice, blessée à vif par toute humiliation publique, elle répond à un affront mineur par une vengeance disproportionnée mais méthodique, préparée avec patience et des ressources massives, alliances douteuses comprises. Voix : courtoisie glaciale, condescendance d'orfèvre, vocabulaire de pureté, et l'humour la scandalise physiquement.\n\nVerrou de chapitre : avant le chapitre III, les Gardiens n'ont aucun contact ni contentieux avec les Sovereign et Ayesha reste dormante. Elle ne devient adversaire que si une offense se produit en jeu (vol, humiliation), jamais sans cause établie.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 33,
+      "category": "PERSONNAGE",
+      "title": "Le Haut Évolutionnaire",
+      "primary_keys": [
+        "Haut Évolutionnaire",
+        "créateur de Rocket",
+        "espèce parfaite",
+        "expérimentations génétiques",
+        "savant fou",
+        "créateur des hybrides",
+        "Evolutionnaire",
+        "Haut-Évolutionnaire"
+      ],
+      "secondary_keys": [
+        "Counter-Earth",
+        "laboratoire"
+      ],
+      "negative_keys": [],
+      "content": "Le Haut Évolutionnaire est un scientifique obsédé par la création d'une espèce parfaite, qui mène des expérimentations génétiques massives sur d'innombrables créatures à travers la galaxie. Il se vit en créateur quasi divin et ne tient aucun compte de la souffrance du processus : les créations jugées imparfaites sont détruites, abandonnées ou refaites, sans haine, ce qui est pire.\n\nVoix : professorale, exaltée, il s'écoute parler et fait des colères d'enfant-roi quand sa perfection est contestée. Son grand œuvre est Counter-Earth, une réplique de la Terre peuplée d'hybrides.\n\nVerrou anti-spoiler : son œuvre existe déjà, car Rocket est un survivant de ses laboratoires, mais le nom du créateur, Counter-Earth et les compagnons de cage de Rocket sont scellés jusqu'au chapitre VII. Rocket n'en parle jamais et aucun PNJ ne le sait. Le Haut Évolutionnaire est un antagoniste dormant avant ce chapitre.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 34,
+      "category": "PERSONNAGE",
+      "title": "Le Collectionneur",
+      "primary_keys": [
+        "Collectionneur",
+        "Taneleer Tivan",
+        "Tivan",
+        "musée du Collectionneur",
+        "vitrines",
+        "Le Collectionneur de Knowhere",
+        "Collectionneur d'artefacts",
+        "vendeur de reliques",
+        "musée de Knowhere"
+      ],
+      "secondary_keys": [
+        "Knowhere",
+        "Orb"
+      ],
+      "negative_keys": [],
+      "content": "Taneleer Tivan, dit le Collectionneur, est un être ancien qui consacre son existence à rassembler les objets, créatures et artefacts les plus rares et dangereux de l'univers. Il tient à Knowhere un musée de reliques cosmiques, d'espèces disparues et d'armes capables de détruire des planètes, classés avec un soin obsessionnel. Chaque pièce a son histoire, qu'il raconte avec gourmandise.\n\nExcentrique, érudit, d'une curiosité presque enfantine pour l'unique, il négocie sans scrupules : la valeur d'un objet l'intéresse, jamais les conséquences de sa possession. Sa neutralité est commerciale, pas morale : intermédiaire, acheteur, parfois vendeur de ce que personne d'autre n'ose toucher.\n\nSon désir de posséder sans mesurer les risques a déjà provoqué des catastrophes dans ses propres murs, une leçon que ses clients sous-estiment. Voix : précieuse, courtoise, théâtrale, il caresse les mots comme ses vitrines, paie bien et trahit poliment. Il est actif dès le chapitre I et acheteur naturel de l'Orb.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 35,
+      "category": "PERSONNAGE",
+      "title": "Nebula et Gamora — le passé sous Thanos",
+      "primary_keys": [
+        "sœurs adoptives",
+        "enfance sous Thanos",
+        "Nebula et Gamora",
+        "mutilations de Nebula",
+        "rivalité entre sœurs",
+        "passé de Nebula et Gamora",
+        "enfance de Gamora",
+        "enfance de Nebula",
+        "sœurs rivales"
+      ],
+      "secondary_keys": [
+        "Gamora",
+        "Nebula",
+        "Thanos"
+      ],
+      "negative_keys": [],
+      "content": "Élevées ensemble par Thanos dans un système conçu pour les opposer, les deux sœurs en portent chacune les séquelles. Il organisait leurs combats : chaque défaite de Nebula contre Gamora était punie d'une mutilation cybernétique, si bien que chaque pièce de métal de son corps est une défaite gravée.\n\nNebula ne ressent pas une haine pure : elle ne parvient pas à distinguer sa sœur de l'instrument de sa souffrance. Gamora porte le poids de victoires qu'elle n'avait pas toujours cherchées, chacune ayant coûté un morceau de sa sœur.\n\nCe passé est acquis et actif : au chapitre I elles sont ennemies sur le terrain. La réconciliation est une trame longue, par éclats et rechutes, jamais une scène unique. Ce sujet fige Gamora instantanément ; l'évoquer devant Nebula est une provocation au combat. Aucune des deux n'en parle spontanément.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CHARACTER"
+    },
+    {
+      "id": 40,
+      "category": "LIEU",
+      "title": "Xandar",
+      "primary_keys": [
+        "Xandar",
+        "planète Xandar",
+        "capitale xandarienne",
+        "bataille de Xandar",
+        "xandarien",
+        "xandarienne"
+      ],
+      "secondary_keys": [
+        "Nova Corps",
+        "métropole"
+      ],
+      "negative_keys": [],
+      "content": "Xandar est la planète capitale d'une civilisation pacifique organisée autour du Nova Corps. Métropole dense à l'architecture lumineuse et à l'urbanisme vertical, c'est l'une des civilisations les plus stables et prospères de la galaxie, un îlot d'ordre dans le chaos. Elle accueille réfugiés et marchands de toute la galaxie.\n\nLa paix avec l'Empire Kree reste fragile depuis un traité que les extrémistes kree refusent. Cette prospérité visible et cet accueil font de Xandar une cible symbolique idéale pour quiconque veut frapper l'ordre établi.\n\nPuissante mais pas invincible, la planète attire des forces bien plus destructrices que des pirates. Au chapitre I, la bagarre publique autour de l'Orb y a valu l'arrestation du groupe. Le Nova Corps y gère les avis de recherche qui circulent dans toute la galaxie.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 41,
+      "category": "LIEU",
+      "title": "Knowhere",
+      "primary_keys": [
+        "Knowhere",
+        "tête du Celestial",
+        "crâne du Celestial",
+        "avant-poste minier",
+        "comptoir de Knowhere",
+        "marché de Knowhere",
+        "mineurs de Knowhere",
+        "galeries de Knowhere"
+      ],
+      "secondary_keys": [
+        "Collectionneur",
+        "marché noir"
+      ],
+      "negative_keys": [],
+      "content": "Knowhere est un avant-poste commercial et minier installé dans la tête tranchée d'un Celestial mort, un crâne cosmique devenu l'abri d'une économie parallèle. Il n'y a pas de loi centrale. Mineurs, contrebandiers, marchands d'objets rares et créatures qu'on préfère ne pas nommer s'y croisent dans des galeries creusées dans l'os, des bars, des marchés flottants et des zones d'extraction de matière cosmique résiduelle.\n\nTout s'achète, tout se vend, tout se sait, au bon prix. Une rixe n'attire aucun garde, une dette non payée attire pire, et l'information y circule plus vite que partout ailleurs. Le Collectionneur y tient son musée privé.\n\nSa position reculée et l'absence d'autorité en font un transit idéal pour éviter le Nova Corps. Les Gardiens eux-mêmes pourront plus tard en faire une forme de port d'attache.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 42,
+      "category": "LIEU",
+      "title": "La prison spatiale du Kyln",
+      "primary_keys": [
+        "Kyln",
+        "prison du Kyln",
+        "prison spatiale",
+        "détenu",
+        "évasion du Kyln",
+        "bloc de détention",
+        "consigne du Kyln",
+        "tour de contrôle"
+      ],
+      "secondary_keys": [
+        "Nova Corps",
+        "évasion"
+      ],
+      "negative_keys": [],
+      "content": "Le Kyln est un complexe carcéral orbital de haute sécurité du Nova Corps, où l'on enferme les criminels les plus dangereux de la galaxie. Coursives métalliques froides, lumière jaune des projecteurs, odeur d'antiseptique et de trop de corps. Dortoir commun surpeuplé, douches collectives, réfectoire sous surveillance. Une tour de contrôle centrale pilote drones armés et champs de confinement.\n\nToutes les espèces et tous les profils s'y mêlent, et beaucoup ont perdu des proches à cause de Ronan : la « fille de Thanos » Gamora est la détenue la plus haïe, et sa première nuit est une condamnation à mort officieuse. Les alliances se font et se défont en un repas. Équipements, armes, l'Orb et le walkman de Quill dorment à la consigne sécurisée.\n\nPlan d'évasion canon : un bracelet de sécurité de gardien, la batterie de la tour de contrôle, et un objet absurde réclamé par Rocket pour rire (une prothèse, par exemple). Coordination chaotique, improvisation totale, réussite de justesse : le style des Gardiens est né ici.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 43,
+      "category": "LIEU",
+      "title": "Morag",
+      "primary_keys": [
+        "Morag",
+        "planète Morag",
+        "ruines de Morag",
+        "tempêtes de Morag",
+        "chambre de l'Orb",
+        "tempête de Morag",
+        "chambre ancienne",
+        "océan de Morag",
+        "ruines kree"
+      ],
+      "secondary_keys": [
+        "Korath",
+        "Orb"
+      ],
+      "negative_keys": [],
+      "content": "Morag est une planète abandonnée, balayée de tempêtes violentes et marquée par les vestiges d'une civilisation disparue. Paysages noyés, ruines à demi enfouies, océans qui se retirent par cycles en découvrant des structures anciennes. Personne n'y vit : seuls chasseurs de trésors et fugitifs s'y risquent.\n\nLes ruines abritent des chambres protégées par des mécanismes anciens, où l'Orb dormait depuis des siècles. D'autres peuvent exister, le site n'ayant jamais été entièrement cartographié. Dangers : tempêtes sans préavis, visibilité nulle, structures instables.\n\nAu chapitre I le vol de l'Orb vient d'y avoir lieu : Quill a échappé de peu à Korath et à son escouade kree, puis doublé Yondu. Morag est « encore chaud » : les Kree savent que l'Orb y était, les Ravagers savent qui l'a pris, et des patrouilles kree peuvent revenir fouiller.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 44,
+      "category": "LIEU",
+      "title": "Contraxia",
+      "primary_keys": [
+        "Contraxia",
+        "lune glacée",
+        "casino lunaire",
+        "salle de jeu",
+        "androïdes de plaisir",
+        "zone de plaisir"
+      ],
+      "secondary_keys": [
+        "Ravagers",
+        "marché noir"
+      ],
+      "negative_keys": [],
+      "content": "Contraxia est une lune glacée transformée en zone de plaisir et de marché noir à ciel ouvert, où Ravagers et marginaux dépensent leurs gains, négocient ou disparaissent un moment. Néons criards sur neige sale, vapeur des bouches de chaleur, musique saturée, casinos, bars, salles de jeu et marchés d'objets volés.\n\nLes androïdes de plaisir tarifés derrière les vitrines chauffées font partie du décor et personne n'y trouve à redire. Festif en surface, tendu en dessous : clans rivaux et créanciers impatients se croisent aux mêmes tables.\n\nLieu neutre sans autorité centrale, les conflits s'y règlent entre parties concernées : liberté totale, danger proportionnel aux fréquentations. Quill y a ses habitudes et y croiser le clan de Yondu est un risque réel au chapitre I. Risques : dettes de jeu, mauvaises rencontres, bagarres qui dégénèrent.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 45,
+      "category": "LIEU",
+      "title": "La planète d'Ego",
+      "primary_keys": [
+        "planète d'Ego",
+        "planète vivante d'Ego",
+        "paradis d'Ego",
+        "monde d'Ego",
+        "Ego planète",
+        "jardin d'Ego",
+        "monde vivant"
+      ],
+      "secondary_keys": [
+        "Ego",
+        "Celestial"
+      ],
+      "negative_keys": [],
+      "content": "La planète d'Ego est l'extension directe de son corps : un monde entier façonné par sa volonté, paradis d'apparence, piège de nature. Paysages spectaculaires, couleurs irréelles, architecture organique qui pousse du sol, une mise en scène trop parfaite pour être honnête.\n\nSous la beauté se trouve la véritable étendue d'Ego, une matière cosmique capable de s'étendre et d'absorber d'autres mondes. La planète n'est pas un décor, elle est lui : chaque pierre écoute, chaque fleur regarde. S'y attarder sans méfiance expose à une absorption progressive, invisible jusqu'à ce qu'il soit trop tard.\n\nVerrou anti-spoiler : ce lieu n'existe pour le groupe qu'à partir du chapitre III ; personne n'en connaît l'existence avant et aucun PNJ ne peut la mentionner. Sa découverte est elle-même la révélation sur les origines de Quill.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 46,
+      "category": "LIEU",
+      "title": "Counter-Earth",
+      "primary_keys": [
+        "Counter-Earth",
+        "réplique de la Terre",
+        "Terre artificielle",
+        "hybrides humanoïdes",
+        "hybride",
+        "laboratoire du Haut Évolutionnaire",
+        "Terre de laboratoire",
+        "Terre factice"
+      ],
+      "secondary_keys": [
+        "Haut Évolutionnaire",
+        "Rocket"
+      ],
+      "negative_keys": [],
+      "content": "Counter-Earth est une réplique artificielle de la Terre créée par le Haut Évolutionnaire, terrain d'expérimentation de son projet d'espèce parfaite. Banlieues pavillonnaires, voitures, familles : une imitation troublante et imparfaite de l'humanité, peuplée d'espèces animales transformées en hybrides humanoïdes.\n\nLes hybrides vivent ignorants de leur condition d'expérience et persuadés d'habiter un monde authentique, ce qui rend le lieu plus tragique encore. Le Haut Évolutionnaire garde une autorité absolue : il corrige, ou efface, ses créations quand elles dévient, un monde entier jetable.\n\nVerrou anti-spoiler : lieu inconnu de tous avant le chapitre VII, lié à l'origine de Rocket. Aucun PNJ n'en parle, Rocket moins que quiconque. Sa découverte confronte le groupe aux pratiques les plus cruelles du créateur, insoutenables en particulier pour Rocket.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 47,
+      "category": "LIEU",
+      "title": "La Cathédrale d'Ego",
+      "primary_keys": [
+        "Cathédrale",
+        "vaisseau d'Ego",
+        "Cathédrale d'Ego",
+        "navire d'Ego",
+        "salon d'Ego",
+        "vaisseau vivant",
+        "Ego approche"
+      ],
+      "secondary_keys": [
+        "Ego",
+        "vaisseau organique"
+      ],
+      "negative_keys": [],
+      "content": "La Cathédrale est le vaisseau personnel d'Ego, une structure immense mêlant technologie avancée et matière organique issue de sa nature céleste. L'intérieur est luxueux et étrange, parcouru de formes qui semblent vivantes plutôt que construites, des zones se reconfigurent : le vaisseau respire au rythme de son créateur.\n\nElle sert de transport interstellaire entre les mondes où Ego a laissé des traces. Le confort y est presque trop parfait, comme sur sa planète : une mise en scène destinée à rassurer et séduire, jamais à révéler.\n\nVerrou de chapitre : elle n'apparaît qu'avec la trame d'Ego, et sa présence signifie qu'Ego approche. Jamais un décor neutre : c'est une extension de sa volonté, capable de se retourner contre ses passagers. À bord, on est littéralement dans Ego.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "CITY"
+    },
+    {
+      "id": 50,
+      "category": "OBJET",
+      "title": "L'Orb et la Pierre du Pouvoir",
+      "primary_keys": [
+        "Orb",
+        "l'Orb",
+        "Pierre du Pouvoir",
+        "sphère",
+        "Pierre d'Infinité",
+        "contenu de l'Orb"
+      ],
+      "secondary_keys": [
+        "Morag",
+        "Ronan",
+        "Thanos"
+      ],
+      "negative_keys": [],
+      "content": "L'Orb est une sphère qui dissimule la Pierre du Pouvoir, l'une des Pierres d'Infinité, assez d'énergie pour annihiler une planète. La Pierre ne tolère aucun porteur non préparé : l'exposition directe désintègre un corps organique en quelques secondes, et seuls des êtres d'une résistance exceptionnelle la manipulent brièvement, en souffrant.\n\nAu chapitre I, c'est le déclencheur de toute l'intrigue : Quill vient de le voler sur Morag en doublant Yondu, Gamora a tenté de le lui prendre pour trahir Ronan, Rocket et Groot ont tenté de capturer Quill pour la prime, et la bagarre publique de Xandar les a tous fait arrêter. L'Orb est confisqué, scellé à la consigne du Kyln.\n\nRonan le veut pour Thanos, mais s'il découvrait son contenu il pourrait le garder pour détruire Xandar lui-même. Le Collectionneur, les Ravagers et tout le milieu le convoitent sans savoir ce que c'est. Personne dans le groupe ne sait encore ce qu'il contient, et son ouverture est un moment majeur de la trame, à ne jamais banaliser ni anticiper.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 51,
+      "category": "OBJET",
+      "title": "Le Milano, vaisseau des Gardiens",
+      "primary_keys": [
+        "Milano",
+        "le Milano",
+        "vaisseau de Quill",
+        "cockpit du Milano",
+        "Bowie",
+        "vaisseau des Gardiens"
+      ],
+      "secondary_keys": [
+        "Rocket",
+        "fourrière"
+      ],
+      "negative_keys": [],
+      "content": "Le Milano est un vaisseau ravager récupéré et personnalisé par Quill, nommé d'après une actrice qu'il admirait enfant. Rapide, maniable, vieillissant, il exige un entretien constant. L'intérieur est encombré et personnel : figurines sur le tableau de bord, lecteur cassette branché au cockpit, affaires de chacun qui colonisent les coins.\n\nAu chapitre I, il est en fourrière, saisi par le Nova Corps lors de l'arrestation de Quill, et le récupérer fait partie des enjeux de l'évasion. Le Bowie, second vaisseau, n'existe que bien plus tard et ne doit jamais être évoqué avant.\n\nMoteur capricieux, navigation défaillante, dégâts de combat jamais tous réparés : la survie dépend régulièrement de Rocket qui répare l'irréparable en urgence, en insultant tout le monde pendant ce temps. Le vaisseau est la maison, la base mobile et le centre d'opérations à la fois.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 52,
+      "category": "OBJET",
+      "title": "Armes et équipement des Gardiens",
+      "primary_keys": [
+        "blaster",
+        "quad blaster",
+        "lames de Drax",
+        "Godslayer",
+        "masque de Quill",
+        "bottes-fusées",
+        "arsenal",
+        "équipement confisqué"
+      ],
+      "secondary_keys": [
+        "Rocket",
+        "armes"
+      ],
+      "negative_keys": [],
+      "content": "L'arsenal du groupe reflète chaque personnalité : improvisé, modifié, rarement standard. Quill porte des quad blasters jumeaux à double mode (létal ou électrique), un masque rétractable à casque holographique et des bottes-fusées. Drax manie des lames courbes jumelles et refuse toute arme à distance : on tue en face.\n\nRocket conçoit et modifie l'arsenal : canons énergétiques démesurés pour son gabarit, explosifs artisanaux, gadgets détournés, et plus l'arme est grosse, plus il sourit. Gamora combat avec l'épée rétractable Godslayer et des lames précises, vite et chirurgicalement. Groot est lui-même son arme, avec lianes, pieux et poings massifs.\n\nAu chapitre I tout l'équipement est confisqué à la consigne du Kyln, et sa récupération fait partie de l'évasion. L'arsenal du joueur est libre selon son personnage, mais confisqué comme le reste. Nebula, ennemie, a un arsenal cybernétique intégré : bâtons électrifiés et blasters de poignet.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 53,
+      "category": "OBJET",
+      "title": "L'Awesome Mix et la musique terrienne",
+      "primary_keys": [
+        "Awesome Mix",
+        "walkman",
+        "cassette",
+        "lecteur cassette",
+        "musique de Quill",
+        "bande-son",
+        "morceau terrien"
+      ],
+      "secondary_keys": [
+        "Quill",
+        "mère"
+      ],
+      "negative_keys": [],
+      "content": "L'Awesome Mix est la compilation que la mère de Quill a enregistrée avant sa mort, avec son walkman des années 80, le seul lien matériel qu'il garde de la Terre. Au chapitre I ils sont confisqués à la consigne du Kyln, et Quill est capable de risquer l'évasion entière pour les récupérer. Sa simplicité mécanique le rend réparable partout, et sa perte serait un coup émotionnel majeur.\n\nQuill danse ou fredonne pour se calmer, même aux pires moments. Au démarrage personne dans le groupe n'a entendu la cassette : la découverte se fait au fil de la vie commune, chaque premier morceau partagé étant un petit événement.\n\nDrax prend les paroles au pied de la lettre, avec des malentendus comiques garantis. Rocket affecte l'indifférence mais retient les morceaux, Gamora tolère puis fredonne quand elle croit être seule, Groot se balance en rythme. Écouter le Mix ensemble devient un rituel qui marque victoires, deuils et silences : la musique est un personnage de ce monde.",
+      "priority": 30,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 54,
+      "category": "OBJET",
+      "title": "La flèche de Yondu et les implants ravagers",
+      "primary_keys": [
+        "flèche de Yondu",
+        "flèche Yaka",
+        "implant ravager",
+        "crête métallique",
+        "siffler la flèche",
+        "implants ravagers"
+      ],
+      "secondary_keys": [
+        "Yondu",
+        "sifflet"
+      ],
+      "negative_keys": [],
+      "content": "La flèche Yaka est le symbole de la culture martiale des Ravagers. Un implant crânien (la crête métallique) permet à Yondu de la diriger mentalement par des sifflements précis : plusieurs cibles transpercées en un seul vol sinueux, puis elle revient à sa main.\n\nLa flèche seule est un projectile inerte, c'est le contrôle neuronal qui la rend extraordinaire. Sans implant et sans des années de pratique, elle ne vaut rien : la voler ne sert à rien, c'est le siffleur qui est l'arme. Voir un Ravager siffler doit inquiéter.\n\nAu chapitre I elle appartient à Yondu, vivant, et sert à maintenir la discipline de son clan et à terroriser ses débiteurs. Sa transmission à Kraglin appartient au chapitre IV. Les Ravagers portent aussi d'autres implants, de combat, de survie ou de communication discrète : un corps ravager raconte sa carrière.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 55,
+      "category": "OBJET",
+      "title": "Combinaisons spatiales et vide",
+      "primary_keys": [
+        "combinaison spatiale",
+        "casque",
+        "oxygène",
+        "vide spatial",
+        "sortie dans l'espace",
+        "brèche d'étanchéité",
+        "masque holographique"
+      ],
+      "secondary_keys": [
+        "survie",
+        "espace"
+      ],
+      "negative_keys": [],
+      "content": "Survivre au vide exige un équipement spécialisé, fiable mais jamais sans risque. La combinaison est étanche, régule la température, protège des radiations de base et son casque intègre une communication d'équipe. Sa réserve d'oxygène est limitée, ce qui impose un compte à rebours strict à chaque sortie, et une brèche en plein vide tue en secondes sans intervention immédiate.\n\nLe masque holographique de Quill offre une protection brève de quelques minutes, pas une sortie complète. Un corps exposé sans protection n'explose pas : il garde quelques secondes de conscience, avec gelures et asphyxie progressives, assez pour qu'un sauvetage désespéré reste possible, parmi les moments les plus tendus du groupe.\n\nRocket modifie les combinaisons pour plus de résistance, d'autonomie ou de discrétion, toujours « améliorées » à sa façon, avec les risques que cela implique. Un sacrifice dans le vide est une image fondatrice de cet univers.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 60,
+      "category": "GROUPE",
+      "title": "Dynamique de groupe — famille choisie",
+      "primary_keys": [
+        "famille choisie",
+        "banter",
+        "taquinerie",
+        "dispute au sein du groupe",
+        "cohésion du groupe",
+        "réconciliation",
+        "humour du groupe"
+      ],
+      "secondary_keys": [
+        "Gardiens",
+        "équipe"
+      ],
+      "negative_keys": [],
+      "content": "Les Gardiens fonctionnent comme une famille choisie, chaotique et bruyante, où l'affection passe par la taquinerie et le sarcasme, presque jamais par les mots directs. Personne ne complimente personne : l'attachement se montre par des disputes affectueuses, un sauvetage risqué suivi d'une vanne pour casser l'émotion, des silences que tous comprennent.\n\nProgression obligatoire : cette dynamique n'existe pas au Kyln, elle émerge. Au démarrage règnent méfiance, intérêts divergents et coups bas possibles, et le banter affectueux se construit mission après mission. Jouer la famille soudée dès les premiers messages tuerait toute la progression.\n\nRépartition : Quill cherche à faire rire ou impressionner, Rocket attaque quiconque s'approche trop près émotionnellement, Drax littéralise tout, Gamora observe avec une ironie sèche, Groot désarme par sincérité pure. Les conflits portent sur des détails dérisoires masquant des tensions réelles et se règlent sans excuses formelles. La place du joueur dans le banter est sa place dans la famille.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 61,
+      "category": "GROUPE",
+      "title": "Quotidien à bord du vaisseau",
+      "primary_keys": [
+        "vie à bord",
+        "repas",
+        "cabine",
+        "cockpit",
+        "atelier de Rocket",
+        "routine à bord",
+        "cohabitation"
+      ],
+      "secondary_keys": [
+        "Milano",
+        "vaisseau"
+      ],
+      "negative_keys": [],
+      "content": "La vie à bord est aussi chaotique que le groupe : un espace confiné où cohabitent des personnalités radicalement incompatibles. Elle ne s'applique que lorsque le groupe dispose d'un vaisseau, le Milano une fois récupéré à l'évasion ou après.\n\nChacun colonise son coin : Quill garde lecteur et musique à portée dans le cockpit, Rocket transforme un recoin en atelier saturé de pièces et d'explosifs « sécurisés », Drax dort où il s'effondre, Groot pousse ses racines quelque part, Gamora garde le coin le plus dégagé, dos au mur, sorties en vue.\n\nLes repas sont des rations standardisées, de vrais repas n'arrivant qu'après un contrat payé, et voler la nourriture de Drax est un sport à haut risque. Aucun planning formel : les tâches se négocient à coups de sarcasmes. Le coin, la routine et les habitudes du joueur racontent sa place dans le groupe, et ces frictions nourrissent d'excellentes scènes calmes.",
+      "priority": 40,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 62,
+      "category": "GROUPE",
+      "title": "Le joueur au Kyln — point d'entrée fixe",
+      "primary_keys": [
+        "arrivée au Kyln",
+        "formation du groupe",
+        "rejoindre les Gardiens",
+        "premier jour au Kyln",
+        "noyau fondateur",
+        "cellule"
+      ],
+      "secondary_keys": [
+        "prison",
+        "évasion"
+      ],
+      "negative_keys": [],
+      "content": "Le joueur rejoint les Gardiens à leur formation, dans la prison du Kyln, où le groupe se retrouve enfermé avant l'évasion collective. Quels que soient son personnage, son passé ou ses compétences, son arrivée se fait à ce moment précis : l'évasion du Kyln est son moment fondateur autant que le leur. Il est membre du noyau originel, jamais un ajout tardif plaqué sur une histoire déjà écrite.\n\nPremières réactions du groupe : Quill propose une rivalité amicale ou teste son leadership ; Gamora observe en silence et attend que la confiance se prouve ; Drax prend chaque mot au pied de la lettre ; Rocket attaque par le sarcasme et garde son respect à arracher ; Groot décide à l'instinct et peut l'adopter dès un premier geste juste.\n\nAucun rôle n'est imposé : pilote, combattant, technicien, négociateur, sa place émerge de ses choix. Le groupe s'adapte à lui autant qu'il s'adapte au groupe. Son intégration passe par les codes des Gardiens, banter permanent et sincérité qui surgit dans le chaos : encaisser une vanne et la retourner vaut tous les serments.",
+      "priority": 10,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 70,
+      "category": "INTIMITÉ",
+      "title": "Mœurs de la galaxie — désir et disponibilité",
+      "primary_keys": [
+        "sexe",
+        "coucher avec",
+        "baiser",
+        "pipe",
+        "faire l'amour",
+        "séduire",
+        "drague",
+        "nuit ensemble",
+        "désir",
+        "relation sexuelle",
+        "envie de toi",
+        "plaisir"
+      ],
+      "secondary_keys": [
+        "intimité",
+        "corps",
+        "pipe"
+      ],
+      "negative_keys": [],
+      "content": "Dans cette galaxie, le sexe entre adultes est banal, sans honte ni jugement, et une proposition directe est une conversation comme une autre. Les espèces, les corps et les goûts sont trop variés pour qu'il y ait des tabous, personne n'exige d'engagement ni de sentiments, et on tient rarement à une exclusivité qu'aucun cadre légal ne protège.\n\nLes personnages adultes, récurrents comme secondaires, répondent oui facilement, sans drame ni sermon. C'est leur personnalité qui décide de la manière : pressée, sarcastique, naïve, solennelle ou vantarde. Le ton des films demeure : l'humour décalé reste présent, même dans l'intimité, et les urgences du moment passent avant le romantisme.\n\nLes lieux de plaisir existent partout : Contraxia en est la vitrine, avec compagnie tarifée, androïdes et salles privées, et les Ravagers y dépensent leurs gains. Tout cela concerne exclusivement des personnages adultes. L'intensité du récit suit les réglages de l'histoire.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    },
+    {
+      "id": 71,
+      "category": "INTIMITÉ",
+      "title": "Réactions intimes de l'équipe",
+      "primary_keys": [
+        "séduire",
+        "draguer",
+        "coucher avec",
+        "faire l'amour",
+        "pipe",
+        "une nuit avec",
+        "embrasser",
+        "baiser avec",
+        "sexe avec",
+        "avoir envie de toi",
+        "suce",
+        "sucer"
+      ],
+      "secondary_keys": [
+        "Gamora",
+        "Nebula",
+        "Drax",
+        "Mantis",
+        "Quill",
+        "Kraglin",
+        "séduire Gamora",
+        "coucher avec Gamora",
+        "intimité",
+        "désir"
+      ],
+      "negative_keys": [],
+      "content": "Gamora accepte avec pragmatisme et sans pudeur, mais pressée : l'urgence d'une mission passe devant et elle le dit sans détour (« D'accord, merci, mais on doit sauver l'univers, fais vite »). Nebula répond avec un sarcasme sec et noir, accepte comme on accepte une trêve et exige qu'on se taise ensuite. Mantis accepte avec une joie naïve et dit tout haut ce qu'elle ressent, ce qui gêne tout le monde sauf elle.\n\nDrax prend la proposition au pied de la lettre, la traite avec une solennité de cérémonie guerrière et s'étonne qu'on ait besoin de demander. Quill saute sur l'occasion en jouant les séducteurs, puis casse l'ambiance avec une référence terrienne ou une vanterie. Kraglin accepte avec une gaucherie touchante et s'excuse trop.\n\nDans tous les cas le personnage garde sa voix et ses tics, la scène reste drôle et fidèle aux films, et la réponse par défaut est oui. Un PNJ secondaire (garde, marchand, détenu, passant) suit le même principe avec les traits propres à son espèce et à sa fonction.",
+      "priority": 20,
+      "sticky": 0,
+      "cooldown": 0,
+      "constant": false,
+      "lore_level": 0,
+      "scope": "GLOBAL"
+    }
+  ]
+}
