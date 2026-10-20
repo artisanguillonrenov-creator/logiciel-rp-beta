@@ -5,7 +5,7 @@ import { listerMondes, paquetMonde, racesDuMonde, titreLoreDe } from '../src/mon
 import { donneesMonde } from '../src/mondes/donnees';
 import { parcoursCreation } from '../src/mondes/creation';
 import { creerEtatLore, ficheOrigine, idFicheLoreValide, listerFichesLore, validerEtatLore } from '../src/concepteur/lorebookModele';
-import { DELAI_MIN_AVANCEE_CHAPITRE, etatChapitre } from '../src/engine/chapitres';
+import { annulerAvanceeChapitre, DELAI_MIN_AVANCEE_CHAPITRE, etatChapitre, formaterChapitre } from '../src/engine/chapitres';
 import { INSTRUCTION_REGISTRE_ADULTE } from '../src/engine/contenuAdulte';
 import { outilsPourComposant, validerEtReparerArguments } from '../src/engine/tools';
 import { mettreAJourMonde } from '../src/engine/worldSimulation';
@@ -165,6 +165,8 @@ test('avancer_chapitre : traité par la simulation du monde, une seule avancée 
     const apres = await mettreAJourMonde({ appSettings, mondeActuel: mondeVide, messages, depuisIndex: 4, chapitres: CHAPITRES });
     assert.equal(apres.chapitreId, 'II');
     assert.equal(apres.chapitreDepuisMessage, 12);
+    // L'appel « vers III » du même cycle n'est pas mis en attente : aucun saut indirect.
+    assert.equal(apres.chapitreEnAttente, undefined);
     assert.equal(apres.flags.evades, true);
     // Monde sans chapitres : l'appel est ignoré, l'état ne gagne aucun champ de chapitre.
     const sansChapitres = await mettreAJourMonde({ appSettings, mondeActuel: mondeVide, messages, depuisIndex: 4 });
@@ -198,4 +200,50 @@ test('Règle adulte : la ligne de disponibilité figure dans le prompt Adulte de
     assert.ok(adulte.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne absente en Adulte`);
     assert.ok(!grandPublic.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne présente en Grand Public`);
   }
+});
+
+test('avancer_chapitre trop tôt : mis en attente, puis effectif dès le délai écoulé, sans renarrer les jalons', async () => {
+  const sauvegarde = globalThis.fetch;
+  let reponse: unknown[] = [{ id: 'a', type: 'function', function: { name: 'avancer_chapitre', arguments: '{"vers":"II"}' } }];
+  globalThis.fetch = async () => Response.json({ choices: [{ message: { content: '', tool_calls: reponse } }] });
+  const appSettings: AppSettings = { openRouterApiKey: 'cle-test', model: 'fiction/modele:free', moteurInference: 'serveur', fournisseurNarration: 'openrouter', profilContenu: 'grand_public' };
+  const messages = (n: number): Message[] => Array.from({ length: n }, (_, i) => ({ id: `m${i}`, role: i % 2 ? 'assistant' : 'user', content: `Message ${i}`, timestamp: i }));
+  try {
+    // Jalons atteints dans les 8 premiers messages : refus pour délai, mais l'avancée est gardée.
+    const apres8 = await mettreAJourMonde({ appSettings, mondeActuel: { zones: [], flags: {}, compteurs: {}, declencheurs: [] }, messages: messages(8), depuisIndex: 0, chapitres: CHAPITRES });
+    assert.equal(apres8.chapitreId, undefined);
+    assert.deepEqual(apres8.chapitreEnAttente, { vers: 'II', auMessage: 8 });
+    assert.equal(etatChapitre(CHAPITRES, apres8, 9)?.enCours.id, 'I');
+    assert.equal(etatChapitre(CHAPITRES, apres8, DELAI_MIN_AVANCEE_CHAPITRE)?.enCours.id, 'II');
+    // Le prompt passe au chapitre II dès le délai écoulé.
+    const story = creerNouvelleHistoire({
+      personnageNom: 'Ael', personnageDescription: '', pointDeDepart: '', mondeId: ID,
+      contexte: { lieu: KYLN, ambiance: '', dateChronique: '', objectifs: '' },
+      settings: { creativite: 'moyenne', longueur: 'moyenne', ton: 'sombre_realiste', violence: 'modere', romance: 'modere', humour: 'faible', liberteJoueur: 'elevee', rythme: 'normal' },
+    });
+    assert.equal(formaterChapitre(etatChapitre(CHAPITRES, apres8, 10)).includes(CHAPITRES[1].fiche), true);
+    assert.equal(etatChapitre(CHAPITRES, { ...story.monde, ...apres8 }, 8)?.enCours.id, 'I');
+    // La mise à jour suivante l'enregistre, même sans nouvel appel d'outil, et ne saute rien.
+    reponse = [];
+    const apres16 = await mettreAJourMonde({ appSettings, mondeActuel: apres8, messages: messages(16), depuisIndex: 8, chapitres: CHAPITRES });
+    assert.equal(apres16.chapitreId, 'II');
+    assert.equal(apres16.chapitreDepuisMessage, DELAI_MIN_AVANCEE_CHAPITRE);
+    assert.equal(apres16.chapitreEnAttente, undefined);
+    assert.equal(etatChapitre(CHAPITRES, apres16, 16)?.enCours.id, 'II');
+  } finally { globalThis.fetch = sauvegarde; }
+});
+
+test('régénération du tour qui a fait avancer le chapitre : retour au chapitre précédent', () => {
+  const avantAvancee: MondeState = { zones: [], flags: {}, compteurs: {}, declencheurs: [], chapitreId: 'II', chapitreDepuisMessage: 10 };
+  const avance: MondeState = { ...avantAvancee, chapitreId: 'III', chapitreDepuisMessage: 24, chapitreAvant: { id: 'II', depuisMessage: 10 } };
+  // Le tour régénéré (messages 23 et 24) est retiré : l'avancée relevée au message 24 est annulée.
+  assert.deepEqual(annulerAvanceeChapitre(avance, 22), avantAvancee);
+  // Une avancée relevée lors d'un tour antérieur est conservée.
+  assert.deepEqual(annulerAvanceeChapitre(avance, 24), avance);
+  // Une mise en attente relevée pendant le tour régénéré est retirée.
+  const enAttente: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24 } };
+  assert.deepEqual(annulerAvanceeChapitre(enAttente, 22), avantAvancee);
+  // Monde sans chapitres : inchangé.
+  const sansChapitres: MondeState = { zones: [], flags: { a: true }, compteurs: {}, declencheurs: [] };
+  assert.equal(annulerAvanceeChapitre(sansChapitres, 2), sansChapitres);
 });

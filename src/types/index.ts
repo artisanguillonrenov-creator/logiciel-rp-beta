@@ -351,6 +351,18 @@ export interface MondeState {
   // Nombre de messages de l'histoire au moment de la dernière avancée de
   // chapitre (garde-fou de rythme) ; absent = 0.
   chapitreDepuisMessage?: number;
+  // Avancée valide relevée avant la fin du délai minimal : elle prend effet
+  // seule dès que le délai est écoulé (jalons atteints, pas à renarrer).
+  chapitreEnAttente?: ChapitreEnAttente;
+  // État avant la dernière avancée, pour l'annuler si le tour qui l'a
+  // provoquée est régénéré.
+  chapitreAvant?: { id?: string; depuisMessage?: number; enAttente?: ChapitreEnAttente };
+}
+
+export interface ChapitreEnAttente {
+  vers: string;
+  /** Nombre de messages de l'histoire quand l'avancée a été relevée. */
+  auMessage: number;
 }
 
 // Engagements + dynamiques sociales (brief Phase 2, systèmes narratifs
