@@ -26,6 +26,7 @@ import Separateur from '../components/Separateur';
 import Panneau from '../components/Panneau';
 import { BoussoleOrnement } from '../components/Ornements';
 import { useEtatCloud } from '../cloud/useEtatCloud';
+import { useUpdateCheck } from '../automation/useUpdateCheck';
 import { couleurs, espacement, interfaceV2, polices, rayon, styleOptionSelectionnee, stylePetitesCapitales, texteOptionSelectionnee } from '../theme/theme';
 
 const IMAGE_ACCUEIL = require('../../assets/scenes/accueil.png');
@@ -58,6 +59,7 @@ export default function StartScreenStudio({ navigation }: Props) {
   const [histoires, setHistoires] = useState<StoryMeta[]>([]);
   const [erreurHistoires, setErreurHistoires] = useState('');
   const [modalLangueOuvert, setModalLangueOuvert] = useState(false);
+  const verificationMaj = useUpdateCheck();
   const [modalGuideOuvert, setModalGuideOuvert] = useState(false);
   const [modalSynopsisOuvert, setModalSynopsisOuvert] = useState(false);
   const cloud = useEtatCloud();
@@ -157,6 +159,18 @@ export default function StartScreenStudio({ navigation }: Props) {
         </View>
 
         <Text style={styles.version}>{t('Version')} {VERSION_APP}</Text>
+        {verificationMaj.disponible ? (
+          <Pressable
+            style={({ pressed }) => [styles.pastilleMaj, pressed && styles.presse]}
+            onPress={() => navigation.navigate('Reglages')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('Mise à jour disponible')}
+          >
+            <View style={styles.pointMaj} />
+            <Text style={styles.texteMaj}>{t('Mise à jour disponible')}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <SelecteurLangue visible={modalLangueOuvert} onFermer={() => setModalLangueOuvert(false)} />
@@ -388,6 +402,25 @@ const styles = StyleSheet.create({
     left: espacement.sm,
     bottom: 2,
     color: couleurs.texteFaible,
+    fontFamily: polices.corps,
+    fontSize: 10,
+  },
+  pastilleMaj: {
+    position: 'absolute',
+    right: espacement.sm,
+    bottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  pointMaj: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: couleurs.accent,
+  },
+  texteMaj: {
+    color: couleurs.texteAtténué,
     fontFamily: polices.corps,
     fontSize: 10,
   },

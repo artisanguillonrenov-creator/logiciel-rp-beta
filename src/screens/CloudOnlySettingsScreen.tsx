@@ -13,7 +13,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import type { AppSettings, ProfilContenu } from '../types';
 import { getSettings, saveSettings } from '../storage/storage';
-import { verifierMiseAJour } from '../engine/updater';
+import { useUpdateCheck } from '../automation/useUpdateCheck';
 import { VERSION_APP } from '../version';
 import FournisseursPanel from '../components/FournisseursPanel';
 import { couleurs, espacement, polices, rayon } from '../theme/theme';
@@ -39,9 +39,7 @@ export default function CloudOnlySettingsScreen({ navigation }: Props) {
   const [modalProfilOuvert, setModalProfilOuvert] = useState(false);
   const [codeSaisi, setCodeSaisi] = useState('');
   const [erreurProfil, setErreurProfil] = useState('');
-  const [verificationMaj, setVerificationMaj] = useState(false);
-  const [messageMaj, setMessageMaj] = useState('');
-  const [urlMaj, setUrlMaj] = useState('');
+  const maj = useUpdateCheck();
 
   function chargerReglages() {
     setChargement(true);
@@ -102,25 +100,6 @@ export default function CloudOnlySettingsScreen({ navigation }: Props) {
     setCodeSaisi('');
     setErreurProfil('');
     setModalProfilOuvert(true);
-  }
-
-  async function verifierMaj() {
-    setVerificationMaj(true);
-    setMessageMaj('');
-    setUrlMaj('');
-    try {
-      const info = await verifierMiseAJour();
-      if (info.disponible) {
-        setMessageMaj(`${t('Nouvelle version disponible')} : ${info.derniereVersion}${info.notes ? ` — ${info.notes}` : ''}`);
-        setUrlMaj(info.url);
-      } else {
-        setMessageMaj(t('Tu utilises déjà la dernière version.'));
-      }
-    } catch (e) {
-      setMessageMaj(e instanceof Error ? e.message : t('Vérification impossible pour le moment.'));
-    } finally {
-      setVerificationMaj(false);
-    }
   }
 
   const profilAffiche = profilContenu === 'adulte'
@@ -210,18 +189,26 @@ export default function CloudOnlySettingsScreen({ navigation }: Props) {
               <Text style={styles.ligneValeur}>{VERSION_APP}</Text>
             </View>
             <Bouton
-              titre={verificationMaj ? t('Vérification…') : t('Vérifier les mises à jour')}
+              titre={maj.enCours ? t('Vérification…') : t('Vérifier maintenant')}
               variante="secondaire"
-              onPress={verifierMaj}
-              desactive={verificationMaj}
+              onPress={() => void maj.verifierMaintenant()}
+              desactive={maj.enCours}
               style={styles.bouton}
             />
-            {messageMaj ? <Text style={styles.aide}>{messageMaj}</Text> : null}
-            {urlMaj ? (
+            {maj.erreur ? <Text style={styles.aide}>{maj.erreur}</Text> : null}
+            {maj.snapshot ? (
+              <Text style={styles.aide}>
+                {maj.disponible
+                  ? `${t('Nouvelle version disponible')} : ${maj.snapshot.info.derniereVersion}${maj.snapshot.info.notes ? ` — ${maj.snapshot.info.notes}` : ''}`
+                  : t('Tu utilises déjà la dernière version.')}
+                {` (${t('dernière vérification')} : ${new Date(maj.snapshot.checkedAt).toLocaleString()})`}
+              </Text>
+            ) : null}
+            {maj.disponible && maj.snapshot?.info.url ? (
               <Bouton
                 titre={t('Ouvrir la dernière version')}
                 variante="arcane"
-                onPress={() => Linking.openURL(urlMaj)}
+                onPress={() => Linking.openURL(maj.snapshot!.info.url)}
                 style={styles.bouton}
               />
             ) : null}

@@ -3,7 +3,7 @@ import {ActivityIndicator,Alert,Linking,StyleSheet,Text,View} from 'react-native
 import Bouton from './Bouton';
 import {couleurs,espacement,polices} from '../theme/theme';
 import {VERSION_APP} from '../version';
-import {verifierMiseAJour,type InfoMiseAJour} from '../engine/updater';
+import {useUpdateCheck} from '../automation/useUpdateCheck';
 import {viderCacheEmbeddings} from '../storage/embeddingsStore';
 import {retryFailedAutomationJobs} from '../automation/kernel';
 import AtelierDiagnosticPanel from './AtelierDiagnosticPanel';
@@ -13,17 +13,11 @@ function destinationFiable(lien:string):boolean {
   return /^https:\/\/(?:github\.com|(?:[a-z0-9-]+\.)?github\.io|expo\.dev)\//i.test(lien);
 }
 export default function AtelierMaintenancePanel(){
-  const [maj,setMaj]=useState<InfoMiseAJour|null>(null);
+  const verification=useUpdateCheck();
+  const maj=verification.snapshot?.info??null;
   const [occupe,setOccupe]=useState(false);
   const [erreur,setErreur]=useState('');
   const [message,setMessage]=useState('');
-  async function verifier(){
-    setOccupe(true);setErreur('');setMessage('');
-    try{const res=await verifierMiseAJour();setMaj(res);
-      setMessage(res.disponible?'Version plus récente annoncée par le catalogue.':'Aucune version supérieure annoncée par le catalogue.');
-    }catch(e){setErreur(erreurTexte(e));}
-    finally{setOccupe(false);}
-  }
   async function visiter(){
     if(!maj?.url||!destinationFiable(maj.url)){setErreur('Lien non autorisé : aucune ouverture.');return;}
     try{await Linking.openURL(maj.url);}catch(e){setErreur(erreurTexte(e));}
@@ -45,9 +39,11 @@ export default function AtelierMaintenancePanel(){
     <Text style={styles.aide}>Révision JavaScript : {COMMIT_BUNDLE.slice(0,12)}</Text>
     <Text style={styles.aide}>Les vérifications et réparations se font à la demande. Aucune suppression d’histoire ni installation automatique d’APK.</Text>
     <Text style={styles.label}>Mises à jour</Text>
-    <Bouton titre="Vérifier le catalogue de versions" variante="secondaire"
-      onPress={()=>void verifier()} desactive={occupe} style={styles.bouton}/>
-    {maj && <View style={styles.resultats}>
+    <Bouton titre={verification.enCours?'Vérification…':'Vérifier maintenant'} variante="secondaire"
+      onPress={()=>void verification.verifierMaintenant()} desactive={occupe||verification.enCours} style={styles.bouton}/>
+    {verification.erreur?<Text style={styles.erreur}>{verification.erreur}</Text>:null}
+    {maj && verification.snapshot && <View style={styles.resultats}>
+      <Text style={styles.aide}>Dernière vérification : {new Date(verification.snapshot.checkedAt).toLocaleString()}</Text>
       <Text style={styles.aide}>Version annoncée : {maj.derniereVersion} · {maj.disponible?'Plus récente':'Pas plus récente'}</Text>
       {maj.notes?<Text style={styles.aide}>{maj.notes}</Text>:null}
       {maj.disponible && maj.url && destinationFiable(maj.url)

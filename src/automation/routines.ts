@@ -1,14 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { verifierMiseAJour, type InfoMiseAJour } from '../engine/updater';
+import { verifierMiseAJour } from '../engine/updater';
 import { enqueueAutomation, registerAutomationHandler } from './kernel';
+import type { UpdateCheckSnapshot } from './updateCheckState';
+
+export type { UpdateCheckSnapshot } from './updateCheckState';
 
 const KEY_LAST_UPDATE_CHECK = '@rp_beta/automation/last_update_check';
 export const UPDATE_CHECK_TTL_MS = 6 * 60 * 60 * 1000;
-
-export interface UpdateCheckSnapshot {
-  checkedAt: number;
-  info: InfoMiseAJour;
-}
 
 export async function getLastUpdateCheck(): Promise<UpdateCheckSnapshot | null> {
   const raw = await AsyncStorage.getItem(KEY_LAST_UPDATE_CHECK);
@@ -38,6 +36,11 @@ export async function enqueueUpdateCheckIfDue(now = Date.now()): Promise<boolean
   const bucket = Math.floor(now / UPDATE_CHECK_TTL_MS);
   await enqueueAutomation('updates.check', { dedupeKey: `updates.check:${bucket}` });
   return true;
+}
+
+/** Vérification demandée par l'utilisateur : passe par la même routine que la vérification périodique. */
+export async function enqueueUpdateCheckNow(): Promise<void> {
+  await enqueueAutomation('updates.check', { dedupeKey: 'updates.check:manuel' });
 }
 
 export function registerBuiltInAutomationHandlers(): () => void {
