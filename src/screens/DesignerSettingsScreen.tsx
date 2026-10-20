@@ -338,6 +338,12 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
               <Text style={[styles.compteurJobs, automation.failedJobs > 0 && styles.compteurErreur]}>Erreurs {automation.failedJobs}</Text>
               <Text style={styles.compteurJobs}>Terminées {automation.completedJobs}</Text>
             </View>
+            {automation.retryingJobs > 0 ? (
+              <Text style={styles.statut}>{automation.retryingJobs} routine(s) en échec seront relancées automatiquement (3 tentatives au maximum).</Text>
+            ) : null}
+            {automation.purgedFailedJobs > 0 ? (
+              <Text style={styles.statut}>{automation.purgedFailedJobs} échec(s) de plus de 7 jours purgé(s) au démarrage.</Text>
+            ) : null}
             {automation.recoveredJobs > 0 ? (
               <Text style={styles.statut}>{automation.recoveredJobs} routine(s) interrompue(s) restaurée(s) au démarrage.</Text>
             ) : null}

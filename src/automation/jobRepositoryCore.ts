@@ -12,6 +12,8 @@ export interface AutomationJob {
   startedAt?: number;
   finishedAt?: number;
   lastError?: string;
+  /** Relance automatique programmée : la tâche attend en pending jusqu'à cette date. */
+  nextAttemptAt?: number;
 }
 
 export interface AutomationJobStorage {
@@ -25,9 +27,11 @@ export interface AutomationJobRepository {
   markRunning(id: string): Promise<AutomationJob | null>;
   markCompleted(id: string): Promise<AutomationJob | null>;
   markFailed(id: string, error: string): Promise<AutomationJob | null>;
+  scheduleRetry(id: string, error: string, nextAttemptAt: number): Promise<AutomationJob | null>;
   retryFailed(): Promise<number>;
   recoverInterrupted(): Promise<number>;
   removeCompleted(olderThanMs?: number): Promise<number>;
+  removeFailed(olderThanMs?: number): Promise<number>;
   removeByStoryId(storyId: string): Promise<number>;
 }
 
@@ -107,6 +111,7 @@ export function createAutomationJobRepository(
         startedAt: now(),
         finishedAt: undefined,
         lastError: undefined,
+        nextAttemptAt: undefined,
       }));
       if (updated) await writeUnsafe(jobs);
       return updated;
@@ -126,6 +131,20 @@ export function createAutomationJobRepository(
         status: 'failed',
         finishedAt: now(),
         lastError: error.slice(0, 500),
+        nextAttemptAt: undefined,
+      }));
+      if (updated) await writeUnsafe(jobs);
+      return updated;
+    }),
+
+    scheduleRetry: (id, error, nextAttemptAt) => serialized(async () => {
+      const jobs = await readUnsafe();
+      const updated = updateJob(jobs, id, (job) => ({
+        ...job,
+        status: 'pending',
+        finishedAt: now(),
+        lastError: error.slice(0, 500),
+        nextAttemptAt,
       }));
       if (updated) await writeUnsafe(jobs);
       return updated;
@@ -137,12 +156,15 @@ export function createAutomationJobRepository(
       const retried = jobs.map((job) => {
         if (job.status !== 'failed') return job;
         count++;
+        // Relance manuelle : la tâche repart avec un compteur de tentatives neuf.
         return {
           ...job,
           status: 'pending' as const,
+          attempts: 0,
           startedAt: undefined,
           finishedAt: undefined,
           lastError: undefined,
+          nextAttemptAt: undefined,
         };
       });
       if (count > 0) await writeUnsafe(retried);
@@ -170,6 +192,15 @@ export function createAutomationJobRepository(
       const jobs = await readUnsafe();
       const threshold = now() - olderThanMs;
       const kept = jobs.filter((job) => job.status !== 'completed' || (job.finishedAt ?? job.createdAt) >= threshold);
+      const removed = jobs.length - kept.length;
+      if (removed > 0) await writeUnsafe(kept);
+      return removed;
+    }),
+
+    removeFailed: (olderThanMs = 7 * 24 * 60 * 60 * 1000) => serialized(async () => {
+      const jobs = await readUnsafe();
+      const threshold = now() - olderThanMs;
+      const kept = jobs.filter((job) => job.status !== 'failed' || (job.finishedAt ?? job.createdAt) >= threshold);
       const removed = jobs.length - kept.length;
       if (removed > 0) await writeUnsafe(kept);
       return removed;
