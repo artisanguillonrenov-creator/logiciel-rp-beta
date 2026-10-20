@@ -16,6 +16,13 @@ export interface AutomationRunInfo {
   error?: string;
 }
 
+export interface AutomationLaneDiagnostics {
+  pendingJobs: number;
+  runningJobs: number;
+  failedJobs: number;
+  retryingJobs: number;
+}
+
 export interface AutomationDiagnostics {
   initialized: boolean;
   capabilities: AppCapabilities | null;
@@ -27,9 +34,13 @@ export interface AutomationDiagnostics {
   retryingJobs: number;
   recoveredJobs: number;
   purgedFailedJobs: number;
+  /** Détail par file : texte (narration, mises à jour, maintenance) et image (visual.*). */
+  files: Record<AutomationLane, AutomationLaneDiagnostics>;
   lastRuns: Record<string, AutomationRunInfo>;
   lastKernelError?: string;
 }
+
+export const FILES_AUTOMATISMES: readonly AutomationLane[] = ['texte', 'image'];
 
 export const DELAI_MAX_TACHE_TEXTE_MS = 3 * 60 * 1000;
 export const DELAI_MAX_TACHE_IMAGE_MS = 5 * 60 * 1000;
@@ -76,8 +87,10 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
 
   const handlers = new Map<string, AutomationHandler>();
   const listeners = new Set<() => void>();
-  let processing: Promise<void> | null = null;
-  let annulerRelance: (() => void) | null = null;
+  // Une tâche à la fois par file : une image lente ne bloque plus la narration.
+  const processing: Record<AutomationLane, Promise<void> | null> = { texte: null, image: null };
+  const annulerRelance: Record<AutomationLane, (() => void) | null> = { texte: null, image: null };
+  const fileVide = (): AutomationLaneDiagnostics => ({ pendingJobs: 0, runningJobs: 0, failedJobs: 0, retryingJobs: 0 });
   let diagnostics: AutomationDiagnostics = {
     initialized: false,
     capabilities: null,
@@ -88,6 +101,7 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
     retryingJobs: 0,
     recoveredJobs: 0,
     purgedFailedJobs: 0,
+    files: { texte: fileVide(), image: fileVide() },
     lastRuns: {},
   };
 
@@ -108,12 +122,19 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
 
   async function refreshJobCounts(): Promise<void> {
     const jobs = await repository.list();
+    const compter = (liste: readonly AutomationJob[]): AutomationLaneDiagnostics => ({
+      pendingJobs: liste.filter((job) => job.status === 'pending').length,
+      runningJobs: liste.filter((job) => job.status === 'running').length,
+      failedJobs: liste.filter((job) => job.status === 'failed').length,
+      retryingJobs: liste.filter((job) => job.status === 'pending' && job.nextAttemptAt !== undefined).length,
+    });
     patchDiagnostics({
-      pendingJobs: jobs.filter((job) => job.status === 'pending').length,
-      runningJobs: jobs.filter((job) => job.status === 'running').length,
-      failedJobs: jobs.filter((job) => job.status === 'failed').length,
+      ...compter(jobs),
       completedJobs: jobs.filter((job) => job.status === 'completed').length,
-      retryingJobs: jobs.filter((job) => job.status === 'pending' && job.nextAttemptAt !== undefined).length,
+      files: {
+        texte: compter(jobs.filter((job) => fileDeTache(job.type) === 'texte')),
+        image: compter(jobs.filter((job) => fileDeTache(job.type) === 'image')),
+      },
     });
   }
 
@@ -162,18 +183,18 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
     }
   }
 
-  function programmerProchaineRelance(jobs: readonly AutomationJob[]): void {
-    annulerRelance?.();
-    annulerRelance = null;
+  function programmerProchaineRelance(file: AutomationLane, jobs: readonly AutomationJob[]): void {
+    annulerRelance[file]?.();
+    annulerRelance[file] = null;
     const prochaine = jobs
       .filter((job) => job.status === 'pending' && job.nextAttemptAt !== undefined)
       .reduce<number | null>((min, job) => (min === null || job.nextAttemptAt! < min ? job.nextAttemptAt! : min), null);
     if (prochaine === null) return;
-    annulerRelance = setTimer(() => {
-      annulerRelance = null;
+    annulerRelance[file] = setTimer(() => {
+      annulerRelance[file] = null;
       // Le passage courant peut être en train de se terminer : on enchaîne
       // après lui pour ne jamais perdre la relance.
-      void (processing ?? Promise.resolve()).then(() => processAutomationQueue());
+      void (processing[file] ?? Promise.resolve()).then(() => traiterFile(file));
     }, Math.max(0, prochaine - now()));
   }
 
@@ -236,18 +257,19 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
     return repository.list();
   }
 
-  function processAutomationQueue(): Promise<void> {
-    if (processing) return processing;
-    processing = (async () => {
+  function traiterFile(file: AutomationLane): Promise<void> {
+    const enCours = processing[file];
+    if (enCours) return enCours;
+    const passage = (async () => {
       try {
         while (true) {
-          const jobs = await repository.list();
+          const jobs = (await repository.list()).filter((job) => fileDeTache(job.type) === file);
           const instant = now();
           const next = jobs
             .filter((job) => job.status === 'pending' && (job.nextAttemptAt ?? 0) <= instant)
             .sort((a, b) => a.createdAt - b.createdAt)[0];
           if (!next) {
-            programmerProchaineRelance(jobs);
+            programmerProchaineRelance(file, jobs);
             break;
           }
 
@@ -273,12 +295,17 @@ export function createAutomationKernel(repository: AutomationJobRepository, opti
           await refreshJobCounts();
         }
       } catch (error) {
-        patchDiagnostics({ lastKernelError: error instanceof Error ? error.message : 'File des automatismes interrompue.' });
+        patchDiagnostics({ lastKernelError: error instanceof Error ? error.message : `File ${file} des automatismes interrompue.` });
       } finally {
-        processing = null;
+        processing[file] = null;
       }
     })();
-    return processing;
+    processing[file] = passage;
+    return passage;
+  }
+
+  async function processAutomationQueue(): Promise<void> {
+    await Promise.all(FILES_AUTOMATISMES.map(traiterFile));
   }
 
   async function retryFailedAutomationJobs(): Promise<number> {

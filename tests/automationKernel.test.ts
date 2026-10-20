@@ -204,3 +204,56 @@ test('le démarrage purge les échecs de plus de sept jours et garde les récent
   assert.equal(kernel.getAutomationDiagnostics().purgedFailedJobs, 1);
   assert.equal(kernel.getAutomationDiagnostics().failedJobs, 1);
 });
+
+test('une tâche image bloquée n’empêche pas une tâche texte de se terminer', async () => {
+  const { horloge, repo, kernel } = noyau();
+  let libererImage: () => void = () => {};
+  const termines: string[] = [];
+  kernel.registerAutomationHandler('visual.scene.generate', () => new Promise<void>((resolve) => {
+    libererImage = () => { termines.push('image'); resolve(); };
+  }));
+  kernel.registerAutomationHandler('story.postprocess', async () => { termines.push('texte'); });
+
+  // L'image est en file avant le texte : avec une file unique, le texte attendrait.
+  await kernel.enqueueAutomation('visual.scene.generate', { storyId: 's1' });
+  await kernel.enqueueAutomation('story.postprocess', { storyId: 's1' });
+  await laisserTourner(() => termines.includes('texte'));
+
+  const jobs = await repo.list();
+  assert.equal(jobs.find((job) => job.type === 'visual.scene.generate')?.status, 'running');
+  assert.equal(jobs.find((job) => job.type === 'story.postprocess')?.status, 'completed');
+  const diagnostics = kernel.getAutomationDiagnostics();
+  assert.equal(diagnostics.files.image.runningJobs, 1);
+  assert.equal(diagnostics.files.texte.runningJobs, 0);
+  assert.equal(diagnostics.files.texte.pendingJobs, 0);
+
+  libererImage();
+  await kernel.processAutomationQueue();
+  assert.deepEqual(termines, ['texte', 'image']);
+  assert.equal(horloge.enAttente(), 0);
+});
+
+test('chaque file traite une seule tâche à la fois', async () => {
+  const { kernel } = noyau();
+  let actifsImage = 0;
+  let maxImage = 0;
+  let actifsTexte = 0;
+  let maxTexte = 0;
+  const suivre = (file: 'image' | 'texte') => async () => {
+    if (file === 'image') maxImage = Math.max(maxImage, ++actifsImage);
+    else maxTexte = Math.max(maxTexte, ++actifsTexte);
+    await new Promise((resolve) => setImmediate(resolve));
+    if (file === 'image') actifsImage--;
+    else actifsTexte--;
+  };
+  kernel.registerAutomationHandler('visual.avatar.generate', suivre('image'));
+  kernel.registerAutomationHandler('maintenance.story.cleanup', suivre('texte'));
+  for (let i = 0; i < 3; i++) {
+    await kernel.enqueueAutomation('visual.avatar.generate', { storyId: `s${i}` });
+    await kernel.enqueueAutomation('maintenance.story.cleanup', { storyId: `s${i}` });
+  }
+  await kernel.processAutomationQueue();
+  assert.equal(maxImage, 1);
+  assert.equal(maxTexte, 1);
+  assert.equal(kernel.getAutomationDiagnostics().completedJobs, 6);
+});

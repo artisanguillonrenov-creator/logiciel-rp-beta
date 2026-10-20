@@ -338,6 +338,12 @@ export default function DesignerSettingsScreen({ navigation, route }: Props) {
               <Text style={[styles.compteurJobs, automation.failedJobs > 0 && styles.compteurErreur]}>Erreurs {automation.failedJobs}</Text>
               <Text style={styles.compteurJobs}>Terminées {automation.completedJobs}</Text>
             </View>
+            <Text style={styles.texteBloc}>
+              File texte : {automation.files.texte.runningJobs} en cours · {automation.files.texte.pendingJobs} en attente · {automation.files.texte.failedJobs} en erreur
+            </Text>
+            <Text style={styles.texteBloc}>
+              File image : {automation.files.image.runningJobs} en cours · {automation.files.image.pendingJobs} en attente · {automation.files.image.failedJobs} en erreur
+            </Text>
             {automation.retryingJobs > 0 ? (
               <Text style={styles.statut}>{automation.retryingJobs} routine(s) en échec seront relancées automatiquement (3 tentatives au maximum).</Text>
             ) : null}
