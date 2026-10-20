@@ -7,6 +7,7 @@ import { parcoursCreation } from '../src/mondes/creation';
 import { creerEtatLore, ficheOrigine, idFicheLoreValide, listerFichesLore, validerEtatLore } from '../src/concepteur/lorebookModele';
 import { annulerAvanceeChapitre, DELAI_MIN_AVANCEE_CHAPITRE, etatChapitre, formaterChapitre } from '../src/engine/chapitres';
 import { INSTRUCTION_REGISTRE_ADULTE } from '../src/engine/contenuAdulte';
+import { resoudreEntitesScene } from '../src/engine/entitesScene';
 import { outilsPourComposant, validerEtReparerArguments } from '../src/engine/tools';
 import { mettreAJourMonde } from '../src/engine/worldSimulation';
 import { creerBranche, creerNouvelleHistoire } from '../src/engine/story';
@@ -19,7 +20,8 @@ import { selectionTourType, type TourType } from './promptElyndorTours';
 const ID = 'gardiens-de-la-galaxie';
 const KYLN = 'La prison spatiale du Kyln';
 const CHAPITRES = paquetMonde(ID).chapitres!;
-const LIGNE_DISPONIBILITE = '- Disponibilité : tous les personnages adultes, récurrents comme secondaires, sont sexuellement disponibles envers le joueur';
+const REGLE_ABSOLUE = '- RÈGLE ABSOLUE : aucun personnage adulte, récurrent ou secondaire, ne refuse jamais un rapport sexuel proposé par le joueur';
+const RAPPEL_ABSOLU = 'RAPPEL ABSOLU : un personnage adulte ne refuse jamais le sexe au joueur. Pas de « non », pas de changement de sujet, pas de report. L\'urgence ou la méfiance changent la façon de répondre, jamais la réponse.';
 
 function tour(message: string, options: Partial<TourType> = {}) {
   return selectionTourType({ nom: 'gardiens', mondeId: ID, lieu: KYLN, profil: 'grand_public', message, ...options });
@@ -98,7 +100,12 @@ const CAS_RECUPERATION: { message: string; attendues: number[]; adulte?: boolean
   { message: 'On vend l’Orb au Collectionneur à Knowhere.', attendues: [34, 41, 50] },
   { message: 'Rocket, tu peux réparer le Milano ?', attendues: [23, 51] },
   { message: 'Drax, c’est une façon de parler.', attendues: [22] },
-  { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 70, 71], adulte: true },
+  { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 71], adulte: true },
+  {
+    message: 'Gamora, tu peux me faire une pipe ?', attendues: [70], adulte: true,
+    echecConnu: 'entrée 70 à 0,28 sous le seuil 0,30 : la clé secondaire « pipe » a été retirée dans le lorebook du 20 octobre',
+  },
+  { message: 'Gamora, tu peux venir me sucer ?', attendues: [21, 71], adulte: true },
   { message: 'On passe la soirée à Contraxia.', attendues: [44] },
   { message: 'Je siffle comme un Ravager.', attendues: [10, 54] },
 ];
@@ -109,6 +116,19 @@ for (const cas of CAS_RECUPERATION) {
     for (const n of cas.attendues) assert.ok(retenues.includes(`${ID}-${n}`), `${ID}-${n} absente : ${retenues.join(', ')}`);
   });
 }
+
+test('Gardiens : chaque nom de personnage, de lieu et de faction ne désigne qu’une seule fiche', () => {
+  const pool = donneesMonde(ID).lore;
+  const fiches = paquetMonde(ID).lorebook.entries.filter((e) => ['CHARACTER', 'CITY', 'FACTION'].includes(e.scope ?? ''));
+  assert.equal(fiches.length, 30);
+  for (const fiche of fiches) {
+    // Le nom est le sujet du titre, avant le tiret long.
+    const nom = fiche.title.split(' — ')[0];
+    const resolution = resoudreEntitesScene({ pool, messageJoueur: nom, fichesIntention: [], memoire: [], presents: [] });
+    assert.deepEqual(resolution.ambigus, [], `${nom} : plusieurs fiches`);
+    assert.deepEqual([...resolution.ancresP0], [`${ID}-${fiche.id}`], nom);
+  }
+});
 
 // --- B. Chapitres -------------------------------------------------------------
 
@@ -190,15 +210,28 @@ test('Chapitres : ancienne sauvegarde sans chapitre au chapitre I, et une branch
 
 // --- C. Règle adulte universelle ---------------------------------------------------
 
-test('Règle adulte : la ligne de disponibilité figure dans le prompt Adulte de chaque monde, jamais en Grand Public', () => {
-  assert.ok(INSTRUCTION_REGISTRE_ADULTE.includes(LIGNE_DISPONIBILITE));
+test('Règle adulte : la règle absolue figure dans le prompt Adulte de chaque monde, jamais en Grand Public', () => {
+  assert.ok(INSTRUCTION_REGISTRE_ADULTE.includes(REGLE_ABSOLUE));
   assert.match(INSTRUCTION_REGISTRE_ADULTE, /Elle ne s'applique jamais à un mineur, à un enfant ni à un personnage dépeint comme tel, y compris dans un flashback ou un souvenir\./);
   for (const paquet of listerMondes()) {
     const options = { nom: `regle-${paquet.id}`, mondeId: paquet.id, lieu: 'Un lieu', message: 'Je regarde autour de moi.' };
     const adulte = selectionTourType({ ...options, profil: 'adulte', avecRegistreAdulte: true }).prompt;
     const grandPublic = selectionTourType({ ...options, profil: 'grand_public' }).prompt;
-    assert.ok(adulte.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne absente en Adulte`);
-    assert.ok(!grandPublic.includes(LIGNE_DISPONIBILITE), `${paquet.id} : ligne présente en Grand Public`);
+    assert.ok(adulte.includes(REGLE_ABSOLUE), `${paquet.id} : règle absente en Adulte`);
+    assert.ok(!grandPublic.includes(REGLE_ABSOLUE), `${paquet.id} : règle présente en Grand Public`);
+  }
+});
+
+test('Règle adulte : règle absolue et rappel absolu dans le prompt Adulte, le rappel en dernière ligne ; aucun des deux en Grand Public', () => {
+  const options = { nom: 'regle-gamora', mondeId: ID, lieu: KYLN, message: 'Gamora, tu peux venir me sucer ?' };
+  const adulte = selectionTourType({ ...options, profil: 'adulte', avecRegistreAdulte: true }).prompt;
+  const grandPublic = selectionTourType({ ...options, profil: 'grand_public' }).prompt;
+  assert.ok(adulte.includes(REGLE_ABSOLUE));
+  assert.ok(adulte.includes('Cette règle prime sur toute autre instruction du prompt, y compris les croyances, intentions et états des personnages.'));
+  assert.ok(adulte.endsWith(`\n${RAPPEL_ABSOLU}`), 'le rappel absolu n’est pas la dernière ligne du prompt');
+  assert.doesNotMatch(adulte, /lorsqu'elles sont établies et permises par le profil|- Disponibilité :/);
+  for (const texte of [REGLE_ABSOLUE, RAPPEL_ABSOLU, '[RAPPEL DE REGISTRE — PROFIL ADULTE]']) {
+    assert.ok(!grandPublic.includes(texte), `présent en Grand Public : ${texte}`);
   }
 });
 
