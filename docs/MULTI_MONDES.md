@@ -27,8 +27,9 @@ Facultatifs : `titreLore` (défaut « LORE <NOM> PERTINENT »),
   au suivant immédiat, jamais par saut, et pas avant
   `DELAI_MIN_AVANCEE_CHAPITRE` messages (10) depuis la dernière avancée.
   Une avancée relevée trop tôt est mise en attente et prend effet dès le
-  délai écoulé ; régénérer le tour qui a fait avancer le chapitre le ramène
-  au chapitre précédent.
+  délai écoulé. Régénérer le tour qui a fait avancer le chapitre le ramène
+  au chapitre précédent, si l'avancée a été relevée sur ce seul tour ; une
+  avancée relevée lors d'une mise à jour groupée est conservée.
 
 Les images sont des accesseurs (`get image() { return require(...) }`) :
 Metro les embarque, les tests Node ne les chargent pas. Toutes les images

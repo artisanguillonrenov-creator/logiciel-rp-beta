@@ -212,7 +212,7 @@ test('avancer_chapitre trop tôt : mis en attente, puis effectif dès le délai 
     // Jalons atteints dans les 8 premiers messages : refus pour délai, mais l'avancée est gardée.
     const apres8 = await mettreAJourMonde({ appSettings, mondeActuel: { zones: [], flags: {}, compteurs: {}, declencheurs: [] }, messages: messages(8), depuisIndex: 0, chapitres: CHAPITRES });
     assert.equal(apres8.chapitreId, undefined);
-    assert.deepEqual(apres8.chapitreEnAttente, { vers: 'II', auMessage: 8 });
+    assert.deepEqual(apres8.chapitreEnAttente, { vers: 'II', auMessage: 8, fenetreDepuis: 0 });
     assert.equal(etatChapitre(CHAPITRES, apres8, 9)?.enCours.id, 'I');
     assert.equal(etatChapitre(CHAPITRES, apres8, DELAI_MIN_AVANCEE_CHAPITRE)?.enCours.id, 'II');
     // Le prompt passe au chapitre II dès le délai écoulé.
@@ -233,16 +233,22 @@ test('avancer_chapitre trop tôt : mis en attente, puis effectif dès le délai 
   } finally { globalThis.fetch = sauvegarde; }
 });
 
-test('régénération du tour qui a fait avancer le chapitre : retour au chapitre précédent', () => {
+test('régénération : seule une avancée relevée dans les messages retirés est annulée', () => {
   const avantAvancee: MondeState = { zones: [], flags: {}, compteurs: {}, declencheurs: [], chapitreId: 'II', chapitreDepuisMessage: 10 };
-  const avance: MondeState = { ...avantAvancee, chapitreId: 'III', chapitreDepuisMessage: 24, chapitreAvant: { id: 'II', depuisMessage: 10 } };
-  // Le tour régénéré (messages 23 et 24) est retiré : l'avancée relevée au message 24 est annulée.
-  assert.deepEqual(annulerAvanceeChapitre(avance, 22), avantAvancee);
-  // Une avancée relevée lors d'un tour antérieur est conservée.
-  assert.deepEqual(annulerAvanceeChapitre(avance, 24), avance);
-  // Une mise en attente relevée pendant le tour régénéré est retirée.
-  const enAttente: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24 } };
+  // Avancée relevée sur une fenêtre limitée au dernier échange (messages 23 et 24).
+  const avanceSurDernierEchange: MondeState = { ...avantAvancee, chapitreId: 'III', chapitreDepuisMessage: 24, chapitreAvant: { id: 'II', depuisMessage: 10, fenetreDepuis: 22 } };
+  assert.deepEqual(annulerAvanceeChapitre(avanceSurDernierEchange, 22), avantAvancee);
+  // Avancée relevée lors d'une mise à jour groupée (messages 17 à 24) : les jalons ont pu
+  // être atteints dans un échange antérieur, qui ne serait plus relu. Elle est conservée.
+  const avanceGroupee: MondeState = { ...avanceSurDernierEchange, chapitreAvant: { id: 'II', depuisMessage: 10, fenetreDepuis: 16 } };
+  assert.deepEqual(annulerAvanceeChapitre(avanceGroupee, 22), avanceGroupee);
+  // Avancée relevée lors d'un tour antérieur : conservée.
+  assert.deepEqual(annulerAvanceeChapitre(avanceSurDernierEchange, 24), avanceSurDernierEchange);
+  // Mise en attente relevée sur le seul tour régénéré : retirée ; sur une fenêtre plus large : gardée.
+  const enAttente: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24, fenetreDepuis: 22 } };
   assert.deepEqual(annulerAvanceeChapitre(enAttente, 22), avantAvancee);
+  const enAttenteGroupee: MondeState = { ...avantAvancee, chapitreEnAttente: { vers: 'III', auMessage: 24, fenetreDepuis: 16 } };
+  assert.deepEqual(annulerAvanceeChapitre(enAttenteGroupee, 22), enAttenteGroupee);
   // Monde sans chapitres : inchangé.
   const sansChapitres: MondeState = { zones: [], flags: { a: true }, compteurs: {}, declencheurs: [] };
   assert.equal(annulerAvanceeChapitre(sansChapitres, 2), sansChapitres);

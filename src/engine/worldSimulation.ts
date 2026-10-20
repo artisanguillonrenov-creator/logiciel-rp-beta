@@ -185,7 +185,7 @@ export async function mettreAJourMonde({
         && avanceeChapitreTropTot(chapitreExtraction, appelBrut.arguments.vers)) {
         // Jalons atteints mais délai minimal non écoulé : mise en attente,
         // l'avancée prendra effet seule au lieu d'être perdue.
-        etatChapitres = differerChapitre(etatChapitres, appelBrut.arguments.vers as string, nbMessages);
+        etatChapitres = differerChapitre(etatChapitres, appelBrut.arguments.vers as string, nbMessages, depuisIndex);
         continue;
       }
       if (!args) continue;
@@ -197,7 +197,7 @@ export async function mettreAJourMonde({
       } else if (appelBrut.nom === 'avancer_chapitre') {
         // Validé (suivant immédiat, délai respecté) : une seconde avancée dans
         // le même cycle échoue sur le délai, aucun saut n'est possible.
-        etatChapitres = avancerChapitre(etatChapitres, args.vers as string, nbMessages);
+        etatChapitres = avancerChapitre(etatChapitres, args.vers as string, nbMessages, depuisIndex);
         chapitre = etatChapitre(chapitres, etatChapitres, nbMessages);
       } else if (appelBrut.nom === 'ajuster_compteur') {
         compteurs = { ...compteurs, [args.nom as string]: (compteurs[args.nom as string] ?? 0) + (args.delta as number) };

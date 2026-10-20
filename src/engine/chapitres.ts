@@ -77,12 +77,16 @@ export function avanceeChapitreTropTot(etat: EtatChapitre | undefined, vers: unk
   return !!etat?.suivant && vers === etat.suivant.id && etat.messagesDepuisAvancee < DELAI_MIN_AVANCEE_CHAPITRE;
 }
 
-/** État à restaurer si l'avancée est annulée par une régénération. */
-function avant(monde: EtatChapitreStocke): NonNullable<MondeState['chapitreAvant']> {
+/**
+ * État à restaurer si l'avancée est annulée par une régénération, avec le
+ * début de la fenêtre de messages où elle a été relevée.
+ */
+function avant(monde: EtatChapitreStocke, fenetreDepuis: number | undefined): NonNullable<MondeState['chapitreAvant']> {
   const etat: NonNullable<MondeState['chapitreAvant']> = {};
   if (monde.chapitreId !== undefined) etat.id = monde.chapitreId;
   if (monde.chapitreDepuisMessage !== undefined) etat.depuisMessage = monde.chapitreDepuisMessage;
   if (monde.chapitreEnAttente !== undefined) etat.enAttente = monde.chapitreEnAttente;
+  if (fenetreDepuis !== undefined) etat.fenetreDepuis = fenetreDepuis;
   return etat;
 }
 
@@ -94,32 +98,39 @@ export function fixerChapitre(chapitres: readonly ChapitreMonde[] | undefined, m
   return sansIndefinis({
     chapitreId: etat.enCours.id,
     chapitreDepuisMessage: (monde.chapitreDepuisMessage ?? 0) + DELAI_MIN_AVANCEE_CHAPITRE,
-    chapitreAvant: avant(monde),
+    chapitreAvant: avant(monde, monde.chapitreEnAttente?.fenetreDepuis),
   });
 }
 
-/** Avancée validée : chapitre suivant, l'état précédent est conservé pour une régénération. */
-export function avancerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number): EtatChapitreStocke {
-  return sansIndefinis({ chapitreId: vers, chapitreDepuisMessage: nbMessages, chapitreAvant: avant(monde) });
+/**
+ * Avancée validée : chapitre suivant, l'état précédent est conservé pour une
+ * régénération. fenetreDepuis : premier message de la fenêtre analysée.
+ */
+export function avancerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number, fenetreDepuis: number): EtatChapitreStocke {
+  return sansIndefinis({ chapitreId: vers, chapitreDepuisMessage: nbMessages, chapitreAvant: avant(monde, fenetreDepuis) });
 }
 
 /** Avancée relevée trop tôt : mise en attente (la première relevée est gardée). */
-export function differerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number): EtatChapitreStocke {
+export function differerChapitre(monde: EtatChapitreStocke, vers: string, nbMessages: number, fenetreDepuis: number): EtatChapitreStocke {
   if (monde.chapitreEnAttente?.vers === vers) return champsChapitre(monde);
-  return champsChapitre({ ...monde, chapitreEnAttente: { vers, auMessage: nbMessages } });
+  return champsChapitre({ ...monde, chapitreEnAttente: { vers, auMessage: nbMessages, fenetreDepuis } });
 }
 
 /**
- * Régénération du dernier échange : une avancée (ou une mise en attente)
- * relevée après les messages restants est annulée.
+ * Régénération du dernier échange : une avancée (ou une mise en attente) n'est
+ * annulée que si TOUS les messages où elle a été relevée sont retirés. Relevée
+ * sur une fenêtre plus large (mise à jour groupée de plusieurs échanges), sa
+ * source ne peut pas être attribuée au tour régénéré : elle est conservée,
+ * plutôt que perdue alors que ses jalons ne seraient plus relus.
  */
 export function annulerAvanceeChapitre<T extends EtatChapitreStocke>(monde: T, nbMessagesRestants: number): T {
+  const retiree = (fenetreDepuis: number | undefined) => fenetreDepuis !== undefined && fenetreDepuis >= nbMessagesRestants;
   let resultat: T = monde;
-  if (resultat.chapitreAvant && (resultat.chapitreDepuisMessage ?? 0) > nbMessagesRestants) {
+  if (resultat.chapitreAvant && retiree(resultat.chapitreAvant.fenetreDepuis)) {
     const { chapitreAvant, chapitreId: _id, chapitreDepuisMessage: _depuis, chapitreEnAttente: _attente, ...reste } = resultat;
     resultat = { ...reste, ...sansIndefinis({ chapitreId: chapitreAvant.id, chapitreDepuisMessage: chapitreAvant.depuisMessage, chapitreEnAttente: chapitreAvant.enAttente }) } as T;
   }
-  if (resultat.chapitreEnAttente && resultat.chapitreEnAttente.auMessage > nbMessagesRestants) {
+  if (resultat.chapitreEnAttente && retiree(resultat.chapitreEnAttente.fenetreDepuis)) {
     const { chapitreEnAttente: _attente, ...reste } = resultat;
     resultat = reste as T;
   }
