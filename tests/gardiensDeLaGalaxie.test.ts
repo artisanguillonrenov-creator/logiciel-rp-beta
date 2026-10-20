@@ -98,10 +98,7 @@ const CAS_RECUPERATION: { message: string; attendues: number[]; adulte?: boolean
   { message: 'On vend l’Orb au Collectionneur à Knowhere.', attendues: [34, 41, 50] },
   { message: 'Rocket, tu peux réparer le Milano ?', attendues: [23, 51] },
   { message: 'Drax, c’est une façon de parler.', attendues: [22] },
-  {
-    message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 70, 71], adulte: true,
-    echecConnu: 'entrée 70 à 0,28 sous le seuil 0,30 : « pipe » est une clé primaire mais n’apparaît pas dans son texte',
-  },
+  { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 70, 71], adulte: true },
   { message: 'On passe la soirée à Contraxia.', attendues: [44] },
   {
     message: 'Je siffle comme un Ravager.', attendues: [10, 54],
