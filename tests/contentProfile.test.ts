@@ -63,3 +63,14 @@ test('profil Adulte : registre adapté aux curseurs configurés', () => {
   assert.match(faible, /Romance \(sentiments\) : aucune/);
   assert.match(faible, /Sexe : toujours explicite/);
 });
+
+test('grand public : le vocabulaire interdit est cherché en mots entiers, pluriel et radical compris', () => {
+  for (const anodin of ['Il habite une orbite basse.', 'La salle regorge de marchands.', 'Une sortie subite.']) {
+    assert.ok(validerProfilContenuHeuristique(anodin, 'grand_public').ok, anodin);
+    assert.ok(texteCompatibleAvecProfil(anodin, 'grand_public'), anodin);
+  }
+  for (const interdit of ['Il sort sa bite.', 'Des bites partout.', 'Une scène de masturbation.', 'Il lui tranche la gorge.']) {
+    assert.equal(validerProfilContenuHeuristique(interdit, 'grand_public').ok, false, interdit);
+    assert.equal(texteCompatibleAvecProfil(interdit, 'grand_public'), false, interdit);
+  }
+});

@@ -100,10 +100,7 @@ const CAS_RECUPERATION: { message: string; attendues: number[]; adulte?: boolean
   { message: 'Drax, c’est une façon de parler.', attendues: [22] },
   { message: 'Gamora, tu peux me faire une pipe ?', attendues: [21, 70, 71], adulte: true },
   { message: 'On passe la soirée à Contraxia.', attendues: [44] },
-  {
-    message: 'Je siffle comme un Ravager.', attendues: [10, 54],
-    echecConnu: 'entrée 54 écartée en Grand Public par le filtre de vocabulaire (« bite » trouvé dans un autre mot) ; retrouvée en Adulte',
-  },
+  { message: 'Je siffle comme un Ravager.', attendues: [10, 54] },
 ];
 
 for (const cas of CAS_RECUPERATION) {
